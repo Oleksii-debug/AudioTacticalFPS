@@ -1,6 +1,6 @@
 """Synthetic adapter boundary tests only; no signature/security qualification.
 
-The preserved boundary suite was executed after the environment recovered.
+Native private-runtime qualification and signature verification are separate gates.
 """
 from dataclasses import replace
 
@@ -9,7 +9,8 @@ import pytest
 from carr_library.delivery_contract import (
     Capability, DecisionReason, DecisionState, EntitlementBoundary,
     EntitlementDecision, EntitlementRequest, IntegrationContext, ProviderCapabilities,
-    Readiness, USER_DATA_ACTIONS, UpdateOffer, provider_status,
+    Readiness, USER_DATA_ACTIONS, UpdateOffer, provider_status, IntegrationStatus,
+    RefreshCadence, RefreshCheckpoint, RefreshPlan, RefreshState, plan_refresh,
 )
 
 
@@ -136,3 +137,130 @@ def test_protocol_capability_records_are_immutable_and_strict():
         ProviderCapabilities(1, frozenset({'update_check'}))
     with pytest.raises(ValueError):
         provider_status(None, family='unknown')
+
+
+
+@pytest.mark.parametrize(('state', 'capabilities'), [
+    ('declared_unqualified', frozenset({Capability.UPDATE_CHECK})),
+    (Readiness.ABSENT, frozenset({Capability.UPDATE_CHECK})),
+    (Readiness.DECLARED, frozenset()),
+    (Readiness.DECLARED, {'update_check'}),
+    (Readiness.DECLARED, frozenset({'update_check'})),
+])
+def test_integration_status_cannot_promote_malformed_or_absent_provider(state, capabilities):
+    with pytest.raises(ValueError):
+        IntegrationStatus(state, capabilities)
+
+
+def test_update_display_size_is_bounded_without_authorizing_any_install():
+    with pytest.raises(ValueError):
+        UpdateOffer(CONTEXT, 'offer-1', 'build-2', 1 << 63, 'a' * 64)
+
+
+@pytest.mark.parametrize('days', [7, 14])
+def test_refresh_cadence_is_explicit_and_independent_of_offline_authorization(days):
+    interval = days * 24 * 60 * 60
+    cadence = RefreshCadence(interval, (60, 300), max_jitter_seconds=20)
+    checkpoint = RefreshCheckpoint(last_attempt_utc=100, last_success_utc=100)
+    before = plan_refresh(cadence, checkpoint, now_utc=100 + interval - 1)
+    due = plan_refresh(cadence, checkpoint, now_utc=100 + interval)
+    assert before == RefreshPlan(RefreshState.WAITING, 100 + interval)
+    assert due == RefreshPlan(RefreshState.DUE, 100 + interval)
+    # Scheduling neither extends a license nor restricts access to existing work.
+    denied = EntitlementBoundary(SyntheticAdapter(DecisionState.DENIED))
+    for action in USER_DATA_ACTIONS:
+        assert denied.decide(replace(REQUEST, action=action)).reason == DecisionReason.DATA_ACCESS_PRESERVED
+
+
+def test_disabled_perpetual_profile_has_no_periodic_contact_requirement():
+    cadence = RefreshCadence(None)
+    for now in (0, 7 * 86400, 14 * 86400, 365 * 86400):
+        assert plan_refresh(cadence, RefreshCheckpoint(), now_utc=now) == RefreshPlan(RefreshState.DISABLED)
+    # Historical failure, even with an inconsistent current clock, cannot
+    # silently enable refresh in a profile that explicitly disables it.
+    assert plan_refresh(cadence, RefreshCheckpoint(200, 100, 3), now_utc=50).state == RefreshState.DISABLED
+
+
+def test_unattended_retry_burst_is_bounded_then_returns_to_normal_cadence():
+    cadence = RefreshCadence(7 * 86400, (60, 300, 900))
+    for failures, delay in ((1, 60), (2, 300), (3, 900), (4, 7 * 86400), (99, 7 * 86400)):
+        checkpoint = RefreshCheckpoint(1000, 100, failures)
+        assert plan_refresh(cadence, checkpoint, now_utc=1000 + delay - 1) == RefreshPlan(
+            RefreshState.WAITING, 1000 + delay)
+        assert plan_refresh(cadence, checkpoint, now_utc=1000 + delay).state == RefreshState.DUE
+
+
+def test_long_outage_and_return_preserve_existing_data_and_reschedule_after_success():
+    cadence = RefreshCadence(7 * 86400, (60,))
+    old = RefreshCheckpoint(30 * 86400, 100, 4)
+    provider = SyntheticAdapter()
+    provider.decide = lambda request: (_ for _ in ()).throw(RuntimeError('private outage'))
+    boundary = EntitlementBoundary(provider)
+    assert boundary.decide(REQUEST).reason == DecisionReason.PROVIDER_UNAVAILABLE
+    for action in USER_DATA_ACTIONS:
+        assert boundary.decide(replace(REQUEST, action=action)).reason == DecisionReason.DATA_ACCESS_PRESERVED
+    now = 40 * 86400
+    assert plan_refresh(cadence, old, now_utc=now).state == RefreshState.DUE
+    recovered = RefreshCheckpoint(now, now, 0)
+    assert plan_refresh(cadence, recovered, now_utc=now) == RefreshPlan(RefreshState.WAITING, now + 7 * 86400)
+    assert old == RefreshCheckpoint(30 * 86400, 100, 4)
+
+
+def test_clock_rollback_requires_review_without_mutating_history_or_data_access():
+    checkpoint = RefreshCheckpoint(200, 100, 1)
+    assert plan_refresh(RefreshCadence(86400, (60,)), checkpoint, now_utc=199) == RefreshPlan(
+        RefreshState.CLOCK_REVIEW)
+    assert checkpoint == RefreshCheckpoint(200, 100, 1)
+    request = replace(REQUEST, action='job.finish_active')
+    assert EntitlementBoundary().decide(request).reason == DecisionReason.DATA_ACCESS_PRESERVED
+
+
+def test_jitter_only_delays_within_supplied_bound():
+    cadence = RefreshCadence(100, (10,), max_jitter_seconds=5)
+    initial = plan_refresh(cadence, RefreshCheckpoint(), now_utc=50, jitter_seconds=5)
+    assert initial == RefreshPlan(RefreshState.DUE, 50)
+    assert plan_refresh(cadence, RefreshCheckpoint(), now_utc=55, jitter_seconds=5) == RefreshPlan(RefreshState.DUE, 55)
+    previous = RefreshCheckpoint(100, 100)
+    assert plan_refresh(cadence, previous, now_utc=200, jitter_seconds=5) == RefreshPlan(RefreshState.WAITING, 205)
+    with pytest.raises(ValueError):
+        plan_refresh(cadence, previous, now_utc=200, jitter_seconds=6)
+
+
+@pytest.mark.parametrize('arguments', [
+    (True,), (0,), (-1,), (1 << 63,), (60, [1, 2]), (60, (2, 1)),
+    (60, (0,)), (60, (True,)), (60, (1,) * 17), (60, (), True),
+    (None, (1,)), (None, (), 1),
+])
+def test_refresh_policy_rejects_unbounded_or_coercible_values(arguments):
+    with pytest.raises(ValueError):
+        RefreshCadence(*arguments)
+
+
+@pytest.mark.parametrize('arguments', [
+    (None, 1, 0), (None, None, 1), (100, 200, 1), (100, None, 0),
+    (100, 50, 0), (True, True, 0), (100, 100, True), (100, 100, -1),
+])
+def test_refresh_history_rejects_inconsistent_or_coercible_values(arguments):
+    with pytest.raises(ValueError):
+        RefreshCheckpoint(*arguments)
+
+
+@pytest.mark.parametrize('now', [True, -1, 1 << 63, float('inf')])
+def test_refresh_clock_is_a_bounded_integer(now):
+    with pytest.raises(ValueError):
+        plan_refresh(RefreshCadence(60), RefreshCheckpoint(), now_utc=now)
+
+
+def test_refresh_deadline_overflow_does_not_create_a_runnable_plan():
+    with pytest.raises(ValueError):
+        plan_refresh(RefreshCadence(60), RefreshCheckpoint((1 << 63) - 2, (1 << 63) - 2),
+                     now_utc=(1 << 63) - 2)
+
+
+def test_malformed_refresh_plan_is_not_a_runnable_status():
+    with pytest.raises(ValueError):
+        RefreshPlan('due', 10)
+    with pytest.raises(ValueError):
+        RefreshPlan(RefreshState.DUE)
+    with pytest.raises(ValueError):
+        RefreshPlan(RefreshState.DISABLED, 10)

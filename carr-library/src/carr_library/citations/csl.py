@@ -118,6 +118,8 @@ class RenderedBibliography:
     processor_reported_version: str = PROCESSOR_REPORTED_VERSION
     style_sha256: str = ''
     custom_style: bool = False
+    citation_ids: tuple[str, ...] = ()
+    note_indices: tuple[int, ...] = ()
 
     @property
     def bibliography(self):
@@ -612,15 +614,41 @@ _LABELS = frozenset(('book', 'chapter', 'column', 'figure', 'folio', 'issue', 'l
     'scene', 'table', 'timestamp', 'title', 'title-locator'))
 
 
-def _clusters(citations, records, identities, budget):
+def _clusters(citations, records, identities, budget, *, note_style):
     if citations is None:
         if len(records) > budget.max_citations:
             raise ValueError('The default citation sequence exceeds the configured batch budget.')
-        return [[{'id': row['id']}] for row in records], False
+        citations = [[{'id': row['id']}] for row in records]
     if type(citations) not in (list, tuple) or len(citations) > budget.max_citations:
         raise ValueError('The requested citation sequence exceeds the configured batch budget.')
-    result, manual, input_bytes = [], False, 0
-    for cluster in citations:
+    result, contexts, used_ids = [], [], set()
+    manual, input_bytes, context_bytes = False, 0, 0
+    for position, cluster in enumerate(citations, 1):
+        citation_id = f'citation-{position}'
+        note_index = position if note_style else 0
+        if type(cluster) is dict:
+            if set(cluster) - {'id', 'items', 'note_index'} or not {'id', 'items'} <= set(cluster):
+                raise ValueError('A document citation cluster needs id and items, with optional note_index.')
+            citation_id = _text(cluster['id'], 'citation cluster identifier', 200, required=True)
+            if type(citation_id) is not str or any(char.isspace() for char in citation_id):
+                raise ValueError('Citation cluster identifiers must be text without whitespace.')
+            supplied_note = cluster.get('note_index')
+            if supplied_note is not None:
+                if type(supplied_note) is not int or not 1 <= supplied_note <= 1_000_000:
+                    raise ValueError('A citation note index must be an integer from 1 to 1,000,000.')
+                note_index = supplied_note
+            # Charge caller-supplied document context without changing the
+            # existing byte-budget meaning of legacy example-item lists.
+            cost = len(json.dumps({'id': citation_id, 'note_index': note_index},
+                                  ensure_ascii=False).encode('utf-8'))
+            context_bytes += cost
+            input_bytes += cost
+            if input_bytes > budget.max_input_bytes:
+                raise ValueError('Citation clusters exceed the configured formatting byte budget.')
+            cluster = cluster['items']
+        if citation_id in used_ids or citation_id in _PROTECTED:
+            raise ValueError('Citation cluster identifiers must be unique and nonreserved.')
+        used_ids.add(citation_id)
         if type(cluster) not in (list, tuple) or not 1 <= len(cluster) <= budget.max_records:
             raise ValueError('Each citation cluster must contain one or more reference items.')
         rendered, seen = [], set()
@@ -656,7 +684,8 @@ def _clusters(citations, records, identities, budget):
                 raise ValueError('Citation clusters exceed the configured formatting byte budget.')
             rendered.append(row)
         result.append(rendered)
-    return result, manual
+        contexts.append({'id': citation_id, 'note_index': note_index})
+    return result, manual, contexts, context_bytes
 
 
 class _SafeMarkup(HTMLParser):
@@ -740,8 +769,8 @@ _BRIDGE = r'''
     engine.updateUncitedItems(ids.filter(function (id) { return !cited[id]; }));
     var previous = [], output = [];
     payload.citations.forEach(function (items, index) {
-        var id = 'citation-' + (index + 1);
-        var noteIndex = payload.noteStyle ? index + 1 : 0;
+        var id = payload.citation_contexts[index].id;
+        var noteIndex = payload.citation_contexts[index].note_index;
         var result = engine.processCitationCluster({citationID:id, citationItems:items,
             properties:{noteIndex:noteIndex}}, previous, []);
         if (result[0].citation_errors && result[0].citation_errors.length) {
@@ -763,12 +792,18 @@ _BRIDGE = r'''
 def render(records, *, style='apa', citations=None, locale='en-US', output='text', budget=None):
     """Render complete, context-aware citations and a bibliography offline.
 
-    ``citations`` is an ordered sequence of clusters; each cluster contains CSL
-    cite-item dictionaries with ``id`` and optionally ``locator``, ``label``,
-    ``prefix``, ``suffix`` or ``suppress-author``. By default one citation is
-    produced for each input record. Publication page extents are never promoted
-    into quotation locators. Caller-provided locators are explicitly unverified.
-    Input records are copied and are never mutated by the processor.
+    ``citations`` is an ordered sequence of clusters. A legacy cluster is a
+    sequence of CSL cite-item dictionaries. A document cluster is a dictionary
+    with a stable ``id``, ``items`` sequence and optional ``note_index``. Each
+    cite item contains ``id`` and optionally ``locator``, ``label``, ``prefix``,
+    ``suffix`` or ``suppress-author``. Omitted/None note indices use the cluster
+    position (starting at 1) for note styles, or 0 for in-text styles. Explicit
+    note indices are positive integers, including repeated values and gaps.
+    Document callers must supply the complete citation order and real note
+    positions, and retain the returned citation IDs when editing/regenerating.
+    By default one example citation is produced for each input record.
+    Publication extents never become locators; manual locators are unverified.
+    Input records and clusters are copied and never mutated by the processor.
     """
     custom = None
     if type(style) is CustomStyle:
@@ -788,13 +823,14 @@ def render(records, *, style='apa', citations=None, locale='en-US', output='text
         raise ValueError('Invalid citation resource budget.')
     budget.validate()
     rows, identities, warnings = _records(records, budget)
-    clusters, manual_locator = _clusters(citations, rows, identities, budget)
+    clusters, manual_locator, contexts, context_bytes = _clusters(
+        citations, rows, identities, budget, note_style=style_info.kind == 'note')
     if manual_locator:
         warnings.append('Citation locators were supplied manually; formatting does not verify those page or source positions.')
     if style_info.kind == 'note' and any(row.get('page') for row in rows):
         warnings.append('Page ranges in full bibliographic notes describe publication extent, not verified quotation locations.')
-    payload = {'records': rows, 'citations': clusters, 'locale': locale,
-        'output': output, 'noteStyle': style_info.kind == 'note',
+    payload = {'records': rows, 'citations': clusters, 'citation_contexts': contexts, 'locale': locale,
+        'output': output,
         'style': _xml_json(custom.source.decode('utf-8') if custom
                            else _resource('styles/' + style_info.filename)),
         'locales': {name: _xml_json(_resource('styles/locales-' + name + '.xml'))
@@ -802,6 +838,7 @@ def render(records, *, style='apa', citations=None, locale='en-US', output='text
     # Bound bibliographic input and the number of cite-item repetitions before
     # allocating the complete interpreter payload.
     user_size = len(json.dumps({'records': rows, 'citations': clusters}, ensure_ascii=False).encode('utf-8'))
+    user_size += context_bytes
     if custom:
         user_size += len(custom.source)
     if user_size > budget.max_input_bytes:
@@ -848,4 +885,6 @@ def render(records, *, style='apa', citations=None, locale='en-US', output='text
         tuple(clean(entry).strip() for entry in entries),
         tuple(tuple(group) for group in entry_ids),
         tuple(clean(citation).strip() for citation in rendered_citations),
-        tuple(dict.fromkeys(warnings)), style_sha256=style_hash, custom_style=custom is not None)
+        tuple(dict.fromkeys(warnings)), style_sha256=style_hash, custom_style=custom is not None,
+        citation_ids=tuple(context['id'] for context in contexts),
+        note_indices=tuple(context['note_index'] for context in contexts))

@@ -1,0 +1,879 @@
+{
+  "schema": 1,
+  "status": "BOUNDED_SOURCE_RECONCILIATION_WITH_EXPLICIT_COMPONENTS_AND_LIMITS",
+  "canonical_commit": "a44fac04072389caa40e0d6e799b13797712f797",
+  "canonical_tree": "3cc479898b1430b49774fc0226630a667d94d2d2",
+  "current_commit": "db234b3bec7c4fcb25814c63410d445f4f1807a3",
+  "current_tree": "0ecf9a3bbbf4b19eca704366885f3fc39114d234",
+  "reader_session_component": "c6074af17ef73f9f7ea94fd0e7b71b3c6ce2b846",
+  "reviewed_canonical_files": {
+    "carr-library/src/carr_library/speech/__init__.py": {
+      "git_blob": "f3a90829d0e3780e4fd88512f200e64a947c83a8",
+      "characters": 944
+    },
+    "carr-library/src/carr_library/speech/_io.py": {
+      "git_blob": "4024e11d9823a3af0da4fce7dfbe89420ff97782",
+      "characters": 10037
+    },
+    "carr-library/src/carr_library/speech/player.py": {
+      "git_blob": "b11dcebec0f6c0be57dc6b141ed272f65b65c821",
+      "characters": 5915
+    },
+    "carr-library/src/carr_library/speech/progress_speech.py": {
+      "git_blob": "40fc50742fb2c50a1bfb2920e25af692017c0aaf",
+      "characters": 15963
+    },
+    "carr-library/src/carr_library/speech/reading.py": {
+      "git_blob": "2305d54c34861fc00fed2b66ccb74ba5d36e6b21",
+      "characters": 22615
+    },
+    "carr-library/src/carr_library/speech/regex_worker.py": {
+      "git_blob": "630f6d9a6b5a90355125b932cc469fe4d628f883",
+      "characters": 886
+    },
+    "carr-library/src/carr_library/speech/runtime.py": {
+      "git_blob": "e913c96b3646b17db3d64864e97a3a779307d041",
+      "characters": 31738
+    },
+    "carr-library/src/carr_library/speech/sapi_native_worker.py": {
+      "git_blob": "0faf8b266ff9fa5a0dc5db61243e5d8e5ce99135",
+      "characters": 8339
+    },
+    "carr-library/src/carr_library/speech/sapi_worker.ps1": {
+      "git_blob": "25f11e868d01ae595c34e1739042ae14f55fedf7",
+      "characters": 2060
+    },
+    "carr-library/src/carr_library/speech/session.py": {
+      "git_blob": "24b1f463ef867d7aa98e4f7d7c54566d3e67773a",
+      "characters": 3050
+    },
+    "carr-library/src/carr_library/speech/source.py": {
+      "git_blob": "bd2afd04c8106689fbb80923748674fe8a75464d",
+      "characters": 2859
+    },
+    "carr-library/src/carr_library/transcription/__init__.py": {
+      "git_blob": "61bc62f8984afaffbde4073c49812738321f018b",
+      "characters": 386
+    },
+    "carr-library/src/carr_library/transcription/models.py": {
+      "git_blob": "e744e7c0c0b7cbaf47d2cb926f9fca81690c54ab",
+      "characters": 7562
+    },
+    "carr-library/src/carr_library/transcription/runtime.py": {
+      "git_blob": "99b1a086122b75ae2f7fc48dbe3b4109db059c0a",
+      "characters": 14249
+    },
+    "carr-library/src/carr_library/transcription/service.py": {
+      "git_blob": "e12335721580f9e28db3396278dc68861f528252",
+      "characters": 52424
+    },
+    "carr-library/src/carr_library/integrations/dordiai_speech.py": {
+      "git_blob": "99d0afb0d117cb2acc1f9df6da9a1db4e756d847",
+      "characters": 13168
+    },
+    "carr-library/src/carr_library/integrations/dordiai_voices.py": {
+      "git_blob": "13787af35f5fb1363665f7b0986f24771780dd0b",
+      "characters": 27823
+    },
+    "carr-library/src/carr_library/integrations/_dordiai_probe.py": {
+      "git_blob": "a52f940d53905ebde76e6b163c900d1fcbb65268",
+      "characters": 5145
+    },
+    "carr-library/src/carr_library/integrations/supplied_transcription.py": {
+      "git_blob": "e18a682490a31f962974a8fd31b1e42ad0a2fae9",
+      "characters": 24084
+    }
+  },
+  "current_source_files": {
+    "carr-library/src/carr_library/audio/engines.py": {
+      "commit": "db234b3bec7c4fcb25814c63410d445f4f1807a3",
+      "git_blob": "13bd4832ef2c962e2e9cef2ea1153f25824398e0",
+      "size_bytes": 59154
+    },
+    "carr-library/src/carr_library/audio/player.py": {
+      "commit": "db234b3bec7c4fcb25814c63410d445f4f1807a3",
+      "git_blob": "f94c8f65c795d0f1a8b01e63d462bcafdf8f193d",
+      "size_bytes": 14982
+    },
+    "carr-library/src/carr_library/audio/playback.py": {
+      "commit": "db234b3bec7c4fcb25814c63410d445f4f1807a3",
+      "git_blob": "2fd6819ad6686df7339b0c21448ca87135658ca4",
+      "size_bytes": 37242
+    },
+    "carr-library/src/carr_library/audio/windows_process.py": {
+      "commit": "db234b3bec7c4fcb25814c63410d445f4f1807a3",
+      "git_blob": "2dd7caa0300fe9a9c28583cdc0cdd25867c45c92",
+      "size_bytes": 6867
+    },
+    "carr-library/src/carr_library/audio/dordiai_discovery.py": {
+      "commit": "db234b3bec7c4fcb25814c63410d445f4f1807a3",
+      "git_blob": "950cb851039120f4b2051154dfd0a837db74eac3",
+      "size_bytes": 9620
+    },
+    "carr-library/src/carr_library/audio/model_manifest.py": {
+      "commit": "db234b3bec7c4fcb25814c63410d445f4f1807a3",
+      "git_blob": "2b68b1b01eb2a5ff6e9b53e36e293bfbfb6778f7",
+      "size_bytes": 16904
+    },
+    "carr-library/src/carr_library/reader/live_speech.py": {
+      "commit": "db234b3bec7c4fcb25814c63410d445f4f1807a3",
+      "git_blob": "ff77245356baa5e9a69f86b1c6ff9ed81999b67f",
+      "size_bytes": 24838
+    },
+    "carr-library/src/carr_library/reader/live_playback.py": {
+      "commit": "db234b3bec7c4fcb25814c63410d445f4f1807a3",
+      "git_blob": "3d66dcc0a709122f56647ce25d720840d04716e3",
+      "size_bytes": 4480
+    },
+    "carr-library/src/carr_library/reader/narration.py": {
+      "commit": "db234b3bec7c4fcb25814c63410d445f4f1807a3",
+      "git_blob": "24848da175fff5d5cd260ecacf9854ed807e79b2",
+      "size_bytes": 43824
+    },
+    "carr-library/src/carr_library/reader/narration_text.py": {
+      "commit": "db234b3bec7c4fcb25814c63410d445f4f1807a3",
+      "git_blob": "989922d0495ffa07ad3e6404a6496d2fc7ecd87f",
+      "size_bytes": 16778
+    },
+    "carr-library/src/carr_library/reader/pronunciation_worker.py": {
+      "commit": "db234b3bec7c4fcb25814c63410d445f4f1807a3",
+      "git_blob": "0881666d6667d15ae95448c2c929d15a22ae5065",
+      "size_bytes": 6865
+    },
+    "carr-library/src/carr_library/reader/reading_desk.py": {
+      "commit": "db234b3bec7c4fcb25814c63410d445f4f1807a3",
+      "git_blob": "0acd7f25fb17de24b434741ff3b7cf2c634a4c8a",
+      "size_bytes": 10999
+    },
+    "carr-library/src/carr_library/reader/legacy_reading.py": {
+      "commit": "db234b3bec7c4fcb25814c63410d445f4f1807a3",
+      "git_blob": "2d48622e5b60e1c570ab1c6ade0248c23ba0dc64",
+      "size_bytes": 27896
+    },
+    "carr-library/src/carr_library/reader/reading_state.py": {
+      "commit": "db234b3bec7c4fcb25814c63410d445f4f1807a3",
+      "git_blob": "45264b0e8367a8cd36c0fc5bee0bf6562e26c749",
+      "size_bytes": 18589
+    },
+    "carr-library/src/carr_library/progress_audio.py": {
+      "commit": "db234b3bec7c4fcb25814c63410d445f4f1807a3",
+      "git_blob": "a31db7e7b78a8a0fecbc13b76240ae6ef3f050d3",
+      "size_bytes": 17713
+    },
+    "carr-library/src/carr_library/transcription.py": {
+      "commit": "db234b3bec7c4fcb25814c63410d445f4f1807a3",
+      "git_blob": "b1cb2288a5dc2f0b1c02500668d90c218194875c",
+      "size_bytes": 68583
+    },
+    "carr-library/src/carr_library/transcription_service.py": {
+      "commit": "db234b3bec7c4fcb25814c63410d445f4f1807a3",
+      "git_blob": "048eba3a1c686e943c41bce70bbdd9b6c512c5ac",
+      "size_bytes": 25060
+    },
+    "carr-library/src/carr_library/transcription_host.py": {
+      "commit": "db234b3bec7c4fcb25814c63410d445f4f1807a3",
+      "git_blob": "06d816dd2325e33718b27386e7ff01f84b7eec45",
+      "size_bytes": 12746
+    },
+    "carr-library/src/carr_library/transcription_contract.py": {
+      "commit": "db234b3bec7c4fcb25814c63410d445f4f1807a3",
+      "git_blob": "9b69cede66e7dc000a6891d604527d770595f5d8",
+      "size_bytes": 5510
+    },
+    "carr-library/src/carr_library/transcription_receipt.py": {
+      "commit": "db234b3bec7c4fcb25814c63410d445f4f1807a3",
+      "git_blob": "12ad267c7964bbc9751aea9b7c370ad971fb7914",
+      "size_bytes": 22484
+    },
+    "carr-library/src/carr_library/transcription_backup.py": {
+      "commit": "db234b3bec7c4fcb25814c63410d445f4f1807a3",
+      "git_blob": "962525d43b06ad18d216fb5663579cffe6e3a231",
+      "size_bytes": 19969
+    },
+    "carr-library/src/carr_library/legacy_transcription.py": {
+      "commit": "db234b3bec7c4fcb25814c63410d445f4f1807a3",
+      "git_blob": "75a083d4417b9f34f299718be1beae0062dfa70b",
+      "size_bytes": 35935
+    },
+    "carr-library/src/carr_library/legacy_transcription_schema.py": {
+      "commit": "db234b3bec7c4fcb25814c63410d445f4f1807a3",
+      "git_blob": "ccae2d3f0385eeaacc997055681196fd901dd004",
+      "size_bytes": 28663
+    },
+    "carr-library/src/carr_library/legacy_transcription_values.py": {
+      "commit": "db234b3bec7c4fcb25814c63410d445f4f1807a3",
+      "git_blob": "f697f2aab86e2b875fbeb3a7e0dbfcfce17cdada",
+      "size_bytes": 8986
+    },
+    "carr-library/src/carr_library/runtime_settings.py": {
+      "commit": "db234b3bec7c4fcb25814c63410d445f4f1807a3",
+      "git_blob": "6c75d02505089dea46cd72c1d13bac54914e04e4",
+      "size_bytes": 19445
+    },
+    "carr-library/src/carr_library/ui/live_reading.py": {
+      "commit": "db234b3bec7c4fcb25814c63410d445f4f1807a3",
+      "git_blob": "532cdf9c943d344be323916cd74da39508e50a2a",
+      "size_bytes": 37524
+    },
+    "carr-library/src/carr_library/ui/narration_editor.py": {
+      "commit": "db234b3bec7c4fcb25814c63410d445f4f1807a3",
+      "git_blob": "da98eddc262c4fff582d742fc66a05b2985883d0",
+      "size_bytes": 37745
+    },
+    "carr-library/src/carr_library/ui/transcription_v43_dialog.py": {
+      "commit": "db234b3bec7c4fcb25814c63410d445f4f1807a3",
+      "git_blob": "9aa0d4ffa094284ddedba95c2f38d07e0e2e6afa",
+      "size_bytes": 36066
+    },
+    "carr-library/src/carr_library/transcription_cli.py": {
+      "commit": "db234b3bec7c4fcb25814c63410d445f4f1807a3",
+      "git_blob": "833e59093468d9981dc96037edceba623dfc1a7a",
+      "size_bytes": 16070
+    },
+    "carr-library/src/carr_library/audio_cli.py": {
+      "commit": "db234b3bec7c4fcb25814c63410d445f4f1807a3",
+      "git_blob": "111f95d4c92b79f9eff49e6fb37e96dd5547de18",
+      "size_bytes": 7070
+    },
+    "carr-library/src/carr_library/audio/sapi_native_worker.py": {
+      "commit": "db234b3bec7c4fcb25814c63410d445f4f1807a3",
+      "git_blob": "82fcf0bad5a3387d8852903714a65be755f9c74e",
+      "size_bytes": 10010
+    },
+    "carr-library/src/carr_library/audio/local_voice_helper.py": {
+      "commit": "db234b3bec7c4fcb25814c63410d445f4f1807a3",
+      "git_blob": "c8ba69fef0c3cadaf10ea6517c7db920ad45156e",
+      "size_bytes": 14495
+    },
+    "carr-library/src/carr_library/audio/playlist.py": {
+      "commit": "db234b3bec7c4fcb25814c63410d445f4f1807a3",
+      "git_blob": "c0943a93675b4fabcdd9b0ba5bcfe24799c5be90",
+      "size_bytes": 23198
+    },
+    "carr-library/src/carr_library/audio/playlist_session.py": {
+      "commit": "db234b3bec7c4fcb25814c63410d445f4f1807a3",
+      "git_blob": "8fcac27b0058374a92eeb241962fd7abfa864578",
+      "size_bytes": 10630
+    },
+    "carr-library/src/carr_library/progress.py": {
+      "commit": "db234b3bec7c4fcb25814c63410d445f4f1807a3",
+      "git_blob": "9a92b458a60a2355bac873f726b3d2810c845167",
+      "size_bytes": 23955
+    },
+    "carr-library/src/carr_library/ui/operation_progress.py": {
+      "commit": "db234b3bec7c4fcb25814c63410d445f4f1807a3",
+      "git_blob": "be90f3d620b8931b7dceb2612fc81e2514aee558",
+      "size_bytes": 34950
+    },
+    "carr-library/src/carr_library/ui/reading_import.py": {
+      "commit": "db234b3bec7c4fcb25814c63410d445f4f1807a3",
+      "git_blob": "6c095787b5bc3cb2dcd739698e2392ac6da0fd11",
+      "size_bytes": 11351
+    },
+    "carr-library/src/carr_library/transcription_state.py": {
+      "commit": "db234b3bec7c4fcb25814c63410d445f4f1807a3",
+      "git_blob": "99989c1b4b1b61f8a4b6762de4ef66425c7741e3",
+      "size_bytes": 6528
+    },
+    "carr-library/src/carr_library/backup_historical.py": {
+      "commit": "db234b3bec7c4fcb25814c63410d445f4f1807a3",
+      "git_blob": "8183df649d07a9ff5a97aec471b8cbf267efe01e",
+      "size_bytes": 12553
+    },
+    "carr-library/src/carr_library/library_backup.py": {
+      "commit": "db234b3bec7c4fcb25814c63410d445f4f1807a3",
+      "git_blob": "d1358c6222359c4b2d22e5d6bf9b63d6f3ff5059",
+      "size_bytes": 78689
+    }
+  },
+  "groups": [
+    {
+      "canonical": [
+        "speech/__init__.py",
+        "speech/runtime.py"
+      ],
+      "current": [
+        "audio/engines.py",
+        "audio/local_voice_helper.py",
+        "runtime_settings.py",
+        "audio_cli.py",
+        "reader/live_speech.py",
+        "ui/live_reading.py"
+      ],
+      "status": "CURRENT_WORKFLOW_WITH_EXPLICIT_DIFFERENCES",
+      "behavior": "Actual installed voice discovery, exact selected voice, bounded literal synthesis, capability checks, measured PCM via current reader/production; no old package API alias. The finite canonical JSON local helper is implemented by the current manifest/profile adapter in 0d174; it preserves a single selected native executable and adds a closed pinned-Python fixture form.",
+      "tests": [
+        "tests/audio/test_engines.py::test_registry_never_silently_substitutes_missing_engine",
+        "tests/audio/test_engine_boundaries.py::test_legacy_custom_adapter_contract_remains_supported",
+        "tests/reader/test_live_speech.py::test_changed_voice_identity_cannot_continue_an_existing_session",
+        "tests/audio/test_local_voice_helper.py"
+      ],
+      "limits": [
+        "Old constructor/result types and old voice namespaces are not silently mapped.",
+        "Current per-request bounds are 8000 characters and 256 MiB PCM; long work uses current segmentation/production.",
+        "Canonical phonemes is Voice.capabilities metadata only: canonical SpeechSettings/render has no phonemes request field. Current active controls omit that metadata.",
+        "Current engine output is PCM16 and bounded to 256 MiB per segment. Canonical raw SpeechSettings custom PCM-width/output-budget API is not an alias; no silent format conversion is introduced."
+      ]
+    },
+    {
+      "canonical": [
+        "speech/_io.py"
+      ],
+      "current": [
+        "audio/engines.py",
+        "audio/windows_process.py",
+        "audio/jobs.py",
+        "transcription_host.py"
+      ],
+      "status": "CURRENT_OWNER_REUSED",
+      "behavior": "Current single process owner, native job object/process group settlement, fixed argv, bounded diagnostics and source-verified input handles replace the old process family.",
+      "tests": [
+        "tests/audio/test_engines.py::test_local_process_cancellation_stops_owned_worker",
+        "tests/audio/test_engine_boundaries.py::test_cancellation_stops_descendant_after_its_process_group_leader_exits",
+        "tests/audio/test_engine_boundaries.py::test_finished_worker_still_obeys_absolute_deadline"
+      ],
+      "limits": [
+        "This is ownership and resource control, not a hostile native-code sandbox."
+      ]
+    },
+    {
+      "canonical": [
+        "speech/sapi_native_worker.py",
+        "speech/sapi_worker.ps1"
+      ],
+      "current": [
+        "audio/engines.py",
+        "audio/sapi_native_worker.py",
+        "__main__.py"
+      ],
+      "status": "PORT_IMPLEMENTED_NATIVE_RUNTIME_PENDING",
+      "behavior": "aaf85 adapts the canonical fixed native protocol to current engine/process APIs with the already qualified pywin32 312 client; literal/punctuation flags, full token/leaf/name binding, 22050-Hz mono16 output and isolated private main dispatch. Existing PowerShell adapter retained for explicit lazy saved 32-bit selection.",
+      "tests": [
+        "tests/audio/test_native_sapi.py",
+        "tests/reader/test_speech_punctuation.py",
+        "tests/storage/test_speech_punctuation_backup.py",
+        "tests/ui/test_speech_punctuation.py"
+      ],
+      "limits": [
+        "Canonical comtypes dependency is not copied or represented as used.",
+        "Historical canonical sapi5-64 IDs remain inert imported metadata; existing current sapi5/sapi5-32 IDs are preserved.",
+        "Opaque installed voice assets and physical listening remain unqualified.",
+        "Current native SAPI COM execution remains queued on exact ecfc; older PowerShell qualification is not transferred."
+      ]
+    },
+    {
+      "canonical": [
+        "speech/player.py"
+      ],
+      "current": [
+        "audio/player.py",
+        "audio/playback.py",
+        "audio/playlist.py"
+      ],
+      "status": "CURRENT_PLAYER_REUSED_WITH_RETAINED_QUEUE",
+      "behavior": "Existing WavePlayer/PCMPlayer owns play/pause/resume/seek/stop and completion; retained queue adds independent PCM/original hashes, exact frame cursor and explicit passive restore.",
+      "tests": [
+        "tests/audio/test_retained_playlist.py",
+        "tests/audio/test_playlist_session.py",
+        "tests/audio/test_playlist_player_boundary.py",
+        "tests/storage/test_playback_queue_backup.py",
+        "tests/ui/test_playback_queue.py"
+      ],
+      "limits": [
+        "Exact frozen queue 565 passed141 source / 141 installed / 43 native. Physical output-device listening is not inferred from synthetic PCM or UI tests.",
+        "No MCI or ffplay compatibility player is copied."
+      ]
+    },
+    {
+      "canonical": [
+        "speech/progress_speech.py"
+      ],
+      "current": [
+        "progress.py",
+        "progress_audio.py",
+        "ui/operation_progress.py"
+      ],
+      "status": "CURRENT_NOTIFICATION_OWNER_REUSED",
+      "behavior": "Current NotificationWorker and LocalNotificationOutput use explicit fingerprinted voice selection, shared task snapshots and one current playback owner, with foreground/media suppression and cleanup. Root db234 includes canonical preference-envelope decoding and exact observed-SHA compare-and-swap saving; the registered-profile discovery extension is separately checkpointed by its current owner.",
+      "tests": [
+        "tests/ui/test_shared_progress.py",
+        "tests/ui/test_operation_progress.py",
+        "tests/ui/test_progress_view.py"
+      ],
+      "limits": [
+        "Registered local voice discovery in progress settings is a separate aeb5 component; its gate/source qualification is not inferred from this root snapshot.",
+        "No second warm progress registry is introduced."
+      ]
+    },
+    {
+      "canonical": [
+        "speech/reading.py",
+        "speech/regex_worker.py"
+      ],
+      "current": [
+        "reader/narration.py",
+        "reader/narration_text.py",
+        "reader/pronunciation_worker.py",
+        "reader/legacy_reading.py",
+        "ui/narration_editor.py"
+      ],
+      "status": "CURRENT_EDITOR_AND_TYPED_HISTORY_REUSED",
+      "behavior": "Immutable original snapshot, exact/derived source spans, reversible edits, literal/regex pronunciation with language/voice scope, bounded isolated regex worker, explicit project persistence and full compact canonical undo/redo import.",
+      "tests": [
+        "tests/reader/test_narration.py::test_revision_undo_redo_and_branch_keep_original_and_unique_numbers",
+        "tests/reader/test_narration.py::test_conservative_unicode_offset_map_has_no_false_changed_alignment",
+        "tests/reader/test_narration_text.py::test_deletion_and_insertion_do_not_manufacture_contiguous_exact_source",
+        "tests/reader/test_legacy_reading_import.py::test_complete_500_step_history_stays_compact_and_forks_only_selected_revision"
+      ],
+      "limits": [
+        "Current project schemas are retained; old serialized project bytes live in immutable imported archives.",
+        "Source quotation/access approval remains a separate current authorization."
+      ]
+    },
+    {
+      "canonical": [
+        "speech/session.py"
+      ],
+      "current": [
+        "reader/legacy_reading.py",
+        "ui/reading_import.py",
+        "reader/live_speech.py"
+      ],
+      "status": "READER_SESSION_PORT_EXACT_COMPONENT_WINDOWS_PASS",
+      "behavior": "c607 accepts exact carr.reader-session.v1 envelope through existing history store, retains outer bytes/hash, validates saved cursor against saved revision, and exposes voice/rate/volume/audio position only as review metadata. Exact 01c18 passed111 source / 111 installed / 33 native including passive restore/rebackup.",
+      "tests": [
+        "tests/reader/test_legacy_reader_session.py",
+        "tests/storage/test_legacy_reader_session_backup.py",
+        "tests/ui/test_legacy_reader_session.py"
+      ],
+      "limits": [
+        "No automatic restoration of voice permission, active audio device or old PCM.",
+        "Current resume sidecar is not written by importing or restoring an old envelope."
+      ]
+    },
+    {
+      "canonical": [
+        "speech/source.py"
+      ],
+      "current": [
+        "reader/reading_desk.py",
+        "reader/reading_state.py",
+        "reader/legacy_reading.py",
+        "reader/live_speech.py"
+      ],
+      "status": "CURRENT_SOURCE_AUTHORIZATION_REUSED",
+      "behavior": "Exact workspace/edition/revision/asset/page hashes are revalidated; old verified-at-capture flags remain historical data and derived page joins never become exact quotation spans.",
+      "tests": [
+        "tests/reader/test_live_speech.py::test_full_source_revalidation_prevents_speaking_changed_source",
+        "tests/storage/test_legacy_reading_backup.py::test_source_bytes_are_reauthenticated_before_historical_activation",
+        "tests/storage/test_legacy_reading_backup.py::test_valid_hashes_cannot_rebind_a_history_to_another_library"
+      ],
+      "limits": [
+        "Equal text/title is not source identity; archived workspaces cannot be activated through old anchors."
+      ]
+    },
+    {
+      "canonical": [
+        "transcription/__init__.py",
+        "transcription/models.py",
+        "transcription/runtime.py",
+        "transcription/service.py"
+      ],
+      "current": [
+        "transcription.py",
+        "transcription_service.py",
+        "transcription_host.py",
+        "transcription_contract.py",
+        "transcription_receipt.py",
+        "transcription_backup.py",
+        "legacy_transcription.py",
+        "legacy_transcription_schema.py",
+        "legacy_transcription_values.py",
+        "transcription_cli.py",
+        "ui/transcription_v43_dialog.py",
+        "backup_historical.py",
+        "transcription_state.py"
+      ],
+      "status": "CURRENT_PROTOCOLS_PLUS_INERT_OLD_STATE_RECOVERY",
+      "behavior": "Three current/legacy ASR families remain disjoint. Explicit current selected-runtime manifests, retained independent inputs, complete accepted receipts, pause/resume/cancel, edit/export and typed backup use existing services. Canonical state/transcription is archived and read/exported inertly; selected retained originals can prepare a new current job without adopting old completion/trust.",
+      "tests": [
+        "tests/test_transcription_service.py::test_exit_zero_alone_or_partial_outputs_never_complete",
+        "tests/test_transcription_service.py::test_real_child_stop_is_acknowledged_and_retains_restart_inputs",
+        "tests/transcription/test_v5_worker_profile.py::test_old_receipts_job_keeps_its_protocol_after_v5_is_configured",
+        "tests/storage/test_legacy_transcription_compatibility.py::test_all_three_asr_families_roundtrip_independently_without_starting_workers",
+        "tests/storage/test_legacy_transcription_recovery.py::test_large_old_job_requires_an_explicit_current_size_subset_before_copy",
+        "tests/storage/test_historical_asr_cache_policy.py"
+      ],
+      "limits": [
+        "Old Python constructor API is not a source-level alias; old transcription package would conflict with current flat transcription.py.",
+        "Canonical sources are at most 32 GiB each and 64 GiB in a job/archival input collection. Current library-wide new execution is capped at 32 GiB aggregate; passive retention is distinct. e087 fixes the premature generic 32 GiB check for typed historical state lists.",
+        "Private recognizer/model inference and language quality are not proven by public synthetic workers."
+      ]
+    },
+    {
+      "canonical": [
+        "integrations/dordiai_speech.py",
+        "integrations/dordiai_voices.py",
+        "integrations/_dordiai_probe.py"
+      ],
+      "current": [
+        "audio/engines.py",
+        "audio/dordiai_discovery.py",
+        "audio/model_manifest.py",
+        "runtime_settings.py"
+      ],
+      "status": "CURRENT_PCM_PROTOCOL_WITH_RECORDED_RUNTIME_DIFFERENCES",
+      "behavior": "Current DordiaiVoicesEngine uses exact reviewed installation manifests, actual installed resource/voice discovery, fixed JSONL PCM24k worker framing, per-language availability, bounded queues/logs and owned cancellation. Existing profile wrapper re-admits manifest identity at each operation.",
+      "tests": [
+        "tests/audio/test_dordiai_discovery.py::test_constructor_discovery_and_existing_pcm_transport_work_together",
+        "tests/audio/test_dordiai_discovery.py::test_missing_resources_do_not_advertise_catalog_targets",
+        "tests/audio/test_dordiai_discovery.py::test_source_runtime_change_after_discovery_does_not_leave_usable_cached_voice",
+        "tests/audio/test_engines.py::test_dordiai_real_process_protocol_streams_pcm_and_requests_next",
+        "tests/audio/test_engines.py::test_dordiai_cancels_worker_that_never_reads_large_unicode_request"
+      ],
+      "limits": [
+        "Canonical warm-worker retention is not present: current adapter starts/settles one owned worker per utterance.",
+        "Canonical hashed installation/profile/language IDs differ from current configured local-profile IDs; no silent alias or cache transfer.",
+        "Canonical language-status/progress API objects are not public current API aliases; current UI exposes actual available languages and per-operation status.",
+        "No private voice pack or multilingual acoustic acceptance is claimed."
+      ]
+    },
+    {
+      "canonical": [
+        "integrations/supplied_transcription.py"
+      ],
+      "current": [
+        "transcription.py",
+        "transcription_service.py",
+        "transcription_host.py",
+        "transcription_receipt.py",
+        "legacy_transcription.py"
+      ],
+      "status": "CURRENT_EXPLICIT_WORKER_CONTRACTS_REUSED",
+      "behavior": "Existing receipts-v1, whisper-v5-manifest-v1 and library-wide supplied-whisper-v43-hardened-1 profiles bind selected worker/interpreter/model/source/settings and complete output sets. The old supplied adapter's retained accepted outputs are recoverable without its runtime; execution requires the currently reviewed profile.",
+      "tests": [
+        "tests/transcription/test_supplied_worker_bridge.py::test_worker_success_alone_does_not_publish_incomplete_results",
+        "tests/transcription/test_supplied_worker_bridge.py::test_partial_batch_is_saved_and_can_resume_with_reviewed_engine",
+        "tests/transcription/test_v5_worker_profile.py::test_v5_manifest_counters_paths_and_output_assignment_are_bound",
+        "tests/test_transcription_service.py::test_current_owned_launcher_supervises_actual_supplied_worker"
+      ],
+      "limits": [
+        "A worker filename/version does not establish protocol equivalence.",
+        "The supplied original SHA is provenance, not an instruction to execute or acquire it."
+      ]
+    },
+    {
+      "canonical": [
+        "backup_sidecars.py",
+        "backup_transcription.py",
+        "tests/storage/test_transcription_backup.py"
+      ],
+      "current": [
+        "backup_historical.py",
+        "legacy_transcription_schema.py",
+        "library_backup.py"
+      ],
+      "status": "FRESH_PR196_CURRENT_COMPONENT_IMPLEMENTED_PENDING_RUNTIME",
+      "behavior": "e087 preserves the exact optional canonical ASR cache predicate, refuses false/absent inclusion even with a rehashed manifest, retains noncache sources/accepted results and adds disjoint canonical-ASR v3 implicit-sidecar recovery. The generic 32 GiB / 2048-component contract is unchanged; typed 32 GiB per source / 64 GiB aggregate inputs use their own historical allowance.",
+      "tests": [
+        "tests/storage/test_historical_asr_cache_policy.py::test_manifest_requires_explicit_optional_asr_cache_inclusion",
+        "tests/storage/test_historical_asr_cache_policy.py::test_restore_rejects_cache_contradicting_rehashed_manifest_inclusion",
+        "tests/storage/test_historical_asr_cache_policy.py::test_all_noncache_historical_shapes_restore_accepted_results_and_rebackup",
+        "tests/storage/test_historical_asr_cache_policy.py::test_canonical_input_declarations_keep_32gib_per_source_64gib_aggregate"
+      ],
+      "limits": [
+        "129 canonical policy semantics plus 25 additional current regressions are declared; actual runtime is pending.",
+        "64 GiB boundary tests are metadata-budget declarations, not actual64 GiB disk/throughput measurements."
+      ]
+    }
+  ],
+  "remaining_concrete_differences": [
+    {
+      "id": "dordiai-warm-worker",
+      "status": "NOT_EQUIVALENT_PERFORMANCE_POLICY",
+      "canonical": "integrations/dordiai_voices.py:DordiaiVoicesAdapter retains worker",
+      "current": "audio/engines.py:DordiaiVoicesEngine._stream settles each utterance",
+      "decision": "No warm-cache performance claim; current sole process owner retained."
+    },
+    {
+      "id": "historical-voice-namespace",
+      "status": "EXPLICIT_RESELECTION_REQUIRED",
+      "canonical": "Old sapi5-64 and installation/profile/language-derived IDs",
+      "current": "Current stable sapi5/sapi5-32 and machine-local registered engine IDs",
+      "decision": "Old IDs remain exact inert history; no silent executable permission or output-cache transfer."
+    },
+    {
+      "id": "historical-asr-versus-current-execution-size",
+      "status": "PASSIVE_RETENTION_DISTINCT_FROM_NEW_EXECUTION",
+      "canonical": "32GiB per source,64GiB job/archival input aggregate",
+      "current": "Historical typed allowance preserved/fixed by e087; current library-wide new job32GiB aggregate; workspace receipts-v1/V5 source8GiB,batch32GiB",
+      "decision": "No historical data is deleted to meet a new execution cap. Actual64GiB throughput/private inference remain unqualified."
+    },
+    {
+      "id": "old-python-api-and-pcm-wire",
+      "status": "CURRENT_WORKFLOWS_NOT_RAW_PACKAGE_ALIASES",
+      "canonical": "Old package classes/results and configurable PCM-width/output-budget API",
+      "current": "Current engine/process/reader service API and PCM16 per-segment bound",
+      "decision": "Do not claim source-level API aliases or silently normalize unreviewed native output."
+    }
+  ],
+  "qualification": [
+    {
+      "component": "canonical ASR recovery",
+      "commit": "763bb37a227b9dbe4802e2884bc236fff37459fe",
+      "run_id": 46013756502,
+      "job_id": 140555538914,
+      "status": "PASS",
+      "source_cases": 268,
+      "installed_cases": 268,
+      "native_checks": 53,
+      "proof_commit": "0861783e4702c451fb3bc72857ca9c35d9112b1a",
+      "scope": "Exact earlier component only; no transfer to current root."
+    },
+    {
+      "component": "retained playback queue",
+      "commit": "565b9a6b21cd0d01e04a601b44e0ba2bbdf636f5",
+      "run_id": 46016663005,
+      "job_id": 140565410777,
+      "status": "PASS",
+      "source_cases": 141,
+      "installed_cases": 141,
+      "native_checks": 43,
+      "proof_commit": "fdc59d6723e29928f36f4afc6da872a1b3634fa7",
+      "scope": "Exact frozen component; no transfer to current root."
+    },
+    {
+      "component": "native SAPI and punctuation",
+      "commit": "ecfc054b13bb3d44859021d9da12e644e0a12fb7",
+      "run_id": 46025111819,
+      "job_id": 140594387108,
+      "status": "QUEUED_AT_REVIEW",
+      "declared_source_cases": 71,
+      "declared_installed_cases": 71,
+      "declared_native_checks": 35
+    },
+    {
+      "component": "canonical reader-session recovery",
+      "commit": "01c18ae12c75a628c8efdd5aaa3e498cca49d59c",
+      "run_id": 46025115863,
+      "job_id": 140594401259,
+      "status": "PASS",
+      "source_cases": 111,
+      "installed_cases": 111,
+      "native_checks": 33,
+      "proof_commit": "f4a6b95ac1097c3d89e144abf3724e9203eb371a",
+      "scope": "Exact frozen component; no transfer to current root."
+    },
+    {
+      "component": "local voice helper",
+      "commit": "f9291652a6bb05ac6b896e924568d8ccbc3b634f",
+      "run_id": 46029759866,
+      "status": "QUEUED_AT_REVIEW",
+      "declared_source_cases": 111,
+      "declared_installed_cases": 111,
+      "declared_native_checks": 31,
+      "synthetic_actual_target": "Fixed public pinned-Python JSON helper; no vendor/native-executable inference or quality claim",
+      "job_id": 140610308737
+    },
+    {
+      "component": "PR196 historical ASR cache/typed retention",
+      "commit": "e087fce3e51f1401532f0c444f6eb9dc9d42c652",
+      "status": "QUEUED_AT_REVIEW",
+      "declared_source_cases": 422,
+      "declared_installed_cases": 422,
+      "declared_native_checks": 53,
+      "run_id": 46030395296,
+      "branch": "carr/legacy-transcription-pr196-policy-20261127"
+    }
+  ],
+  "not_claimed": [
+    "Whole product equivalence",
+    "Old Python module API compatibility",
+    "Warm Dordiai performance",
+    "Private ASR/voice model inference",
+    "Manual NVDA",
+    "Physical listening"
+  ],
+  "original_canonical_review_commit": "e3cf74c243d4ef930b526b5648ca9003c0900057",
+  "canonical_speech_transcription_blobs_unchanged_since_original_review": true,
+  "component_sources": {
+    "helper-final-native-cleanup": {
+      "commit": "f9291652a6bb05ac6b896e924568d8ccbc3b634f",
+      "product_already_in_current_root": true,
+      "native_probe_blob": "a37c19b0b3decf73af32de8bf427874a49a682a3",
+      "status": "FOCUSED_RUNTIME_QUEUED"
+    },
+    "canonical-cache-policy": {
+      "commit": "e087fce3e51f1401532f0c444f6eb9dc9d42c652",
+      "tree": "2df564ec84e8799f0b130a03703979ccc105f8d4",
+      "source_paths": [
+        {
+          "path": "carr-library/src/carr_library/legacy_transcription_schema.py",
+          "sha": "0f9b110e1b919b6f2c7a482eb57637a147d0ffb6",
+          "ok": true
+        },
+        {
+          "path": "carr-library/src/carr_library/backup_historical.py",
+          "sha": "042df6d693567d867b0dee15f0b988743216b8fd",
+          "ok": true
+        },
+        {
+          "path": "carr-library/src/carr_library/library_backup.py",
+          "sha": "d89f91ba63904cc052fdd6d7ffd3853f267bc61e",
+          "ok": true
+        }
+      ],
+      "status": "INDEPENDENT_SOURCE_REVIEW_GO_FOCUSED_RUNTIME_LAUNCHED",
+      "review": "Independent native composition peer reviewed exact cache scope, disjoint v3 dispatch, typed/generic accounting, current manifest hunk and tests; source only.",
+      "run_id": 46030395296
+    },
+    "registered-progress-voices": {
+      "owner": "independent native composition peer",
+      "checkpoint_prefix": "aeb5",
+      "status": "GATE_AUTHORING_AT_REVIEW",
+      "scope": "Current configured registry for progress speech; no audio.engine/runtime_settings overwrite"
+    }
+  },
+  "canonical_policy_sources": {
+    "carr-library/src/carr_library/backup_sidecars.py": {
+      "commit": "a44fac04072389caa40e0d6e799b13797712f797",
+      "git_blob": "e77dca0b919687d9a8e10c1ba86c817ec01662ca"
+    },
+    "carr-library/src/carr_library/backup_transcription.py": {
+      "commit": "a44fac04072389caa40e0d6e799b13797712f797",
+      "git_blob": "5a82ac28c21dd11eed47f1d809c522a74a611d74"
+    },
+    "carr-library/tests/storage/test_transcription_backup.py": {
+      "commit": "a44fac04072389caa40e0d6e799b13797712f797",
+      "git_blob": "730c2b0c4f784957fd41c579f69708a1ba936fcc"
+    }
+  },
+  "cited_test_sources": {
+    "carr-library/tests/audio/test_engines.py": {
+      "commit": "db234b3bec7c4fcb25814c63410d445f4f1807a3",
+      "git_blob": "6c425ea9dbcae47eeb8b81b24ed2936d5252f65e"
+    },
+    "carr-library/tests/audio/test_engine_boundaries.py": {
+      "commit": "db234b3bec7c4fcb25814c63410d445f4f1807a3",
+      "git_blob": "2a885f1f83e0db9b1e8dfc98ac28d6deb98bb244"
+    },
+    "carr-library/tests/reader/test_live_speech.py": {
+      "commit": "db234b3bec7c4fcb25814c63410d445f4f1807a3",
+      "git_blob": "2a8ca3c7cd0ac4a5a45ab42919d4bf306c181681"
+    },
+    "carr-library/tests/audio/test_local_voice_helper.py": {
+      "commit": "db234b3bec7c4fcb25814c63410d445f4f1807a3",
+      "git_blob": "43896c8fa9a0b43596da3b056a530e5c52b2f3dd"
+    },
+    "carr-library/tests/audio/test_native_sapi.py": {
+      "commit": "db234b3bec7c4fcb25814c63410d445f4f1807a3",
+      "git_blob": "1ca3590e3731fde735568e33ac8780b8df9977e7"
+    },
+    "carr-library/tests/reader/test_speech_punctuation.py": {
+      "commit": "db234b3bec7c4fcb25814c63410d445f4f1807a3",
+      "git_blob": "8ec43849be317a938e75ef62ed8c636b193fd295"
+    },
+    "carr-library/tests/storage/test_speech_punctuation_backup.py": {
+      "commit": "db234b3bec7c4fcb25814c63410d445f4f1807a3",
+      "git_blob": "d2b30cdaa65a4997cbe4a6d3f025db3eb8d7aa2c"
+    },
+    "carr-library/tests/ui/test_speech_punctuation.py": {
+      "commit": "db234b3bec7c4fcb25814c63410d445f4f1807a3",
+      "git_blob": "f2f9202b89739c035f77fbb0659892c85b979c8a"
+    },
+    "carr-library/tests/audio/test_retained_playlist.py": {
+      "commit": "db234b3bec7c4fcb25814c63410d445f4f1807a3",
+      "git_blob": "4d30442c7f2889c986a06ea4746d7e197f3ad823"
+    },
+    "carr-library/tests/audio/test_playlist_session.py": {
+      "commit": "db234b3bec7c4fcb25814c63410d445f4f1807a3",
+      "git_blob": "8e190469a2149ba04d37da3b3515c3c9616fcc88"
+    },
+    "carr-library/tests/audio/test_playlist_player_boundary.py": {
+      "commit": "db234b3bec7c4fcb25814c63410d445f4f1807a3",
+      "git_blob": "934226d28754e1a2d1657ff73d1c9e4ad48b3190"
+    },
+    "carr-library/tests/storage/test_playback_queue_backup.py": {
+      "commit": "db234b3bec7c4fcb25814c63410d445f4f1807a3",
+      "git_blob": "fd6172c18953a6e0a187dab014a060601d30ac1c"
+    },
+    "carr-library/tests/ui/test_playback_queue.py": {
+      "commit": "db234b3bec7c4fcb25814c63410d445f4f1807a3",
+      "git_blob": "b202ca325371b4b5d29433ff24f68ad7958af750"
+    },
+    "carr-library/tests/ui/test_shared_progress.py": {
+      "commit": "db234b3bec7c4fcb25814c63410d445f4f1807a3",
+      "git_blob": "57ae94bb50fb5ac9591227768e52fe4159444544"
+    },
+    "carr-library/tests/ui/test_operation_progress.py": {
+      "commit": "db234b3bec7c4fcb25814c63410d445f4f1807a3",
+      "git_blob": "c604c6112f5c40a172e1c8622acdfc4412f8bc1e"
+    },
+    "carr-library/tests/ui/test_progress_view.py": {
+      "commit": "db234b3bec7c4fcb25814c63410d445f4f1807a3",
+      "git_blob": "f6e5be1685ee1a9a339481790c74b6aa89b8d600"
+    },
+    "carr-library/tests/reader/test_narration.py": {
+      "commit": "db234b3bec7c4fcb25814c63410d445f4f1807a3",
+      "git_blob": "0aac2a70353f891031e0a6ff5a79b753a75462ea"
+    },
+    "carr-library/tests/reader/test_narration_text.py": {
+      "commit": "db234b3bec7c4fcb25814c63410d445f4f1807a3",
+      "git_blob": "9f41e3453b0776d95a2f4913860f5478acabaa69"
+    },
+    "carr-library/tests/reader/test_legacy_reading_import.py": {
+      "commit": "db234b3bec7c4fcb25814c63410d445f4f1807a3",
+      "git_blob": "0db272e780f0508523a215ae48755be0f5f229a3"
+    },
+    "carr-library/tests/reader/test_legacy_reader_session.py": {
+      "commit": "db234b3bec7c4fcb25814c63410d445f4f1807a3",
+      "git_blob": "adcdcb1650d660a3da6130fb397cf6d7778afc34"
+    },
+    "carr-library/tests/storage/test_legacy_reader_session_backup.py": {
+      "commit": "db234b3bec7c4fcb25814c63410d445f4f1807a3",
+      "git_blob": "11112a1b5a811302ff71af5a1db437cac4976cab"
+    },
+    "carr-library/tests/ui/test_legacy_reader_session.py": {
+      "commit": "db234b3bec7c4fcb25814c63410d445f4f1807a3",
+      "git_blob": "b1d7c3631e6b76a8bdb0ae37b38901ea7f4a107c"
+    },
+    "carr-library/tests/storage/test_legacy_reading_backup.py": {
+      "commit": "db234b3bec7c4fcb25814c63410d445f4f1807a3",
+      "git_blob": "bf02711c4fe53aa7c256d900514af47d582925f1"
+    },
+    "carr-library/tests/test_transcription_service.py": {
+      "commit": "db234b3bec7c4fcb25814c63410d445f4f1807a3",
+      "git_blob": "c305a702d144515708fae0213ec8475c16bb1d9c"
+    },
+    "carr-library/tests/transcription/test_v5_worker_profile.py": {
+      "commit": "db234b3bec7c4fcb25814c63410d445f4f1807a3",
+      "git_blob": "facf326a071432dc26243e4c4a1a942cfe6adc2d"
+    },
+    "carr-library/tests/storage/test_legacy_transcription_compatibility.py": {
+      "commit": "db234b3bec7c4fcb25814c63410d445f4f1807a3",
+      "git_blob": "b9cd28eb84eaaeb11aa5cd58440cf48482d7ae17"
+    },
+    "carr-library/tests/storage/test_legacy_transcription_recovery.py": {
+      "commit": "db234b3bec7c4fcb25814c63410d445f4f1807a3",
+      "git_blob": "0eac43ab32532884bb60378d2e12963b5ca73078"
+    },
+    "carr-library/tests/storage/test_historical_asr_cache_policy.py": {
+      "commit": "e087fce3e51f1401532f0c444f6eb9dc9d42c652",
+      "git_blob": "b69e4023b9535ea5a8ae49d68f88f4ab63267777"
+    },
+    "carr-library/tests/audio/test_dordiai_discovery.py": {
+      "commit": "db234b3bec7c4fcb25814c63410d445f4f1807a3",
+      "git_blob": "ed928c997310797e72f6b04c52549f76a8eb21ee"
+    },
+    "carr-library/tests/transcription/test_supplied_worker_bridge.py": {
+      "commit": "db234b3bec7c4fcb25814c63410d445f4f1807a3",
+      "git_blob": "c2536d290c531bbddaad9766d445f1869f97fbfa"
+    }
+  },
+  "canonical_file_binding": {
+    "read_at": "e3cf74c243d4ef930b526b5648ca9003c0900057",
+    "unchanged_at": "a44fac04072389caa40e0d6e799b13797712f797",
+    "verification": "All19 exact Git blob IDs matched both complete nontruncated trees."
+  },
+  "scope": "Source-semantic reconciliation for the listed canonical speech/transcription families and freshPR196 policy only. The named additive components are distinct from the recorded root snapshot; no automatic runtime PASS transfer."
+}

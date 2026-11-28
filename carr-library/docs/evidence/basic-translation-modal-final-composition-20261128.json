@@ -1,0 +1,133 @@
+{
+  "schema": "carr-basic-translation-modal-final-composition/1",
+  "status": "SOURCE_REVIEWED_NOT_EXECUTED",
+  "date": "2026-11-28",
+  "baseline": {
+    "commit": "d4ea02c32d88d803311c7ae0f454c17dee185c4c",
+    "tree": "cadf68003399b0b53ed865b6bfe588da3b1199c0",
+    "files": 1806
+  },
+  "components": {
+    "modal_fixture": "d12884890335518721e109459819c2352e2ab38f",
+    "observed_basic_timeout": "a0fd6348833f2661e7f6dee39a39d26dc24b49a2"
+  },
+  "selected_blobs": [
+    {
+      "path": "carr-library/scripts/windows_translation_smoke.py",
+      "sha": "781a38e2f02d2209db5333e6421b7873bf6e35e1"
+    },
+    {
+      "path": "carr-library/docs/evidence/basic-translation-modal-owner-repair-20261128.json",
+      "sha": "bdbeea677a32d06c3d60ac3980639c98542061cb"
+    },
+    {
+      "path": "carr-library/docs/evidence/basic-translation-focused-timeout-d4ea-20261128.json",
+      "sha": "8bff12c6148191586976e9a4720bcf2f3b0c0ef7"
+    },
+    {
+      "path": "carr-library/docs/evidence/basic-translation-focused-timeout-d4ea-20261128.md",
+      "sha": "15e2761d49583d46009f7435198dbd87cd4733b8"
+    }
+  ],
+  "authored_documents": [
+    {
+      "path": "carr-library/docs/V3_RELEASE_READINESS.md",
+      "sha256": "cf93ba8e3dff531bd1374e2e7bc23b3e9921e708d2a85ceca14bcfb01404cd58"
+    },
+    {
+      "path": "carr-library/docs/validation/RESONANCE_REQUIREMENT_STATUS_20261127.json",
+      "sha256": "bc5e765f6bac973fcc0eec58a23c8328f4a6910d0224886bdf92b486fba5da1d"
+    }
+  ],
+  "tree_contract": {
+    "files": 1810,
+    "changed_paths": 7,
+    "modified": 3,
+    "added": 4,
+    "deleted": 0,
+    "application_blobs": 425,
+    "application_changes": 0,
+    "test_blobs": 628,
+    "test_changes": 0,
+    "reader_pins": 21,
+    "reader_pin_changes": 0,
+    "all_other_baseline_files": "UNCHANGED"
+  },
+  "preserved_reader_pins": {
+    "carr-library/docs/validation/FINAL_MAIN_ARTIFACT_READ_PLAN_20261127.json": "955081bda0d4a47d8eff6200a010943da7bd0cf2",
+    ".github/workflows/carr-windows.yml": "6a826f25a0a4724b5665b3cfbcf34ab97336971d",
+    "carr-library/packaging/probe_standard_update_windows.py": "3ac3401e48e937c78142e8d296cb408f32df0429",
+    "carr-library/scripts/standard_qualification_shell_acceptance.py": "ec240ce21e39f261a09bf4403179be894c548e8d",
+    "carr-library/scripts/v3_acceptance_oracles.json": "9db65750aa51b1d7011d535ec00274e1b2d828c5",
+    "carr-library/scripts/r7_native_oracles.json": "c5c734d4d2ed9bda27da443433485f9873a4af76",
+    "carr-library/scripts/r7_native_gate.py": "29e75a6415eb914894e9aec62b87b315ccb97f16",
+    "carr-library/scripts/reader_interactive_native_gate.py": "7e415972d50ae4851934e60e585b739add6242e4",
+    "carr-library/scripts/local_translation_oracles.json": "a954839a9e373b60f13f35b16c57d7160e43750c",
+    "carr-library/scripts/translation_scope_oracles.json": "2f2f032e4e3b8d3263e1a7bec1e5fe731bfab9d2",
+    "carr-library/scripts/reader_appearance_acceptance_oracle.json": "a63625ec4911c9258927fff5dd8f32e7efe9f665",
+    "carr-library/scripts/assistant_interactive_acceptance_oracle.json": "bb16b437acbb980999729a5312ae4322dcd69198",
+    "carr-library/scripts/qualify_standard_library.py": "47e868ebfd69cab27a395cda436a4eece1c60643",
+    "carr-library/scripts/qualify_reader_appearance.py": "4bb2a090a42dffd5cba9c5c11814a9055b9000ee",
+    "carr-library/scripts/local_translation_acceptance.py": "8ab561e746748d5f36fdb30d3f053b7daf8621f9",
+    "carr-library/scripts/translation_scope_acceptance.py": "60d841da5b74fde0ee8491899c12aa516b461851",
+    "carr-library/packaging/source_wheel.py": "bba3d0cda29b475d51347434d832af9187840547",
+    "carr-library/scripts/ci_standard_update.ps1": "0c949fa71eb4e3ebc9e542a42f7f4334347f9e5b",
+    "carr-library/scripts/ci_standard_installer.ps1": "f1c00bcdb02b520316d2d9832f0ce4ce61bd2905",
+    "carr-library/scripts/ci_check.py": "2d04b9b269ae85c24349ae8d4ad9b295737866fb",
+    "carr-library/tests/loopback/test_local_planning.py": "052f67e286ad8fd6eef5ca3274575dd6c177e9ab"
+  },
+  "preserved_populations": {
+    "protected_source": 5947,
+    "protected_installed": 5619,
+    "source_modules": 252,
+    "installed_modules": 239,
+    "source_selectors": 451,
+    "inspection_source": 274,
+    "inspection_installed": 274,
+    "inspection_native": 29,
+    "translation_source": 324,
+    "translation_installed": 324,
+    "translation_existing_native": 8,
+    "translation_additional_basic": 1
+  },
+  "preserved_basic": {
+    "assertions": 14,
+    "receipt_fields": 13,
+    "final_phase": 5,
+    "deadline_seconds": 45,
+    "timer_milliseconds": 50,
+    "workflow_step_minutes": 4,
+    "receipt_after_cleanup": true
+  },
+  "review": {
+    "component": "Independent root and native SOURCE_GO_NOT_EXECUTED; exact application/test/pin invariants and all original assertions/receipt preserved.",
+    "observed_failure": "Independent root and capacity reviewed the complete silent runtime interval,14 actual steps,10 current source hashes,raw/API/artifact identities; no asserted runtime cause.",
+    "requirement_matrix": "All24 requirement objects and all historical fields retained; latest observation and source-only repair overlay added.",
+    "runtime": "NOT_RUN for this composed source"
+  },
+  "historical_d4_audio": {
+    "proof": "59c595f77fe2b4cd2529ad7eb87c0c88bd579028",
+    "run": 46117287262,
+    "job": 140893836275,
+    "source": 274,
+    "installed": 274,
+    "native": 29,
+    "qualification_transfer": false
+  },
+  "evidence_anchor": "5e7d706b138769a3edc3a318ed5b0240b9ad403c",
+  "execution": {
+    "focused_basic": "NOT_RUN",
+    "focused_inspection": "NOT_RUN",
+    "main": "NOT_RUN",
+    "auxiliary": "NOT_RUN",
+    "independent_main_artifact": "NOT_READY; bind only after actual exact-source main success",
+    "canonical_promotion": "NOT_PERFORMED"
+  },
+  "limitations": {
+    "full_platform": "NOT_QUALIFIED",
+    "manual_nvda": "NOT_RUN",
+    "real_engines_languages_acoustics_hardware_corpora_rights": "Actual external input and acceptance remain separate.",
+    "cause": "The predecessor's blocked phase is UNKNOWN. Modal-loop source analysis is a repair hypothesis requiring actual execution."
+  },
+  "binding_scope": "This manifest describes the immutable application Git tree containing it; no self-referential commit or document hash is embedded."
+}

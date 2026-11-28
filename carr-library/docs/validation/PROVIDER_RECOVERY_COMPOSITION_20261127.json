@@ -1,0 +1,66 @@
+{
+  "schema": 1,
+  "base": "d8a24142497bd8a2137a3755e9e7f60fccdd1598",
+  "library_backup_base_blob": "d05d7653095e7a135fc2395d36467f48ca3f3240",
+  "status": "SOURCE_CHECKPOINT_NOT_RUN",
+  "hunks": [
+    {
+      "before": "from .operations.policy_backup import (",
+      "after": "from .provider_recovery import (\n    is_state_path as _provider_recovery_path, state_limit as _provider_recovery_limit,\n    state_paths as _provider_recovery_files, validate_state_tree as _validate_provider_recovery,\n    capture_live as _capture_provider_recovery, snapshot_entries as _provider_recovery_entries,\n    check_live as _check_provider_recovery,\n)\nfrom .operations.policy_backup import ("
+    },
+    {
+      "before": "            or _recording_path(value) or _audio_batch_path(value) or _playback_queue_path(value)):",
+      "after": "            or _recording_path(value) or _audio_batch_path(value) or _playback_queue_path(value)\n            or _provider_recovery_path(value)):"
+    },
+    {
+      "before": "             _legacy_asr_limit(relative) if _legacy_asr_path(relative) else",
+      "after": "             _provider_recovery_limit(relative) if _provider_recovery_path(relative) else\n             _legacy_asr_limit(relative) if _legacy_asr_path(relative) else"
+    },
+    {
+      "before": "    for path in _playback_queue_files(root, cancelled=cancelled):\n        add(path)\n",
+      "after": "    for path in _playback_queue_files(root, cancelled=cancelled):\n        add(path)\n    for path in _provider_recovery_files(root, cancelled=cancelled):\n        add(path)\n"
+    },
+    {
+      "before": "                _validate_playback_queue(app.root, cancelled=cancelled)\n",
+      "after": "                _validate_playback_queue(app.root, cancelled=cancelled)\n                _validate_provider_recovery(app.root, cancelled=cancelled)\n"
+    },
+    {
+      "before": "            legacy_asr = _capture_legacy_asr(app.root, stage / SIDECARS, cancelled=cancelled)\n",
+      "after": "            legacy_asr = _capture_legacy_asr(app.root, stage / SIDECARS, cancelled=cancelled)\n            provider_recovery = _capture_provider_recovery(app.root, stage / SIDECARS, cancelled=cancelled)\n"
+    },
+    {
+      "before": "            sidecars = list(retained.values())\n",
+      "after": "            for row in _provider_recovery_entries(provider_recovery):\n                previous = retained.setdefault(row['path'], row)\n                if previous != row:\n                    raise RestoreError('Conflicting passive provider recovery snapshot.')\n            sidecars = list(retained.values())\n"
+    },
+    {
+      "before": "                raise RestoreError('Historical transcription exceeds the complete-backup budget.')",
+      "after": "                raise RestoreError('Retained recovery state exceeds the complete-backup budget.')"
+    },
+    {
+      "before": "            if any(_playback_queue_path(entry['path']) for entry in sidecars):\n                _validate_playback_queue(stage / SIDECARS, cancelled=cancelled)\n",
+      "after": "            if any(_playback_queue_path(entry['path']) for entry in sidecars):\n                _validate_playback_queue(stage / SIDECARS, cancelled=cancelled)\n            if any(_provider_recovery_path(entry['path']) for entry in sidecars):\n                _validate_provider_recovery(stage / SIDECARS, cancelled=cancelled)\n"
+    },
+    {
+      "before": "            _check_legacy_asr(app.root, legacy_asr, cancelled=cancelled)\n",
+      "after": "            _check_legacy_asr(app.root, legacy_asr, cancelled=cancelled)\n            _check_provider_recovery(app.root, provider_recovery, cancelled=cancelled)\n"
+    },
+    {
+      "before": "            _validate_playback_queue(checked_root, cancelled=cancelled)\n",
+      "after": "            _validate_playback_queue(checked_root, cancelled=cancelled)\n            _validate_provider_recovery(checked_root, cancelled=cancelled)\n"
+    }
+  ],
+  "contract": {
+    "directory": "state/provider-recovery",
+    "mode": "passive immutable JSON; no active ledger/profile/vault restore",
+    "profile_import": "explicit current ProfileStore import clears credential references",
+    "ledger": "bounded read-only current BudgetLedger SQLite schema; preserve audit records, refuse active/foreign journal state",
+    "final_recheck": "source JSON/database bytes must match the captured snapshot",
+    "limits": {
+      "record_bytes": 67108864,
+      "database_bytes": 134217728,
+      "record_files": 256,
+      "total_archive_bytes": 536870912,
+      "ledger_rows_per_table": 100000
+    }
+  }
+}

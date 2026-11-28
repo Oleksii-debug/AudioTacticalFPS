@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "status": "SOURCE_COMPOSITION_NOT_RUN",
+  "base": "fcf2b0fc1b2f563e2e906e40af11243ebd984c5f",
+  "components": {
+    "native_sapi": {
+      "commit": "aaf85c806da8839b67ff809542c425df188ca27b",
+      "source_cases": 71,
+      "installed_cases": 71,
+      "native_checks": 35,
+      "root_probe_delta": "Use explicit CARR_EXPECTED_SOURCE_COMMIT when running a pull-request-head checkout; fall back to GITHUB_SHA on an immutable push."
+    },
+    "book_duration_fixture": {
+      "commit": "57ecca36fbcd50548a5d15cc462282be0734251a",
+      "cases_unchanged": "227 source,227 installed,41 native",
+      "repair": "Read verified WAV metadata before opening the intentional writable mutation fixture. Preserve Win32 sharing guards and the exact rejection assertion."
+    },
+    "translation_cache_diagnostic": {
+      "file": "src/carr_library/assistant/translation_state.py",
+      "behavior": "Only the established diagnostic wording is restored; invalid adapter rejection unchanged."
+    }
+  },
+  "protected_full_inventory": {
+    "source": 3977,
+    "installed": 3845,
+    "meaning": "Exact protected subsets, not the entire pytest population; all preceding cases remain."
+  },
+  "limits": {
+    "whole_final_head": "NOT_RUN",
+    "model_quality": "NOT_QUALIFIED",
+    "physical_audio": "NOT_RUN",
+    "nvda": "NOT_RUN",
+    "distribution_clearance": "SEPARATE"
+  }
+}

@@ -1,280 +1,211 @@
-"""Local setup orchestration uses the real helpers with synthetic public inputs.
-
-No test downloads or executes a native binary. The tiny PE files only exercise
-the existing checksum/archive/architecture verifier and are not working tools.
-"""
-from __future__ import annotations
-
-import hashlib
+"""Explicit local setup contracts; tiny archive tests are synthetic, not Windows qualification."""
+from hashlib import sha256
 import importlib.util
-import io
 import json
+import os
 from pathlib import Path
-import shutil
-import struct
-import subprocess
 import sys
 from types import SimpleNamespace
-import urllib.request
 import zipfile
 
 import pytest
 
-from carr_library import audio_runtime
+from carr_library.audio import runtime
 
-PACKAGING = Path(__file__).resolve().parents[2] / 'packaging'
-
-
-def _digest(raw):
-    return hashlib.sha256(raw).hexdigest()
-
-
-def _snapshot(root):
-    return {str(p.relative_to(root)): p.read_bytes() for p in root.rglob('*') if p.is_file()}
-
-
-@pytest.fixture(autouse=True)
-def no_network(monkeypatch):
-    def denied(*args, **kwargs):
-        pytest.fail('A local-setup test attempted a real network request.')
-    monkeypatch.setattr(urllib.request, 'urlopen', denied)
+PROJECT = Path(__file__).resolve().parents[2]
 
 
 @pytest.fixture
-def setup():
-    path = PACKAGING / 'setup_local_audio.py'
-    spec = importlib.util.spec_from_file_location('carr_test_local_audio_setup', path)
+def setup_tool():
+    path = PROJECT / 'packaging' / 'setup_local_audio.py'
+    spec = importlib.util.spec_from_file_location('carr_local_setup_test', path)
     module = importlib.util.module_from_spec(spec)
-    # Load the script without creating bytecode in a sealed installed fixture.
-    exec(compile(path.read_bytes(), str(path), 'exec'), module.__dict__)
+    spec.loader.exec_module(module)
     return module
 
 
 @pytest.fixture
-def synthetic(setup, tmp_path, monkeypatch):
-    root = tmp_path / 'installed program Україна'
-    helpers = root / 'tools' / 'audio-setup'
-    templates = helpers / 'audio-runtime'
-    templates.mkdir(parents=True)
-    for name in ('acquire_audio_runtime.py', 'prepare_audio_runtime.py'):
-        shutil.copyfile(PACKAGING / name, helpers / name)
-    (root / 'bundle-manifest.json').write_bytes(b'untouched installation seal\n')
-    settings = tmp_path / 'library' / 'state' / 'audio' / 'engines.json'
-    settings.parent.mkdir(parents=True)
-    settings.write_bytes(b'{"schema":1,"ffmpeg":null,"ffprobe":null}\n')
-    pe = bytearray(256)
-    pe[:2] = b'MZ'
-    struct.pack_into('<I', pe, 60, 128)
-    pe[128:132] = b'PE\0\0'
-    struct.pack_into('<H', pe, 132, 0x8664)
-    payload = {name: bytes(pe) for name in audio_runtime.TOOLS.values()}
-    payload['bin/fixture.dll'] = bytes(pe)
-    payload['LICENSE.txt'] = b'Synthetic fixture only; not a redistributable runtime.\n'
-    buffer = io.BytesIO()
-    with zipfile.ZipFile(buffer, 'w') as archive:
-        for name, raw in payload.items():
-            archive.writestr('fixture/' + name, raw)
-    sources = {'source-one.tar.gz': b'synthetic source one',
-               'source-two.tar.gz': b'synthetic source two'}
-    blobs = {'fixture.zip': buffer.getvalue(), **sources}
-    records = [{'name': name, 'url': 'https://fixture.invalid/' + name,
-                'size': len(raw), 'sha256': _digest(raw)} for name, raw in blobs.items()]
-    notice = b'Synthetic local setup notice retained byte for byte.\n'
-    (templates / 'README.txt').write_bytes(notice)
-    extra = {'README.txt': {'size': len(notice), 'sha256': _digest(notice)}}
-    extra.update({'sources/' + name: {'size': len(raw), 'sha256': _digest(raw)}
-                  for name, raw in sources.items()})
-    lock = {'schema': 1, 'package_id': audio_runtime.PACKAGE_ID, 'target': 'Windows x64',
-            'version': 'synthetic-only', 'executables': audio_runtime.TOOLS,
-            'archive': dict(records[0], root='fixture'), 'source_packages': records[1:],
-            'archive_files': {name: {'size': len(raw), 'sha256': _digest(raw)}
-                              for name, raw in payload.items()}, 'extra_files': extra}
-    raw_lock = (json.dumps(lock, sort_keys=True) + '\n').encode()
-    (templates / 'source-lock.json').write_bytes(raw_lock)
-    monkeypatch.setattr(audio_runtime, 'SOURCE_LOCK_SHA256', _digest(raw_lock))
-    monkeypatch.setattr(setup, 'HERE', helpers)
-    # The integration fixture verifies Windows-format bytes on either host. It
-    # does not claim to execute Windows tools or qualify their audio behavior.
-    monkeypatch.setattr(setup, '_require_windows', lambda: None)
-    calls = []
-
-    class Response(io.BytesIO):
-        def geturl(self):
-            return self.url
-
-    def receive(request, timeout):
-        calls.append((request.full_url, timeout))
-        name = request.full_url.rsplit('/', 1)[1]
-        value = Response(blobs[name])
-        value.url = request.full_url
-        return value
-
-    monkeypatch.setattr(urllib.request, 'urlopen', receive)
-    return SimpleNamespace(root=root, helpers=helpers, templates=templates,
-                           settings=settings, blobs=blobs, records=records,
-                           calls=calls, notice=notice, output=tmp_path / 'new audio ž Україна')
+def selected(tmp_path, monkeypatch, setup_tool):
+    """Actual tiny ZIP and fixed member hashes; no executable is ever run."""
+    members = {
+        'ffmpeg.exe': ('fixture/bin/ffmpeg.exe', b'synthetic ffmpeg bytes'),
+        'ffprobe.exe': ('fixture/bin/ffprobe.exe', b'synthetic ffprobe bytes'),
+        'ffplay.exe': ('fixture/bin/ffplay.exe', b'synthetic ffplay bytes'),
+        'LICENSE': ('fixture/LICENSE', b'synthetic license notice'),
+    }
+    archive = tmp_path / 'selected.zip'
+    with zipfile.ZipFile(archive, 'w') as stream:
+        for member, data in members.values():
+            stream.writestr(member, data)
+    inventory = {name: (member, len(data), sha256(data).hexdigest())
+                 for name, (member, data) in members.items()}
+    monkeypatch.setattr(runtime, 'ARCHIVE_MEMBERS', inventory)
+    monkeypatch.setattr(runtime, 'FFMPEG_ARCHIVE_BYTES', archive.stat().st_size)
+    monkeypatch.setattr(runtime, 'FFMPEG_ARCHIVE_SHA256', sha256(archive.read_bytes()).hexdigest())
+    monkeypatch.setattr(runtime, 'FFMPEG_VERSION', 'synthetic-fixed')
+    monkeypatch.setattr(runtime, 'FFMPEG_SOURCE_COMMIT', 'a' * 40)
+    library = tmp_path / 'library'
+    library.mkdir()
+    (library / 'keep.txt').write_bytes(b'Original library data')
+    return archive, tmp_path / 'new-audio', library
 
 
-def test_default_real_pinned_plan_has_no_network_or_writes(setup, tmp_path, monkeypatch, capsys):
-    base = tmp_path / 'local app data'
-    monkeypatch.setenv('LOCALAPPDATA', str(base))
-    path_before = list(sys.path)
-    acquire = setup._load_helper('acquire_audio_runtime')
-    records = acquire.inputs()
-    assert len(records) == 3
-    assert sum(row['size'] for row in records) == 95294294
-    assert all(len(row['sha256']) == 64 and row['url'].startswith('https://') for row in records)
-    assert setup.main([]) == 0
+def test_default_plan_is_read_only_and_uses_current_pinned_inventory(tmp_path, monkeypatch, setup_tool):
+    output = tmp_path / 'not-created'
+    monkeypatch.setattr(setup_tool, '_load_preparer', lambda: pytest.fail('Plan must not load preparation.'))
+    report = setup_tool.plan(destination=output)
+    assert report['status'] == 'plan' and report['archive'] is None
+    assert report['archive_sha256'] == runtime.FFMPEG_ARCHIVE_SHA256
+    assert report['archive_bytes'] == runtime.FFMPEG_ARCHIVE_BYTES
+    assert report['runtime_files'] == sorted(runtime.ARCHIVE_MEMBERS)
+    assert report['runtime_bytes'] == sum(row[1] for row in runtime.ARCHIVE_MEMBERS.values())
+    assert report['required_free_bytes'] == 2 * report['runtime_bytes'] + 64 * 1024 ** 2
+    assert report['downloads'] is False and report['engine_settings_changed'] is False
+    assert 'NOT_RUN' in report['native_verification']
+    assert not output.exists()
+
+
+@pytest.mark.parametrize('kind', ['relative', 'parent', 'inside-program', 'same-program',
+                                  'inside-library', 'library-parent'])
+def test_destination_refuses_application_library_and_ambiguous_paths(tmp_path, monkeypatch, setup_tool, kind):
+    program, library = tmp_path / 'program', tmp_path / 'library'
+    program.mkdir()
+    library.mkdir()
+    monkeypatch.setenv('CARR_PROGRAM_DIR', str(program))
+    monkeypatch.setattr(setup_tool, '_installation_root', lambda: program)
+    values = {
+        'relative': Path('relative'),
+        'parent': tmp_path / 'safe' / '..' / 'new',
+        'inside-program': program / 'new',
+        'same-program': program,
+        'inside-library': library / 'new',
+        'library-parent': tmp_path,
+    }
+    before = sorted(p.relative_to(tmp_path).as_posix() for p in tmp_path.rglob('*'))
+    with pytest.raises(ValueError):
+        setup_tool.plan(destination=values[kind], library_root=library)
+    assert sorted(p.relative_to(tmp_path).as_posix() for p in tmp_path.rglob('*')) == before
+
+
+def test_existing_destination_is_never_adopted_or_changed(tmp_path, setup_tool):
+    output = tmp_path / 'existing'
+    output.mkdir()
+    marker = output / 'keep'
+    marker.write_bytes(b'existing private file')
+    with pytest.raises(FileExistsError):
+        setup_tool.plan(destination=output)
+    assert marker.read_bytes() == b'existing private file'
+
+
+@pytest.mark.parametrize('kind', ['relative', 'hardlink', 'wrong-size'])
+def test_archive_rejects_unsafe_or_unpinned_selection(tmp_path, setup_tool, selected, kind):
+    archive, output, library = selected
+    if kind == 'relative':
+        value = Path(archive.name)
+    elif kind == 'hardlink':
+        value = tmp_path / 'alias.zip'
+        os.link(archive, value)
+    else:
+        value = tmp_path / 'wrong.zip'
+        value.write_bytes(b'wrong size')
+    with pytest.raises(ValueError):
+        setup_tool.plan(value, output, library_root=library)
+    assert not output.exists()
+
+
+def test_changed_selected_archive_requires_a_new_review(tmp_path, monkeypatch, setup_tool, selected):
+    archive, output, library = selected
+    reviewed = setup_tool.plan(archive, output, library_root=library)
+    replacement = tmp_path / 'replacement.zip'
+    replacement.write_bytes(archive.read_bytes())
+    os.replace(replacement, archive)
+    monkeypatch.setattr(setup_tool, '_require_windows', lambda: None)
+    monkeypatch.setattr(setup_tool, '_load_preparer', lambda: pytest.fail('Changed identity must fail before preparation.'))
+    with pytest.raises(ValueError, match='changed'):
+        setup_tool.prepare_local(reviewed)
+    assert not output.exists()
+    assert (library / 'keep.txt').read_bytes() == b'Original library data'
+
+
+@pytest.mark.parametrize('answer', ['NO', 'EOF'])
+def test_interactive_refusal_never_starts_preparation(monkeypatch, setup_tool, selected, answer):
+    archive, output, library = selected
+    def respond(_prompt):
+        if answer == 'EOF':
+            raise EOFError
+        return answer
+    monkeypatch.setattr('builtins.input', respond)
+    monkeypatch.setattr(setup_tool, 'prepare_local', lambda _plan: pytest.fail('Preparation was not authorized.'))
+    assert setup_tool.main(['--interactive', '--archive', str(archive), '--destination', str(output),
+                              '--library-root', str(library)]) == 0
+    assert not output.exists()
+    assert (library / 'keep.txt').read_bytes() == b'Original library data'
+
+
+def test_synthetic_pinned_archive_uses_existing_preparer_and_final_verifier(monkeypatch, setup_tool, selected):
+    archive, output, library = selected
+    reviewed = setup_tool.plan(archive, output, library_root=library)
+    preparer = setup_tool._load_preparer()
+    native = []
+    def synthetic_native_check(directory):
+        native.append(Path(directory))
+        for name in runtime.ARCHIVE_MEMBERS:
+            runtime.regular_file(Path(directory) / name)
+        return {'status': 'PASS', 'platform': 'Windows', 'fixture': 'synthetic-only'}
+    monkeypatch.setattr(preparer, '_native_check', synthetic_native_check)
+    monkeypatch.setattr(setup_tool, '_load_preparer', lambda: preparer)
+    monkeypatch.setattr(setup_tool, '_require_windows', lambda: None)
+    original = archive.read_bytes()
+    report = setup_tool.prepare_local(reviewed)
+    assert len(native) == 1
+    persisted = runtime.verify_runtime(output / 'runtime')
+    assert persisted['native_validation']['fixture'] == 'synthetic-only'
+    assert report['status'] == 'prepared' and report['engine_settings_changed'] is False
+    assert report['downloads'] is False
+    assert Path(report['ffmpeg']).read_bytes() == b'synthetic ffmpeg bytes'
+    assert Path(report['ffprobe']).read_bytes() == b'synthetic ffprobe bytes'
+    assert archive.read_bytes() == original
+    assert (library / 'keep.txt').read_bytes() == b'Original library data'
+
+
+def test_disk_budget_refusal_precedes_any_created_work_folder(monkeypatch, setup_tool, selected):
+    archive, output, library = selected
+    reviewed = setup_tool.plan(archive, output, library_root=library)
+    monkeypatch.setattr(setup_tool, '_require_windows', lambda: None)
+    monkeypatch.setattr(setup_tool.shutil, 'disk_usage',
+                        lambda _path: SimpleNamespace(free=reviewed['required_free_bytes'] - 1))
+    monkeypatch.setattr(setup_tool, '_load_preparer', lambda: pytest.fail('Disk refusal must precede preparation.'))
+    with pytest.raises(OSError, match='disk space'):
+        setup_tool.prepare_local(reviewed)
+    assert not output.exists()
+
+
+def test_non_windows_preparation_does_not_write(monkeypatch, setup_tool, selected):
+    archive, output, library = selected
+    reviewed = setup_tool.plan(archive, output, library_root=library)
+    with monkeypatch.context() as patch:
+        patch.setattr(setup_tool.os, 'name', 'posix')
+        with pytest.raises(RuntimeError, match='Windows x64'):
+            setup_tool.prepare_local(reviewed)
+    assert not output.exists()
+
+
+def test_same_size_wrong_archive_fails_existing_hash_guard_without_runtime(monkeypatch, setup_tool, selected):
+    archive, output, library = selected
+    wrong = bytearray(archive.read_bytes())
+    wrong[-1] ^= 1
+    archive.write_bytes(wrong)
+    reviewed = setup_tool.plan(archive, output, library_root=library)
+    monkeypatch.setattr(setup_tool, '_require_windows', lambda: None)
+    with pytest.raises(ValueError, match='SHA256'):
+        setup_tool.prepare_local(reviewed)
+    assert output.is_dir() and not (output / 'runtime').exists()
+    assert (library / 'keep.txt').read_bytes() == b'Original library data'
+
+
+def test_fixed_sibling_loading_restores_import_state(setup_tool):
+    path_before, bytecode_before = list(sys.path), sys.dont_write_bytecode
+    helper = setup_tool._load_preparer()
+    assert callable(helper.prepare)
     assert sys.path == path_before
-    assert not base.exists()
-    assert 'Лише план' in capsys.readouterr().out
-
-
-@pytest.mark.parametrize('mode', ['download', 'interactive'])
-def test_real_helpers_prepare_and_verify_external_runtime_without_mutating_installation(
-        setup, synthetic, monkeypatch, capsys, mode):
-    before, settings = _snapshot(synthetic.root), synthetic.settings.read_bytes()
-    monkeypatch.setattr('builtins.input', lambda prompt: 'YES')
-    def no_native(*args, **kwargs):
-        pytest.fail('Setup must not execute a native tool.')
-    monkeypatch.setattr(subprocess, 'Popen', no_native)
-    args = ['--output', str(synthetic.output), '--' + mode]
-    assert setup.main(args) == 0
-    report = audio_runtime.verify_audio_runtime(synthetic.output / 'runtime')
-    assert report['native_execution'] == 'NOT_RUN'
-    assert [url for url, _ in synthetic.calls] == [r['url'] for r in synthetic.records]
-    assert all(timeout == 45 for _, timeout in synthetic.calls)
-    assert (synthetic.output / 'runtime' / 'README.txt').read_bytes() == synthetic.notice
-    for name in ('source-one.tar.gz', 'source-two.tar.gz'):
-        assert (synthetic.output / 'runtime' / 'sources' / name).read_bytes() == synthetic.blobs[name]
-    assert _snapshot(synthetic.root) == before
-    assert synthetic.settings.read_bytes() == settings
-    out = capsys.readouterr().out
-    for name in ('ffmpeg', 'ffprobe'):
-        assert report['tools'][name] in out
-    assert 'Choose FFmpeg executable' in out
-    assert 'Choose FFprobe executable' in out
-
-
-@pytest.mark.parametrize('answer', [None, '', 'NO', 'yes'])
-def test_plan_or_declined_confirmation_is_read_only(setup, synthetic, monkeypatch, answer):
-    before = _snapshot(synthetic.root)
-    monkeypatch.setattr('builtins.input', lambda prompt: answer)
-    args = ['--output', str(synthetic.output)]
-    if answer is not None:
-        args.append('--interactive')
-    assert setup.main(args) == 0
-    assert synthetic.calls == []
-    assert not synthetic.output.exists()
-    assert _snapshot(synthetic.root) == before
-
-
-def test_closed_confirmation_input_does_not_start_setup(setup, synthetic, monkeypatch):
-    def eof(prompt):
-        raise EOFError
-    monkeypatch.setattr('builtins.input', eof)
-    assert setup.main(['--interactive', '--output', str(synthetic.output)]) == 0
-    assert synthetic.calls == []
-    assert not synthetic.output.exists()
-
-
-@pytest.mark.parametrize('kind', ['inside', 'existing', 'relative', 'network', 'traversal'])
-def test_invalid_or_existing_output_is_preserved(setup, synthetic, tmp_path, kind):
-    sentinel = tmp_path / 'existing'
-    sentinel.mkdir()
-    (sentinel / 'keep.txt').write_bytes(b'keep exactly')
-    output = {'inside': synthetic.root / 'new audio',
-              'existing': sentinel, 'relative': Path('relative-folder'),
-              'network': Path('//server/share/audio'),
-              'traversal': tmp_path / '..' / 'another-folder'}[kind]
-    before = _snapshot(synthetic.root)
-    assert setup.main(['--download', '--output', str(output)]) == 1
-    assert synthetic.calls == []
-    assert (sentinel / 'keep.txt').read_bytes() == b'keep exactly'
-    assert _snapshot(synthetic.root) == before
-
-
-def test_reparse_parent_is_rejected_without_download(setup, synthetic, tmp_path, monkeypatch):
-    parent = tmp_path / 'reparse'
-    parent.mkdir()
-    original = Path.lstat
-    def lstat(path, *args, **kwargs):
-        info = original(path, *args, **kwargs)
-        if path == parent:
-            return SimpleNamespace(st_mode=info.st_mode, st_file_attributes=0x400,
-                                   st_nlink=info.st_nlink)
-        return info
-    monkeypatch.setattr(Path, 'lstat', lstat)
-    assert setup.main(['--download', '--output', str(parent / 'new')]) == 1
-    assert synthetic.calls == []
-    assert not (parent / 'new').exists()
-
-
-def test_output_created_during_confirmation_is_never_overwritten(setup, synthetic, monkeypatch):
-    def confirm(prompt):
-        synthetic.output.mkdir()
-        (synthetic.output / 'keep.txt').write_bytes(b'created during confirmation')
-        return 'YES'
-    monkeypatch.setattr('builtins.input', confirm)
-    assert setup.main(['--interactive', '--output', str(synthetic.output)]) == 1
-    assert synthetic.calls == []
-    assert (synthetic.output / 'keep.txt').read_bytes() == b'created during confirmation'
-
-
-def test_changed_source_lock_during_confirmation_fails_before_writes(setup, synthetic, monkeypatch):
-    def confirm(prompt):
-        path = synthetic.templates / 'source-lock.json'
-        path.write_bytes(path.read_bytes() + b' ')
-        return 'YES'
-    monkeypatch.setattr('builtins.input', confirm)
-    assert setup.main(['--interactive', '--output', str(synthetic.output)]) == 1
-    assert synthetic.calls == []
-    assert not synthetic.output.exists()
-
-
-def test_wrong_download_hash_never_produces_ready_runtime(setup, synthetic, capsys):
-    raw = synthetic.blobs['fixture.zip']
-    synthetic.blobs['fixture.zip'] = bytes([raw[0] ^ 1]) + raw[1:]
-    before = _snapshot(synthetic.root)
-    assert setup.main(['--download', '--output', str(synthetic.output)]) == 1
-    assert not (synthetic.output / 'runtime').exists()
-    assert list((synthetic.output / 'inputs').iterdir()) == []
-    assert _snapshot(synthetic.root) == before
-    assert 'Підготовку завершено' not in capsys.readouterr().out
-
-
-def test_published_files_are_reverified_before_success(setup, synthetic, monkeypatch, capsys):
-    real_load = setup._load_helper
-    def load(name):
-        module = real_load(name)
-        if name == 'prepare_audio_runtime':
-            real_prepare = module.prepare
-            def changed(archive, sources, output):
-                report = real_prepare(archive, sources, output)
-                (output / 'bin' / 'ffmpeg.exe').write_bytes(b'changed after preparation')
-                return report
-            module.prepare = changed
-        return module
-    monkeypatch.setattr(setup, '_load_helper', load)
-    assert setup.main(['--download', '--output', str(synthetic.output)]) == 1
-    assert 'Підготовку завершено' not in capsys.readouterr().out
-
-
-def test_unsupported_host_stops_before_download_or_creation(setup, synthetic, monkeypatch):
-    def unsupported():
-        raise ValueError('Windows x64 required')
-    monkeypatch.setattr(setup, '_require_windows', unsupported)
-    assert setup.main(['--download', '--output', str(synthetic.output)]) == 1
-    assert synthetic.calls == []
-    assert not synthetic.output.exists()
-
-
-def test_launcher_requires_completed_installation_and_isolated_no_bytecode_python():
-    text = (PACKAGING / 'SetupLocalAudio.cmd').read_text(encoding='utf-8')
-    assert '".venv' not in text  # Every executable path is anchored to the launcher.
-    assert 'if not exist "%~dp0.venv\\Scripts\\python.exe" goto not_installed' in text
-    assert 'if not exist "%~dp0.venv\\.installation-complete" goto not_installed' in text
-    assert ('"%~dp0.venv\\Scripts\\python.exe" -I -B -X utf8 '
-            '"%~dp0tools\\audio-setup\\setup_local_audio.py" --interactive') in text
-    assert 'exit /b %audio_setup_status%' in text
-
+    assert sys.dont_write_bytecode == bytecode_before

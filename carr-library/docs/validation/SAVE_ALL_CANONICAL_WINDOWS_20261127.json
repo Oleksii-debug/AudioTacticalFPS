@@ -1,0 +1,391 @@
+{
+  "schema": 1,
+  "kind": "canonical-save-all-native-successor",
+  "status": "PASS",
+  "source_commit": "078dde33e65767e14b3bd50de74974144236e820",
+  "source_tree": "37b6e9374f739fbab7dc197c24d813df401b564b",
+  "run_id": 46042041594,
+  "job_id": 140651939113,
+  "run_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46042041594",
+  "artifact": {
+    "id": 15222671400,
+    "name": "carr-save-actions-078dde33e65767e14b3bd50de74974144236e820-1",
+    "size_in_bytes": 417946,
+    "url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15222671400",
+    "archive_download_url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15222671400/zip",
+    "expired": false,
+    "created_at": "2026-11-27T17:59:19Z",
+    "expires_at": "2026-12-27T17:59:18Z",
+    "updated_at": "2026-11-27T17:59:19Z",
+    "digest": "sha256:c766aa7c56abc69e09caa328d808b1b14c5dcc89b83efb2e9cdee21f13968d86",
+    "workflow_run": {
+      "id": 46042041594,
+      "repository_id": 1341777614,
+      "head_repository_id": 1341777614,
+      "head_branch": "carr/save-actions-r20-canonical-d3a-20261127",
+      "head_sha": "078dde33e65767e14b3bd50de74974144236e820"
+    }
+  },
+  "source": {
+    "schema": 1,
+    "status": "PASS",
+    "mode": "source",
+    "declared_cases": 103,
+    "timeout_seconds": 1500,
+    "oracle_sha256": "b55561dbe8b4bdb6753a2e2aaf428e2a91e84e8e9c7c852443810d3ea465eab6",
+    "source_commit": "078dde33e65767e14b3bd50de74974144236e820",
+    "source_tree": "37b6e9374f739fbab7dc197c24d813df401b564b",
+    "wheel_sha256": "4652d10665e36831722eb3056177d58f5160975435cc2b4ab80461e3fe7f2c6b",
+    "checkout_manifest_sha256": "ed04f25cce26f722990fa64090d5988c2ff585a744bbee0bdb363c4e9444ce10",
+    "tracked_source_files": 1565,
+    "source_only_python": {
+      "bootstrap/semantic_compat/probe.py": "c51758108a418c7bf98ddd459cefdca852777b07cfc95ac669855b1195398ac7",
+      "bootstrap/semantic_compat/test_probe.py": "ae093cae9f00307c09d2ea787dacf7c8c1522184e5480a411c0979023b7b70bb"
+    },
+    "actual_ffmpeg": {
+      "sha256": "3ab4a9c404504ebff6662d6a48661db952f88ee7fb7d5949a711cad7a763b2cf",
+      "version": "ffmpeg version 9.1-full_build-www.gyan.dev Copyright (c) 2000-2026 the FFmpeg developers",
+      "version_sha256": "900a9c75d78682e23c3f73e9e13d4c9625b24a8f0dfb921a879fc5f9e445bc64"
+    },
+    "test_source_sha256": {
+      "tests/ui/test_productivity.py": "4b21f45fda571892aef969c870e4e84a3600f629e28022f5801cc8b27573ffa7",
+      "tests/ui/test_save_all.py": "f812ea52074ffa138b363a446c0558a99164d627f85bb626981d4265d354f931",
+      "tests/ui/test_save_all_current_drafts.py": "b3fb4a602a956f19d146ee33a5c5496cce7efe04f4d109f510ae511db9436e78",
+      "tests/ui/test_save_actions_routes.py": "1d9602922ddf7e5f789fa0e134838bf2ff7b586b8924ef0331ab2b1bb7d20136",
+      "tests/__init__.py": "bda1d1b86fa69f604fb87c19f27628942b6bd77aa46b605efbc9cb9d4457183d"
+    },
+    "runner_sha256": {
+      "audio_batch_acceptance.py": "3fcb217a7ed9d535ea9d277191a27504f8e6f452bef235b728036358f9e6e003",
+      "ci_check.py": "a7e90c3a14dc51b78c9af17850a7038bf21513cc5ba41466293cc853cd0e2842",
+      "ci_watchdog.py": "e02be6a6c3406bdf1d9d4c24673363894d03a1ee7948b3b77d6b20fcc2bfc057"
+    },
+    "pytest_exit": 0,
+    "case_counter": {
+      "tests.ui.test_productivity": {
+        "test_shortcut_normalization": 5,
+        "test_typing_system_and_malformed_keys_are_rejected": 17,
+        "test_conflict_check_is_atomic_and_explains_owner": 1,
+        "test_preferences_survive_reopen_and_conflict_keeps_old_file": 1,
+        "test_preferences_reject_duplicate_fields_and_untrusted_data": 1,
+        "test_preferences_atomic_write_failure_keeps_previous": 1,
+        "test_preferences_refuse_linked_target": 1,
+        "test_dynamic_menu_inventory_keeps_fixed_shortcut_and_nested_ids": 1,
+        "test_legacy_preferences_export_keeps_newer_external_file": 2,
+        "test_keyboard_reload_invalid_file_falls_back_without_erasing_it": 1,
+        "test_failed_keymap_persistence_does_not_change_active_keys": 1,
+        "test_save_routes_dirty_note_without_premature_success": 1,
+        "test_save_during_operation_keeps_draft_and_reports_no_success": 1,
+        "test_save_no_draft_is_honest_about_modal_editors": 1
+      },
+      "tests.ui.test_save_actions_routes": {
+        "test_installation_adds_one_edit_menu_and_recovery_to_existing_save_owner": 1,
+        "test_new_commands_reuse_semantic_registry_without_text_key_overrides": 1,
+        "test_menu_events_read_current_focus_instead_of_captured_first_control": 1,
+        "test_edit_routes_only_the_explicit_native_action": 6,
+        "test_foreign_or_cyclic_focus_cannot_receive_main_window_edit": 3,
+        "test_readonly_native_selection_allows_copy_and_select_all": 2,
+        "test_readonly_native_selection_refuses_mutating_actions": 4,
+        "test_current_control_capability_refusal_keeps_its_text": 5,
+        "test_destroyed_native_control_cannot_retarget_another_window": 1,
+        "test_closing_host_never_invokes_a_text_or_recovery_action": 2,
+        "test_recovery_route_uses_the_current_existing_panel_without_saving": 1,
+        "test_recovery_without_selected_evidence_reports_actionable_status": 2,
+        "test_unknown_edit_action_cannot_gain_arbitrary_method_access": 3,
+        "test_adding_recovery_route_keeps_durable_save_all_waiting_for_confirmation": 1,
+        "test_reinstall_retains_existing_routes_and_coordinator_without_duplicate_menus": 1
+      },
+      "tests.ui.test_save_all": {
+        "test_coordinator_follows_native_parent_links_and_rejects_a_cycle": 1,
+        "test_many_clean_documents_do_not_exhaust_the_ui_stack": 1,
+        "test_many_synchronous_durable_saves_finish_once_without_recursion": 1,
+        "test_cancel_check_failure_releases_busy_and_retains_drafts": 1,
+        "test_async_completion_waits_for_durable_result_and_preserves_newer_edit": 1,
+        "test_failure_does_not_skip_other_drafts_or_claim_all_saved": 1,
+        "test_newly_opened_dirty_document_prevents_false_complete": 1,
+        "test_cancellation_after_one_completed_draft_reports_remaining": 1,
+        "test_unregister_is_lease_scoped_and_replacement_is_not_lost": 1,
+        "test_truthy_return_is_not_a_completed_save": 1,
+        "test_close_waits_for_successful_completion_and_rechecks_at_dispatch": 1,
+        "test_failed_save_cancels_pending_close_and_preserves_dirty_state": 1,
+        "test_edit_between_save_confirmation_and_close_dispatch_keeps_window_open": 1,
+        "test_late_save_completion_never_touches_a_destroyed_window": 1,
+        "test_late_close_dispatch_never_touches_a_destroyed_window": 1,
+        "test_close_validation_failure_is_visible_and_cannot_destroy_the_window": 1,
+        "test_forced_shutdown_is_not_falsely_claimed_to_be_delayed": 1,
+        "test_late_cancel_after_final_durable_save_is_complete": 1,
+        "test_late_cancel_with_clean_tail_is_complete": 1,
+        "test_cancel_before_saving_clean_drafts_does_not_invent_unsaved_changes": 1,
+        "test_cancel_with_newer_edits_still_reports_unsaved_changes": 1,
+        "test_cancel_after_failed_save_not_misreported_as_complete": 1,
+        "test_failed_old_save_does_not_hide_replacement_draft": 1,
+        "test_failed_old_save_does_not_focus_clean_replacement": 1,
+        "test_queued_replacement_is_reported_separately_and_never_saved_under_old_registration": 1,
+        "test_focus_rechecks_registration_after_completion_notification": 1,
+        "test_live_failed_registration_retains_its_own_focus": 1,
+        "test_focus_chooses_first_usable_live_failed_draft": 3,
+        "test_focus_skips_replaced_registration_and_unavailable_target": 1
+      },
+      "tests.ui.test_save_all_current_drafts": {
+        "test_save_all_writes_current_managed_studio_and_reading_copy_without_source_edits": 1,
+        "test_studio_conflict_retains_the_other_writer_and_saves_other_open_drafts": 1,
+        "test_running_studio_job_is_reported_as_pending_without_a_concurrent_save": 1
+      }
+    },
+    "interpreter_sha256": "0ca8e36c64010dc79b39ccee2fbeac160141a6d37853bff7749b583164d6f7f2",
+    "actual_cases": 103,
+    "elapsed_seconds": 5.938000000000102
+  },
+  "installed": {
+    "schema": 1,
+    "status": "PASS",
+    "mode": "installed",
+    "declared_cases": 103,
+    "timeout_seconds": 1500,
+    "oracle_sha256": "b55561dbe8b4bdb6753a2e2aaf428e2a91e84e8e9c7c852443810d3ea465eab6",
+    "source_commit": "078dde33e65767e14b3bd50de74974144236e820",
+    "source_tree": "37b6e9374f739fbab7dc197c24d813df401b564b",
+    "wheel_sha256": "4652d10665e36831722eb3056177d58f5160975435cc2b4ab80461e3fe7f2c6b",
+    "checkout_manifest_sha256": "ed04f25cce26f722990fa64090d5988c2ff585a744bbee0bdb363c4e9444ce10",
+    "tracked_source_files": 1565,
+    "source_only_python": {
+      "bootstrap/semantic_compat/probe.py": "c51758108a418c7bf98ddd459cefdca852777b07cfc95ac669855b1195398ac7",
+      "bootstrap/semantic_compat/test_probe.py": "ae093cae9f00307c09d2ea787dacf7c8c1522184e5480a411c0979023b7b70bb"
+    },
+    "actual_ffmpeg": {
+      "sha256": "3ab4a9c404504ebff6662d6a48661db952f88ee7fb7d5949a711cad7a763b2cf",
+      "version": "ffmpeg version 9.1-full_build-www.gyan.dev Copyright (c) 2000-2026 the FFmpeg developers",
+      "version_sha256": "900a9c75d78682e23c3f73e9e13d4c9625b24a8f0dfb921a879fc5f9e445bc64"
+    },
+    "test_source_sha256": {
+      "tests/ui/test_productivity.py": "4b21f45fda571892aef969c870e4e84a3600f629e28022f5801cc8b27573ffa7",
+      "tests/ui/test_save_all.py": "f812ea52074ffa138b363a446c0558a99164d627f85bb626981d4265d354f931",
+      "tests/ui/test_save_all_current_drafts.py": "b3fb4a602a956f19d146ee33a5c5496cce7efe04f4d109f510ae511db9436e78",
+      "tests/ui/test_save_actions_routes.py": "1d9602922ddf7e5f789fa0e134838bf2ff7b586b8924ef0331ab2b1bb7d20136",
+      "tests/__init__.py": "bda1d1b86fa69f604fb87c19f27628942b6bd77aa46b605efbc9cb9d4457183d"
+    },
+    "runner_sha256": {
+      "audio_batch_acceptance.py": "3fcb217a7ed9d535ea9d277191a27504f8e6f452bef235b728036358f9e6e003",
+      "ci_check.py": "a7e90c3a14dc51b78c9af17850a7038bf21513cc5ba41466293cc853cd0e2842",
+      "ci_watchdog.py": "e02be6a6c3406bdf1d9d4c24673363894d03a1ee7948b3b77d6b20fcc2bfc057"
+    },
+    "pytest_exit": 0,
+    "case_counter": {
+      "tests.ui.test_productivity": {
+        "test_shortcut_normalization": 5,
+        "test_typing_system_and_malformed_keys_are_rejected": 17,
+        "test_conflict_check_is_atomic_and_explains_owner": 1,
+        "test_preferences_survive_reopen_and_conflict_keeps_old_file": 1,
+        "test_preferences_reject_duplicate_fields_and_untrusted_data": 1,
+        "test_preferences_atomic_write_failure_keeps_previous": 1,
+        "test_preferences_refuse_linked_target": 1,
+        "test_dynamic_menu_inventory_keeps_fixed_shortcut_and_nested_ids": 1,
+        "test_legacy_preferences_export_keeps_newer_external_file": 2,
+        "test_keyboard_reload_invalid_file_falls_back_without_erasing_it": 1,
+        "test_failed_keymap_persistence_does_not_change_active_keys": 1,
+        "test_save_routes_dirty_note_without_premature_success": 1,
+        "test_save_during_operation_keeps_draft_and_reports_no_success": 1,
+        "test_save_no_draft_is_honest_about_modal_editors": 1
+      },
+      "tests.ui.test_save_actions_routes": {
+        "test_installation_adds_one_edit_menu_and_recovery_to_existing_save_owner": 1,
+        "test_new_commands_reuse_semantic_registry_without_text_key_overrides": 1,
+        "test_menu_events_read_current_focus_instead_of_captured_first_control": 1,
+        "test_edit_routes_only_the_explicit_native_action": 6,
+        "test_foreign_or_cyclic_focus_cannot_receive_main_window_edit": 3,
+        "test_readonly_native_selection_allows_copy_and_select_all": 2,
+        "test_readonly_native_selection_refuses_mutating_actions": 4,
+        "test_current_control_capability_refusal_keeps_its_text": 5,
+        "test_destroyed_native_control_cannot_retarget_another_window": 1,
+        "test_closing_host_never_invokes_a_text_or_recovery_action": 2,
+        "test_recovery_route_uses_the_current_existing_panel_without_saving": 1,
+        "test_recovery_without_selected_evidence_reports_actionable_status": 2,
+        "test_unknown_edit_action_cannot_gain_arbitrary_method_access": 3,
+        "test_adding_recovery_route_keeps_durable_save_all_waiting_for_confirmation": 1,
+        "test_reinstall_retains_existing_routes_and_coordinator_without_duplicate_menus": 1
+      },
+      "tests.ui.test_save_all": {
+        "test_coordinator_follows_native_parent_links_and_rejects_a_cycle": 1,
+        "test_many_clean_documents_do_not_exhaust_the_ui_stack": 1,
+        "test_many_synchronous_durable_saves_finish_once_without_recursion": 1,
+        "test_cancel_check_failure_releases_busy_and_retains_drafts": 1,
+        "test_async_completion_waits_for_durable_result_and_preserves_newer_edit": 1,
+        "test_failure_does_not_skip_other_drafts_or_claim_all_saved": 1,
+        "test_newly_opened_dirty_document_prevents_false_complete": 1,
+        "test_cancellation_after_one_completed_draft_reports_remaining": 1,
+        "test_unregister_is_lease_scoped_and_replacement_is_not_lost": 1,
+        "test_truthy_return_is_not_a_completed_save": 1,
+        "test_close_waits_for_successful_completion_and_rechecks_at_dispatch": 1,
+        "test_failed_save_cancels_pending_close_and_preserves_dirty_state": 1,
+        "test_edit_between_save_confirmation_and_close_dispatch_keeps_window_open": 1,
+        "test_late_save_completion_never_touches_a_destroyed_window": 1,
+        "test_late_close_dispatch_never_touches_a_destroyed_window": 1,
+        "test_close_validation_failure_is_visible_and_cannot_destroy_the_window": 1,
+        "test_forced_shutdown_is_not_falsely_claimed_to_be_delayed": 1,
+        "test_late_cancel_after_final_durable_save_is_complete": 1,
+        "test_late_cancel_with_clean_tail_is_complete": 1,
+        "test_cancel_before_saving_clean_drafts_does_not_invent_unsaved_changes": 1,
+        "test_cancel_with_newer_edits_still_reports_unsaved_changes": 1,
+        "test_cancel_after_failed_save_not_misreported_as_complete": 1,
+        "test_failed_old_save_does_not_hide_replacement_draft": 1,
+        "test_failed_old_save_does_not_focus_clean_replacement": 1,
+        "test_queued_replacement_is_reported_separately_and_never_saved_under_old_registration": 1,
+        "test_focus_rechecks_registration_after_completion_notification": 1,
+        "test_live_failed_registration_retains_its_own_focus": 1,
+        "test_focus_chooses_first_usable_live_failed_draft": 3,
+        "test_focus_skips_replaced_registration_and_unavailable_target": 1
+      },
+      "tests.ui.test_save_all_current_drafts": {
+        "test_save_all_writes_current_managed_studio_and_reading_copy_without_source_edits": 1,
+        "test_studio_conflict_retains_the_other_writer_and_saves_other_open_drafts": 1,
+        "test_running_studio_job_is_reported_as_pending_without_a_concurrent_save": 1
+      }
+    },
+    "interpreter_sha256": "b546a85cde1008abafeca8bfdbeb3213bf3824b086aceda999787bd386a0a3f0",
+    "actual_cases": 103,
+    "elapsed_seconds": 5.625
+  },
+  "native": {
+    "schema": 1,
+    "status": "PASS",
+    "mode": "native",
+    "oracle_sha256": "b55561dbe8b4bdb6753a2e2aaf428e2a91e84e8e9c7c852443810d3ea465eab6",
+    "qualification_adapter_sha256": "c095652581bd3571bac7156910db13dbe4fa5d572f107175a6a3897b7341a8ab",
+    "qualification_dispatch_sha256": "a2487cb8b53cf1946d18444f841f43016d095decfd11c533be09028a2b56a5da",
+    "source_commit": "078dde33e65767e14b3bd50de74974144236e820",
+    "source_tree": "37b6e9374f739fbab7dc197c24d813df401b564b",
+    "probe_sha256": "41c119103d90618667edb73de4af0a3659e9f850321e61b82191642fb74642d1",
+    "wheel_sha256": "4652d10665e36831722eb3056177d58f5160975435cc2b4ab80461e3fe7f2c6b",
+    "native_exit": 0,
+    "actual_checks": 38,
+    "receipt": {
+      "actual_windows": true,
+      "checks": [
+        "real Windows native controls",
+        "save implementation loaded from installed package",
+        "native_edit_menu_has_six_named_actions",
+        "native_recovery_and_edit_commands_use_current_registry",
+        "native_edit_undo_restores_previous_draft",
+        "native_edit_redo_obeys_current_control_capability",
+        "native_edit_copy_keeps_exact_draft",
+        "native_edit_cut_changes_only_selected_draft",
+        "native_edit_paste_restores_exact_unicode",
+        "native_edit_select_all_covers_current_control",
+        "native_edit_refuses_readonly_mutation",
+        "native_file_recovery_requires_explicit_choice",
+        "native_file_recovery_keeps_saved_note_and_original_unchanged",
+        "reading editor shares the main Save All coordinator",
+        "native button handler: Save all open drafts",
+        "Save All waits for the real note transaction",
+        "note is uncommitted while the worker is held",
+        "native button handler: C&lose",
+        "native Close keeps the editor open during save",
+        "reading draft survives the complete native event flow",
+        "successful pending close follows both durable writes",
+        "closed reading editor unregisters its save participant",
+        "reading editor shares the main Save All coordinator",
+        "native button handler: Save all open drafts",
+        "Save All waits for the real note transaction",
+        "note is uncommitted while the worker is held",
+        "native button handler: C&lose",
+        "native Close keeps the editor open during save",
+        "failed note commit cancels the pending close",
+        "failed note remains editable and baseline is preserved",
+        "another valid reading draft still saves after the failure",
+        "reading draft survives the complete native event flow",
+        "closed reading editor unregisters its save participant",
+        "existing File Save All command reaches the native handler",
+        "native main close is deferred during the write",
+        "main close occurs after the note is committed",
+        "all save operations preserve immutable retained source bytes",
+        "no native callback failed"
+      ],
+      "deferred_close": "PASS",
+      "durable_stores": "PASS",
+      "isolated": true,
+      "metrics": {
+        "edit_commands": 6,
+        "failed_save_scenarios": 1,
+        "recovery_dialogs": 1,
+        "successful_save_scenarios": 1
+      },
+      "module_origins": {
+        "carr_library.evidence_drafts": {
+          "path": "D:\\a\\_temp\\carr-save-actions-46042041594-1\\installed\\Lib\\site-packages\\carr_library\\evidence_drafts.py",
+          "sha256": "0e3e7dc501ae97b69bba7092f874458f9db4d784a831723e1cc276273c61361d"
+        },
+        "carr_library.ui.desktop_app": {
+          "path": "D:\\a\\_temp\\carr-save-actions-46042041594-1\\installed\\Lib\\site-packages\\carr_library\\ui\\desktop_app.py",
+          "sha256": "51e11d9142c881b628257a3c2594e35fe13ab70a5c2380e39eb08e1953fe6722"
+        },
+        "carr_library.ui.desktop_evidence_panel": {
+          "path": "D:\\a\\_temp\\carr-save-actions-46042041594-1\\installed\\Lib\\site-packages\\carr_library\\ui\\desktop_evidence_panel.py",
+          "sha256": "7fcb865418d93fd81ef525742685a60e0f73ce2072b0c817f3dc5645cb57d06c"
+        },
+        "carr_library.ui.keyboard_settings": {
+          "path": "D:\\a\\_temp\\carr-save-actions-46042041594-1\\installed\\Lib\\site-packages\\carr_library\\ui\\keyboard_settings.py",
+          "sha256": "ea6183ae0e4e14d7a135bcfc68791ab1756a32f8667fd4e4d34e5a0516ff505b"
+        },
+        "carr_library.ui.narration_editor": {
+          "path": "D:\\a\\_temp\\carr-save-actions-46042041594-1\\installed\\Lib\\site-packages\\carr_library\\ui\\narration_editor.py",
+          "sha256": "70f88f59beb37485f0dbdf6bd8aa9c94b8d1d3de82d2ac22ad35a86e316911d9"
+        },
+        "carr_library.ui.productivity": {
+          "path": "D:\\a\\_temp\\carr-save-actions-46042041594-1\\installed\\Lib\\site-packages\\carr_library\\ui\\productivity.py",
+          "sha256": "a88afba19542aa23368865d592b3e37e77a32ec46013455793e135fae800a767"
+        },
+        "carr_library.ui.save_all": {
+          "path": "D:\\a\\_temp\\carr-save-actions-46042041594-1\\installed\\Lib\\site-packages\\carr_library\\ui\\save_all.py",
+          "sha256": "88bd92eeca43127b8ec553f7e8c7201bbd7657a60c7118fa3c09f342bbe942d3"
+        }
+      },
+      "native_controls": true,
+      "native_events": "PASS",
+      "nvda": "NOT_RUN",
+      "physical_audio": "NOT_RUN",
+      "status": "PASS",
+      "total_checks": 38,
+      "wx": "4.2.4 msw (phoenix) wxWidgets 3.2.8"
+    },
+    "native_output_sha256": "0caa7a491bb91ca4096c076762b84ef74af2193bd3658b819a145c82a38633ef"
+  },
+  "aggregate": {
+    "schema": 1,
+    "status": "PASS",
+    "source_cases": 103,
+    "installed_cases": 103,
+    "oracle_sha256": "b55561dbe8b4bdb6753a2e2aaf428e2a91e84e8e9c7c852443810d3ea465eab6",
+    "qualification_adapter_sha256": "c095652581bd3571bac7156910db13dbe4fa5d572f107175a6a3897b7341a8ab",
+    "qualification_dispatch_sha256": "a2487cb8b53cf1946d18444f841f43016d095decfd11c533be09028a2b56a5da",
+    "native_checks": 38,
+    "nvda": "NOT_RUN",
+    "language_model_quality": "NOT_QUALIFIED",
+    "physical_audio": "NOT_RUN",
+    "source_commit": "078dde33e65767e14b3bd50de74974144236e820",
+    "source_tree": "37b6e9374f739fbab7dc197c24d813df401b564b",
+    "wheel_sha256": "4652d10665e36831722eb3056177d58f5160975435cc2b4ab80461e3fe7f2c6b",
+    "actual_ffmpeg": {
+      "sha256": "3ab4a9c404504ebff6662d6a48661db952f88ee7fb7d5949a711cad7a763b2cf",
+      "version": "ffmpeg version 9.1-full_build-www.gyan.dev Copyright (c) 2000-2026 the FFmpeg developers",
+      "version_sha256": "900a9c75d78682e23c3f73e9e13d4c9625b24a8f0dfb921a879fc5f9e445bc64"
+    },
+    "native_gui": "PASS",
+    "actual_outbound_block": "PASS",
+    "firewall_cleanup": "PASS",
+    "existing_cases_retained": 69,
+    "native_receipt_sha256": "d6752b34f028c79bf97ed1f3ffda783b16e396d130fca5a1284da85cdd0ca61c",
+    "new_save_route_cases": 34
+  },
+  "scope": {
+    "source_and_installed_exact_functions": true,
+    "native_exact_label_counter": true,
+    "native_exact_metrics": true,
+    "installed_modules_exact_source_sha256": true,
+    "installed_module_count": 7,
+    "previous_89_case_evidence": "SAVE_ACTIONS_WINDOWS_20261127.json is retained as a separate earlier exact-head proof.",
+    "qualified_source": "Canonical registration identity, first usable failed focus and late cancellation behavior are integrated with the existing current coordinator, after_current observers, deferred close, Edit and recovery routes.",
+    "later_root_changes": "NOT_QUALIFIED_BY_THIS_RUN",
+    "nvda": "NOT_RUN",
+    "language_model_quality": "NOT_QUALIFIED",
+    "physical_audio": "NOT_RUN"
+  }
+}

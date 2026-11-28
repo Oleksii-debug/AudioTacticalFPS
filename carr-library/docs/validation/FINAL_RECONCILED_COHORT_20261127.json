@@ -1,0 +1,360 @@
+{
+  "schema": 1,
+  "component": "reviewed-current-source-finalization-cohort",
+  "source_parent": "e0ff956cafe5105d4b930aad53fe354b73e9fd4a",
+  "canonical_source": "e5c64a5245583f8f8b404a0f042f6ca438c24d7f",
+  "status": "SOURCE_RECONCILED_RUNTIME_NOT_RUN",
+  "components": [
+    {
+      "commit": "6e6d2599f76b489b8081f3d453afbe8c1e477f9a",
+      "paths": [
+        "carr-library/docs/evidence/canonical-sapi-compatibility-host-admission-20261127.json",
+        "carr-library/scripts/native_sapi_acceptance.py",
+        "carr-library/scripts/native_sapi_oracles.json",
+        "carr-library/scripts/windows_native_sapi_smoke.py",
+        "carr-library/src/carr_library/audio/engines.py",
+        "carr-library/tests/audio/test_engine_boundaries.py",
+        "carr-library/tests/audio/test_engines.py",
+        "carr-library/tests/audio/test_native_sapi.py",
+        "carr-library/tests/audio/test_sapi_host_admission.py"
+      ]
+    },
+    {
+      "commit": "4b5e06ae2386b74bbee45d2d8b750831a248a065",
+      "paths": [
+        "carr-library/docs/validation/ASSISTANT_TRANSCRIPTION_NATIVE_CHOICE_REPAIR_20261127.json",
+        "carr-library/scripts/windows_assistant_transcription_smoke.py"
+      ]
+    },
+    {
+      "commit": "9a9f8d73b77c7c49be1e94681b232184dba18a27",
+      "paths": [
+        "carr-library/docs/validation/CANONICAL_SHARED_ASSISTANT_EVIDENCE_TESTS_20261127.json",
+        "carr-library/docs/validation/CANONICAL_SHARED_ASSISTANT_EVIDENCE_TESTS_20261127.md",
+        "carr-library/docs/validation/PROGRESS_REGISTERED_WINDOWS_20261127.json",
+        "carr-library/docs/validation/PROGRESS_REGISTERED_WINDOWS_20261127.md",
+        "carr-library/scripts/canonical_shared_assistant_oracle.json",
+        "carr-library/tests/assistant/test_planning_handlers.py",
+        "carr-library/tests/assistant/test_translation.py",
+        "carr-library/tests/e2e/test_google_translation_gateway.py",
+        "carr-library/tests/ui/test_evidence_draft_recovery.py"
+      ]
+    },
+    {
+      "commit": "ba68cf6b94d19b4b5dbcec22772258d864cb0602",
+      "paths": [
+        "carr-library/docs/evidence/canonical-studio-detached-completion-20261127.json",
+        "carr-library/src/carr_library/ui/audio_studio.py",
+        "carr-library/tests/ui/test_audio_studio.py"
+      ]
+    },
+    {
+      "commit": "1b13c06cf17383014a5bb787ad792d63ee978fa7",
+      "paths": [
+        "carr-library/docs/evidence/chm-worker-fixture-observed-repair-20261127.json",
+        "carr-library/tests/conversion/test_chm_html_recovery.py"
+      ]
+    },
+    {
+      "commit": "1c38c7c4de9422cb0075b4a4c43fe195e3d2edd2",
+      "paths": [
+        "carr-library/docs/evidence/CANONICAL_AUDIO_STUDIO_16_TEST_DISPOSITION_20261127.md",
+        "carr-library/docs/evidence/canonical-audio-studio-16-test-disposition-20261127.json"
+      ]
+    },
+    {
+      "commit": "ae0469819672afbec2918d39a5a07f1d25cf6265",
+      "paths": [
+        "carr-library/docs/LEGACY_DOCUMENT_CONVERSION.md",
+        "carr-library/docs/evidence/calibre-ordinary-admission-independent-read-20261127.json"
+      ]
+    },
+    {
+      "commit": "80615ed23a21af84c2adebacd170f22ea452a3c4",
+      "paths": [
+        "carr-library/docs/evidence/canonical-ci-process-cleanup-20261127.json",
+        "carr-library/scripts/ci_check.py",
+        "carr-library/tests/packaging/test_ci_check.py"
+      ]
+    },
+    {
+      "commit": "d414945f7446c84a48b7124613a44b926e7fbd9f",
+      "paths": [
+        ".github/workflows/carr-ci-runner.yml",
+        "carr-library/docs/evidence/ci-runner-focused-gate-20261127.json",
+        "carr-library/scripts/ci_runner_acceptance.py",
+        "carr-library/scripts/ci_runner_oracle.json",
+        "carr-library/tests/operations/test_resource_fork.py"
+      ]
+    },
+    {
+      "commit": "4e570d78fd496a29f5afefd8789e8d8112e8ba5f",
+      "paths": [
+        "carr-library/tests/packaging/test_ci_check.py"
+      ]
+    },
+    {
+      "commit": "e0f291b2c6efc62c2d9ab1c031cab4d7eb8033a9",
+      "paths": [
+        "carr-library/docs/validation/DESKTOP_BOUNDARY_RECONCILIATION_20261127.json",
+        "carr-library/docs/validation/SAVE_ALL_CANONICAL_WINDOWS_20261127.json",
+        "carr-library/docs/validation/SAVE_ALL_CANONICAL_WINDOWS_20261127.md",
+        "carr-library/docs/validation/SHARED_ASSISTANT_ORACLE_RECONCILIATION_20261127.json",
+        "carr-library/docs/validation/WORKFLOW_TEMPLATES_WINDOWS_20261127.json",
+        "carr-library/docs/validation/WORKFLOW_TEMPLATES_WINDOWS_20261127.md",
+        "carr-library/src/carr_library/ui/desktop_app.py",
+        "carr-library/tests/ui/test_desktop_handlers.py"
+      ]
+    },
+    {
+      "commit": "46910434d1b6b2d6fad5438727555dbac879d2ea",
+      "paths": [
+        "carr-library/docs/validation/DESKTOP_BOUNDARY_RECONCILIATION_20261127.json",
+        "carr-library/tests/ui/test_desktop_handlers.py"
+      ]
+    },
+    {
+      "commit": "615e031d08a12c20585d26832ad68c60ebcf7f35",
+      "paths": [
+        "carr-library/docs/evidence/canonical-shared-packaging-resource-test-disposition-20261127.json",
+        "carr-library/packaging/build_windows_bundle.py",
+        "carr-library/packaging/source_wheel.py",
+        "carr-library/tests/packaging/test_audio_bundle.py",
+        "carr-library/tests/packaging/test_native_launcher.py",
+        "carr-library/tests/packaging/test_source_wheel.py",
+        "carr-library/tests/packaging/test_windows_bundle.py"
+      ]
+    },
+    {
+      "commit": "c9cfcabe4d6c635ad0558b06efa6eeec798ed63a",
+      "paths": [
+        "carr-library/docs/evidence/canonical-shared-packaging-resource-test-disposition-20261127.json",
+        "carr-library/packaging/build_windows_bundle.py",
+        "carr-library/tests/packaging/test_windows_bundle.py"
+      ]
+    },
+    {
+      "commit": "55b3a646ed2df646bdd63d5141143000d9536ea5",
+      "paths": [
+        "carr-library/docs/LOCAL_VOICES_AND_MUSIC.md",
+        "carr-library/docs/evidence/canonical-music-control-reconciliation-20261127.json",
+        "carr-library/src/carr_library/audio/models.py",
+        "carr-library/src/carr_library/audio/music.py",
+        "carr-library/src/carr_library/audio/production.py",
+        "carr-library/tests/audio/test_canonical_project_import.py",
+        "carr-library/tests/audio/test_music_controls.py"
+      ]
+    },
+    {
+      "commit": "9b59ca1a2eecb1b8d2aff8f839fd12650f4853f3",
+      "paths": [
+        "carr-library/src/carr_library/ui/keyboard_settings.py",
+        "carr-library/tests/ui/test_keyboard_registration_compatibility.py",
+        "carr-library/docs/evidence/canonical-keyboard-registration-20261127.json"
+      ]
+    },
+    {
+      "commit": "74b14cb8180104b032fc8203997bca9273702cf1",
+      "paths": [
+        "carr-library/packaging/windows-roots.in",
+        "carr-library/packaging/windows-cp311.lock",
+        "carr-library/packaging/windows-sbom.cdx.json",
+        "carr-library/packaging/windows-semantic-roots.in",
+        "carr-library/packaging/windows-semantic-cp311.lock",
+        "carr-library/packaging/windows-semantic-sbom.cdx.json",
+        "carr-library/docs/evidence/desktop-com-inventory-reconciliation-20261127.json"
+      ]
+    },
+    {
+      "commit": "add6c522d33b282938881399a43e02b7a332836c",
+      "paths": [
+        "carr-library/src/carr_library/security/standard_windows.py",
+        "carr-library/tests/security/test_standard_system_helper.py",
+        "carr-library/scripts/standard_system_helper_acceptance.py",
+        "carr-library/docs/evidence/standard-shortcut-helper-repair-20261127.json"
+      ]
+    },
+    {
+      "commit": "ee96fc627a64d282dd46814af04e23966c60d24f",
+      "paths": [
+        ".github/workflows/carr-standard-helper-diagnostic.yml",
+        "carr-library/scripts/windows_standard_helper_diagnostic.py",
+        "carr-library/docs/evidence/standard-update-helper-observed-failure-20261127.json"
+      ]
+    },
+    {
+      "commit": "c71587eefc0df0ad69dd9d719c90c646b2a7a426",
+      "paths": [
+        "carr-library/docs/evidence/native-sapi-observed-host-results-20261127.json",
+        "carr-library/docs/evidence/native-sapi-owned-cleanup-repair-20261127.json",
+        "carr-library/scripts/native_sapi_acceptance.py",
+        "carr-library/scripts/native_sapi_oracles.json",
+        "carr-library/scripts/windows_native_sapi_smoke.py",
+        "carr-library/src/carr_library/audio/engines.py",
+        "carr-library/tests/audio/test_engine_boundaries.py",
+        "carr-library/tests/audio/test_native_sapi.py"
+      ]
+    }
+  ],
+  "ordered_overlays": [
+    {
+      "path": "carr-library/tests/packaging/test_ci_check.py",
+      "from": "80615ed23a21af84c2adebacd170f22ea452a3c4",
+      "to": "4e570d78fd496a29f5afefd8789e8d8112e8ba5f"
+    },
+    {
+      "path": "carr-library/docs/validation/DESKTOP_BOUNDARY_RECONCILIATION_20261127.json",
+      "from": "e0f291b2c6efc62c2d9ab1c031cab4d7eb8033a9",
+      "to": "46910434d1b6b2d6fad5438727555dbac879d2ea"
+    },
+    {
+      "path": "carr-library/tests/ui/test_desktop_handlers.py",
+      "from": "e0f291b2c6efc62c2d9ab1c031cab4d7eb8033a9",
+      "to": "46910434d1b6b2d6fad5438727555dbac879d2ea"
+    },
+    {
+      "path": "carr-library/docs/evidence/canonical-shared-packaging-resource-test-disposition-20261127.json",
+      "from": "615e031d08a12c20585d26832ad68c60ebcf7f35",
+      "to": "c9cfcabe4d6c635ad0558b06efa6eeec798ed63a"
+    },
+    {
+      "path": "carr-library/packaging/build_windows_bundle.py",
+      "from": "615e031d08a12c20585d26832ad68c60ebcf7f35",
+      "to": "c9cfcabe4d6c635ad0558b06efa6eeec798ed63a"
+    },
+    {
+      "path": "carr-library/tests/packaging/test_windows_bundle.py",
+      "from": "615e031d08a12c20585d26832ad68c60ebcf7f35",
+      "to": "c9cfcabe4d6c635ad0558b06efa6eeec798ed63a"
+    },
+    {
+      "path": "carr-library/scripts/native_sapi_acceptance.py",
+      "from": "6e6d2599f76b489b8081f3d453afbe8c1e477f9a",
+      "to": "c71587eefc0df0ad69dd9d719c90c646b2a7a426"
+    },
+    {
+      "path": "carr-library/scripts/native_sapi_oracles.json",
+      "from": "6e6d2599f76b489b8081f3d453afbe8c1e477f9a",
+      "to": "c71587eefc0df0ad69dd9d719c90c646b2a7a426"
+    },
+    {
+      "path": "carr-library/scripts/windows_native_sapi_smoke.py",
+      "from": "6e6d2599f76b489b8081f3d453afbe8c1e477f9a",
+      "to": "c71587eefc0df0ad69dd9d719c90c646b2a7a426"
+    },
+    {
+      "path": "carr-library/src/carr_library/audio/engines.py",
+      "from": "6e6d2599f76b489b8081f3d453afbe8c1e477f9a",
+      "to": "c71587eefc0df0ad69dd9d719c90c646b2a7a426"
+    },
+    {
+      "path": "carr-library/tests/audio/test_engine_boundaries.py",
+      "from": "6e6d2599f76b489b8081f3d453afbe8c1e477f9a",
+      "to": "c71587eefc0df0ad69dd9d719c90c646b2a7a426"
+    },
+    {
+      "path": "carr-library/tests/audio/test_native_sapi.py",
+      "from": "6e6d2599f76b489b8081f3d453afbe8c1e477f9a",
+      "to": "c71587eefc0df0ad69dd9d719c90c646b2a7a426"
+    }
+  ],
+  "protected_populations": {
+    "source": 5438,
+    "installed": 5110,
+    "focused_each": 642,
+    "native_families": 20
+  },
+  "whole_module_counter_corrections": {
+    "reason": "The integrated gate protects complete selected modules. Earlier additive-only maps for five newly protected existing modules were incomplete; complete retained functions are now included without removing any test.",
+    "functions": {
+      "tests.e2e.test_extended_document_workflows": {
+        "test_extended_source_import_reader_search_and_quote_boundary": 10,
+        "test_html_declared_encoding_is_preserved_through_intake_and_worker": 3,
+        "test_long_xml_paragraph_import_is_readable_without_character_loss": 1,
+        "test_source_extension_alias_retains_canonical_format_after_original_is_removed": 3,
+        "test_mixed_document_batch_pause_reopen_and_backup_preserve_exact_sources": 1,
+        "test_exact_reimport_adds_membership_and_conflicting_metadata_does_not_publish": 1,
+        "test_changed_planned_document_is_rejected_before_retention": 1,
+        "test_damaged_retained_original_invalidates_existing_preview_and_reader": 1,
+        "test_unsafe_archive_does_not_publish_searchable_text": 1,
+        "test_cancelled_extended_import_can_resume_same_identity": 1,
+        "test_untrusted_active_source_formats_never_launch_default_viewer": 5,
+        "test_malformed_primary_relationship_or_text_leaf_does_not_publish": 3,
+        "test_format_listing_rejects_another_operation_before_opening_any_runtime": 4,
+        "test_format_listing_does_not_open_a_library_or_native_runtime": 1
+      },
+      "tests.e2e.test_search_operation_budget": {
+        "test_cancel_before_search_does_not_read_the_catalog": 1,
+        "test_cancel_interrupts_native_catalog_work_and_is_latched": 1,
+        "test_cancel_during_attestation_publishes_no_partial_result": 1,
+        "test_catalog_time_is_charged_to_the_same_search_deadline": 1,
+        "test_coarse_clock_does_not_expand_valid_search_timeout": 1,
+        "test_invalid_operation_budget_is_rejected": 6,
+        "test_saved_query_cancellation_during_original_verification": 1,
+        "test_unavailable_model_reports_fallback_even_without_results": 1,
+        "test_busy_snapshot_fails_promptly_and_preserves_previous_selection": 5,
+        "test_federated_name_lookup_obeys_budget_and_retains_completed_session": 1,
+        "test_snapshot_setup_is_interruptible_before_result_publication": 8,
+        "test_wal_writer_does_not_prevent_authorized_snapshot_search": 1,
+        "test_nonsearch_reads_retain_busy_policy_and_query_only_snapshot": 1,
+        "test_search_cancellation_covers_initial_sql_and_cleans_up": 4,
+        "test_initial_schema_sql_obeys_search_deadline": 1,
+        "test_busy_search_fails_promptly_and_preserves_previous_selection": 5,
+        "test_federated_name_lookup_obeys_busy_search_policy": 1
+      },
+      "tests.ingest.test_txt_replay_registration": {
+        "test_txt_replay_registration_is_atomic": 1,
+        "test_txt_replay_rejects_conflicting_identity": 1,
+        "test_superseded_replay_requires_current_metadata_without_reactivation": 1,
+        "test_cancelled_completed_replay_preserves_membership": 1,
+        "test_pdf_completed_replay_registers_exact_source_without_approving_it": 1,
+        "test_cancelled_completed_replay_never_adds_membership": 1,
+        "test_cancellation_during_completed_replay_validation_rolls_back_membership": 1
+      },
+      "tests.ingest.test_import_replay_identity": {
+        "test_registration_failure_rolls_back_then_replay_adds_only_membership": 2,
+        "test_replay_conflicting_identity_cannot_leave_catalog_or_membership": 8,
+        "test_replay_after_metadata_edit_preserves_revision_and_validates_current_metadata": 4,
+        "test_replay_rejects_checkpoint_text_that_differs_from_sealed_source": 2,
+        "test_replay_rechecks_active_revision_before_registering": 2,
+        "test_cancelled_replay_does_not_add_membership": 2,
+        "test_fresh_post_commit_cancellation_returns_committed_source": 2
+      },
+      "tests.ui.test_evidence_draft_recovery": {
+        "test_explicit_recover_restores_editor_only_after_authorization": 1,
+        "test_discard_and_keep_choices_do_not_replace_saved_note": 2,
+        "test_revocation_during_native_confirmation_never_reveals_draft": 1,
+        "test_changed_note_baseline_can_only_be_reviewed_without_replacing_editor": 1,
+        "test_stale_confirmation_never_overwrites_newer_recovery_revision": 1,
+        "test_successful_save_removes_only_saved_checkpoint": 1,
+        "test_newer_edit_during_save_is_checkpointed_against_new_saved_baseline": 1,
+        "test_failed_note_commit_preserves_exact_recovery_revision": 1,
+        "test_panel_destruction_flushes_cached_pending_text_without_reading_controls": 1,
+        "test_explicit_discard_does_not_recreate_draft_during_destruction": 1,
+        "test_destroy_unbinds_exact_timer_and_queued_callback_cannot_retry_failed_checkpoint": 1,
+        "test_child_destruction_preserves_live_recovery_timer_and_real_checkpoint": 1,
+        "test_corrupt_recovery_storage_reports_error_and_keeps_editor": 1,
+        "test_declined_or_failed_discard_keeps_scope_open": 1,
+        "test_save_all_waits_for_actual_note_commit_and_retains_newer_edit": 1,
+        "test_save_all_never_claims_a_blocked_or_stale_note_was_saved": 3
+      }
+    },
+    "measured_previous_source": "7959f6a9fb37b315dec18b4d310b8480d9bb94e5",
+    "run_id": 46033904918,
+    "job_id": 140624345878,
+    "prior_run_result": "FAIL; individual complete module counts are observations, not overall qualification."
+  },
+  "installed_owner": "The separate installed local-planning replay resolves only the exact imported installed Windows process helper, verifies it against the frozen source hash before and after, and records its origin. No checkout package is staged or added to installed imports.",
+  "source_budget": {
+    "previous_step_minutes": 60,
+    "step_minutes": 90,
+    "measured_previous_step": "17:20:54 through18:13:38; still-progressing51-case native duration module hit its generic600-second limit.",
+    "reason": "Keep every measured native case and existing per-case watchdog. The exact duration module gets1200seconds in the reviewed runner, and this now larger complete source cohort receives a bounded90-minute step."
+  },
+  "qualification_limits": [
+    "Individual historical exact-head PASS receipts remain bound to their original commits and artifact hashes.",
+    "No aggregate PASS is transferred to this composed source tree.",
+    "Real installer A→B, final complete installed replay and complete native gate remain required.",
+    "No actual private model inference, physical microphone/output, manual NVDA or production authority is inferred."
+  ]
+}

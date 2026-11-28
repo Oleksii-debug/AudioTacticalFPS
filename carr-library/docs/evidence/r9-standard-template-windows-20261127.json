@@ -1,0 +1,56 @@
+{
+  "schema": "carr-observed-acceptance/1",
+  "source_commit": "706ef9cd25e35f021d8b69881abbda3512b7d8d9",
+  "run_id": 46001566220,
+  "job_id": 140514230203,
+  "status": "PASS",
+  "compiler_probe": {
+    "A": {
+      "builder_sha256": "4f855dc2aa727e1e3aa12c17084bda1c4124db0f4fbaea72a69e86bebe0b8dd9",
+      "compiler_engine_version": "6.7.1",
+      "full_template_compiled": true,
+      "output_disabled": true,
+      "payload_kind": "inert compile fixtures only",
+      "recipe_sha256": "0c88fa74a6dbf919939d158a7a07d67b82eb842496461c9987777b9a7460a0c7",
+      "source_commit": "91332206578b4d8dc779fec08c8d51a67962b0ff",
+      "source_tree": "8f9de28e362ad3c53addb247ad8d774c16a9b46a",
+      "template_sha256": "0b9e5ee9366b5539af8a9b3d12023eeb05bc89ff3192c8e543947b5a785b6174"
+    },
+    "B": {
+      "builder_sha256": "4f855dc2aa727e1e3aa12c17084bda1c4124db0f4fbaea72a69e86bebe0b8dd9",
+      "compiler_engine_version": "6.7.1",
+      "full_template_compiled": true,
+      "output_disabled": true,
+      "payload_kind": "inert compile fixtures only",
+      "recipe_sha256": "08ef6158121e9bcc489f31347b1a3fb55c0b04347d91d85e323d94731efd0f98",
+      "source_commit": "706ef9cd25e35f021d8b69881abbda3512b7d8d9",
+      "source_tree": "8f41ef14b04a1861effeaea9578cad3c732d6f7b",
+      "template_sha256": "0b9e5ee9366b5539af8a9b3d12023eeb05bc89ff3192c8e543947b5a785b6174"
+    },
+    "compiler_engine_sha256": "1a6ff68241e7f3b18543bb875283788913abbdd7b9d7403ac094598d044def7a",
+    "compiler_path": "C:\\Program Files (x86)\\Inno Setup 6\\ISCC.exe",
+    "compiler_sha256": "eb6f4410c8db367a5f74127e8025ad2ccacc0afabbe783959d237df3050f97fb",
+    "full_templates": 2,
+    "harness_sha256": "d1f756a00a22b0186c3f64ab18f2ed4ba1b2f912818f2f91f05c9a8313af9c1f",
+    "native_installation": "NOT_RUN",
+    "native_predicates": "PASS",
+    "predicate_cases": 281,
+    "predicate_executable_sha256": "ab19cbcacfbfff9ec8cc548e6b7aac54440eeb69039989d8a5245dd5241be4dc",
+    "predicate_script_sha256": "d5e4d16f9996b78620b2beb1e62037bf0f84a056a91296432d42f3f798e037b4",
+    "predicates_sha256": "007bc6cf96d217d8b67556f084ed319c4064f44b00ca34ecf01bcc7a091a2d7d",
+    "schema": 1,
+    "source_templates_unchanged": true,
+    "standard_installation50": "NOT_RUN",
+    "standard_update_AB15": "NOT_RUN",
+    "status": "PASS"
+  },
+  "artifact": {
+    "id": 15198154639,
+    "bytes": 6465,
+    "sha256": "7164af95b56f26a1d6087f3afbd3effc27f139496664285a9a3e4cdd69a8e13a"
+  },
+  "limitations": [
+    "Inert compiler fixtures; no installation payload shipped",
+    "Actual standard installation50 and A-to-B15 remain separate gates"
+  ]
+}

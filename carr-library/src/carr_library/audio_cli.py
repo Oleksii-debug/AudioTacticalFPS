@@ -1,0 +1,177 @@
+"""Headless access to the same offline studio used by the native desktop."""
+from dataclasses import asdict
+import json
+from pathlib import Path
+import signal
+import sys
+from threading import Event
+
+
+def add_audio_arguments(parser):
+    group = parser.add_mutually_exclusive_group()
+    from .audio_batch_cli import add_arguments as add_batch_arguments
+    add_batch_arguments(parser, group)
+    group.add_argument('--audio-voices', action='store_true', help='List available local speech voices and compatibility notices')
+    group.add_argument('--audio-script', type=Path, help='Read a local UTF-8 production script')
+    group.add_argument('--audio-plan', type=Path, help='Read a validated versioned production-plan JSON file')
+    group.add_argument('--audio-inspect-silence', type=Path, metavar='COMPLETION_JSON',
+                       help='Inspect long-silence intervals in the verified PCM of one completed production; print JSON only')
+    parser.add_argument('--audio-silence-threshold-dbfs', type=float, metavar='DBFS',
+                        help='Explicit silence level criterion; required with --audio-inspect-silence')
+    parser.add_argument('--audio-silence-minimum-seconds', type=float, metavar='SECONDS',
+                        help='Explicit minimum silence interval; required with --audio-inspect-silence')
+    parser.add_argument('--audio-silence-run-key', metavar='RUN_KEY',
+                        help='Require this exact completed production identity during inspection')
+    parser.add_argument('--audio-silence-max-intervals', type=int, metavar='COUNT',
+                        help='Bound the inspection report interval population (default: 1000)')
+    parser.add_argument('--audio-preview', action='store_true', help='Print the validated production plan without generating audio')
+    parser.add_argument('--audio-output', type=Path, help='Local project output/cache folder; interrupted renders can resume here')
+    parser.add_argument('--voice', help='Default local voice ID from --audio-voices; role directives may override it')
+    parser.add_argument('--ffmpeg', type=Path, help='Explicit installed FFmpeg executable; no download is performed')
+    parser.add_argument('--dordiai-manifest', type=Path, help='Reviewed offline dordiai-voices runtime manifest')
+    parser.add_argument('--piper-executable', type=Path, help='User-installed local Piper executable')
+    parser.add_argument('--piper-manifest', type=Path, help='Reviewed offline Piper voice model manifest')
+
+
+def audio_requested(args):
+    from .audio_batch_cli import requested as batch_requested
+    return bool(args.audio_voices or args.audio_script or args.audio_plan
+                or getattr(args, 'audio_inspect_silence', None) or batch_requested(args))
+
+
+def validate_audio_arguments(args, parser):
+    inspection = getattr(args, 'audio_inspect_silence', None)
+    criteria = (getattr(args, 'audio_silence_threshold_dbfs', None),
+                getattr(args, 'audio_silence_minimum_seconds', None),
+                getattr(args, 'audio_silence_run_key', None),
+                getattr(args, 'audio_silence_max_intervals', None))
+    if inspection is None and any(value is not None for value in criteria):
+        parser.error('Silence inspection options require --audio-inspect-silence.')
+    if inspection is not None:
+        if criteria[0] is None or criteria[1] is None:
+            parser.error('Silence inspection requires --audio-silence-threshold-dbfs and --audio-silence-minimum-seconds.')
+        if any((args.audio_preview, args.audio_output, args.voice, args.ffmpeg,
+                args.dordiai_manifest, args.piper_executable, args.piper_manifest)):
+            parser.error('Silence inspection does not accept rendering, voice or FFmpeg options.')
+    from .audio_batch_cli import requested as batch_requested, validate as validate_batch
+    if batch_requested(args):
+        validate_batch(args, parser)
+        return
+    if any((getattr(args, 'audio_batch_action', None), getattr(args, 'audio_batch_item', None),
+            getattr(args, 'audio_batch_file', None), getattr(args, 'audio_batch_export', None),
+            getattr(args, 'audio_duration_seconds', None), getattr(args, 'audio_duration_format', None),
+            getattr(args, 'audio_duration_review', None), getattr(args, 'audio_duration_approved', None))):
+        parser.error('Batch controls require --audio-batch, --audio-batches or --audio-batch-plan.')
+    requested = audio_requested(args)
+    if requested and (args.self_test or args.backup or args.restore or args.list_libraries or args.search is not None):
+        parser.error('Choose one library or audio operation per command.')
+    if args.audio_preview and not (args.audio_script or args.audio_plan):
+        parser.error('--audio-preview requires --audio-script or --audio-plan.')
+    if (args.audio_script or args.audio_plan) and not args.audio_preview and not args.audio_output:
+        parser.error('Rendering requires --audio-output; use --audio-preview to inspect a plan first.')
+    if not requested and any((args.audio_output, args.voice, args.ffmpeg, args.dordiai_manifest,
+                              args.piper_executable, args.piper_manifest)):
+        parser.error('Audio options require --audio-voices, --audio-script or --audio-plan.')
+    if bool(args.piper_executable) != bool(args.piper_manifest):
+        parser.error('Supply both --piper-executable and --piper-manifest.')
+
+
+def _render_library_root(selected):
+    """Use the same selected library for headless policy and reviewed profiles."""
+    from .audio.jobs import checked_directory
+    if selected is None:
+        from .preferences import selected_directory
+        selected = selected_directory()
+        if selected is None:
+            from platformdirs import user_data_path
+            selected = user_data_path('Universal Research Library', appauthor=False, roaming=False)
+    return checked_directory(selected, create=True)
+
+
+def _inspect_silence(args):
+    """Use the same read-only completed-production inspector as the desktop."""
+    from .audio.jobs import RenderCancelled, check_cancelled
+    from .audio.production import inspect_completed_silence
+    stopped = Event()
+    previous = signal.getsignal(signal.SIGINT)
+    signal.signal(signal.SIGINT, lambda *_: stopped.set())
+    try:
+        check_cancelled(stopped.is_set)
+        maximum = getattr(args, 'audio_silence_max_intervals', None)
+        result = inspect_completed_silence(
+            args.audio_inspect_silence,
+            threshold_dbfs=args.audio_silence_threshold_dbfs,
+            minimum_seconds=args.audio_silence_minimum_seconds,
+            expected_run_key=getattr(args, 'audio_silence_run_key', None),
+            max_intervals=1000 if maximum is None else maximum,
+            cancelled=stopped.is_set,
+            on_status=lambda text: print(text, file=sys.stderr, flush=True))
+        check_cancelled(stopped.is_set)
+    except (RenderCancelled, InterruptedError) as exc:
+        print(json.dumps({'status': 'cancelled', 'message': str(exc)},
+                         ensure_ascii=False, indent=2))
+        return 130
+    finally:
+        signal.signal(signal.SIGINT, previous)
+    print(json.dumps(result, ensure_ascii=False, indent=2, allow_nan=False))
+    return 0
+
+
+def run_audio(args, *, trust_controller=None):
+    if getattr(args, 'audio_inspect_silence', None) is not None:
+        return _inspect_silence(args)
+    from .audio_batch_cli import requested as batch_requested, run as run_batch
+    if batch_requested(args):
+        return run_batch(args, trust_controller=trust_controller)
+    from .audio.engines import default_registry
+    from .audio.runtime import resolve_ffmpeg
+    from .audio.models import ProductionPlan
+    from .audio.production import parse_script, render_project
+    from .reader.narration_text import decode_json, read_document
+    ffmpeg = resolve_ffmpeg(args.ffmpeg)
+    registry = default_registry(ffmpeg=ffmpeg, dordiai_manifest=args.dordiai_manifest,
+        piper_executable=args.piper_executable, piper_manifest=args.piper_manifest)
+    if args.audio_voices:
+        print(json.dumps({'voices': [asdict(v) for v in registry.voices()],
+            'capabilities': registry.capabilities()}, ensure_ascii=False, indent=2))
+        return 0
+    if args.audio_plan:
+        plan = ProductionPlan.from_dict(decode_json(read_document(args.audio_plan)))
+    else:
+        voice = args.voice
+        if not voice and not args.audio_preview:
+            available = registry.voices()
+            if not available:
+                raise RuntimeError('No local speech voice is available. Run --audio-voices for compatibility details.')
+            voice = available[0].id
+        plan = parse_script(read_document(args.audio_script).decode('utf-8-sig'), title=args.audio_script.stem,
+                            voice=voice or 'sapi5:default', language=args.language or 'en')
+    if args.audio_preview:
+        print(json.dumps(plan.to_dict(), ensure_ascii=False, indent=2))
+        return 0
+    if not ffmpeg:
+        raise RuntimeError('Select an installed local FFmpeg executable with --ffmpeg.')
+    from .audio.jobs import RenderCancelled
+    from .operations import ResourceBroker, ResourceCancelled
+    stopped = Event()
+    previous = signal.getsignal(signal.SIGINT)
+    signal.signal(signal.SIGINT, lambda *_: stopped.set())
+    try:
+        from .runtime_settings import EngineProfileStore
+        library_root = _render_library_root(getattr(args, 'data_dir', None))
+        broker = ResourceBroker.for_app(library_root, cancelled=stopped.is_set)
+        profiles = EngineProfileStore(library_root)
+        result = render_project(plan, args.audio_output, engine=registry, ffmpeg=Path(ffmpeg),
+            broker=broker, music_manifest_resolver=profiles.music_manifest,
+            cancelled=stopped.is_set,
+            on_status=lambda text: print(text, file=sys.stderr, flush=True),
+            **({'trust_controller': trust_controller} if trust_controller is not None else {}))
+    except (RenderCancelled, ResourceCancelled, InterruptedError) as exc:
+        print(json.dumps({'status': 'cancelled', 'message': str(exc),
+            'resume': 'Run the same command; verified completed chunks will be reused.'},
+            ensure_ascii=False, indent=2))
+        return 130
+    finally:
+        signal.signal(signal.SIGINT, previous)
+    print(json.dumps(result, ensure_ascii=False, indent=2))
+    return 0

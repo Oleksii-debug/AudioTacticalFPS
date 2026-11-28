@@ -6,7 +6,7 @@ import pytest
 
 from carr_library.application import LibraryApp
 from carr_library.library_backup import restore_backup
-from carr_library.storage.revisions import Storage
+from carr_library.storage.revisions import Storage, CURRENT_SCHEMA_VERSION
 
 
 def populated_library(tmp_path):
@@ -26,7 +26,7 @@ def test_backup_refuses_missing_workspace_presentation(tmp_path):
         db.execute('DELETE FROM workspace_meta WHERE workspace=?', (workspace,))
         db.commit()
     assert app.workspaces(include_archived=True) == ()
-    with closing(Storage(app.database)) as storage:
+    with closing(Storage(app.database, schema_version=CURRENT_SCHEMA_VERSION)) as storage:
         with pytest.raises(ValueError, match='workspace'):
             storage.check()
     destination = tmp_path / 'backup'

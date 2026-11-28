@@ -166,6 +166,13 @@ def test_replaced_existing_destination_not_opened(publication, monkeypatch, phas
         monkeypatch.setattr(e.os, 'fsync', competing_writer)
 
     opened = []
+    metadata = []
+    real_change_time = e._windows_change_time
+    def observe_metadata(path):
+        if changed and Path(path) == target:
+            metadata.append(path)
+        return real_change_time(path)
+    monkeypatch.setattr(e, '_windows_change_time', observe_metadata)
     real_open = os.open
     def observe(path, *args, **kwargs):
         if changed and Path(path) == target:
@@ -175,6 +182,6 @@ def test_replaced_existing_destination_not_opened(publication, monkeypatch, phas
     with pytest.raises(ValueError, match='destination changed'):
         publish(approval=approval)
     assert changed
-    assert not opened
+    assert not opened and not metadata
     assert target.read_bytes() == unrelated
     assert not list(target.parent.glob('.research-export-*'))

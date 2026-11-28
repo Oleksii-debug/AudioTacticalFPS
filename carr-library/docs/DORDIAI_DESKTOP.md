@@ -1,53 +1,19 @@
-# Local dordiai-voices in the shared reader and Studio
+# DORDIAI DESKTOP — current documentation
 
-Open **Local audio, voice and music engines**, choose **Connect installed
-dordiai-voices**, and select the existing `kx47Runtime` directory. Confirm the
-local executable choice. The application checks the reviewed worker identity
-and local installation structure before saving the selection. It does not
-download voices, import private engine source into this package, or contact a
-remote synthesis service.
+This historical entry point now uses the current shared implementation.
 
-Reopen the Voice reader or Audio Studio to enumerate the installed voice and
-language pairs in the background. Their single shared `VoiceRegistry` uses the
-existing reviewed `DordiaiVoicesAdapter`; generic JSON voice helpers remain a
-different interface. **Disable dordiai-voices** removes the saved selection.
-Installed files and completed recordings remain on disk.
+Select the owner-specific adapter through the existing reviewed engine profiles. Generic JSON helpers are a different protocol. Old saved declarations do not automatically activate an installed runtime.
 
-## Persistence and identity
+Read the current documents:
 
-Schema-1 `state/audio/engines.json` gains an optional `dordiai` field. Older
-seven-field files remain readable and are not rewritten by loading them.
-The default is `null`. Disabled configurations do not inspect a private runtime
-or start a worker. Saved fields are an explicit enable flag, local runtime path,
-and optional reviewed interpreter/worker identity. Credentials, reference audio,
-model data, embeddings and voice samples are not stored in this file.
+- [LOCAL_ENGINE_PROFILES.md](LOCAL_ENGINE_PROFILES.md)
+- [LOCAL_VOICES_AND_MUSIC.md](LOCAL_VOICES_AND_MUSIC.md)
+- [validation/CANONICAL_SPEECH_TRANSCRIPTION_RECONCILIATION_20261127.md](validation/CANONICAL_SPEECH_TRANSCRIPTION_RECONCILIATION_20261127.md)
 
-Changing a model or voice resource changes the shared synthesis fingerprint.
-The adapter's bounded PCM stream is framed and published by the existing shared
-speech path; cancellation and output limits preserve existing files and discard
-partial output. Registry disposal releases owned workers, including failed or
-superseded provider instances. Reader closure waits for its bounded cancellation
-before removing temporary audio.
+The [exact earlier document](https://github.com/Oleksii-debug/AudioTacticalFPS/blob/e5c64a5245583f8f8b404a0f042f6ca438c24d7f/carr-library/docs/DORDIAI_DESKTOP.md) remains available as
+historical source evidence. Its commands, source identity, runtime results and
+rights profile belong to that earlier tree. This pointer does not transfer
+those results or certify the current platform.
 
-## What has been executed
-
-The primary103 source initially failed two actual shared-runtime integration
-tests: content changes were missing from the registry fingerprint, and explicit
-dordiai discovery was unavailable. After applying the existing provider contract
-and desktop wiring, seven strict Linux suites passed **93 cases with no failures
-or skips**. These exercise real subprocess JSONL framing with explicitly
-synthetic PCM, persisted configuration, actual shared WAV output, changed assets,
-cancellation, no overwrite, budget failures, and worker cleanup. The source gate
-requires the same three adapter/configuration suites on Windows.
-
-These results establish software integration. They do not establish acoustic
-pronunciation, similarity of cloned voices, the quality of any installed neural
-model, support for all 135 languages, or a completed manual NVDA review. Installed
-language resources and a declared compatible profile are reported separately
-from those acceptance results.
-
-The reused public adapter and provider are pinned to AF5 source commit
-`ee7baa6644ecf0b73db12dff30c41d8be9069060`; private worker files and resources are
-not part of this repository. `DORDIAI_VOICES_CONTRACT.md` records the reviewed
-protocol. `DORDIAI_SPEECH_HANDOFF.md` retains the historical provider integration
-notes; its proposed registry changes are already applied here.
+See [current readiness](V3_RELEASE_READINESS.md) for the declared scope and
+remaining qualification dependencies.

@@ -1,0 +1,1682 @@
+{
+  "schema": 1,
+  "status": "BOUNDED_SOURCE_TEST_DISPOSITION_NO_RUNTIME_EQUIVALENCE_CLAIM",
+  "review_date_utc": "2026-11-27",
+  "canonical": {
+    "commit": "a44fac04072389caa40e0d6e799b13797712f797",
+    "tree": "3cc479898b1430b49774fc0226630a667d94d2d2",
+    "recursive_tree_truncated": false
+  },
+  "current": {
+    "commit": "7959f6a9fb37b315dec18b4d310b8480d9bb94e5",
+    "tree": "eeca186b2b1a13c602aed7b0107c19c04320e20e",
+    "recursive_tree_truncated": false,
+    "initial_review_commit": "9e27ef8649408038b5fc116e6f9bdded71d6371b",
+    "initial_59_current_test_blobs_unchanged_in_current": true
+  },
+  "scope": {
+    "missing_paths": 32,
+    "default_named_test_modules": 24,
+    "test_function_definitions_in_those_modules": 236,
+    "other_paths": 8,
+    "other_paths_include": "One explicit non-default private-runtime probe containing two test definitions; it is not counted as a default named module.",
+    "families": [
+      "tests/speech/**",
+      "tests/integrations/**",
+      "tests/transcription/**",
+      "tests/voice_acceptance/**",
+      "tests/packaging/test_audio_acquisition.py",
+      "tests/packaging/test_audio_runtime.py",
+      "tests/packaging/test_prepare_windows_audio.py",
+      "tests/packaging/test_worker_bytecode.py",
+      "tests/ui/test_transcription_dialog.py"
+    ],
+    "exclusions": [
+      "Other canonical missing test families, including assistant/test_supplied_transcription.py and storage canonical modules, are owned by a separate reviewer.",
+      "This report records source contracts and explicit differences. It does not equate old parametrized case totals, claim every referenced test is selected in both main lanes, or transfer canonical/private runtime results."
+    ]
+  },
+  "method": [
+    "Fetched and matched every named canonical file against the nontruncated canonical Git tree.",
+    "Read the removed tests' contracts/assertions and relevant current-owner regressions, checked every cited current test definition exists in the exact current Git blob.",
+    "Bounded disposition is per file and contract; an old Python API/internal field/fixture can remain intentionally absent while a current workflow has its own tests.",
+    "Current test paths are references for source review. Actual source, installed and native populations remain governed by committed main/focused oracles and their receipts."
+  ],
+  "related_product_ledger": {
+    "commit": "c540dae16fce0ccecd51cebe12e06ab2ddcdb584",
+    "path": "carr-library/docs/validation/CANONICAL_SPEECH_TRANSCRIPTION_RECONCILIATION_20261127.json",
+    "git_blob": "966f042c716bd24544fc74ccf2e847972f606136"
+  },
+  "related_open_workflows": [
+    {
+      "contract": "assistant audio.transcribe",
+      "status": "MISSING_AT_THIS_REVIEW_ROOT_THIN_CURRENT_SERVICE_BRIDGE_IN_PROGRESS",
+      "scope": "Outside these 32 paths and outside the 19-file product ledger; standalone ASR is not an equivalent assistant durable-intent/partial-output workflow.",
+      "owner": "independent native composition peer",
+      "canonical_test": "carr-library/tests/assistant/test_supplied_transcription.py"
+    }
+  ],
+  "declared_non_equivalences": [
+    "Canonical warm Dordiai process retention/drain/drop is not current per-utterance ownership; warm throughput is NOT_QUALIFIED.",
+    "Canonical raw SpeechSettings/sample-width/output-budget return APIs and token-hash voice IDs are not current aliases; historical metadata remains passive.",
+    "Current local helper and Dordiai fixtures prove bounded protocol behavior only, not private vendor inference, pronunciation or acoustic quality.",
+    "Current new ASR job execution is32GiB aggregate; canonical historical sources32GiB each and64GiB aggregate are preserved passively. No 64 GiB throughput was measured.",
+    "Old selected executable symlink/base-runtime discovery policy is not inherited by current complete regular-file manifest admission.",
+    "Old packaging download/helper/manifest APIs are replaced by the current selected pinned-archive setup and sealed bundle contracts, not silently imported.",
+    "Worker-bytecode source and installed-inventory coverage does not mean the two removed old-package sentinel tests were executed unchanged.",
+    "Registered progress native16 exercises actual settings and passive recovery with audio Off, not acoustic output."
+  ],
+  "qualification_snapshot": [
+    {
+      "component": "PR196 ASR policy",
+      "commit": "e087fce3e51f1401532f0c444f6eb9dc9d42c652",
+      "run_id": 46030395296,
+      "job_id": 140612421441,
+      "status": "QUEUED_AT_REVIEW",
+      "declared": {
+        "source": 422,
+        "installed": 422,
+        "native": 53
+      }
+    },
+    {
+      "component": "Local helper final cleanup",
+      "commit": "f9291652a6bb05ac6b896e924568d8ccbc3b634f",
+      "run_id": 46029759866,
+      "job_id": 140610308737,
+      "status": "QUEUED_AT_REVIEW",
+      "declared": {
+        "source": 111,
+        "installed": 111,
+        "native": 31
+      }
+    },
+    {
+      "component": "Native SAPI final firewall",
+      "commit": "ecfc054b13bb3d44859021d9da12e644e0a12fb7",
+      "run_id": 46025111819,
+      "job_id": 140594387108,
+      "status": "QUEUED_AT_REVIEW",
+      "declared": {
+        "source": 71,
+        "installed": 71,
+        "native": 35
+      }
+    },
+    {
+      "component": "Current root",
+      "commit": "7959f6a9fb37b315dec18b4d310b8480d9bb94e5",
+      "status": "SOURCE_REVIEW_ONLY_NO_COMPOSED_RUNTIME_PASS_IN_THIS_REPORT"
+    }
+  ],
+  "referenced_current_tests": [
+    {
+      "path": "carr-library/tests/audio/test_audio_runtime.py",
+      "git_blob": "8b2bf7a6d83db5a4b978dcee7f2d8942a8bd6c78"
+    },
+    {
+      "path": "carr-library/tests/audio/test_dordiai_discovery.py",
+      "git_blob": "ed928c997310797e72f6b04c52549f76a8eb21ee"
+    },
+    {
+      "path": "carr-library/tests/audio/test_engine_boundaries.py",
+      "git_blob": "2a885f1f83e0db9b1e8dfc98ac28d6deb98bb244"
+    },
+    {
+      "path": "carr-library/tests/audio/test_engine_profiles.py",
+      "git_blob": "778b3d443e441b94d1cb6d035690609facc24e3c"
+    },
+    {
+      "path": "carr-library/tests/audio/test_engines.py",
+      "git_blob": "6c425ea9dbcae47eeb8b81b24ed2936d5252f65e"
+    },
+    {
+      "path": "carr-library/tests/audio/test_local_voice_helper.py",
+      "git_blob": "43896c8fa9a0b43596da3b056a530e5c52b2f3dd"
+    },
+    {
+      "path": "carr-library/tests/audio/test_model_manifest.py",
+      "git_blob": "3e1490c4206ccbb253e2aa943b3f31bd2336201c"
+    },
+    {
+      "path": "carr-library/tests/audio/test_native_sapi.py",
+      "git_blob": "1ca3590e3731fde735568e33ac8780b8df9977e7"
+    },
+    {
+      "path": "carr-library/tests/audio/test_publication_fsync.py",
+      "git_blob": "28703b8bf31ddc787f5d754ff14a57740e8d095b"
+    },
+    {
+      "path": "carr-library/tests/audio/test_subprocess_environment.py",
+      "git_blob": "51d7ab2d2a635fce6eb53016dccd9953ae43aff3"
+    },
+    {
+      "path": "carr-library/tests/audio/test_windows_fsync.py",
+      "git_blob": "ab32d451c3ff6c76f3034ad2bad4dea19b6bbfca"
+    },
+    {
+      "path": "carr-library/tests/operations/test_state.py",
+      "git_blob": "af10085a69c699d58b750cadc80c8c7a575caa06"
+    },
+    {
+      "path": "carr-library/tests/operations/test_transcription_admission.py",
+      "git_blob": "08414f285f9ea1ebe6a170a3cf069beb44bdcfc8"
+    },
+    {
+      "path": "carr-library/tests/packaging/test_audio_bundle.py",
+      "git_blob": "587bab23e4d0d632b36d873edfea432282527bc2"
+    },
+    {
+      "path": "carr-library/tests/packaging/test_install_bytecode.py",
+      "git_blob": "a5d9b2c775905968d24ccac4682c469f8d3bb43c"
+    },
+    {
+      "path": "carr-library/tests/packaging/test_local_audio_setup.py",
+      "git_blob": "9369df27f0279150ceb6a43ae0db14d59b199614"
+    },
+    {
+      "path": "carr-library/tests/packaging/test_native_runtime.py",
+      "git_blob": "654d56141e63d05627e43662131cda77b51db9a5"
+    },
+    {
+      "path": "carr-library/tests/reader/test_legacy_reader_session.py",
+      "git_blob": "adcdcb1650d660a3da6130fb397cf6d7778afc34"
+    },
+    {
+      "path": "carr-library/tests/reader/test_legacy_reading_import.py",
+      "git_blob": "0db272e780f0508523a215ae48755be0f5f229a3"
+    },
+    {
+      "path": "carr-library/tests/reader/test_narration_text.py",
+      "git_blob": "9f41e3453b0776d95a2f4913860f5478acabaa69"
+    },
+    {
+      "path": "carr-library/tests/reader/test_narration.py",
+      "git_blob": "0aac2a70353f891031e0a6ff5a79b753a75462ea"
+    },
+    {
+      "path": "carr-library/tests/reader/test_reading_desk.py",
+      "git_blob": "d30dbfcfba614c65c4c30da7ec7c65baa9c9b55d"
+    },
+    {
+      "path": "carr-library/tests/reader/test_scoped_pronunciation.py",
+      "git_blob": "fe5c1cf6d82208e06e4d25c453b7be1354be7732"
+    },
+    {
+      "path": "carr-library/tests/storage/test_atomic_state_publication.py",
+      "git_blob": "a37e4c377f5baa5c85d16ad9ea8912d695089451"
+    },
+    {
+      "path": "carr-library/tests/storage/test_legacy_reader_session_backup.py",
+      "git_blob": "11112a1b5a811302ff71af5a1db437cac4976cab"
+    },
+    {
+      "path": "carr-library/tests/storage/test_legacy_transcription_recovery.py",
+      "git_blob": "0eac43ab32532884bb60378d2e12963b5ca73078"
+    },
+    {
+      "path": "carr-library/tests/storage/test_state_json_reader.py",
+      "git_blob": "f49f65182a99037232c49b85a30c34512d28b8c7"
+    },
+    {
+      "path": "carr-library/tests/storage/test_supplied_transcription_backup.py",
+      "git_blob": "d709aeb18199c8107c2140148c6d4e282b84d2fb"
+    },
+    {
+      "path": "carr-library/tests/test_transcription_receipt.py",
+      "git_blob": "85c90d11437616fb9c24d383d7529c0330b6e749"
+    },
+    {
+      "path": "carr-library/tests/test_transcription_service.py",
+      "git_blob": "c305a702d144515708fae0213ec8475c16bb1d9c"
+    },
+    {
+      "path": "carr-library/tests/transcription/test_pr99_host.py",
+      "git_blob": "a0e4cb5312e1cbabb40880da9838c202afbb68a2"
+    },
+    {
+      "path": "carr-library/tests/transcription/test_supplied_worker_bridge.py",
+      "git_blob": "c2536d290c531bbddaad9766d445f1869f97fbfa"
+    },
+    {
+      "path": "carr-library/tests/transcription/test_v5_worker_profile.py",
+      "git_blob": "facf326a071432dc26243e4c4a1a942cfe6adc2d"
+    },
+    {
+      "path": "carr-library/tests/ui/test_legacy_reader_session.py",
+      "git_blob": "b1d7c3631e6b76a8bdb0ae37b38901ea7f4a107c"
+    },
+    {
+      "path": "carr-library/tests/ui/test_legacy_transcription_recovery.py",
+      "git_blob": "0072ac96777062a7eab2751f8ee591116f075ab6"
+    },
+    {
+      "path": "carr-library/tests/ui/test_narration_editor.py",
+      "git_blob": "cceb6ee8a105662cb2d9562aa04cf7151ff3aa1f"
+    },
+    {
+      "path": "carr-library/tests/ui/test_operation_progress.py",
+      "git_blob": "c604c6112f5c40a172e1c8622acdfc4412f8bc1e"
+    },
+    {
+      "path": "carr-library/tests/ui/test_progress_compatibility.py",
+      "git_blob": "c6a9145c92d4c0ea48c8e84ed7b7f81a057aac2a"
+    },
+    {
+      "path": "carr-library/tests/ui/test_progress_registered_voices.py",
+      "git_blob": "9a1b875860796c915fe1e4f7facd15c01aa4fdd1"
+    },
+    {
+      "path": "carr-library/tests/ui/test_reading_import.py",
+      "git_blob": "f49c31d9bcb62b912d4e3e62e11e8169550d6690"
+    },
+    {
+      "path": "carr-library/tests/ui/test_shared_progress.py",
+      "git_blob": "57ae94bb50fb5ac9591227768e52fe4159444544"
+    },
+    {
+      "path": "carr-library/tests/ui/test_transcription_v43_dialog.py",
+      "git_blob": "581598ca55aad537f2476e8027302673887187e1"
+    }
+  ],
+  "files": [
+    {
+      "canonical_path": "carr-library/tests/integrations/__init__.py",
+      "canonical_git_blob": "1ca9f3fafe08709103c64426a7c5311eb3f28455",
+      "kind": "support-package",
+      "canonical_test_definitions": [],
+      "disposition": "REPLACED_TEST_PACKAGE",
+      "contract": "Old adapter test package marker; it contains no product behavior or user state.",
+      "current_test_references": [],
+      "limits": [
+        "No current import alias for carr_library.integrations is introduced."
+      ]
+    },
+    {
+      "canonical_path": "carr-library/tests/integrations/dordiai_private_probe.py",
+      "canonical_git_blob": "025121d5851ce6d1de03967227cd94fc740f9250",
+      "kind": "opt-in-private-probe",
+      "canonical_test_definitions": [
+        "test_real_upstream_worker_no_model_handshake_error_cancel_drop",
+        "test_real_upstream_inventory_uses_actual_helpers_without_inference"
+      ],
+      "disposition": "PRIVATE_RUNTIME_NOT_RUN",
+      "contract": "Explicit real-upstream no-model handshake, error/cancel/drop and installed-helper inventory checks require CARR_TEST_DORDIAI_RUNTIME.",
+      "current_test_references": [
+        {
+          "path": "carr-library/tests/audio/test_dordiai_discovery.py",
+          "git_blob": "ed928c997310797e72f6b04c52549f76a8eb21ee",
+          "test_definitions": [
+            "test_constructor_and_real_discovery_accept_actual_flat_catalog_shape",
+            "test_constructor_discovery_and_existing_pcm_transport_work_together"
+          ]
+        }
+      ],
+      "limits": [
+        "Current references use public synthetic installations. They are not execution of the private upstream worker, acoustic models or this optional probe. No private-runtime, listening or NVDA PASS transfers."
+      ]
+    },
+    {
+      "canonical_path": "carr-library/tests/integrations/test_dordiai_convergence.py",
+      "canonical_git_blob": "e18e02267f7a3d3a7fdaed909abff8b1c8e78e92",
+      "kind": "test-module",
+      "canonical_test_definitions": [
+        "test_two_installations_with_same_profiles_route_to_their_own_workers",
+        "test_terminal_stream_cleanup_happens_before_atomic_publication",
+        "test_utterance_deadline_includes_initial_model_fingerprint",
+        "test_provider_cold_discovery_cancellation_closes_owned_child",
+        "test_model_fingerprint_can_be_cancelled_without_losing_content_checks",
+        "test_same_metadata_model_change_restarts_only_the_changed_warm_worker"
+      ],
+      "disposition": "CURRENT_CONTRACTS_WITH_EXPLICIT_LIFECYCLE_DIFFERENCE",
+      "contract": "Distinct reviewed installations, model-content identity, cancellable discovery and settlement before publication.",
+      "current_test_references": [
+        {
+          "path": "carr-library/tests/audio/test_engine_profiles.py",
+          "git_blob": "778b3d443e441b94d1cb6d035690609facc24e3c",
+          "test_definitions": [
+            "test_registered_speech_ids_coexist_and_revalidate_before_every_call",
+            "test_content_change_is_rejected_even_when_size_and_mtime_are_restored"
+          ]
+        },
+        {
+          "path": "carr-library/tests/audio/test_dordiai_discovery.py",
+          "git_blob": "ed928c997310797e72f6b04c52549f76a8eb21ee",
+          "test_definitions": [
+            "test_discovery_cancels_a_real_hung_helper_process",
+            "test_source_runtime_change_after_discovery_does_not_leave_usable_cached_voice"
+          ]
+        },
+        {
+          "path": "carr-library/tests/audio/test_engine_boundaries.py",
+          "git_blob": "2a885f1f83e0db9b1e8dfc98ac28d6deb98bb244",
+          "test_definitions": [
+            "test_finished_worker_still_obeys_absolute_deadline",
+            "test_cancellation_stops_descendant_after_its_process_group_leader_exits"
+          ]
+        }
+      ],
+      "limits": [
+        "Canonical warm-worker reuse/restart identity assertions are not ported: the current owner settles a worker per utterance. This is an explicit lifecycle/performance difference, not a measured warm-cache equivalence."
+      ]
+    },
+    {
+      "canonical_path": "carr-library/tests/integrations/test_dordiai_probe_cancellation.py",
+      "canonical_git_blob": "96ec861256678a75010ca3ec9b1620d13876d866",
+      "kind": "test-module",
+      "canonical_test_definitions": [
+        "test_cold_probe_cancel_closes_real_child_and_can_retry",
+        "test_pre_cancelled_discovery_never_launches_child_even_for_cached_inventory",
+        "test_cancel_after_inventory_validation_does_not_cache_it",
+        "test_cold_probe_timeout_is_absolute_and_closes_real_child"
+      ],
+      "disposition": "CURRENT_PROTOCOL_CONTRACTS",
+      "contract": "Cold metadata discovery cancellation, pre-cancel admission, deadline and invalidated catalogue cleanup.",
+      "current_test_references": [
+        {
+          "path": "carr-library/tests/audio/test_dordiai_discovery.py",
+          "git_blob": "ed928c997310797e72f6b04c52549f76a8eb21ee",
+          "test_definitions": [
+            "test_discovery_cancels_a_real_hung_helper_process",
+            "test_discovery_timeout_is_bounded",
+            "test_source_runtime_change_after_discovery_does_not_leave_usable_cached_voice"
+          ]
+        },
+        {
+          "path": "carr-library/tests/audio/test_engine_boundaries.py",
+          "git_blob": "2a885f1f83e0db9b1e8dfc98ac28d6deb98bb244",
+          "test_definitions": [
+            "test_voice_registry_does_not_swallow_discovery_cancellation",
+            "test_synthesis_cancellation_precedes_lazy_voice_discovery"
+          ]
+        }
+      ],
+      "limits": [
+        "These exercise the current owned-process API. Old adapter._inventory/_worker internal field assertions are not current API aliases."
+      ]
+    },
+    {
+      "canonical_path": "carr-library/tests/integrations/test_dordiai_settings.py",
+      "canonical_git_blob": "31f573c60337fb68f13ab1c19bb1b336442ef465",
+      "kind": "test-module",
+      "canonical_test_definitions": [
+        "test_legacy_settings_are_normalized_without_rewriting_or_mutating_input",
+        "test_disabled_saved_engine_never_probes_private_paths",
+        "test_bad_declaration_preserves_last_saved_configuration",
+        "test_saved_engine_reaches_actual_shared_render_and_releases_worker",
+        "test_failed_later_provider_releases_already_registered_private_engine",
+        "test_registry_closes_remaining_workers_after_one_cleanup_error"
+      ],
+      "disposition": "PASSIVE_LEGACY_SETTINGS_AND_CURRENT_PROFILE_CONTRACTS",
+      "contract": "Explicit registration, disabled-path inertia, independent saved identities and resource cleanup.",
+      "current_test_references": [
+        {
+          "path": "carr-library/tests/audio/test_engine_profiles.py",
+          "git_blob": "778b3d443e441b94d1cb6d035690609facc24e3c",
+          "test_definitions": [
+            "test_registration_is_persistent_and_does_not_execute_or_import_assets",
+            "test_legacy_paths_remain_inert_and_exact_bytes_are_preserved_on_explicit_registration",
+            "test_registered_speech_ids_coexist_and_revalidate_before_every_call"
+          ]
+        },
+        {
+          "path": "carr-library/tests/audio/test_local_voice_helper.py",
+          "git_blob": "43896c8fa9a0b43596da3b056a530e5c52b2f3dd",
+          "test_definitions": [
+            "test_two_registered_helpers_keep_distinct_saved_ids_without_silent_rebinding"
+          ]
+        }
+      ],
+      "limits": [
+        "Schema1 bytes are archived exactly and remain passive; old dordiai configuration is not auto-enabled. Current local-profile identities are not silently substituted for old provider IDs."
+      ]
+    },
+    {
+      "canonical_path": "carr-library/tests/integrations/test_dordiai_speech.py",
+      "canonical_git_blob": "1b8191f2a59c9eea4da662423c1b8bd4cd03fb19",
+      "kind": "test-module",
+      "canonical_test_definitions": [
+        "test_actual_registry_enumerates_only_ready_pairs",
+        "test_actual_registry_frames_and_publishes_24k_mono_pcm",
+        "test_existing_output_and_unsupported_punctuation_are_preserved",
+        "test_audio_budget_failure_publishes_no_partial_file",
+        "test_midstream_cancellation_publishes_no_partial_file",
+        "test_content_fingerprint_changes_with_model_bytes_not_just_catalog",
+        "test_changed_installation_during_render_is_not_published",
+        "test_changed_base_assets_restart_warm_worker",
+        "test_disabled_configuration_does_not_probe_and_enabled_registers",
+        "test_discover_opt_in_hook_registers_same_provider"
+      ],
+      "disposition": "CURRENT_PROTOCOL_CONTRACTS_WITH_WARM_WORKER_LIMIT",
+      "contract": "Actual synthetic JSONL PCM framing, exact available voice/language pairs, unsupported controls, source pinning and no-clobber publication.",
+      "current_test_references": [
+        {
+          "path": "carr-library/tests/audio/test_engines.py",
+          "git_blob": "6c425ea9dbcae47eeb8b81b24ed2936d5252f65e",
+          "test_definitions": [
+            "test_dordiai_real_process_protocol_streams_pcm_and_requests_next",
+            "test_dordiai_protocol_rejects_invalid_or_empty_pcm"
+          ]
+        },
+        {
+          "path": "carr-library/tests/audio/test_dordiai_discovery.py",
+          "git_blob": "ed928c997310797e72f6b04c52549f76a8eb21ee",
+          "test_definitions": [
+            "test_constructor_discovery_and_existing_pcm_transport_work_together",
+            "test_missing_resources_do_not_advertise_catalog_targets",
+            "test_unsupported_voice_language_fails_before_render"
+          ]
+        },
+        {
+          "path": "carr-library/tests/audio/test_publication_fsync.py",
+          "git_blob": "28703b8bf31ddc787f5d754ff14a57740e8d095b",
+          "test_definitions": [
+            "test_cancellation_during_final_flush_does_not_publish"
+          ]
+        }
+      ],
+      "limits": [
+        "Canonical retained warm process and configurable raw SpeechSettings output budget are not aliases for the current per-utterance PCM16/bounded adapter. No acoustic inference is established by either synthetic fixture."
+      ]
+    },
+    {
+      "canonical_path": "carr-library/tests/integrations/test_dordiai_voices.py",
+      "canonical_git_blob": "e46257220ef1af5c129669aa9037dafa788077af",
+      "kind": "test-module",
+      "canonical_test_definitions": [
+        "test_private_probe_dynamic_catalogue_policy_and_managed_roles",
+        "test_capabilities_do_not_promise_ssml_emotions_phonemes_or_pronunciation",
+        "test_actual_reference_pull_framing_routes_and_pcm",
+        "test_streamed_loading_and_frame_progress_are_not_percentages",
+        "test_bad_audio_and_engine_errors_do_not_report_success",
+        "test_cancel_out_of_band_drains_old_finished_then_drop_ack",
+        "test_cancel_from_progress_callback_yields_no_stale_pcm",
+        "test_cancel_after_yield_does_not_request_more_native_generation",
+        "test_external_pre_cancel_does_not_start_worker",
+        "test_generic_worker_cancellation_callback_is_supported",
+        "test_timeout_is_bounded_and_next_render_is_synchronized",
+        "test_generator_close_and_busy_are_safe",
+        "test_no_unbounded_audio_when_worker_never_finishes",
+        "test_midstream_package_change_invalidates_render",
+        "test_unsupported_controls_are_not_silently_ignored",
+        "test_unavailable_voice_language_or_unverified_accent_fails_explicitly",
+        "test_changed_worker_cannot_be_silently_used",
+        "test_remote_path_and_missing_interpreter_are_rejected",
+        "test_resolved_path_outside_selected_runtime_is_rejected",
+        "test_process_limits_frames_and_rejects_invalid_json",
+        "test_private_worker_gets_offline_flags_without_host_environment_changes",
+        "test_deep_bounded_json_fails_as_protocol_error_without_dead_reader",
+        "test_stalled_worker_cannot_block_large_stdin_or_shutdown"
+      ],
+      "disposition": "CURRENT_PROTOCOL_CONTRACTS_WITH_EXPLICIT_DIFFERENCES",
+      "contract": "Installed catalogue/policy/resource discovery, literal JSONL next-chunk transport, bounded diagnostics, cancellation, language/control refusal and offline environment.",
+      "current_test_references": [
+        {
+          "path": "carr-library/tests/audio/test_dordiai_discovery.py",
+          "git_blob": "ed928c997310797e72f6b04c52549f76a8eb21ee",
+          "test_definitions": [
+            "test_managed_package_overlays_and_required_roles_are_respected",
+            "test_discovery_does_not_allow_network_or_child_processes",
+            "test_oversized_real_process_output_is_stopped"
+          ]
+        },
+        {
+          "path": "carr-library/tests/audio/test_engines.py",
+          "git_blob": "6c425ea9dbcae47eeb8b81b24ed2936d5252f65e",
+          "test_definitions": [
+            "test_dordiai_real_process_protocol_streams_pcm_and_requests_next",
+            "test_dordiai_cancels_worker_that_never_reads_large_unicode_request",
+            "test_dordiai_worker_denies_network_before_external_code"
+          ]
+        },
+        {
+          "path": "carr-library/tests/audio/test_engine_boundaries.py",
+          "git_blob": "2a885f1f83e0db9b1e8dfc98ac28d6deb98bb244",
+          "test_definitions": [
+            "test_dordiai_rejects_duplicate_completion_fields_from_actual_worker"
+          ]
+        },
+        {
+          "path": "carr-library/tests/audio/test_subprocess_environment.py",
+          "git_blob": "51d7ab2d2a635fce6eb53016dccd9953ae43aff3",
+          "test_definitions": [
+            "test_local_child_cannot_create_logs_from_inherited_environment"
+          ]
+        }
+      ],
+      "limits": [
+        "The old long-lived cancellation/drain/drop resynchronization and generator APIs are not retained over a second process family. Current cancellation settles the owned process; it cannot reuse a stale reply in another utterance. Private vendor inference remains NOT_RUN."
+      ]
+    },
+    {
+      "canonical_path": "carr-library/tests/packaging/test_audio_acquisition.py",
+      "canonical_git_blob": "a93e1b3fbc9b68aa5c5a66942ac8148c5d417f5b",
+      "kind": "test-module",
+      "canonical_test_definitions": [
+        "test_exact_download_is_atomically_published_and_subsequently_reused",
+        "test_wrong_or_over_budget_download_leaves_no_published_or_partial_file",
+        "test_existing_wrong_input_is_preserved_and_never_downloaded_over",
+        "test_concurrent_destination_creation_is_not_overwritten",
+        "test_plain_http_redirect_is_rejected"
+      ],
+      "disposition": "REPLACED_PACKAGING_ROUTE_NO_DOWNLOAD_ALIAS",
+      "contract": "Old acquire_audio_runtime download/reuse/refusal and redirect tests targeted a separate packaging helper.",
+      "current_test_references": [
+        {
+          "path": "carr-library/tests/packaging/test_local_audio_setup.py",
+          "git_blob": "9369df27f0279150ceb6a43ae0db14d59b199614",
+          "test_definitions": [
+            "test_default_plan_is_read_only_and_uses_current_pinned_inventory",
+            "test_existing_destination_is_never_adopted_or_changed",
+            "test_changed_selected_archive_requires_a_new_review",
+            "test_interactive_refusal_never_starts_preparation",
+            "test_same_size_wrong_archive_fails_existing_hash_guard_without_runtime"
+          ]
+        },
+        {
+          "path": "carr-library/tests/audio/test_audio_runtime.py",
+          "git_blob": "8b2bf7a6d83db5a4b978dcee7f2d8942a8bd6c78",
+          "test_definitions": [
+            "test_package_preparer_rejects_wrong_archive_before_destination"
+          ]
+        }
+      ],
+      "limits": [
+        "The current public SetupLocalAudio route reviews an explicitly selected local pinned archive and reports downloads=False. Exact CI provisioning fetches only the committed archive pin; it is not the old general download helper or a test of its redirect/reuse API."
+      ]
+    },
+    {
+      "canonical_path": "carr-library/tests/packaging/test_audio_runtime.py",
+      "canonical_git_blob": "56d26d123dbe8f1de63dcbee905f884fb20f64eb",
+      "kind": "test-module",
+      "canonical_test_definitions": [
+        "test_prepared_complete_payload_has_exact_tools_and_unchanged_notice",
+        "test_coordinated_binary_and_inner_outer_manifest_tamper_cannot_change_reviewed_identity",
+        "test_missing_extra_changed_or_rebound_payload_is_rejected",
+        "test_unannounced_or_non_boolean_runtime_flag_is_rejected",
+        "test_duplicate_manifest_keys_fail_closed",
+        "test_source_checkout_and_non_windows_inventory_check_do_not_change_path",
+        "test_windows_activation_prepends_verified_directory_once_and_keeps_user_paths",
+        "test_tampered_payload_never_mutates_path",
+        "test_discovery_uses_only_near_interpreter_prefixes",
+        "test_sibling_source_checkout_name_is_not_an_installed_runtime",
+        "test_unsealed_runtime_bin_is_still_rejected_by_implicit_discovery",
+        "test_preparation_never_overwrites_existing_directory",
+        "test_wrong_download_or_sources_fail_before_output_publication",
+        "test_parent_traversal_and_relative_runtime_paths_are_rejected",
+        "test_wrong_pe_architecture_fails_even_for_internally_consistent_inventory",
+        "test_source_lock_replaced_after_snapshot_read_cannot_rebind_verification",
+        "test_preparation_uses_verified_archive_snapshot_after_original_path_replacement",
+        "test_untrusted_lock_is_hash_rejected_before_json_is_parsed"
+      ],
+      "disposition": "CURRENT_SEALED_AUDIO_RUNTIME_CONTRACT",
+      "contract": "Reviewed FFmpeg archive/member identity, complete publisher tools/notices, bundle inventory, discovered installation root and tamper refusal.",
+      "current_test_references": [
+        {
+          "path": "carr-library/tests/audio/test_audio_runtime.py",
+          "git_blob": "8b2bf7a6d83db5a4b978dcee7f2d8942a8bd6c78",
+          "test_definitions": [
+            "test_full_runtime_preserves_every_reviewed_publisher_file",
+            "test_bundle_discovery_uses_install_root_not_working_directory",
+            "test_invalid_bundle_fails_before_execution",
+            "test_invalid_windows_bundle_is_not_silently_replaced_by_path"
+          ]
+        },
+        {
+          "path": "carr-library/tests/packaging/test_audio_bundle.py",
+          "git_blob": "587bab23e4d0d632b36d873edfea432282527bc2",
+          "test_definitions": [
+            "test_sealed_audio_runtime_and_notices_are_installed_with_exact_inventory",
+            "test_runtime_corruption_fails_before_output_publication",
+            "test_runtime_changed_during_copy_cannot_be_sealed",
+            "test_installer_rejects_extra_and_unannounced_audio_payloads"
+          ]
+        },
+        {
+          "path": "carr-library/tests/packaging/test_native_runtime.py",
+          "git_blob": "654d56141e63d05627e43662131cda77b51db9a5",
+          "test_definitions": [
+            "test_tamper_cannot_be_hidden_by_regenerating_manifests",
+            "test_duplicate_keys_and_bool_schema_are_rejected"
+          ]
+        }
+      ],
+      "limits": [
+        "The current audio.runtime manifest/layout and private native-loader contract replace the old audio_runtime module. Exact old PATH-prefix behavior and inner/outer manifest object shape are not asserted as aliases."
+      ]
+    },
+    {
+      "canonical_path": "carr-library/tests/packaging/test_prepare_windows_audio.py",
+      "canonical_git_blob": "2e1b1453f3567d65a2db5fe390539e4f301ceb32",
+      "kind": "test-module",
+      "canonical_test_definitions": [
+        "test_offline_prepare_verifies_each_file_and_retains_notices",
+        "test_missing_offline_archive_never_downloads",
+        "test_archive_and_selected_member_tampering_do_not_publish",
+        "test_archive_paths_cannot_escape_even_with_a_matching_archive_hash",
+        "test_case_collisions_are_rejected",
+        "test_archive_symlink_is_rejected",
+        "test_wrong_executable_architecture_is_rejected_before_publication",
+        "test_unsafe_download_hosts_and_redirects_are_rejected",
+        "test_private_profile_and_exact_manifest_are_required",
+        "test_directory_publication_never_replaces_existing_empty_directory",
+        "test_raw_zip_name_is_validated_before_platform_normalization"
+      ],
+      "disposition": "CURRENT_PINNED_OFFLINE_PREPARATION_CONTRACT",
+      "contract": "Offline selected archive, immutable member identity/notices, fresh destination, no executable invocation during passive plan and fail-before-publication.",
+      "current_test_references": [
+        {
+          "path": "carr-library/tests/packaging/test_local_audio_setup.py",
+          "git_blob": "9369df27f0279150ceb6a43ae0db14d59b199614",
+          "test_definitions": [
+            "test_archive_rejects_unsafe_or_unpinned_selection",
+            "test_synthetic_pinned_archive_uses_existing_preparer_and_final_verifier",
+            "test_disk_budget_refusal_precedes_any_created_work_folder",
+            "test_non_windows_preparation_does_not_write"
+          ]
+        },
+        {
+          "path": "carr-library/tests/audio/test_audio_runtime.py",
+          "git_blob": "8b2bf7a6d83db5a4b978dcee7f2d8942a8bd6c78",
+          "test_definitions": [
+            "test_package_preparer_rejects_wrong_archive_before_destination"
+          ]
+        },
+        {
+          "path": "carr-library/tests/packaging/test_audio_bundle.py",
+          "git_blob": "587bab23e4d0d632b36d873edfea432282527bc2",
+          "test_definitions": [
+            "test_missing_original_build_documentation_rejects_runtime_before_copy"
+          ]
+        }
+      ],
+      "limits": [
+        "Current preparation accepts the one archive SHA and fixed member map rather than a caller-authored general lock/URL parser. Old unsafe-URL parser cases are not presented as executed current cases. Actual Windows runtime receipts are separate from tiny ZIP tests."
+      ]
+    },
+    {
+      "canonical_path": "carr-library/tests/packaging/test_worker_bytecode.py",
+      "canonical_git_blob": "795d2d0e3cc9f93b6e84a89e379959af00c6878d",
+      "kind": "test-module",
+      "canonical_test_definitions": [
+        "test_regex_pronunciation_child_preserves_runtime",
+        "test_native_sapi_child_preserves_runtime"
+      ],
+      "disposition": "CURRENT_CHILD_STARTUP_AND_SEALED_INSTALLATION_CONTRACT",
+      "contract": "Isolated helper launches must not mutate reviewed Python/runtime files.",
+      "current_test_references": [
+        {
+          "path": "carr-library/tests/audio/test_native_sapi.py",
+          "git_blob": "1ca3590e3731fde735568e33ac8780b8df9977e7",
+          "test_definitions": [
+            "test_native_literal_text_and_punctuation_are_only_private_json",
+            "test_worker_import_does_not_initialize_com"
+          ]
+        },
+        {
+          "path": "carr-library/tests/reader/test_scoped_pronunciation.py",
+          "git_blob": "fe5c1cf6d82208e06e4d25c453b7be1354be7732",
+          "test_definitions": [
+            "test_actual_catastrophic_regex_hits_deadline_and_leaves_no_live_child",
+            "test_actual_started_regex_worker_is_cancelled_and_reaped"
+          ]
+        },
+        {
+          "path": "carr-library/tests/packaging/test_install_bytecode.py",
+          "git_blob": "a5d9b2c775905968d24ccac4682c469f8d3bb43c",
+          "test_definitions": [
+            "test_installer_launcher_first_and_repeat_run_preserve_runtime",
+            "test_application_and_diagnostic_launchers_do_not_modify_runtime",
+            "test_real_venv_ensurepip_and_nested_pip_inherit_bytecode_policy"
+          ]
+        },
+        {
+          "path": "carr-library/tests/audio/test_local_voice_helper.py",
+          "git_blob": "43896c8fa9a0b43596da3b056a530e5c52b2f3dd",
+          "test_definitions": [
+            "test_actual_literal_unicode_and_controls_cross_json_stdin_without_shell"
+          ]
+        }
+      ],
+      "limits": [
+        "Current native-SAPI command tests require -I/-B and installed probes bind source/runtime inventories. The two old monkeypatched sealed-runtime child sentinel tests have not been run unchanged against their removed speech package; no exact old-suite execution claim is made."
+      ]
+    },
+    {
+      "canonical_path": "carr-library/tests/speech/test_native_sapi_protocol.py",
+      "canonical_git_blob": "80fa63fb9771a108c1b2c069c8f4652a119f9b4a",
+      "kind": "test-module",
+      "canonical_test_definitions": [
+        "test_native_protocol_keeps_text_literal_and_bounds_output_to_private_staging",
+        "test_invalid_native_requests_stop_before_loading_com",
+        "test_fixed_file_worker_reply_works_without_console_streams",
+        "test_worker_does_not_overwrite_an_existing_reply",
+        "test_default_windows_discovery_does_not_start_powershell",
+        "test_native_provider_keeps_existing_token_ids_and_language_mapping",
+        "test_native_worker_source_uses_only_fixed_sapi_classes_and_plain_text_flags",
+        "test_native_sapi_child_preserves_existing_runtime_bytecode"
+      ],
+      "disposition": "CURRENT_NATIVE_SAPI_PROTOCOL_WITH_EXPLICIT_IDENTITY_DIFFERENCE",
+      "contract": "Literal fixed file protocol, private staging, selected token/name binding, fixed in-process COM classes, no eager PowerShell and no output substitution.",
+      "current_test_references": [
+        {
+          "path": "carr-library/tests/audio/test_native_sapi.py",
+          "git_blob": "1ca3590e3731fde735568e33ac8780b8df9977e7",
+          "test_definitions": [
+            "test_native_literal_text_and_punctuation_are_only_private_json",
+            "test_worker_rejects_invalid_request_before_com",
+            "test_worker_refuses_existing_or_external_output",
+            "test_fixed_com_classes_and_literal_flags_preserve_selected_voice",
+            "test_default_windows_discovery_never_constructs_powershell",
+            "test_native_voice_id_preserves_exact_system_speech_token_leaf",
+            "test_saved_32_bit_voice_resolves_only_after_explicit_identity_selection"
+          ]
+        }
+      ],
+      "limits": [
+        "Current implementation uses pinned pywin32 312 and preserves existing current voice IDs; it does not copy comtypes or rebind old canonical token-hash IDs. New native PCM is 22050 Hz mono 16-bit. Actual 71/71/35 qualification is queued and historical PowerShell evidence does not transfer."
+      ]
+    },
+    {
+      "canonical_path": "carr-library/tests/speech/test_output_fsync.py",
+      "canonical_git_blob": "78539a1fe02136241d8a4b84226083dff154c351",
+      "kind": "test-module",
+      "canonical_test_definitions": [
+        "test_speech_flushes_writable_staging_before_publication",
+        "test_failed_speech_flush_discards_staging_without_publication"
+      ],
+      "disposition": "MIGRATED_SHARED_PUBLICATION_CONTRACT",
+      "contract": "Writable stage flush before no-clobber publication and no output after failed flush.",
+      "current_test_references": [
+        {
+          "path": "carr-library/tests/audio/test_windows_fsync.py",
+          "git_blob": "ab32d451c3ff6c76f3034ad2bad4dea19b6bbfca",
+          "test_definitions": [
+            "test_publication_flushes_before_link_with_windows_descriptor_rules",
+            "test_file_flush_failure_prevents_publication"
+          ]
+        },
+        {
+          "path": "carr-library/tests/audio/test_publication_fsync.py",
+          "git_blob": "28703b8bf31ddc787f5d754ff14a57740e8d095b",
+          "test_definitions": [
+            "test_cancellation_during_final_flush_does_not_publish",
+            "test_flush_failure_still_preserves_stage_and_prevents_publication"
+          ]
+        }
+      ],
+      "limits": [
+        "Current shared publisher uses its reviewed exclusive publication path; this is not an additional speech._io implementation."
+      ]
+    },
+    {
+      "canonical_path": "carr-library/tests/speech/test_progress_speech.py",
+      "canonical_git_blob": "6edc7e29089a5532a7e837a921c6f63a983a9bdd",
+      "kind": "test-module",
+      "canonical_test_definitions": [
+        "test_actual_registry_writes_bounded_private_pcm_and_never_touches_user_output",
+        "test_actual_installed_local_voice_generates_private_progress_pcm",
+        "test_notification_language_comes_from_the_explicit_voice",
+        "test_unknown_total_and_resumed_state_have_localized_honest_notices",
+        "test_unavailable_selection_never_substitutes_or_starts_a_provider",
+        "test_invalid_notifications_do_not_invoke_the_selected_provider",
+        "test_cancel_during_real_registry_synthesis_never_starts_late_playback",
+        "test_cancel_after_synthesis_before_play_cannot_emit_a_late_notice",
+        "test_cancel_owned_playback_stops_it_before_temporary_pcm_cleanup",
+        "test_overlong_actual_pcm_is_rejected_and_cleaned_before_playback",
+        "test_failed_owned_device_cleanup_preserves_uncertainty_and_blocks_new_audio",
+        "test_explicit_activation_reauthorizes_current_settings_and_detects_revocation",
+        "test_copy_selection_keeps_independent_cancellation_for_two_native_views",
+        "test_actual_registry_notification_runs_on_existing_feedback_worker"
+      ],
+      "disposition": "CURRENT_PROGRESS_OWNER_AND_EXPLICIT_VOICE_CONTRACT",
+      "contract": "Honest measured/unknown progress, selected voice/language/runtime identity, cancellation before playback, private PCM ownership and cleanup uncertainty.",
+      "current_test_references": [
+        {
+          "path": "carr-library/tests/ui/test_operation_progress.py",
+          "git_blob": "c604c6112f5c40a172e1c8622acdfc4412f8bc1e",
+          "test_definitions": [
+            "test_voice_runtime_and_language_are_bound",
+            "test_no_automatic_voice_fallback_or_runtime_launch_without_selection",
+            "test_changed_runtime_cannot_synthesize_the_old_selection",
+            "test_failed_release_and_stale_library_never_start_content"
+          ]
+        },
+        {
+          "path": "carr-library/tests/ui/test_shared_progress.py",
+          "git_blob": "57ae94bb50fb5ac9591227768e52fe4159444544",
+          "test_definitions": [
+            "test_unknown_pause_resume_failure_cancel_never_100",
+            "test_worker_is_lazy_nonblocking_and_cancels_own_output",
+            "test_off_mute_quiet_background_media_suppress_and_do_not_replay_completion"
+          ]
+        },
+        {
+          "path": "carr-library/tests/ui/test_progress_registered_voices.py",
+          "git_blob": "9a1b875860796c915fe1e4f7facd15c01aa4fdd1",
+          "test_definitions": [
+            "test_root_change_cancels_an_owned_registered_speech_request_before_playback",
+            "test_root_binding_never_discards_failed_close_ownership",
+            "test_restored_progress_selection_cannot_activate_a_missing_machine_registration"
+          ]
+        },
+        {
+          "path": "carr-library/tests/ui/test_progress_compatibility.py",
+          "git_blob": "c6a9145c92d4c0ea48c8e84ed7b7f81a057aac2a",
+          "test_definitions": [
+            "test_canonical_progress_choices_load_without_rewriting_or_voice_authority"
+          ]
+        }
+      ],
+      "limits": [
+        "Registered-progress native16 deliberately saves metadata with audio Off. It is not execution of canonical actual-local-voice progress audio, physical device listening or NVDA. Current speech synthesis receipts must be assessed separately."
+      ]
+    },
+    {
+      "canonical_path": "carr-library/tests/speech/test_reading.py",
+      "canonical_git_blob": "4835f82de7f4926f73d678aa417a6b18950efd0e",
+      "kind": "test-module",
+      "canonical_test_definitions": [
+        "test_legacy_v1_copy_remains_readable_and_explicitly_unbound",
+        "test_source_anchor_is_detached_and_does_not_invent_quotation_authority",
+        "test_damaged_or_authoritative_source_anchor_is_rejected",
+        "test_reading_schema_never_silently_discards_source_binding",
+        "test_pre_release_project_import_preserves_history_and_requires_save_as",
+        "test_invalid_pre_release_format_is_not_silently_migrated",
+        "test_pre_release_recovery_import_does_not_overwrite_its_saved_bytes",
+        "test_edit_never_changes_raw_source_and_mapping_is_conservative",
+        "test_insert_has_no_invented_source_offset",
+        "test_delete_does_not_rejoin_noncontiguous_source_as_exact",
+        "test_redo_is_invalidated_by_new_edit",
+        "test_set_text_preserves_prefix_suffix_without_guessing_changed_offsets",
+        "test_reading_project_roundtrip_keeps_undo_and_redo",
+        "test_project_tampered_source_or_edit_rejected",
+        "test_to_dict_cannot_mutate_live_edit_history",
+        "test_save_refuses_immutable_original_and_existing_unrelated_file",
+        "test_save_detects_external_modification",
+        "test_cancelled_save_and_export_do_not_publish",
+        "test_export_raw_and_derivative_preserves_line_breaks",
+        "test_cleanup_is_reversible_narration_only",
+        "test_literal_and_bounded_regex_pronunciation_scope",
+        "test_catastrophic_regex_is_killed_and_changes_are_atomic",
+        "test_dictionary_roundtrip_no_automatic_execution",
+        "test_invalid_source_unicode_rejected",
+        "test_regex_child_preserves_runtime_bytecode_and_unicode_protocol"
+      ],
+      "disposition": "MIGRATED_NARRATION_AND_INERT_HISTORY_CONTRACTS",
+      "contract": "Immutable source, conservative offsets, reversible editing, scoped bounded pronunciation, stale-save refusal and exact earlier-history retention.",
+      "current_test_references": [
+        {
+          "path": "carr-library/tests/reader/test_narration.py",
+          "git_blob": "0aac2a70353f891031e0a6ff5a79b753a75462ea",
+          "test_definitions": [
+            "test_reading_edits_preserve_immutable_source_and_explicit_provenance",
+            "test_revision_undo_redo_and_branch_keep_original_and_unique_numbers",
+            "test_save_load_and_stale_save_preserve_existing_bytes"
+          ]
+        },
+        {
+          "path": "carr-library/tests/reader/test_narration_text.py",
+          "git_blob": "9f41e3453b0776d95a2f4913860f5478acabaa69",
+          "test_definitions": [
+            "test_deletion_and_insertion_do_not_manufacture_contiguous_exact_source",
+            "test_failed_or_cancelled_save_never_replaces_existing_file"
+          ]
+        },
+        {
+          "path": "carr-library/tests/reader/test_scoped_pronunciation.py",
+          "git_blob": "fe5c1cf6d82208e06e4d25c453b7be1354be7732",
+          "test_definitions": [
+            "test_actual_catastrophic_regex_hits_deadline_and_leaves_no_live_child",
+            "test_canonical_dictionary_is_explicitly_imported_with_language_and_voice_scope"
+          ]
+        },
+        {
+          "path": "carr-library/tests/reader/test_legacy_reading_import.py",
+          "git_blob": "0db272e780f0508523a215ae48755be0f5f229a3",
+          "test_definitions": [
+            "test_complete_500_step_history_stays_compact_and_forks_only_selected_revision",
+            "test_same_semantic_json_with_different_bytes_retains_exact_original_files"
+          ]
+        }
+      ],
+      "limits": [
+        "Current NarrationStore and LegacyReadingStore own the workflows; removed ReadingDocument Python methods are not aliases. Earlier bytes remain inert and explicit imports create independent current projects."
+      ]
+    },
+    {
+      "canonical_path": "carr-library/tests/speech/test_runtime.py",
+      "canonical_git_blob": "674afa2a0ab1f1f7ef9930cadd10e8792f3357ff",
+      "kind": "test-module",
+      "canonical_test_definitions": [
+        "test_actual_local_pcm_speech_and_three_distinct_voices",
+        "test_actual_volume_reduction_and_source_invariance",
+        "test_no_overwrite_existing_audio",
+        "test_cancel_synthesis_leaves_no_partial_audio",
+        "test_actual_chunked_synthesis_and_budget",
+        "test_unsupported_native_controls_do_not_silently_apply",
+        "test_split_retains_every_unicode_character_and_bounds_calls",
+        "test_invalid_settings_fail_early",
+        "test_worker_timeout_and_output_budget_are_real_process_checks",
+        "test_atomic_output_publication_detects_concurrent_destination",
+        "test_helper_requires_opt_in_and_exact_binary_hash",
+        "test_piper_requires_hashed_existing_model_and_config",
+        "test_native_windows_sapi_voice_and_pcm_output"
+      ],
+      "disposition": "CURRENT_ENGINE_CONTRACTS_WITH_EXPLICIT_LIMITS",
+      "contract": "Selected local synthesis, literal text, PCM validation, unsupported controls, no overwrite, cancellation, explicit helper and Piper runtime hashes.",
+      "current_test_references": [
+        {
+          "path": "carr-library/tests/audio/test_engines.py",
+          "git_blob": "6c425ea9dbcae47eeb8b81b24ed2936d5252f65e",
+          "test_definitions": [
+            "test_registry_never_silently_substitutes_missing_engine",
+            "test_invalid_controls_fail_before_engine_execution",
+            "test_actual_flite_speech_has_nonzero_pcm_and_cannot_overwrite",
+            "test_actual_flite_treats_filter_metacharacters_as_text"
+          ]
+        },
+        {
+          "path": "carr-library/tests/audio/test_engine_boundaries.py",
+          "git_blob": "2a885f1f83e0db9b1e8dfc98ac28d6deb98bb244",
+          "test_definitions": [
+            "test_wav_byte_budget_is_enforced_while_worker_runs",
+            "test_pcm_frame_budget_is_checked_in_addition_to_container_overhead"
+          ]
+        },
+        {
+          "path": "carr-library/tests/audio/test_local_voice_helper.py",
+          "git_blob": "43896c8fa9a0b43596da3b056a530e5c52b2f3dd",
+          "test_definitions": [
+            "test_closed_manifest_contract_rejects_unreviewed_authority",
+            "test_actual_literal_unicode_and_controls_cross_json_stdin_without_shell"
+          ]
+        },
+        {
+          "path": "carr-library/tests/audio/test_model_manifest.py",
+          "git_blob": "3e1490c4206ccbb253e2aa943b3f31bd2336201c",
+          "test_definitions": [
+            "test_exact_manifest_hashes_and_mutated_asset",
+            "test_license_and_execution_consent_not_inferred"
+          ]
+        }
+      ],
+      "limits": [
+        "Old three-Flite-voice signal comparisons,2400-character splitter and configurable raw SpeechSettings return/budget API are not identical current tests. Current Flite output is 24000 Hz; current adapter isPCM16 / 8000 characters / 256 MiB per segment, with production segmentation. No acoustic-quality transfer."
+      ]
+    },
+    {
+      "canonical_path": "carr-library/tests/speech/test_session.py",
+      "canonical_git_blob": "4106401bd8199b5cf1f3780fcce014a6d67681c1",
+      "kind": "test-module",
+      "canonical_test_definitions": [
+        "test_complete_reading_draft_survives_restart",
+        "test_distinct_sources_have_distinct_recovery_slots",
+        "test_invalid_recovery_fails_closed_and_preserves_previous",
+        "test_reader_draft_is_in_complete_library_backup",
+        "test_bound_reading_draft_retains_exact_lineage_through_complete_backup"
+      ],
+      "disposition": "MIGRATED_PASSIVE_READER_SESSION_RETENTION",
+      "contract": "All revisions, exact outer bytes/hash, distinct sources, saved cursor, passive voice/audio observations and complete backup/rebackup.",
+      "current_test_references": [
+        {
+          "path": "carr-library/tests/reader/test_legacy_reader_session.py",
+          "git_blob": "adcdcb1650d660a3da6130fb397cf6d7778afc34",
+          "test_definitions": [
+            "test_envelope_retains_exact_bytes_all_revisions_and_passive_observations",
+            "test_saved_character_cursor_is_validated_against_saved_not_selected_revision",
+            "test_boundary_observations_remain_inert_and_are_not_added_to_current_project"
+          ]
+        },
+        {
+          "path": "carr-library/tests/storage/test_legacy_reader_session_backup.py",
+          "git_blob": "11112a1b5a811302ff71af5a1db437cac4976cab",
+          "test_definitions": [
+            "test_actual_backup_restore_rebackup_retains_envelope_and_exact_source",
+            "test_valid_envelope_hash_does_not_bypass_current_source_binding"
+          ]
+        },
+        {
+          "path": "carr-library/tests/ui/test_legacy_reader_session.py",
+          "git_blob": "b1d7c3631e6b76a8bdb0ae37b38901ea7f4a107c",
+          "test_definitions": [
+            "test_explicit_session_review_reuses_current_editor_without_applying_saved_voice"
+          ]
+        }
+      ],
+      "limits": [
+        "Old saved voice/rate/volume/audio_seconds do not become current execution authority or autoplay. Exact01c18 component111/111/33 PASS is recorded separately; it does not qualify later root composition."
+      ]
+    },
+    {
+      "canonical_path": "carr-library/tests/speech/test_source.py",
+      "canonical_git_blob": "7f8b7728218da579cab751f23cec20554a62c184",
+      "kind": "test-module",
+      "canonical_test_definitions": [
+        "test_reading_copy_keeps_library_original_and_saved_evidence",
+        "test_saved_lineage_distinguishes_identical_text_and_preserves_derived_separators",
+        "test_source_anchor_retains_old_revision_without_reattaching_or_authorizing",
+        "test_new_active_revision_rejects_stale_narration_source",
+        "test_source_range_guard_cancel_and_character_budget",
+        "test_source_save_as_reauthorizes_after_picker",
+        "test_source_lineage_is_distinct_and_survives_save_and_backup",
+        "test_portable_source_anchor_rejects_inconsistent_data"
+      ],
+      "disposition": "MIGRATED_SOURCE_AUTHORITY_AND_RECOVERY_CONTRACTS",
+      "contract": "Distinct workspace/edition/revision/asset identities, conservative joins, immutable research evidence, source revocation and explicit source-bound import/save.",
+      "current_test_references": [
+        {
+          "path": "carr-library/tests/reader/test_reading_desk.py",
+          "git_blob": "d30dbfcfba614c65c4c30da7ec7c65baa9c9b55d",
+          "test_definitions": [
+            "test_cross_library_access_denied_before_original_bytes",
+            "test_metadata_revision_invalidates_session_without_retargeting_saved_position",
+            "test_original_tampering_is_error_and_not_unverified_fallback"
+          ]
+        },
+        {
+          "path": "carr-library/tests/reader/test_legacy_reading_import.py",
+          "git_blob": "0db272e780f0508523a215ae48755be0f5f229a3",
+          "test_definitions": [
+            "test_exact_released_legacy_anchor_dialects_preserve_all_positions",
+            "test_same_rewritten_words_never_gain_exact_source_alignment"
+          ]
+        },
+        {
+          "path": "carr-library/tests/ui/test_narration_editor.py",
+          "git_blob": "cceb6ee8a105662cb2d9562aa04cf7151ff3aa1f",
+          "test_definitions": [
+            "test_revoked_guard_blocks_save_and_draft",
+            "test_picker_rechecks_loaded_project_and_recovery_source_workspace"
+          ]
+        },
+        {
+          "path": "carr-library/tests/ui/test_reading_import.py",
+          "git_blob": "f49c31d9bcb62b912d4e3e62e11e8169550d6690",
+          "test_definitions": [
+            "test_scope_changes_cannot_publish_or_open_into_new_library"
+          ]
+        }
+      ],
+      "limits": [
+        "Canonical portable anchors remain inert provenance. Matching words, old verification booleans and recovered positions never reattach themselves to current quotation authority."
+      ]
+    },
+    {
+      "canonical_path": "carr-library/tests/speech/test_system_host.py",
+      "canonical_git_blob": "3e8f9c8738794941e612b2402fe86a8081408161",
+      "kind": "test-module",
+      "canonical_test_definitions": [
+        "test_only_fixed_system_powershell_can_use_servicing_hardlinks",
+        "test_system_host_does_not_accept_symlinks"
+      ],
+      "disposition": "CURRENT_NATIVE_DEFAULT_AND_EXPLICIT_COMPATIBILITY_HOST",
+      "contract": "System speech default is fixed native COM; legacy32 selection is lazy and refuses missing/rebound selected voice.",
+      "current_test_references": [
+        {
+          "path": "carr-library/tests/audio/test_native_sapi.py",
+          "git_blob": "1ca3590e3731fde735568e33ac8780b8df9977e7",
+          "test_definitions": [
+            "test_default_windows_discovery_never_constructs_powershell",
+            "test_saved_32_bit_voice_resolves_only_after_explicit_identity_selection",
+            "test_absent_selected_32_bit_voice_never_chooses_a_different_installed_voice"
+          ]
+        },
+        {
+          "path": "carr-library/tests/audio/test_engines.py",
+          "git_blob": "6c425ea9dbcae47eeb8b81b24ed2936d5252f65e",
+          "test_definitions": [
+            "test_sapi_command_is_constant_and_text_remains_json_data"
+          ]
+        },
+        {
+          "path": "carr-library/tests/audio/test_model_manifest.py",
+          "git_blob": "3e1490c4206ccbb253e2aa943b3f31bd2336201c",
+          "test_definitions": [
+            "test_linked_asset_is_rejected"
+          ]
+        }
+      ],
+      "limits": [
+        "The old system_powershell helper/servicing-hardlink exception is not copied as a generic local-file permission. Current default does not use that host; explicit compatibility uses the existing current SAPI path. No claim that the removed helper's two tests ran."
+      ]
+    },
+    {
+      "canonical_path": "carr-library/tests/transcription/conftest.py",
+      "canonical_git_blob": "4bfaa8631937c0e36f625efe4f569a925175809a",
+      "kind": "support-fixture",
+      "canonical_test_definitions": [],
+      "disposition": "REPLACED_PUBLIC_PROTOCOL_FIXTURE",
+      "contract": "Provides the old synthetic_asr_runtime fixture to the removed package tests.",
+      "current_test_references": [
+        {
+          "path": "carr-library/tests/test_transcription_service.py",
+          "git_blob": "c305a702d144515708fae0213ec8475c16bb1d9c",
+          "test_definitions": [
+            "test_actual_child_exit_and_complete_receipt_accept_all_selected_formats"
+          ]
+        },
+        {
+          "path": "carr-library/tests/transcription/test_supplied_worker_bridge.py",
+          "git_blob": "c2536d290c531bbddaad9766d445f1869f97fbfa",
+          "test_definitions": [
+            "test_real_subprocess_preserves_original_and_exports_separate_edits"
+          ]
+        }
+      ],
+      "limits": [
+        "Current test fixtures target their exact existing receipt protocols. They do not import the old package or perform real ASR inference."
+      ]
+    },
+    {
+      "canonical_path": "carr-library/tests/transcription/fixture_runtime.py",
+      "canonical_git_blob": "df13b49732e8f0fe60660bc21fb32b9c5a2f7374",
+      "kind": "support-fixture",
+      "canonical_test_definitions": [],
+      "disposition": "REPLACED_PUBLIC_PROTOCOL_FIXTURE",
+      "contract": "Builds the old explicitly registered synthetic interpreter/worker/model installation.",
+      "current_test_references": [
+        {
+          "path": "carr-library/tests/test_transcription_service.py",
+          "git_blob": "c305a702d144515708fae0213ec8475c16bb1d9c",
+          "test_definitions": [
+            "test_complete_manifest_accepts_only_explicit_reviewed_local_assets",
+            "test_runtime_admission_fails_before_any_engine_launch"
+          ]
+        },
+        {
+          "path": "carr-library/tests/audio/test_engine_profiles.py",
+          "git_blob": "778b3d443e441b94d1cb6d035690609facc24e3c",
+          "test_definitions": [
+            "test_registration_is_persistent_and_does_not_execute_or_import_assets"
+          ]
+        }
+      ],
+      "limits": [
+        "No copied acoustic weights or fake real-model acceptance. Current runtime manifest is the authority; the old seven-distribution layout is not a current schema alias."
+      ]
+    },
+    {
+      "canonical_path": "carr-library/tests/transcription/fixtures/protocol_worker.py",
+      "canonical_git_blob": "f28e80b33bd4856063e306883fd05f7e85cb537a",
+      "kind": "support-fixture",
+      "canonical_test_definitions": [],
+      "disposition": "REPLACED_PUBLIC_PROTOCOL_FIXTURE",
+      "contract": "Synthetic old recognition, status/export/cache actor with retry-safe atomic status writes.",
+      "current_test_references": [
+        {
+          "path": "carr-library/tests/transcription/test_pr99_host.py",
+          "git_blob": "a0e4cb5312e1cbabb40880da9838c202afbb68a2",
+          "test_definitions": [
+            "test_live_worker_status_reader_allows_atomic_replacement"
+          ]
+        },
+        {
+          "path": "carr-library/tests/transcription/test_v5_worker_profile.py",
+          "git_blob": "facf326a071432dc26243e4c4a1a942cfe6adc2d",
+          "test_definitions": [
+            "test_live_progress_reader_allows_actual_worker_status_replacement"
+          ]
+        },
+        {
+          "path": "carr-library/tests/test_transcription_service.py",
+          "git_blob": "c305a702d144515708fae0213ec8475c16bb1d9c",
+          "test_definitions": [
+            "test_actual_supplied_worker_replaces_status_while_original_host_snapshot_is_open"
+          ]
+        }
+      ],
+      "limits": [
+        "The old actor is not an installed ASR runtime. Current jobs use distinct reviewed protocols and their own public synthetic actors; root retry component bcb667 restores shared generic retry without adding another worker."
+      ]
+    },
+    {
+      "canonical_path": "carr-library/tests/transcription/test_admission_boundaries.py",
+      "canonical_git_blob": "94acab74ef2613daabd2fff06f3bab680caaeefa",
+      "kind": "test-module",
+      "canonical_test_definitions": [
+        "test_stop_interrupts_admission_hash_and_reaches_child_cleanup",
+        "test_runtime_change_rejects_attempt_without_resurrecting_cache",
+        "test_failed_archive_keeps_durable_cache_rejection_until_retry",
+        "test_idle_inventory_is_cancellable_without_rehashing_runtime",
+        "test_actual_child_import_never_writes_or_replaces_python_bytecode",
+        "test_known_runtime_rejection_takes_precedence_over_simultaneous_stop",
+        "test_cancelled_post_admission_check_preserves_committed_valid_receipt"
+      ],
+      "disposition": "CURRENT_ADMISSION_AND_PASSIVE_HISTORY_CONTRACTS",
+      "contract": "Cancellable input/runtime verification, accepted result preservation, runtime-change rejection, owned process settlement and bytecode policy.",
+      "current_test_references": [
+        {
+          "path": "carr-library/tests/test_transcription_service.py",
+          "git_blob": "c305a702d144515708fae0213ec8475c16bb1d9c",
+          "test_definitions": [
+            "test_stop_during_resource_wait_starts_no_child_and_keeps_owned_inputs",
+            "test_resources_are_released_after_success_or_worker_failure",
+            "test_restart_archives_prior_bindings_and_live_settings"
+          ]
+        },
+        {
+          "path": "carr-library/tests/transcription/test_supplied_worker_bridge.py",
+          "git_blob": "c2536d290c531bbddaad9766d445f1869f97fbfa",
+          "test_definitions": [
+            "test_completed_result_receipt_verification_observes_cancellation",
+            "test_receipt_model_change_during_streaming_is_rejected",
+            "test_stop_does_not_rehash_inputs_and_preserves_completed_worker_files"
+          ]
+        },
+        {
+          "path": "carr-library/tests/transcription/test_v5_worker_profile.py",
+          "git_blob": "facf326a071432dc26243e4c4a1a942cfe6adc2d",
+          "test_definitions": [
+            "test_v5_detects_identity_changes_while_the_actual_child_is_running",
+            "test_v5_resume_uses_a_new_result_root_and_rejects_old_manifest_replay"
+          ]
+        }
+      ],
+      "limits": [
+        "Canonical cache-rejection fields and exact partial-result state machine are not replayed as current jobs. Accepted historical data is read/exported inertly; a new current execution requires reviewed inputs/runtime."
+      ]
+    },
+    {
+      "canonical_path": "carr-library/tests/transcription/test_protocol_fixture.py",
+      "canonical_git_blob": "a49073f894c97d8a2c78c4672752f68d420e122e",
+      "kind": "test-module",
+      "canonical_test_definitions": [
+        "test_transient_windows_status_collision_retries_one_complete_stage",
+        "test_permanent_windows_status_denial_is_bounded_and_keeps_old_state",
+        "test_unrelated_status_publication_errors_are_not_retried",
+        "test_native_windows_reader_preserves_atomic_status"
+      ],
+      "disposition": "CURRENT_ATOMIC_STATUS_CONTRACT_PLUS_REVIEWED_RETRY_COMPONENT",
+      "contract": "Complete status snapshots under Windows read/replace collision, bounded retry and preservation after permanent denial.",
+      "current_test_references": [
+        {
+          "path": "carr-library/tests/transcription/test_pr99_host.py",
+          "git_blob": "a0e4cb5312e1cbabb40880da9838c202afbb68a2",
+          "test_definitions": [
+            "test_live_worker_status_reader_allows_atomic_replacement"
+          ]
+        },
+        {
+          "path": "carr-library/tests/test_transcription_service.py",
+          "git_blob": "c305a702d144515708fae0213ec8475c16bb1d9c",
+          "test_definitions": [
+            "test_actual_supplied_worker_replaces_status_while_original_host_snapshot_is_open"
+          ]
+        },
+        {
+          "path": "carr-library/tests/storage/test_atomic_state_publication.py",
+          "git_blob": "a37e4c377f5baa5c85d16ad9ea8912d695089451",
+          "test_definitions": [
+            "test_atomic_state_update_survives_reader_without_exposing_partial_bytes",
+            "test_windows_retry_budget_reuses_one_complete_stage"
+          ]
+        },
+        {
+          "path": "carr-library/tests/operations/test_state.py",
+          "git_blob": "af10085a69c699d58b750cadc80c8c7a575caa06",
+          "test_definitions": [
+            "test_transient_windows_sharing_retries_the_same_flushed_stage",
+            "test_exhausted_sharing_retry_preserves_the_original_and_cleans_only_its_stage"
+          ]
+        },
+        {
+          "path": "carr-library/tests/storage/test_state_json_reader.py",
+          "git_blob": "f49f65182a99037232c49b85a30c34512d28b8c7",
+          "test_definitions": [
+            "test_native_committed_save_is_not_reclassified_by_descriptor_close_error",
+            "test_generic_durable_reader_and_writer_share_actual_child_snapshots"
+          ]
+        }
+      ],
+      "limits": [
+        "The old fixture writer's exact 11 parameterized cases are not counted as current execution. Current coherent reader/native publisher remain; integrated bcb667 restores canonical 7 generic retry cases and retains 6 resource-state cases. These source references do not imply the new 279-case focused run has executed."
+      ]
+    },
+    {
+      "canonical_path": "carr-library/tests/transcription/test_restore.py",
+      "canonical_git_blob": "251553b767cca2435f6f4a4424d5cf5268cc026e",
+      "kind": "test-module",
+      "canonical_test_definitions": [
+        "test_restore_scrubs_archived_launch_state_without_changing_accepted_results"
+      ],
+      "disposition": "MIGRATED_PASSIVE_HISTORY_AND_TYPED_BACKUP_CONTRACT",
+      "contract": "Accepted original transcripts/edits and historical worker records survive relocation without restored execution authority.",
+      "current_test_references": [
+        {
+          "path": "carr-library/tests/storage/test_supplied_transcription_backup.py",
+          "git_blob": "d709aeb18199c8107c2140148c6d4e282b84d2fb",
+          "test_definitions": [
+            "test_complete_output_is_readable_after_relocation_without_runtime_or_original",
+            "test_current_and_historical_execution_bytes_are_preserved_without_reactivation",
+            "test_all_three_explicit_profiles_share_one_typed_complete_backup"
+          ]
+        },
+        {
+          "path": "carr-library/tests/storage/test_legacy_transcription_recovery.py",
+          "git_blob": "0eac43ab32532884bb60378d2e12963b5ca73078",
+          "test_definitions": [
+            "test_live_canonical_sources_restore_only_as_inert_history_and_rebackup",
+            "test_common_v4_keeps_exact_old_manifest_and_all_results_without_old_runtime"
+          ]
+        }
+      ],
+      "limits": [
+        "Current historical archive preserves old bytes inertly rather than treating old control files as active launch inputs. The exact old scrubbing-on-restore schema is not used to launch or resume a current worker."
+      ]
+    },
+    {
+      "canonical_path": "carr-library/tests/transcription/test_runtime_admission.py",
+      "canonical_git_blob": "591e946db0bc8301a30e5114ab2cba9159979e96",
+      "kind": "test-module",
+      "canonical_test_definitions": [
+        "test_changed_windows_base_bytes_revoke_review_before_execution",
+        "test_windows_base_site_inventory_uses_operational_home",
+        "test_missing_windows_base_executable_cannot_be_reviewed",
+        "test_unused_windows_executable_alias_is_not_an_execution_input",
+        "test_selected_windows_executable_alias_is_pinned",
+        "test_selected_alias_retargeted_during_inventory_is_rejected",
+        "test_native_support_links_remain_rejected"
+      ],
+      "disposition": "CURRENT_COMPLETE_MANIFEST_ADMISSION_WITH_STRICTER_PATH_POLICY",
+      "contract": "Explicit complete runtime/model pins, current re-admission and refusal before launch after bytes change.",
+      "current_test_references": [
+        {
+          "path": "carr-library/tests/test_transcription_service.py",
+          "git_blob": "c305a702d144515708fae0213ec8475c16bb1d9c",
+          "test_definitions": [
+            "test_complete_manifest_accepts_only_explicit_reviewed_local_assets",
+            "test_runtime_admission_fails_before_any_engine_launch"
+          ]
+        },
+        {
+          "path": "carr-library/tests/audio/test_model_manifest.py",
+          "git_blob": "3e1490c4206ccbb253e2aa943b3f31bd2336201c",
+          "test_definitions": [
+            "test_complete_runtime_inventory_rejects_unlisted_python_file",
+            "test_linked_asset_is_rejected"
+          ]
+        },
+        {
+          "path": "carr-library/tests/audio/test_engine_profiles.py",
+          "git_blob": "778b3d443e441b94d1cb6d035690609facc24e3c",
+          "test_definitions": [
+            "test_captured_manifest_hash_cannot_be_silently_replaced_at_registration",
+            "test_content_change_is_rejected_even_when_size_and_mtime_are_restored"
+          ]
+        },
+        {
+          "path": "carr-library/tests/transcription/test_supplied_worker_bridge.py",
+          "git_blob": "c2536d290c531bbddaad9766d445f1869f97fbfa",
+          "test_definitions": [
+            "test_selected_virtualenv_remains_the_actual_worker_runtime"
+          ]
+        }
+      ],
+      "limits": [
+        "Old final-executable symlink alias acceptance and automatic Windows-base/support discovery are not inherited. Current reviewed manifest/regular-local-file requirements can refuse those old launch paths; historical paths remain inert and lossless."
+      ]
+    },
+    {
+      "canonical_path": "carr-library/tests/transcription/test_service.py",
+      "canonical_git_blob": "ef7a2f3167dac743cd762a4925b6c3f8c2444771",
+      "kind": "test-module",
+      "canonical_test_definitions": [
+        "test_inspection_and_registration_never_execute_selected_code",
+        "test_untrusted_profile_cannot_start_a_process",
+        "test_stale_inspection_cannot_authorize_changed_dependency",
+        "test_changed_reviewed_bytes_block_execution_before_native_start",
+        "test_actual_process_receipts_reading_and_subtitle_rollover",
+        "test_isolated_worker_preserves_unicode_paths_and_diagnostics",
+        "test_invalid_worker_protocol_cannot_become_success",
+        "test_diagnostics_are_bounded_even_when_worker_exits_fast",
+        "test_cancel_stops_unresponsive_worker_and_releases_resource_lease",
+        "test_pause_intent_wins_over_ui_cancel_and_resume_reuses_verified_source",
+        "test_export_failure_preserves_recognition_and_retry_needs_no_second_inference",
+        "test_changed_profile_does_not_relabel_an_old_unaccepted_checkpoint",
+        "test_rebind_preserves_accepted_artifact_and_its_original_profile",
+        "test_rebind_cannot_move_an_unreviewed_interrupted_worker",
+        "test_retained_input_change_blocks_processing_without_touching_original",
+        "test_edit_is_versioned_derivative_and_reading_does_not_require_runtime_trust",
+        "test_export_never_overwrites_and_rejects_entire_private_library",
+        "test_saved_export_with_surviving_staging_link_remains_truthful_success",
+        "test_model_rebinding_cannot_mix_changed_weights_in_one_job",
+        "test_unclean_runner_requires_explicit_review_before_resume",
+        "test_folder_selection_is_bounded_explicit_and_link_safe",
+        "test_changed_dependency_after_resource_wait_is_rechecked_before_launch",
+        "test_cuda_mask_cannot_silently_target_a_different_reserved_gpu"
+      ],
+      "disposition": "CURRENT_ASR_SERVICES_WITH_EXPLICIT_PROTOCOL_AND_SIZE_DIFFERENCES",
+      "contract": "Passive review, exact retained inputs, actual worker receipt validation, pause/stop/resume, independent reading/export and resource release.",
+      "current_test_references": [
+        {
+          "path": "carr-library/tests/test_transcription_service.py",
+          "git_blob": "c305a702d144515708fae0213ec8475c16bb1d9c",
+          "test_definitions": [
+            "test_pending_job_owns_inputs_and_preserves_originals",
+            "test_actual_child_exit_and_complete_receipt_accept_all_selected_formats",
+            "test_exit_zero_alone_or_partial_outputs_never_complete",
+            "test_real_child_stop_is_acknowledged_and_retains_restart_inputs",
+            "test_restored_completed_transcript_is_readable_without_old_runtime"
+          ]
+        },
+        {
+          "path": "carr-library/tests/test_transcription_receipt.py",
+          "git_blob": "85c90d11437616fb9c24d383d7529c0330b6e749",
+          "test_definitions": [
+            "test_exact_formats_groups_bytes_and_unicode_are_verified_without_engine_execution",
+            "test_receipt_requires_exact_requested_format_and_source_coverage"
+          ]
+        },
+        {
+          "path": "carr-library/tests/transcription/test_supplied_worker_bridge.py",
+          "git_blob": "c2536d290c531bbddaad9766d445f1869f97fbfa",
+          "test_definitions": [
+            "test_partial_batch_is_saved_and_can_resume_with_reviewed_engine",
+            "test_export_preserves_an_empty_destination_created_at_final_publication"
+          ]
+        },
+        {
+          "path": "carr-library/tests/operations/test_transcription_admission.py",
+          "git_blob": "08414f285f9ea1ebe6a170a3cf069beb44bdcfc8",
+          "test_definitions": [
+            "test_remapped_cuda_is_rejected_before_worker_selection",
+            "test_cpu_reserves_all_declared_compute_and_each_parallel_capture"
+          ]
+        }
+      ],
+      "limits": [
+        "Current services are three explicit receipt families; removed package APIs and old interrupted-run/cache semantics are not aliases. New library-wide jobs remain 32 GiB total, older workspace profiles 8 GiB/source and 32 GiB/batch; historical canonical inputs 32 GiB/source and 64 GiB aggregate remain retained. No 64 GiB throughput or private model-quality claim."
+      ]
+    },
+    {
+      "canonical_path": "carr-library/tests/ui/test_transcription_dialog.py",
+      "canonical_git_blob": "b13e4c59a67effc05df1e8332b45f3aff505f157",
+      "kind": "test-module",
+      "canonical_test_definitions": [
+        "test_start_snapshots_exact_choices_and_routes_to_isolated_service",
+        "test_invalid_or_untrusted_choices_never_start_runtime",
+        "test_resume_uses_persisted_job_and_ignores_new_options",
+        "test_frame_cancellation_during_preparation_never_starts_inference",
+        "test_pause_records_service_intent_and_preserves_partial_results",
+        "test_cancel_records_cancellation_and_does_not_claim_success",
+        "test_progress_is_coalesced_without_moving_focus",
+        "test_incomparable_phase_units_and_observer_cancellation_do_not_fail_asr",
+        "test_failed_global_observer_preserves_real_completed_result",
+        "test_transcription_menu_registers_searchable_configurable_command",
+        "test_old_callbacks_and_root_changes_cannot_publish_results",
+        "test_closed_window_ignores_late_progress_and_completion",
+        "test_close_during_run_waits_for_paused_checkpoint",
+        "test_runtime_trust_binds_registration_to_inspected_paths_and_fingerprint",
+        "test_inspection_completion_does_not_trust_paths_changed_while_pending",
+        "test_loading_editing_undo_and_save_preserve_original_and_source_identity",
+        "test_saved_edit_load_and_declined_discard_preserve_reading_copy",
+        "test_export_uses_job_formats_and_blocks_unsaved_derivative",
+        "test_restore_rebind_requires_explicit_confirmation_and_trusted_profile",
+        "test_host_busy_and_start_failure_restore_controls",
+        "test_interrupted_job_requires_explicit_worker_stop_review",
+        "test_restored_complete_job_is_readable_without_reclassifying_it_as_pending",
+        "test_export_rejects_private_or_preexisting_destination",
+        "test_ui_actions_integrate_real_service_subprocess_and_durable_derivatives"
+      ],
+      "disposition": "CURRENT_NATIVE_ENTRYPOINT_AND_INERT_HISTORY_WORKFLOW",
+      "contract": "Typed exact settings, snapshot prepare then explicit start, current profile admission, control requests, stale/closed result refusal and verified independent reading.",
+      "current_test_references": [
+        {
+          "path": "carr-library/tests/ui/test_transcription_v43_dialog.py",
+          "git_blob": "581598ca55aad537f2476e8027302673887187e1",
+          "test_definitions": [
+            "test_prepare_freezes_exact_settings_and_never_starts_worker_until_separate_action",
+            "test_saved_runtime_profile_is_readmitted_before_prepare_and_start",
+            "test_late_callbacks_cannot_publish_into_newer_operation",
+            "test_modal_close_requests_stop_and_waits_for_its_operation",
+            "test_observer_failure_cannot_suppress_verified_supplied_result"
+          ]
+        },
+        {
+          "path": "carr-library/tests/transcription/test_pr99_host.py",
+          "git_blob": "a0e4cb5312e1cbabb40880da9838c202afbb68a2",
+          "test_definitions": [
+            "test_native_transcript_save_all_waits_for_actual_durable_revision",
+            "test_native_transcript_save_all_actual_validation_failure_keeps_draft"
+          ]
+        },
+        {
+          "path": "carr-library/tests/ui/test_legacy_transcription_recovery.py",
+          "git_blob": "0072ac96777062a7eab2751f8ee591116f075ab6",
+          "test_definitions": [
+            "test_old_completion_never_substitutes_for_current_runtime_selection",
+            "test_only_accepted_sources_are_offered_for_historical_reading"
+          ]
+        }
+      ],
+      "limits": [
+        "The old TranscriptionController is not copied over current TranscriptionSession. Earlier jobs use explicit history review/import; saved old runtime trust is never transferred. Native/ASR evidence remains component-bound."
+      ]
+    },
+    {
+      "canonical_path": "carr-library/tests/voice_acceptance/README.md",
+      "canonical_git_blob": "7cc09b31d33d5b09697e5a08030b60da441f6525",
+      "kind": "support-document",
+      "canonical_test_definitions": [],
+      "disposition": "INDEPENDENT_SYNTHETIC_PROTOCOL_REFERENCE_NOT_EXECUTED",
+      "contract": "Records the old independently selected adapter boundary, actor limitations and separate real-source/private-runtime requirements.",
+      "current_test_references": [],
+      "limits": [
+        "No old adapter-path import/skip-based gate is used as current qualification. Its source and transport description is retained by canonical provenance, not asserted as a current installed test result."
+      ]
+    },
+    {
+      "canonical_path": "carr-library/tests/voice_acceptance/conftest.py",
+      "canonical_git_blob": "795a206c0b69892821cb874c593e7c375ae744e0",
+      "kind": "support-fixture",
+      "canonical_test_definitions": [],
+      "disposition": "INDEPENDENT_SYNTHETIC_PROTOCOL_REFERENCE_NOT_EXECUTED",
+      "contract": "Loads an explicit old adapter/helper pair, checks their hashes and builds public metadata/PCM fixtures.",
+      "current_test_references": [
+        {
+          "path": "carr-library/tests/audio/test_dordiai_discovery.py",
+          "git_blob": "ed928c997310797e72f6b04c52549f76a8eb21ee",
+          "test_definitions": [
+            "test_constructor_discovery_and_existing_pcm_transport_work_together"
+          ]
+        },
+        {
+          "path": "carr-library/tests/audio/test_engines.py",
+          "git_blob": "6c425ea9dbcae47eeb8b81b24ed2936d5252f65e",
+          "test_definitions": [
+            "test_dordiai_real_process_protocol_streams_pcm_and_requests_next"
+          ]
+        }
+      ],
+      "limits": [
+        "This is public synthetic code, not a missing private model. Current tests use their existing adapter and exact source/wheel bindings; old suite skip behavior is not counted as PASS."
+      ]
+    },
+    {
+      "canonical_path": "carr-library/tests/voice_acceptance/protocol_actor.py",
+      "canonical_git_blob": "1e32bba8d213c1e5f43f84e34df2846ed1c175fc",
+      "kind": "support-fixture",
+      "canonical_test_definitions": [],
+      "disposition": "INDEPENDENT_SYNTHETIC_PROTOCOL_REFERENCE_NOT_EXECUTED",
+      "contract": "Independent finite actor exercises loading/chunk/finished, cancellation/drop and deliberately malformed protocol scenarios.",
+      "current_test_references": [
+        {
+          "path": "carr-library/tests/audio/test_engines.py",
+          "git_blob": "6c425ea9dbcae47eeb8b81b24ed2936d5252f65e",
+          "test_definitions": [
+            "test_dordiai_real_process_protocol_streams_pcm_and_requests_next",
+            "test_dordiai_cancels_worker_that_never_reads_large_unicode_request"
+          ]
+        },
+        {
+          "path": "carr-library/tests/audio/test_engine_boundaries.py",
+          "git_blob": "2a885f1f83e0db9b1e8dfc98ac28d6deb98bb244",
+          "test_definitions": [
+            "test_dordiai_rejects_duplicate_completion_fields_from_actual_worker"
+          ]
+        }
+      ],
+      "limits": [
+        "Old warm-worker recovery/drop acknowledgements are not current process-reuse semantics. Current actor tests do not establish acoustic or pronunciation quality."
+      ]
+    },
+    {
+      "canonical_path": "carr-library/tests/voice_acceptance/test_dordiai_acceptance.py",
+      "canonical_git_blob": "e19d44f86f9d75285d02d786cd293cb5c201bedb",
+      "kind": "test-module",
+      "canonical_test_definitions": [
+        "test_exact_pull_protocol_preserves_unicode_and_pcm_without_inference",
+        "test_external_cancel_between_chunks_never_dispatches_next_generation",
+        "test_cancel_drains_loading_and_inflight_chunk_before_drop_ack",
+        "test_bad_drop_ack_disposes_owned_process_before_following_request",
+        "test_discovery_obeys_installed_resources_and_policy_after_explicit_refresh",
+        "test_capabilities_never_turn_transport_success_into_quality_or_timing_claims",
+        "test_deep_json_is_an_immediate_protocol_failure_not_a_dead_reader",
+        "test_request_deadline_also_bounds_a_worker_that_never_reads_stdin"
+      ],
+      "disposition": "CURRENT_PUBLIC_PROTOCOL_COVERAGE_NOT_OLD_SUITE_PASS",
+      "contract": "Exact synthetic PCM/text framing, installed-resource discovery, unsupported capabilities, malformed JSON and blocked-input cancellation.",
+      "current_test_references": [
+        {
+          "path": "carr-library/tests/audio/test_engines.py",
+          "git_blob": "6c425ea9dbcae47eeb8b81b24ed2936d5252f65e",
+          "test_definitions": [
+            "test_dordiai_real_process_protocol_streams_pcm_and_requests_next",
+            "test_dordiai_cancels_worker_that_never_reads_large_unicode_request"
+          ]
+        },
+        {
+          "path": "carr-library/tests/audio/test_dordiai_discovery.py",
+          "git_blob": "ed928c997310797e72f6b04c52549f76a8eb21ee",
+          "test_definitions": [
+            "test_missing_resources_do_not_advertise_catalog_targets",
+            "test_managed_package_overlays_and_required_roles_are_respected",
+            "test_discovery_redacts_helper_errors"
+          ]
+        },
+        {
+          "path": "carr-library/tests/audio/test_engine_boundaries.py",
+          "git_blob": "2a885f1f83e0db9b1e8dfc98ac28d6deb98bb244",
+          "test_definitions": [
+            "test_dordiai_rejects_duplicate_completion_fields_from_actual_worker",
+            "test_cancellation_stops_descendant_after_its_process_group_leader_exits"
+          ]
+        }
+      ],
+      "limits": [
+        "The old independent adapter API, live worker reuse after cancel/drop and exact timing assertions have not been run against the current engine. Current fresh owned worker settlement is explicit; real upstream/model/device/NVDA acceptance remains NOT_RUN."
+      ]
+    }
+  ],
+  "not_claimed": [
+    "whole-product completion",
+    "old-suite Counter equivalence",
+    "private upstream execution",
+    "model inference quality",
+    "warm-worker performance",
+    "manual NVDA acceptance",
+    "physical audio listening",
+    "new composed-root runtime PASS"
+  ]
+}

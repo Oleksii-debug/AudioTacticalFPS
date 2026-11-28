@@ -1,5 +1,7 @@
 # Resonance — reuse decisions and component evidence
 
+> Reconciled integration note (2026-11-27): the adoption entries below retain their recorded source identities and historical results. Current ownership and explicit compatibility differences are documented in `validation/CANONICAL_ASSISTANT_PROVIDER_BACKUP_PROGRESS_DISPOSITION_20261127.md`, `validation/CANONICAL_SPEECH_TRANSCRIPTION_RECONCILIATION_20261127.md` and the current final reconciliation ledger. Historical native or model results do not qualify the composed head. Current local translation adapters use explicitly selected local profiles; actual selected-model inference and linguistic quality remain separate acceptance.
+
 Current review: 2026-11-27. This ledger supports the [technical specification](UNIVERSAL_SCOPE_V3_FINALIZATION.md); it is not a second product scope. Historical prototype evidence remains below with its original limitations. A candidate listed here is not automatically integrated, tested or approved for distribution.
 
 ## Selection rule
@@ -114,7 +116,7 @@ step19 and loopback step24 passed; `windows_local_planning_smoke.py` and the
 required suites must pass on the integrated build. This evidence does not
 establish a particular local model's planning quality, model rights or NVDA.
 
-## Current reuse map
+## Recorded baseline reuse map
 
 | Area | Reuse decision | Rights / qualification boundary and primary source |
 |---|---|---|
@@ -132,7 +134,7 @@ establish a particular local model's planning quality, model rights or NVDA.
 | MIDI | Review FluidSynth/Pretty MIDI where current MIDI path lacks a required capability | FluidSynth LGPL2.1, Pretty MIDI MIT; SoundFonts/dependencies separately licensed. Do not label the current simple synthesis fallback professional sound-library output. [FluidSynth](https://github.com/FluidSynth/fluidsynth), [Pretty MIDI](https://github.com/craffel/pretty-midi) |
 | Transcription | Adopt the supplied Whisper Transcribe headless worker after targeted corrections | Uses faster-whisper; retain model session and existing file-job protocol through a versioned adapter. Source review is in TRANSCRIPTION_INTEGRATION_REVIEW.md. [faster-whisper MIT](https://github.com/SYSTRAN/faster-whisper), [Whisper code/weights](https://github.com/openai/whisper); supplied wrapper/dependency/model distribution rights still need a complete record. |
 | Local agent | Reuse the typed executor and selected loopback model proposal/review workflow; no runtime/model launch or download | Actual HTTP/native control fixtures use synthetic model responses. The selected installed server, model weights/rights and multilingual planning quality require separate acceptance. [llama.cpp](https://github.com/ggml-org/llama.cpp) |
-| Translation | Reuse Basic v2 and the selectively adopted Advanced v3 NMT extension through the existing gateway; independently qualify local engines | Basic v2 uses API keys; Advanced v3 uses explicitly entered expiring IAM/ADC-derived OAuth tokens and existing glossary resources. Automatic token refresh, document/batch translation and local model inference remain unimplemented. Coverage and costs differ by edition/model. [Authentication](https://docs.cloud.google.com/translate/docs/authentication), [languages](https://docs.cloud.google.com/translate/docs/languages) |
+| Translation | Reuse Basic v2 and the selectively adopted Advanced v3 NMT extension through the existing gateway; independently qualify local engines | Basic v2 uses API keys; Advanced v3 uses explicitly entered expiring IAM/ADC-derived OAuth tokens and existing glossary resources. Automatic token refresh and document/batch translation remain outside that recorded slice; current local model adapters and their separate qualification are documented in LOCAL_TRANSLATION_ADAPTER.md. Coverage and costs differ by edition/model. [Authentication](https://docs.cloud.google.com/translate/docs/authentication), [languages](https://docs.cloud.google.com/translate/docs/languages) |
 | Bibliography | Preserve existing RIS/BibTeX/CSL-JSON and candidate citeproc-js/QuickJS integration | citeproc-js CPAL1.0/AGPL alternative and CSL styles/locales have distinct obligations. Verify accessible attribution/source in the shipped package; do not replace a working adapter solely because it is not MIT. [citeproc-js](https://github.com/Juris-M/citeproc-js) |
 | Larger applications | Use Zotero/calibre/Audacity and similar tools as interoperability/reference candidates where suitable | Do not embed a second GUI/database or copy an entire licensed application without an explicit integration/distribution decision. Existing standard-format interchange is preferable when it meets the task. |
 | Updates/security | Reuse reviewed signed-update/entitlement and credential contracts | Evaluate python-tuf/standard Windows tooling for actual gaps; signatures, key lifecycle, installer/runtime and data migration all require exact tests. No new cryptographic protocol. [TUF](https://theupdateframework.io/docs/security/) |

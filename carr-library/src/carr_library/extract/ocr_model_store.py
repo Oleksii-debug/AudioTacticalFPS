@@ -236,6 +236,14 @@ class OcrModelStore:
                 or str(self.root).startswith(('//', '\\\\'))):
             raise ModelStoreError('OCR models need an absolute local folder.')
 
+    def _writable_root(self):
+        # A portable runtime's complete inventory is sealed. Managed user data
+        # must stay outside it, even when a CLI path/environment override was
+        # explicitly selected. Do this before making directories or locks.
+        for ancestor in (self.root, *self.root.parents):
+            if os.path.lexists(ancestor / 'ocr-manifest.json'):
+                raise ModelStoreError('Install managed OCR models outside the sealed portable runtime.')
+
     def _profile(self, profile):
         if not isinstance(profile, str) or profile not in REVISIONS:
             raise ModelStoreError('Choose the Fast or Best OCR model profile.')
@@ -317,6 +325,7 @@ class OcrModelStore:
                 raise InterruptedError('OCR model installation cancelled; the previous selection is unchanged.')
 
         remaining()
+        self._writable_root()
         _directory(self.root, create=True)
         lock_path = self.root / '.install.lock'
         if os.path.lexists(lock_path):

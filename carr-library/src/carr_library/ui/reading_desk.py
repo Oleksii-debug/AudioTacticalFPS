@@ -13,7 +13,7 @@ import threading
 from ..reader.reading_desk import ReadingDesk
 from ..reader.reading_state import MAX_BYTES, ReadingState
 from ..research.export_file import write_export, export_completion
-from .export_destination import confirm_export_destination
+from .export_destination import approve_export_destination
 from ..research.topic_tree import TopicTree
 from .research_actions import NativeDialogs
 
@@ -217,6 +217,9 @@ class ReadingDialog:
                      command_id='reader.commands')
         self._button(bookmarks, 'Reader keyboard shortcuts...', lambda event: self.keyboard.settings(event),
                      command_id='reader.settings')
+        self._button(bookmarks, 'Create editable reading copy...', self.edit_reading_copy)
+        self._button(bookmarks, 'Read aloud from this source...', self.read_aloud,
+                     command_id='reader.speak')
         layout.Add(bookmarks, 0, wx.EXPAND | wx.ALL, 4)
         self.status = wx.TextCtrl(self.dialog, style=wx.TE_READONLY | wx.TE_MULTILINE)
         self.status.SetName('Reading operation status')
@@ -256,6 +259,45 @@ class ReadingDialog:
     def _error(self, error):
         self.status.ChangeValue(str(error))
         self.status.SetFocus()
+
+    def edit_reading_copy(self, event=None):
+        def opened(page):
+            from ..reader.narration import NarrationStore, new_project
+            from .narration_editor import open_narration_editor
+            store = NarrationStore(self.controller.desk.library.root)
+            project = new_project(page.raw_text,
+                title=f'{page.title} — {page.locator.display()}'[:200], source_location=page.location)
+            open_narration_editor(self.dialog, store, project, guard=self.controller.check)
+            self.controller.check()
+            self.text.SetFocus()
+        self._run('Preparing editable reading copy', self.controller.where, opened)
+
+    def read_aloud(self, event=None):
+        if self.closed or self.busy or self.controller.current is None:
+            return
+        try:
+            from .live_reading import show_live_reader, selected_source_offsets, source_offset
+            self.controller.check()
+            page, desk = self.controller.current, self.controller.desk
+            selection = selected_source_offsets(self.text, page.raw_text)
+            cursor = source_offset(page.raw_text, self.text.GetRange(0, self.text.GetInsertionPoint()))
+            def load(ordinal, cancelled):
+                previous = desk.cancelled
+                desk.cancelled = lambda: previous() or cancelled()
+                try:
+                    self.controller.check()
+                    return desk.page(ordinal)
+                finally:
+                    desk.cancelled = previous
+            warning = show_live_reader(self.dialog, desk.library.root, page.raw_text,
+                title=page.title, cursor=cursor, selection=selection, location=page.location,
+                guard=self.controller.check, source_loader=load, ordinal=page.ordinal, total=page.total,
+                trust_controller=getattr(desk.library, 'trust_controller', None))
+            self.controller.check()
+            self.status.ChangeValue(warning or 'Live reading closed. Original source text is unchanged.')
+            self.text.SetFocus()
+        except Exception as exc:
+            self._error(exc)
 
     def _run(self, title, operation, done):
         if self.closed:
@@ -421,7 +463,7 @@ class ReadingDialog:
             'Unknown printed pagination remains unknown. Unverified extracted text remains unverified. '
             'Reading and bookmarks do not approve quotations.\n\n'
             'Reading, Export reading positions and bookmarks saves a separate JSON backup. '
-            'The existing library backup does not yet include this reader state.')
+            'Complete library backups include validated reader bookmarks, positions and live-reading cursors.')
         self.text.SetFocus()
 
     def close(self, event=None):
@@ -574,7 +616,7 @@ class ReadingActions:
             path = self.dialogs.path(self.frame, save=True)
             if path is None:
                 return
-            approval = confirm_export_destination(self.frame, path, private_root=scope.library.root)
+            approval = approve_export_destination(self.frame, path, private_root=scope.library.root)
             if approval is None:
                 return
             self._guard(scope)
@@ -583,14 +625,13 @@ class ReadingActions:
                 self._authorize(scope)
                 state = self.state_factory(scope.library.root)
                 content = state.export_state(scope.workspace)
-                return self._run(scope, lambda: write_export(path, content,
-                    private_root=scope.library.root, approval=approval,
-                    cancelled=self.frame.cancel_event.is_set))
+                return self._run(scope, lambda: write_export(path, content, private_root=scope.library.root,
+                    approval=approval, cancelled=self.frame.cancel_event.is_set))
             self.frame.run_job('Exporting reading state', lambda: self._run(scope, save),
                 lambda receipt: self.frame.report(export_completion(
                     'Reading positions and page bookmarks exported.', receipt)))
         except Exception as exc:
-            self.frame.report(f'Reading state export: {exc}')
+            self.frame.report(f'Reading state was not exported: {exc}')
 
     def import_state(self, event=None):
         try:

@@ -406,4 +406,3 @@ def test_normal_rtl_unicode_names_remain_unchanged():
     name = 'أحمد محمود'
     result = parse_crossref(encoded(crossref(author=[{'name': name}])), DOI)
     assert result.authors == (name,)
-

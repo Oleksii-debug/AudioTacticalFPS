@@ -1,0 +1,308 @@
+name: CARR installed library capacity
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ['carr/v3-acceptance-*', 'carr/capacity-*']
+    paths:
+      - 'carr-library/**'
+      - '.github/workflows/carr-capacity.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: carr-capacity-${{ github.repository }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  capacity:
+    runs-on: windows-2022
+    timeout-minutes: 90
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: carr-library
+    env:
+      PYTHONUTF8: '1'
+      PYTHONUNBUFFERED: '1'
+      PYTHONDONTWRITEBYTECODE: '1'
+      PIP_DISABLE_PIP_VERSION_CHECK: '1'
+      ORT_DISABLE_TELEMETRY: '1'
+      HF_HUB_OFFLINE: '1'
+      HF_HUB_DISABLE_TELEMETRY: '1'
+      HF_HUB_DISABLE_IMPLICIT_TOKEN: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      DO_NOT_TRACK: '1'
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Initialize source and failure receipts
+        run: |
+          $ErrorActionPreference = 'Stop'
+          New-Item -ItemType Directory -Path ci-results/capacity -ErrorAction Stop | Out-Null
+          $head = (& git rev-parse HEAD).Trim()
+          if ($LASTEXITCODE -ne 0) { throw 'Cannot resolve checkout commit.' }
+          $tree = (& git rev-parse 'HEAD^{tree}').Trim()
+          if ($LASTEXITCODE -ne 0) { throw 'Cannot resolve checkout tree.' }
+          @{
+            schema = 1; status = 'NOT_RUN'
+            source_commit = $head; source_tree = $tree
+            github_sha = $env:GITHUB_SHA; github_ref = $env:GITHUB_REF
+            workflow_ref = $env:GITHUB_WORKFLOW_REF; workflow_sha = $env:GITHUB_WORKFLOW_SHA
+            run_id = $env:GITHUB_RUN_ID; run_attempt = $env:GITHUB_RUN_ATTEMPT
+            recorded_at_utc = [DateTime]::UtcNow.ToString('o')
+            required_sizes = @(1000, 10000, 50000)
+            job_timeout_minutes = 90; benchmark_timeout_minutes = 75
+            per_case_timeout_seconds = 3600
+          } | ConvertTo-Json -Depth 8 | Set-Content -Encoding utf8 ci-results/capacity/source-provenance.json
+          @{
+            schema = 1; status = 'NOT_RUN'
+            reason = 'Fresh installed capacity measurement and receipt validation have not completed.'
+          } | ConvertTo-Json | Set-Content -Encoding utf8 ci-results/capacity/capacity-gate-status.json
+          if ($head -ne $env:GITHUB_SHA) { throw 'Checkout differs from event SHA.' }
+          & git diff --exit-code HEAD --
+          if ($LASTEXITCODE -ne 0) { throw 'Tracked candidate source is dirty.' }
+
+      - name: Set up pinned Python version
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.11'
+          architecture: x64
+
+      - name: Build and install exact candidate wheel in a fresh environment
+        timeout-minutes: 10
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $environment = Join-Path $env:RUNNER_TEMP "carr-capacity-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT"
+          $wheelDirectory = Join-Path $env:RUNNER_TEMP "carr-capacity-wheel-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT"
+          if ((Test-Path $environment) -or (Test-Path $wheelDirectory)) { throw 'Capacity environment must be fresh.' }
+          & python -m venv $environment
+          if ($LASTEXITCODE -ne 0) { throw 'Fresh environment creation failed.' }
+          $python = Join-Path $environment 'Scripts/python.exe'
+          "CARR_CAPACITY_PYTHON=$python" | Out-File -Append -Encoding utf8 $env:GITHUB_ENV
+          & $python -m pip install --only-binary=:all: --require-hashes -r packaging/windows-cp311.lock
+          if ($LASTEXITCODE -ne 0) { throw 'Locked Windows dependency installation failed.' }
+          & $python -m pip install --only-binary=:all: pytest==9.0.2 setuptools==84.2.1 wheel==0.48.0
+          if ($LASTEXITCODE -ne 0) { throw 'Pinned build and fixture dependency installation failed.' }
+          New-Item -ItemType Directory $wheelDirectory -ErrorAction Stop | Out-Null
+          & $python -m pip wheel --no-deps --no-build-isolation --wheel-dir $wheelDirectory .
+          if ($LASTEXITCODE -ne 0) { throw 'Candidate wheel build failed.' }
+          $wheels = @(Get-ChildItem $wheelDirectory -Filter 'universal_research_library-*.whl')
+          if ($wheels.Count -ne 1) { throw 'Expected exactly one candidate wheel.' }
+          $wheel = $wheels[0].FullName
+          "CARR_CAPACITY_WHEEL=$wheel" | Out-File -Append -Encoding utf8 $env:GITHUB_ENV
+          & $python -m pip install --no-index --no-deps --no-compile $wheel
+          if ($LASTEXITCODE -ne 0) { throw 'Exact candidate wheel installation failed.' }
+          & $python -m pip freeze --all | Set-Content -Encoding utf8 ci-results/capacity/installed-dependencies.txt
+          if ($LASTEXITCODE -ne 0) { throw 'Installed dependency receipt failed.' }
+
+      - name: Bind installed modules, wheel and reviewed harness
+        timeout-minutes: 3
+        run: |
+          $ErrorActionPreference = 'Stop'
+          @'
+          import hashlib, importlib.metadata, importlib.util, json, os, pathlib, sys, zipfile
+          project = pathlib.Path.cwd().resolve()
+          script = project / "scripts/benchmark_library_capacity.py"
+          spec = importlib.util.spec_from_file_location("_capacity_ci_preflight", script)
+          module = importlib.util.module_from_spec(spec)
+          spec.loader.exec_module(module)
+          module.INSTALLED_MODE = True
+          identity = module.source_identity()
+          runtime = identity["installed"]
+          wheel = pathlib.Path(os.environ["CARR_CAPACITY_WHEEL"])
+          expected = {}
+          with zipfile.ZipFile(wheel) as archive:
+              for name in archive.namelist():
+                  if not name.endswith(".py") or name.split("/")[0] not in ("carr_library", "bootstrap"):
+                      continue
+                  relative = pathlib.PurePosixPath(name)
+                  key = str(pathlib.Path("src") / pathlib.Path(relative)) if relative.parts[0] == "carr_library" else str(pathlib.Path(relative))
+                  expected[key] = hashlib.sha256(archive.read(name)).hexdigest()
+          if not expected or expected != runtime["files"]:
+              raise ValueError("Installed Python inventory differs from the exact candidate wheel.")
+          receipt = {
+              "schema": 1, "status": "PASS",
+              "distribution": "universal-research-library",
+              "distribution_version": importlib.metadata.version("universal-research-library"),
+              "wheel_filename": wheel.name, "wheel_sha256": hashlib.sha256(wheel.read_bytes()).hexdigest(),
+              "source_manifest_sha256": identity["sha256"], "installed": runtime,
+              **module.execution_identity(identity),
+          }
+          (project / "ci-results/capacity/installed-preflight.json").write_text(
+              json.dumps(receipt, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+          print(json.dumps({"status": "PASS", "installed_python_files": len(expected),
+                            "source_manifest_sha256": identity["sha256"], "wheel_sha256": receipt["wheel_sha256"]}))
+          '@ | & $env:CARR_CAPACITY_PYTHON -I -B -X utf8 -
+          if ($LASTEXITCODE -ne 0) { throw 'Installed candidate source binding failed.' }
+
+      - name: Measure fresh 1k, 10k and full 50k catalogues
+        id: measure
+        timeout-minutes: 75
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $script = (Resolve-Path scripts/benchmark_library_capacity.py).Path
+          $output = Join-Path (Get-Location).Path 'ci-results/capacity/measurement'
+          & $env:CARR_CAPACITY_PYTHON -I -B -X utf8 $script --installed --output-dir $output --sizes 1000 10000 50000 --samples 20 --max-search-pages 0 --case-timeout 3600 2>&1 | Tee-Object -FilePath ci-results/capacity/benchmark.log
+          $exitCode = $LASTEXITCODE
+          @{ exit_code = $exitCode; recorded_at_utc = [DateTime]::UtcNow.ToString('o') } |
+            ConvertTo-Json | Set-Content -Encoding utf8 ci-results/capacity/benchmark-process.json
+          if ($exitCode -ne 0) { throw "Capacity benchmark failed with exit $exitCode." }
+
+      - name: Validate complete measurements and retain explicit failure
+        if: always()
+        timeout-minutes: 3
+        env:
+          CAPACITY_MEASURE_OUTCOME: ${{ steps.measure.outcome }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          @'
+          import hashlib, json, math, os, pathlib, subprocess, sys
+          root = pathlib.Path.cwd().resolve()
+          output = root / "ci-results/capacity"
+          output.mkdir(parents=True, exist_ok=True)
+          measured = output / "measurement"
+          gate = {"schema": 1, "status": "FAIL", "benchmark_step_outcome": os.environ.get("CAPACITY_MEASURE_OUTCOME"),
+                  "required_sizes": [1000, 10000, 50000], "claims": {
+                      "scope": "Installed synthetic catalogue/search/context/copy/cancel/restart services on Windows",
+                      "real_book_corpus": "NOT_RUN", "large_book_import_throughput": "NOT_MEASURED",
+                      "native_gui_or_nvda": "NOT_RUN", "neural_models_or_vram": "NOT_RUN"}}
+          def read(path):
+              return json.loads(path.read_text(encoding="utf-8-sig"))
+          def require(value, message):
+              if not value:
+                  raise ValueError(message)
+          def digest(value):
+              return hashlib.sha256(json.dumps(value, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+          def stats(row, count):
+              values = row["seconds"]
+              require(len(values) == count and row["samples"] == count, "Measured sample count differs.")
+              require(all(isinstance(x, (int, float)) and math.isfinite(x) and x >= 0 for x in values), "Invalid raw duration.")
+              ordered = sorted(values)
+              require(row["p50_seconds"] == ordered[math.ceil(count * .5) - 1]
+                      and row["p95_seconds"] == ordered[math.ceil(count * .95) - 1],
+                      "Percentile does not match raw measurements.")
+          try:
+              provenance = read(output / "source-provenance.json")
+              gate.update(source_commit=provenance["source_commit"], source_tree=provenance["source_tree"])
+              require(gate["benchmark_step_outcome"] == "success", "Benchmark step failed, timed out or did not run.")
+              require(read(output / "benchmark-process.json")["exit_code"] == 0, "No successful benchmark process receipt.")
+              head = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
+              tree = subprocess.check_output(["git", "rev-parse", "HEAD^{tree}"], text=True).strip()
+              require(head == provenance["source_commit"] == os.environ["GITHUB_SHA"]
+                      and tree == provenance["source_tree"], "Checked-out source identity changed.")
+              subprocess.run(["git", "diff", "--quiet", "HEAD", "--"], check=True)
+              preflight = read(output / "installed-preflight.json")
+              require(preflight["status"] == "PASS", "Installed preflight did not pass.")
+              manifest = read(measured / "source-manifest.json")
+              require(manifest["sha256"] == digest({"files": manifest["files"], "installed": manifest["installed"]}),
+                      "Source manifest digest differs.")
+              require(manifest["sha256"] == preflight["source_manifest_sha256"]
+                      and manifest["installed"] == preflight["installed"], "Installed identity changed.")
+              for name, expected in manifest["files"].items():
+                  require(hashlib.sha256((root / name).read_bytes()).hexdigest() == expected, "Checkout Python source changed.")
+              installed = manifest["installed"]
+              for name, expected in installed["files"].items():
+                  relative = pathlib.Path(name)
+                  if relative.parts[0] == "src":
+                      relative = pathlib.Path(*relative.parts[1:])
+                  package, *tail = relative.parts
+                  package_root = pathlib.Path(installed["module_origins"][package]["path"]).parent
+                  require(hashlib.sha256(package_root.joinpath(*tail).read_bytes()).hexdigest() == expected,
+                          "Installed Python source changed.")
+              aggregate = read(measured / "library-capacity.json")
+              require(aggregate["status"] == "PASS" and aggregate["checkout_commit"] == head
+                      and aggregate["source_matches_worktree_after_run"] is True, "Complete aggregate receipt missing.")
+              configuration = aggregate["configuration"]
+              require(configuration["sizes"] == [1000, 10000, 50000] and configuration["samples"] == 20
+                      and configuration["max_search_pages"] == 0 and configuration["case_timeout_seconds"] == 3600
+                      and configuration["reused_fixture"] is False, "Frozen fresh/full capacity configuration differs.")
+              identity_keys = ("installed_mode", "isolated", "module_origins", "installed_python_sha256",
+                               "fixture_sha256", "harness_sha256", "rss_helper_sha256")
+              def execution(row):
+                  require(row["installed_mode"] is True and row["isolated"] is True, "Source fallback or non-isolated execution.")
+                  require(all(row[key] == preflight[key] for key in identity_keys), "Execution identity differs from installed preflight.")
+                  require(row.get("source_sha256", row.get("source_manifest_sha256")) == manifest["sha256"],
+                          "Execution source digest differs.")
+              execution(aggregate)
+              require(len(aggregate["cases"]) == 3, "One or more completed scales is missing.")
+              summaries = []
+              for index, size in enumerate((1000, 10000, 50000)):
+                  case = read(measured / ("case-%d.json" % size))
+                  require(case == aggregate["cases"][index], "Standalone and aggregate case receipts differ.")
+                  execution(case)
+                  require(case["status"] == "PASS" and case["requested_synthetic_editions"] == size
+                          and case["reused_fixture"] is False, "Fresh scale did not pass.")
+                  require(case["fixture"]["stored_counts"] == {"catalog_edition": size, "active_page": size},
+                          "Stored synthetic source count differs.")
+                  require(case["catalogue_pages"]["editions_checked"] == size
+                          and case["catalogue_pages"]["all_ids_exact"] is True, "Catalogue traversal incomplete.")
+                  traversal = case["search_traversal"]
+                  require(traversal["pages"] == size // 100 and traversal["results_verified"] == size
+                          and traversal["all_pages_completed"] is True and traversal["all_observed_ids_exact"] is True
+                          and traversal["configured_page_cap"] == 0, "Search is partial, capped or inexact.")
+                  stats(traversal["latency"], size // 100)
+                  for key in ("search_first_page", "open_context", "copy_exact_quote"):
+                      stats(case[key], 20)
+                  construction = case["direct_catalogue_construction"]
+                  require(construction["elapsed_seconds"] > 0 and construction["is_actual_import_throughput"] is False,
+                          "Direct publication must remain distinct from actual intake.")
+                  require(case["process_peak_rss_bytes"] > 0 and case["elapsed_seconds"] > 0
+                          and case["disk"]["final"]["apparent_bytes"] > 0
+                          and case["disk"]["sampled_peak"]["apparent_bytes"] >= case["disk"]["final"]["apparent_bytes"],
+                          "Memory, elapsed or fixture disk measurement missing.")
+                  cancellation = case["cancellation"]
+                  require(cancellation["status"] == "CANCELLED"
+                          and cancellation["previous_selection_preserved"] is True
+                          and cancellation["recovery_source_copy_verified"] is True
+                          and cancellation["response_seconds"] >= 0, "Observed cancellation and recovery not established.")
+                  require(all(case["isolation"].values()), "Workspace isolation failed.")
+                  restarts = case["restart"]["cases"]
+                  require(len(restarts) == 5 and case["restart"]["cursor_and_original_verified"] is True,
+                          "Five fresh-process continuation probes required.")
+                  for restart in restarts:
+                      execution(restart)
+                      require(restart["status"] == "PASS" and restart["continued_results"] == 100
+                              and restart["old_selection_rejected"] is True
+                              and restart["source_and_copy_verified"] is True
+                              and restart["process_peak_rss_bytes"] > 0, "Restart source/capability evidence incomplete.")
+                  imports = case["actual_small_txt_imports"]
+                  require(imports["count"] == 20 and imports["source_bytes"] > 0
+                          and imports["all_original_bytes_verified"] is True, "Separate actual TXT intake missing.")
+                  stats(imports["latency"], 20)
+                  summaries.append({"synthetic_editions": size, "pages": traversal["pages"],
+                                    "elapsed_seconds": case["elapsed_seconds"],
+                                    "search_page_p50_seconds": traversal["latency"]["p50_seconds"],
+                                    "search_page_p95_seconds": traversal["latency"]["p95_seconds"],
+                                    "process_peak_rss_bytes": case["process_peak_rss_bytes"],
+                                    "fixture_sampled_peak_bytes": case["disk"]["sampled_peak"]["apparent_bytes"]})
+              gate.update(status="PASS", source_manifest_sha256=manifest["sha256"],
+                          wheel_sha256=preflight["wheel_sha256"], installed_mode=True, isolated=True, cases=summaries)
+          except Exception as exc:
+              gate.update(status="FAIL", reason=type(exc).__name__ + ": " + str(exc))
+          (output / "capacity-gate-status.json").write_text(
+              json.dumps(gate, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+          print(json.dumps(gate, ensure_ascii=False))
+          sys.exit(0 if gate["status"] == "PASS" else 1)
+          '@ | python -I -B -X utf8 -
+          if ($LASTEXITCODE -ne 0) { throw 'Capacity gate FAIL; inspect retained raw receipts and progress.' }
+
+      - name: Upload raw measurements, checkpoints and source receipts
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: carr-installed-capacity-${{ github.run_id }}-${{ github.run_attempt }}
+          if-no-files-found: error
+          retention-days: 30
+          path: |
+            carr-library/ci-results/capacity/*.json
+            carr-library/ci-results/capacity/*.log
+            carr-library/ci-results/capacity/*.txt
+            carr-library/ci-results/capacity/measurement/*.json
+            carr-library/ci-results/capacity/measurement/*.partial
+            carr-library/ci-results/capacity/measurement/failure-*.txt

@@ -1,0 +1,116 @@
+{
+  "schema": 1,
+  "feature": "Canonical historical reader-session recovery through current history store",
+  "base": "bf85c5ecbfee9e45068192d40e8cc8584f95986b",
+  "total_cases": 111,
+  "fixture_multipliers": 1,
+  "tests": {
+    "tests/reader/test_legacy_reading_import.py": {
+      "test_saved_cursor_and_redo_are_kept_without_full_revision_snapshots": 1,
+      "test_complete_500_step_history_stays_compact_and_forks_only_selected_revision": 1,
+      "test_exact_released_legacy_anchor_dialects_preserve_all_positions": 2,
+      "test_invalid_or_mixed_histories_fail_before_any_state_publication": 22,
+      "test_cancellation_checks_redo_history_as_well_as_saved_cursor": 1,
+      "test_same_rewritten_words_never_gain_exact_source_alignment": 1,
+      "test_store_deduplicates_exact_raw_history_and_retains_it_across_forks": 1,
+      "test_same_semantic_json_with_different_bytes_retains_exact_original_files": 1,
+      "test_imported_projects_require_retained_history_and_immutable_origin": 1,
+      "test_workspace_filter_carries_multi_position_identity": 1,
+      "test_legacy_project_versions_keep_original_schema_without_empty_origin_field": 1,
+      "test_saved_audio_handoff_carries_immutable_multi_position_origin": 1,
+      "test_hardlinked_external_snapshot_and_retained_archive_are_rejected": 1,
+      "test_late_competing_archive_is_never_replaced_or_deleted": 1,
+      "test_byte_and_file_inventory_limits_apply_before_additional_publication": 1,
+      "test_retry_completes_directory_sync_after_archive_move_committed": 1
+    },
+    "tests/storage/test_legacy_reading_backup.py": {
+      "test_historical_positions_survive_actual_backup_restore_and_rebackup": 1,
+      "test_old_project_format_survives_beside_imported_provenance": 1,
+      "test_missing_history_fails_before_backup_publication": 1,
+      "test_valid_hashes_cannot_rebind_a_history_to_another_library": 1,
+      "test_project_origin_must_match_retained_selected_revision": 1,
+      "test_source_bytes_are_reauthenticated_before_historical_activation": 1,
+      "test_archived_workspace_is_retained_but_not_silently_activated": 1,
+      "test_managed_audio_handoff_and_backup_preserve_the_same_compact_history": 1,
+      "test_a_forged_audio_handoff_cannot_supply_a_different_retained_history": 1
+    },
+    "tests/ui/test_reading_import.py": {
+      "test_explicit_historical_selection_saves_exact_archive_then_opens_existing_editor": 1,
+      "test_cancelling_any_review_stage_keeps_both_original_and_store_unchanged": 3,
+      "test_scope_changes_cannot_publish_or_open_into_new_library": 3,
+      "test_late_cancelled_worker_result_never_launches_editor_or_new_save": 1,
+      "test_a_previous_cancel_latch_does_not_disable_a_new_explicit_import": 1,
+      "test_invalid_new_title_fails_before_retaining_a_history": 1,
+      "test_retained_history_reopens_original_cursor_and_redo_without_original_file": 1,
+      "test_busy_frame_rejects_a_second_import_without_opening_native_picker": 1,
+      "test_installation_is_idempotent_and_registers_semantic_commands_without_hotkeys": 1
+    },
+    "tests/reader/test_legacy_reader_session.py": {
+      "test_envelope_retains_exact_bytes_all_revisions_and_passive_observations": 8,
+      "test_saved_character_cursor_is_validated_against_saved_not_selected_revision": 1,
+      "test_invalid_session_observations_never_publish_an_archive": 21,
+      "test_session_envelope_fields_and_inner_history_are_exact": 5,
+      "test_boundary_observations_remain_inert_and_are_not_added_to_current_project": 1,
+      "test_bare_reading_history_contract_remains_unchanged": 1,
+      "test_cancelled_session_validation_does_not_publish_even_with_a_valid_saved_revision": 1
+    },
+    "tests/storage/test_legacy_reader_session_backup.py": {
+      "test_actual_backup_restore_rebackup_retains_envelope_and_exact_source": 3,
+      "test_inner_document_digest_cannot_replace_original_envelope_identity": 1,
+      "test_valid_envelope_hash_does_not_bypass_current_source_binding": 1,
+      "test_envelope_remains_required_when_a_current_pending_project_uses_it": 1
+    },
+    "tests/ui/test_legacy_reader_session.py": {
+      "test_explicit_session_review_reuses_current_editor_without_applying_saved_voice": 1,
+      "test_cancelled_or_stale_session_review_cannot_publish_or_open": 5,
+      "test_retained_envelope_reopens_all_history_after_original_is_removed": 1
+    }
+  },
+  "native": {
+    "total_checks": 33,
+    "expected_label_counter": {
+      "actual Windows historical reader controls": 1,
+      "exact original reader envelope retained in review": 1,
+      "old voice and audio position remain passive observations": 1,
+      "session review preserves complete undo and redo history": 1,
+      "review alone creates no retained project or reading settings": 1,
+      "native revision list preserves Unicode and redo": 1,
+      "native revision list selects exact earlier redo": 1,
+      "native selection returns exact retained revision": 1,
+      "native Cancel leaves original and current stores unchanged": 1,
+      "native accept returns explicitly reviewed Unicode title": 1,
+      "accepted session becomes a new current derivative bound to the full envelope": 1,
+      "complete backup restores exact original envelope and session observations": 1,
+      "restored reader history does not create active speech settings": 1,
+      "restored reader envelope supports exact full rebackup": 1,
+      "external original session bytes remain unchanged": 1,
+      "one owned native revision dialog": 1,
+      "enabled native revision decision button": 1,
+      "dispatched native revision decision event": 1,
+      "settled native revision dialog": 1,
+      "one owned native cancel dialog": 1,
+      "enabled native cancel decision button": 1,
+      "dispatched native cancel decision event": 1,
+      "settled native cancel dialog": 1,
+      "named native cancel review fields": 1,
+      "read-only native cancel historical session observations": 1,
+      "editable native cancel new copy title": 1,
+      "one owned native accept dialog": 1,
+      "enabled native accept decision button": 1,
+      "dispatched native accept decision event": 1,
+      "settled native accept dialog": 1,
+      "named native accept review fields": 1,
+      "read-only native accept historical session observations": 1,
+      "editable native accept new copy title": 1
+    },
+    "probe_modules": [
+      "carr_library.reader.legacy_reading",
+      "carr_library.reader.narration",
+      "carr_library.ui.reading_import",
+      "carr_library.library_backup",
+      "carr_library.reader.reading_desk",
+      "carr_library.audio.jobs"
+    ]
+  },
+  "status": "DECLARED_REQUIRES_ACTUAL_EXECUTION"
+}

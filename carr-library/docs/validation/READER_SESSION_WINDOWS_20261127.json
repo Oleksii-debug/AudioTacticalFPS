@@ -1,0 +1,440 @@
+{
+  "schema": 1,
+  "status": "PASS",
+  "scope": "Exact frozen historical reader-session component only; no transfer to a later root.",
+  "source_commit": "01c18ae12c75a628c8efdd5aaa3e498cca49d59c",
+  "source_tree": "4499210de035408ff11df47e2844dcac1bf40c58",
+  "branch": "carr/reader-session-r11-firewall-fix-20261127",
+  "run_id": 46025115863,
+  "job_id": 140594401259,
+  "run_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46025115863",
+  "retrieval": "GitHub actual job logs plus artifact metadata; ZIP bytes were not downloaded or independently rehashed.",
+  "artifact": {
+    "id": 15211002463,
+    "name": "carr-reader-session-01c18ae12c75a628c8efdd5aaa3e498cca49d59c-1",
+    "size_in_bytes": 393998,
+    "url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15211002463",
+    "archive_download_url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15211002463/zip",
+    "expired": false,
+    "created_at": "2026-11-27T15:30:19Z",
+    "expires_at": "2026-12-27T15:30:18Z",
+    "updated_at": "2026-11-27T15:30:19Z",
+    "digest": "sha256:a14d325dfb22c3b18c5e301e51b73d788a343036aed9012ada77b986aa5797b8",
+    "workflow_run": {
+      "id": 46025115863,
+      "repository_id": 1341777614,
+      "head_repository_id": 1341777614,
+      "head_branch": "carr/reader-session-r11-firewall-fix-20261127",
+      "head_sha": "01c18ae12c75a628c8efdd5aaa3e498cca49d59c"
+    }
+  },
+  "actual": {
+    "source": {
+      "schema": 1,
+      "status": "PASS",
+      "mode": "source",
+      "declared_cases": 111,
+      "timeout_seconds": 1200,
+      "oracle_sha256": "3484684a48925c111bf1f5532721ca1670af3f42a428e80a6028537767250442",
+      "source_commit": "01c18ae12c75a628c8efdd5aaa3e498cca49d59c",
+      "source_tree": "4499210de035408ff11df47e2844dcac1bf40c58",
+      "wheel_sha256": "5805962693ae5a6133baf0ebbc951e80f57b73e66a7c4e2b9a17f012a96956af",
+      "checkout_manifest_sha256": "c90c222905aa879595feaca2eb188923d3c08e469f5c4dd7559d0f8fe26c2702",
+      "tracked_source_files": 1465,
+      "source_only_python": {
+        "bootstrap/semantic_compat/probe.py": "c51758108a418c7bf98ddd459cefdca852777b07cfc95ac669855b1195398ac7",
+        "bootstrap/semantic_compat/test_probe.py": "ae093cae9f00307c09d2ea787dacf7c8c1522184e5480a411c0979023b7b70bb"
+      },
+      "actual_ffmpeg": null,
+      "test_source_sha256": {
+        "tests/reader/test_legacy_reading_import.py": "7bf154dda973c2ec17764b4f01a87071fb5044c3ccd95c9efee34cdc83deaa84",
+        "tests/storage/test_legacy_reading_backup.py": "a9e8e58eef2dd853cc72cd568c592859b9de875d104a77e71be93477529a3053",
+        "tests/ui/test_reading_import.py": "d6fa6f882345b756786d3343c89ec120ce216d77cc4ef003a35e294aa0522b84",
+        "tests/reader/test_legacy_reader_session.py": "488b6704ec872dcce2866020424e01ec1cf50d7040ef50c58476eb45d20140bf",
+        "tests/storage/test_legacy_reader_session_backup.py": "bb8f9a8103867b07c9fcdedc98bb99beb150b5544753507ab1ba98b16f804b3e",
+        "tests/ui/test_legacy_reader_session.py": "aecbbbbb2dda3ea946fd39fc82a66103566cb66c2c6db0135eb033f47bf9162e",
+        "tests/__init__.py": "bda1d1b86fa69f604fb87c19f27628942b6bd77aa46b605efbc9cb9d4457183d",
+        "tests/storage/__init__.py": "133dac0936d6e430af23a6ea8041d800ff72d4ee8b7e6bae54d16d6d0bff3efb",
+        "scripts/windows_legacy_reader_session_smoke.py": "7609c785c91a9783d0880705ec854ca15c24f6fd09e5f5034d1c10044036fb64"
+      },
+      "runner_sha256": {
+        "audio_batch_acceptance.py": "3fcb217a7ed9d535ea9d277191a27504f8e6f452bef235b728036358f9e6e003",
+        "ci_check.py": "a7e90c3a14dc51b78c9af17850a7038bf21513cc5ba41466293cc853cd0e2842",
+        "ci_watchdog.py": "e02be6a6c3406bdf1d9d4c24673363894d03a1ee7948b3b77d6b20fcc2bfc057"
+      },
+      "pytest_exit": 0,
+      "case_counter": {
+        "tests.reader.test_legacy_reader_session": {
+          "test_envelope_retains_exact_bytes_all_revisions_and_passive_observations": 8,
+          "test_saved_character_cursor_is_validated_against_saved_not_selected_revision": 1,
+          "test_invalid_session_observations_never_publish_an_archive": 21,
+          "test_session_envelope_fields_and_inner_history_are_exact": 5,
+          "test_boundary_observations_remain_inert_and_are_not_added_to_current_project": 1,
+          "test_bare_reading_history_contract_remains_unchanged": 1,
+          "test_cancelled_session_validation_does_not_publish_even_with_a_valid_saved_revision": 1
+        },
+        "tests.reader.test_legacy_reading_import": {
+          "test_saved_cursor_and_redo_are_kept_without_full_revision_snapshots": 1,
+          "test_complete_500_step_history_stays_compact_and_forks_only_selected_revision": 1,
+          "test_exact_released_legacy_anchor_dialects_preserve_all_positions": 2,
+          "test_invalid_or_mixed_histories_fail_before_any_state_publication": 22,
+          "test_cancellation_checks_redo_history_as_well_as_saved_cursor": 1,
+          "test_same_rewritten_words_never_gain_exact_source_alignment": 1,
+          "test_store_deduplicates_exact_raw_history_and_retains_it_across_forks": 1,
+          "test_same_semantic_json_with_different_bytes_retains_exact_original_files": 1,
+          "test_imported_projects_require_retained_history_and_immutable_origin": 1,
+          "test_workspace_filter_carries_multi_position_identity": 1,
+          "test_legacy_project_versions_keep_original_schema_without_empty_origin_field": 1,
+          "test_saved_audio_handoff_carries_immutable_multi_position_origin": 1,
+          "test_hardlinked_external_snapshot_and_retained_archive_are_rejected": 1,
+          "test_late_competing_archive_is_never_replaced_or_deleted": 1,
+          "test_byte_and_file_inventory_limits_apply_before_additional_publication": 1,
+          "test_retry_completes_directory_sync_after_archive_move_committed": 1
+        },
+        "tests.storage.test_legacy_reader_session_backup": {
+          "test_actual_backup_restore_rebackup_retains_envelope_and_exact_source": 3,
+          "test_inner_document_digest_cannot_replace_original_envelope_identity": 1,
+          "test_valid_envelope_hash_does_not_bypass_current_source_binding": 1,
+          "test_envelope_remains_required_when_a_current_pending_project_uses_it": 1
+        },
+        "tests.storage.test_legacy_reading_backup": {
+          "test_historical_positions_survive_actual_backup_restore_and_rebackup": 1,
+          "test_old_project_format_survives_beside_imported_provenance": 1,
+          "test_missing_history_fails_before_backup_publication": 1,
+          "test_valid_hashes_cannot_rebind_a_history_to_another_library": 1,
+          "test_project_origin_must_match_retained_selected_revision": 1,
+          "test_source_bytes_are_reauthenticated_before_historical_activation": 1,
+          "test_archived_workspace_is_retained_but_not_silently_activated": 1,
+          "test_managed_audio_handoff_and_backup_preserve_the_same_compact_history": 1,
+          "test_a_forged_audio_handoff_cannot_supply_a_different_retained_history": 1
+        },
+        "tests.ui.test_legacy_reader_session": {
+          "test_explicit_session_review_reuses_current_editor_without_applying_saved_voice": 1,
+          "test_cancelled_or_stale_session_review_cannot_publish_or_open": 5,
+          "test_retained_envelope_reopens_all_history_after_original_is_removed": 1
+        },
+        "tests.ui.test_reading_import": {
+          "test_explicit_historical_selection_saves_exact_archive_then_opens_existing_editor": 1,
+          "test_cancelling_any_review_stage_keeps_both_original_and_store_unchanged": 3,
+          "test_scope_changes_cannot_publish_or_open_into_new_library": 3,
+          "test_late_cancelled_worker_result_never_launches_editor_or_new_save": 1,
+          "test_a_previous_cancel_latch_does_not_disable_a_new_explicit_import": 1,
+          "test_invalid_new_title_fails_before_retaining_a_history": 1,
+          "test_retained_history_reopens_original_cursor_and_redo_without_original_file": 1,
+          "test_busy_frame_rejects_a_second_import_without_opening_native_picker": 1,
+          "test_installation_is_idempotent_and_registers_semantic_commands_without_hotkeys": 1
+        }
+      },
+      "interpreter_sha256": "10758995614a38e7612db5bd1b0867f64d6fb848e5504ebd90a5b5238915c224",
+      "actual_cases": 111,
+      "elapsed_seconds": 17.625
+    },
+    "installed": {
+      "schema": 1,
+      "status": "PASS",
+      "mode": "installed",
+      "declared_cases": 111,
+      "timeout_seconds": 1200,
+      "oracle_sha256": "3484684a48925c111bf1f5532721ca1670af3f42a428e80a6028537767250442",
+      "source_commit": "01c18ae12c75a628c8efdd5aaa3e498cca49d59c",
+      "source_tree": "4499210de035408ff11df47e2844dcac1bf40c58",
+      "wheel_sha256": "5805962693ae5a6133baf0ebbc951e80f57b73e66a7c4e2b9a17f012a96956af",
+      "checkout_manifest_sha256": "c90c222905aa879595feaca2eb188923d3c08e469f5c4dd7559d0f8fe26c2702",
+      "tracked_source_files": 1465,
+      "source_only_python": {
+        "bootstrap/semantic_compat/probe.py": "c51758108a418c7bf98ddd459cefdca852777b07cfc95ac669855b1195398ac7",
+        "bootstrap/semantic_compat/test_probe.py": "ae093cae9f00307c09d2ea787dacf7c8c1522184e5480a411c0979023b7b70bb"
+      },
+      "actual_ffmpeg": null,
+      "test_source_sha256": {
+        "tests/reader/test_legacy_reading_import.py": "7bf154dda973c2ec17764b4f01a87071fb5044c3ccd95c9efee34cdc83deaa84",
+        "tests/storage/test_legacy_reading_backup.py": "a9e8e58eef2dd853cc72cd568c592859b9de875d104a77e71be93477529a3053",
+        "tests/ui/test_reading_import.py": "d6fa6f882345b756786d3343c89ec120ce216d77cc4ef003a35e294aa0522b84",
+        "tests/reader/test_legacy_reader_session.py": "488b6704ec872dcce2866020424e01ec1cf50d7040ef50c58476eb45d20140bf",
+        "tests/storage/test_legacy_reader_session_backup.py": "bb8f9a8103867b07c9fcdedc98bb99beb150b5544753507ab1ba98b16f804b3e",
+        "tests/ui/test_legacy_reader_session.py": "aecbbbbb2dda3ea946fd39fc82a66103566cb66c2c6db0135eb033f47bf9162e",
+        "tests/__init__.py": "bda1d1b86fa69f604fb87c19f27628942b6bd77aa46b605efbc9cb9d4457183d",
+        "tests/storage/__init__.py": "133dac0936d6e430af23a6ea8041d800ff72d4ee8b7e6bae54d16d6d0bff3efb",
+        "scripts/windows_legacy_reader_session_smoke.py": "7609c785c91a9783d0880705ec854ca15c24f6fd09e5f5034d1c10044036fb64"
+      },
+      "runner_sha256": {
+        "audio_batch_acceptance.py": "3fcb217a7ed9d535ea9d277191a27504f8e6f452bef235b728036358f9e6e003",
+        "ci_check.py": "a7e90c3a14dc51b78c9af17850a7038bf21513cc5ba41466293cc853cd0e2842",
+        "ci_watchdog.py": "e02be6a6c3406bdf1d9d4c24673363894d03a1ee7948b3b77d6b20fcc2bfc057"
+      },
+      "pytest_exit": 0,
+      "case_counter": {
+        "tests.reader.test_legacy_reader_session": {
+          "test_envelope_retains_exact_bytes_all_revisions_and_passive_observations": 8,
+          "test_saved_character_cursor_is_validated_against_saved_not_selected_revision": 1,
+          "test_invalid_session_observations_never_publish_an_archive": 21,
+          "test_session_envelope_fields_and_inner_history_are_exact": 5,
+          "test_boundary_observations_remain_inert_and_are_not_added_to_current_project": 1,
+          "test_bare_reading_history_contract_remains_unchanged": 1,
+          "test_cancelled_session_validation_does_not_publish_even_with_a_valid_saved_revision": 1
+        },
+        "tests.reader.test_legacy_reading_import": {
+          "test_saved_cursor_and_redo_are_kept_without_full_revision_snapshots": 1,
+          "test_complete_500_step_history_stays_compact_and_forks_only_selected_revision": 1,
+          "test_exact_released_legacy_anchor_dialects_preserve_all_positions": 2,
+          "test_invalid_or_mixed_histories_fail_before_any_state_publication": 22,
+          "test_cancellation_checks_redo_history_as_well_as_saved_cursor": 1,
+          "test_same_rewritten_words_never_gain_exact_source_alignment": 1,
+          "test_store_deduplicates_exact_raw_history_and_retains_it_across_forks": 1,
+          "test_same_semantic_json_with_different_bytes_retains_exact_original_files": 1,
+          "test_imported_projects_require_retained_history_and_immutable_origin": 1,
+          "test_workspace_filter_carries_multi_position_identity": 1,
+          "test_legacy_project_versions_keep_original_schema_without_empty_origin_field": 1,
+          "test_saved_audio_handoff_carries_immutable_multi_position_origin": 1,
+          "test_hardlinked_external_snapshot_and_retained_archive_are_rejected": 1,
+          "test_late_competing_archive_is_never_replaced_or_deleted": 1,
+          "test_byte_and_file_inventory_limits_apply_before_additional_publication": 1,
+          "test_retry_completes_directory_sync_after_archive_move_committed": 1
+        },
+        "tests.storage.test_legacy_reader_session_backup": {
+          "test_actual_backup_restore_rebackup_retains_envelope_and_exact_source": 3,
+          "test_inner_document_digest_cannot_replace_original_envelope_identity": 1,
+          "test_valid_envelope_hash_does_not_bypass_current_source_binding": 1,
+          "test_envelope_remains_required_when_a_current_pending_project_uses_it": 1
+        },
+        "tests.storage.test_legacy_reading_backup": {
+          "test_historical_positions_survive_actual_backup_restore_and_rebackup": 1,
+          "test_old_project_format_survives_beside_imported_provenance": 1,
+          "test_missing_history_fails_before_backup_publication": 1,
+          "test_valid_hashes_cannot_rebind_a_history_to_another_library": 1,
+          "test_project_origin_must_match_retained_selected_revision": 1,
+          "test_source_bytes_are_reauthenticated_before_historical_activation": 1,
+          "test_archived_workspace_is_retained_but_not_silently_activated": 1,
+          "test_managed_audio_handoff_and_backup_preserve_the_same_compact_history": 1,
+          "test_a_forged_audio_handoff_cannot_supply_a_different_retained_history": 1
+        },
+        "tests.ui.test_legacy_reader_session": {
+          "test_explicit_session_review_reuses_current_editor_without_applying_saved_voice": 1,
+          "test_cancelled_or_stale_session_review_cannot_publish_or_open": 5,
+          "test_retained_envelope_reopens_all_history_after_original_is_removed": 1
+        },
+        "tests.ui.test_reading_import": {
+          "test_explicit_historical_selection_saves_exact_archive_then_opens_existing_editor": 1,
+          "test_cancelling_any_review_stage_keeps_both_original_and_store_unchanged": 3,
+          "test_scope_changes_cannot_publish_or_open_into_new_library": 3,
+          "test_late_cancelled_worker_result_never_launches_editor_or_new_save": 1,
+          "test_a_previous_cancel_latch_does_not_disable_a_new_explicit_import": 1,
+          "test_invalid_new_title_fails_before_retaining_a_history": 1,
+          "test_retained_history_reopens_original_cursor_and_redo_without_original_file": 1,
+          "test_busy_frame_rejects_a_second_import_without_opening_native_picker": 1,
+          "test_installation_is_idempotent_and_registers_semantic_commands_without_hotkeys": 1
+        }
+      },
+      "interpreter_sha256": "37949e9f15fe5764407ca4890f592a3540e59cd724335a014ad94792c40bfaaa",
+      "actual_cases": 111,
+      "elapsed_seconds": 17.264999999999986
+    },
+    "native": {
+      "archive_sha256": "a2133319866e886badffaac500bb19c819ae30331752605f1fe6503f42abf61b",
+      "checks": [
+        "actual Windows historical reader controls",
+        "exact original reader envelope retained in review",
+        "old voice and audio position remain passive observations",
+        "session review preserves complete undo and redo history",
+        "review alone creates no retained project or reading settings",
+        "one owned native revision dialog",
+        "native revision list preserves Unicode and redo",
+        "native revision list selects exact earlier redo",
+        "enabled native revision decision button",
+        "dispatched native revision decision event",
+        "settled native revision dialog",
+        "native selection returns exact retained revision",
+        "one owned native cancel dialog",
+        "named native cancel review fields",
+        "read-only native cancel historical session observations",
+        "editable native cancel new copy title",
+        "enabled native cancel decision button",
+        "dispatched native cancel decision event",
+        "settled native cancel dialog",
+        "native Cancel leaves original and current stores unchanged",
+        "one owned native accept dialog",
+        "named native accept review fields",
+        "read-only native accept historical session observations",
+        "editable native accept new copy title",
+        "enabled native accept decision button",
+        "dispatched native accept decision event",
+        "settled native accept dialog",
+        "native accept returns explicitly reviewed Unicode title",
+        "accepted session becomes a new current derivative bound to the full envelope",
+        "complete backup restores exact original envelope and session observations",
+        "restored reader history does not create active speech settings",
+        "restored reader envelope supports exact full rebackup",
+        "external original session bytes remain unchanged"
+      ],
+      "engine_execution": "NOT_RUN",
+      "historical_audio_seconds": 12.75,
+      "historical_cursor": 5,
+      "installed_mode": true,
+      "isolated": true,
+      "module_origins": {
+        "carr_library.audio.jobs": {
+          "path": "D:\\a\\_temp\\carr-reader-session-46025115863-1\\installed\\Lib\\site-packages\\carr_library\\audio\\jobs.py",
+          "sha256": "584f4a512067b13847ef4f60af9be6b3bdf0917608010e4bc7235056ac956a33"
+        },
+        "carr_library.library_backup": {
+          "path": "D:\\a\\_temp\\carr-reader-session-46025115863-1\\installed\\Lib\\site-packages\\carr_library\\library_backup.py",
+          "sha256": "22e553adc507439fb096239149c6497528371e04fefdc252267220777bfeca15"
+        },
+        "carr_library.reader.legacy_reading": {
+          "path": "D:\\a\\_temp\\carr-reader-session-46025115863-1\\installed\\Lib\\site-packages\\carr_library\\reader\\legacy_reading.py",
+          "sha256": "06954437068dc424f103703a6ff9d5073ddd8265ebf41adc610fd19e54b44dc3"
+        },
+        "carr_library.reader.narration": {
+          "path": "D:\\a\\_temp\\carr-reader-session-46025115863-1\\installed\\Lib\\site-packages\\carr_library\\reader\\narration.py",
+          "sha256": "7e4c0ac9bbf99407105b02ee6a3e66382b43f8c7a80fe94f9529a5582955a41b"
+        },
+        "carr_library.reader.reading_desk": {
+          "path": "D:\\a\\_temp\\carr-reader-session-46025115863-1\\installed\\Lib\\site-packages\\carr_library\\reader\\reading_desk.py",
+          "sha256": "43ae80bab2fcfa73dc8a64d80fb11ffda7a0a3650b861f543cb2326558d19706"
+        },
+        "carr_library.ui.reading_import": {
+          "path": "D:\\a\\_temp\\carr-reader-session-46025115863-1\\installed\\Lib\\site-packages\\carr_library\\ui\\reading_import.py",
+          "sha256": "5ae36946003440f63a71ef4b96b8a1ce8249572c854e101030f8f7ed2b5bc1cf"
+        }
+      },
+      "native_controls": "EXECUTED",
+      "nvda": "NOT_RUN",
+      "physical_playback": "NOT_RUN",
+      "restored_archive_sha256": "a2133319866e886badffaac500bb19c819ae30331752605f1fe6503f42abf61b",
+      "saved_revision": 1,
+      "selected_revision": 2,
+      "source_commit": "01c18ae12c75a628c8efdd5aaa3e498cca49d59c",
+      "speech_settings_created": false,
+      "status": "PASS"
+    },
+    "aggregate": {
+      "schema": 1,
+      "status": "PASS",
+      "source_cases": 111,
+      "installed_cases": 111,
+      "native_checks": 33,
+      "oracle_sha256": "3484684a48925c111bf1f5532721ca1670af3f42a428e80a6028537767250442",
+      "nvda": "NOT_RUN",
+      "physical_playback": "NOT_RUN",
+      "source_commit": "01c18ae12c75a628c8efdd5aaa3e498cca49d59c",
+      "source_tree": "4499210de035408ff11df47e2844dcac1bf40c58",
+      "wheel_sha256": "5805962693ae5a6133baf0ebbc951e80f57b73e66a7c4e2b9a17f012a96956af",
+      "actual_ffmpeg": null,
+      "native_receipt_sha256": "b4373be9554ae8d2227349d13cebfca42872fcf2274525756bb7d4328216d282"
+    }
+  },
+  "jobs": [
+    {
+      "id": 140594401259,
+      "name": "Windows / canonical reader-session / exact history / passive restore",
+      "status": "completed",
+      "conclusion": "success",
+      "run_id": 46025115863,
+      "logs_url": null,
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1
+        },
+        {
+          "name": "Check out the exact event source",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2
+        },
+        {
+          "name": "Record exact candidate and initial qualification status",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3
+        },
+        {
+          "name": "Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4
+        },
+        {
+          "name": "Build the source-bound wheel and install the existing 56-pin runtime with signed-admission fixtures",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 5
+        },
+        {
+          "name": "Deny outgoing network for the exact installed historical reader review host",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 6
+        },
+        {
+          "name": "Run exact source historical reader-session and preserved history regressions",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 7
+        },
+        {
+          "name": "Run exact installed historical reader-session and preserved history regressions",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 8
+        },
+        {
+          "name": "Run actual installed reader-session revision preview Cancel and passive restore controls",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 9
+        },
+        {
+          "name": "Release and verify this run's exact native firewall rule",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 10
+        },
+        {
+          "name": "Require every exact source installed and native receipt",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 11
+        },
+        {
+          "name": "Preserve textual qualification evidence on every outcome",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 12
+        },
+        {
+          "name": "Remove this run's ephemeral synthetic fixtures and the installed environment",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 13
+        },
+        {
+          "name": "Post Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 25
+        },
+        {
+          "name": "Post Check out the exact event source",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 26
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 27
+        }
+      ]
+    }
+  ],
+  "not_claimed": [
+    "Private voice or model execution",
+    "Physical audio playback",
+    "Manual NVDA",
+    "Full composed-root qualification"
+  ]
+}

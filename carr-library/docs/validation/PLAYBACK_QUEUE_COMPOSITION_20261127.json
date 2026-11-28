@@ -1,0 +1,119 @@
+{
+  "schema": 1,
+  "base": "48e038ef1993879605ecb83e0dfa17794382a851",
+  "base_tree": "d7b948b93397525b7e956afc564fa7a6742fd8f1",
+  "core_checkpoint": "714f982102a070df807252aa2cd7d8d3585f1518",
+  "previous_base": "aa89b6f2e11bf49dd1b1350b28e8c055f54e62ac",
+  "shared_base_blobs": {
+    "library_backup.py": "8e90842684094fc8d1270cdbff23a59c12c05f66",
+    "ui/desktop_app.py": "f5eb061f919e290560e1bbbe74d0df78ca23c089",
+    "ui/audio_studio.py": "b48dc093ebb78be75a8f47b0849750cb7ef905dc",
+    "audio/player.py": "429a47346769837862400159b1e22b4d9287f2c3"
+  },
+  "provenance": {
+    "concept_commit": "dc477add6db2fc0348637dd460d03b76d8e1c75f",
+    "concept_blob": "9ceeee4215442952af64d258413a0550689d4407"
+  },
+  "status": "NOT_RUN",
+  "hunks": [
+    {
+      "path": "carr-library/src/carr_library/audio/player.py",
+      "before": "    def play_index(self, index, *, device_id=_DEVICE_UNSET):",
+      "after": "    def play_index(self, index, *, device_id=_DEVICE_UNSET, start_seconds=None):"
+    },
+    {
+      "path": "carr-library/src/carr_library/audio/player.py",
+      "before": "        self._start(item.path, start_seconds=loop[0] if loop else 0,\n                    end_seconds=loop[1] if loop else None, device_id=device_id)",
+      "after": "        beginning = (loop[0] if loop else 0) if start_seconds is None else start_seconds\n        self._start(item.path, start_seconds=beginning,\n                    end_seconds=loop[1] if loop else None, device_id=device_id)"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/desktop_app.py",
+      "before": "from .media_overlay_dialog import install_media_overlay_actions",
+      "after": "from .media_overlay_dialog import install_media_overlay_actions\nfrom .playback_queue import install_playback_queue_actions"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/desktop_app.py",
+      "before": "        install_media_overlay_actions(self)",
+      "after": "        install_media_overlay_actions(self)\n        install_playback_queue_actions(self)"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/audio_studio.py",
+      "before": "                               ('Add WAV recordings', self.add_recordings), ('Clear playlist', self.clear_playlist),",
+      "after": "                               ('Add WAV recordings', self.add_recordings), ('Clear playlist', self.clear_playlist),\n                               ('Saved playback queue...', self.saved_playback_queue),"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/audio_studio.py",
+      "before": "    def add_recordings(self, event=None):\n",
+      "after": "    def saved_playback_queue(self, event=None):\n        if self.closed or self.busy:\n            return\n        try:\n            from .playback_queue import show_playback_queue\n            library = self.parent.library\n            if self.controller.private_root != Path(library.root).absolute():\n                raise ValueError('Open the saved queue from the current library.')\n            selected = self.playback.playlist\n            self.playback.stop()\n            show_playback_queue(self.parent, initial_paths=selected)\n            self.refresh_playback()\n        except Exception as exc:\n            self._error(exc)\n\n    def add_recordings(self, event=None):\n"
+    },
+    {
+      "path": "carr-library/src/carr_library/library_backup.py",
+      "before": "def _sidecar_allowed(value):",
+      "after": "def _playback_queue_adapter():\n    from .audio import playlist\n    return playlist\n\n\ndef _playback_queue_path(value):\n    return (isinstance(value, str) and value.startswith('playback-queue/')\n            and _playback_queue_adapter().is_state_path(value))\n\n\ndef _playback_queue_files(root, *, cancelled=lambda: False):\n    return _playback_queue_adapter().state_paths(root, cancelled=cancelled)\n\n\ndef _validate_playback_queue(root, *, cancelled=lambda: False):\n    return _playback_queue_adapter().validate_state_tree(root, cancelled=cancelled)\n\n\ndef _sidecar_allowed(value):"
+    },
+    {
+      "path": "carr-library/src/carr_library/library_backup.py",
+      "before": "            or _recording_path(value) or _audio_batch_path(value)):",
+      "after": "            or _recording_path(value) or _audio_batch_path(value) or _playback_queue_path(value)):"
+    },
+    {
+      "path": "carr-library/src/carr_library/library_backup.py",
+      "before": "             _audio_batch_adapter().state_limit(relative) if _audio_batch_path(relative) else",
+      "after": "             _audio_batch_adapter().state_limit(relative) if _audio_batch_path(relative) else\n             _playback_queue_adapter().state_limit(relative) if _playback_queue_path(relative) else"
+    },
+    {
+      "path": "carr-library/src/carr_library/library_backup.py",
+      "before": "        stack.enter_context(_legacy_asr_guard(root))",
+      "after": "        stack.enter_context(_legacy_asr_guard(root))\n        # The producer takes the outer writer before this namespace lock.\n        # Snapshot its complete retained media and cursor only while idle.\n        try:\n            stack.enter_context(_playback_queue_adapter().snapshot_guard(root))\n        except RuntimeError as exc:\n            raise RestoreError('The playback queue is being saved; retry backup after it stops.') from exc\n        playback_queue = _playback_queue_files(root, cancelled=cancelled)"
+    },
+    {
+      "path": "carr-library/src/carr_library/library_backup.py",
+      "before": "                    or _audio_batch_files(root, cancelled=cancelled) != audio_batches):",
+      "after": "                    or _audio_batch_files(root, cancelled=cancelled) != audio_batches\n                    or _playback_queue_files(root, cancelled=cancelled) != playback_queue):"
+    },
+    {
+      "path": "carr-library/src/carr_library/library_backup.py",
+      "before": "    for path in _audio_batch_files(root, cancelled=cancelled):\n        add(path)",
+      "after": "    for path in _audio_batch_files(root, cancelled=cancelled):\n        add(path)\n    for path in _playback_queue_files(root, cancelled=cancelled):\n        add(path)"
+    },
+    {
+      "path": "carr-library/src/carr_library/library_backup.py",
+      "before": "                _validate_audio_batches(snapshot_storage.db, app.root, cancelled=cancelled)",
+      "after": "                _validate_audio_batches(snapshot_storage.db, app.root, cancelled=cancelled)\n                _validate_playback_queue(app.root, cancelled=cancelled)"
+    },
+    {
+      "path": "carr-library/src/carr_library/library_backup.py",
+      "before": "            # Refuse a newly introduced project before interpreting its files.",
+      "after": "            if any(_playback_queue_path(entry['path']) for entry in sidecars):\n                _validate_playback_queue(stage / SIDECARS, cancelled=cancelled)\n            # Refuse a newly introduced project before interpreting its files."
+    },
+    {
+      "path": "carr-library/src/carr_library/library_backup.py",
+      "before": "        supplied_total, supplied_files, supplied_jobs = 0, 0, set()",
+      "after": "        supplied_total, supplied_files, supplied_jobs = 0, 0, set()\n        playback_total = playback_files = 0"
+    },
+    {
+      "path": "carr-library/src/carr_library/library_backup.py",
+      "before": "            if _resource_policy_path(entry[field]) and entry['size_bytes'] > MAX_RESOURCE_POLICY:",
+      "after": "            if _playback_queue_path(entry[field]):\n                adapter = _playback_queue_adapter()\n                playback_total += entry['size_bytes']\n                playback_files += 1\n                if (entry['size_bytes'] > adapter.state_limit(entry[field])\n                        or playback_total > adapter.MAX_TOTAL_BYTES + adapter.MAX_STATE_BYTES\n                        or playback_files > adapter.MAX_ITEMS + 1):\n                    raise RestoreError('Retained playback queue count or byte limit')\n            if _resource_policy_path(entry[field]) and entry['size_bytes'] > MAX_RESOURCE_POLICY:"
+    },
+    {
+      "path": "carr-library/src/carr_library/library_backup.py",
+      "before": "            _validate_audio_batches(storage.db, checked_root, cancelled=cancelled)",
+      "after": "            _validate_audio_batches(storage.db, checked_root, cancelled=cancelled)\n            _validate_playback_queue(checked_root, cancelled=cancelled)"
+    }
+  ],
+  "conflicts": [],
+  "qualification": {
+    "source": 141,
+    "installed": 141,
+    "native": 43,
+    "oracle": "scripts/playback_queue_oracles.json",
+    "physical_playback": "NOT_RUN",
+    "nvda": "NOT_RUN"
+  },
+  "lifecycle_followups": [
+    "Unstarted deferred progress reviews are released when the existing progress request closes without a callback.",
+    "Native Stop success permits input readers to close before a failed final native handle Close, while the player/window remain for retry.",
+    "An Event admission token prevents a queued but failed executor submission from running during a later submission."
+  ]
+}

@@ -1,0 +1,460 @@
+{
+  "schema": 1,
+  "status": "SOURCE_REVIEW_WITH_FOUR_RESTORED_CASES_NOT_RUN",
+  "canonical_commit": "e5c64a5245583f8f8b404a0f042f6ca438c24d7f",
+  "canonical_tree": "344567db5c0d99f5d6d7ad24c105645ea75b65e8",
+  "reviewed_current_commit": "8e63256d4da4a6e12a66714b83a89d6643bb5abf",
+  "reviewed_current_tree": "fc284971e27b8593c93365d1e8b441429a114f09",
+  "scope": "Bounded canonical shared OCR/options/import-center and keyboard/export consent comparison; no product change.",
+  "mappings": [
+    {
+      "contract": "Official model-ID spelling, exact script paths and pinned policy",
+      "old": {
+        "path": "carr-library/tests/extract/test_ocr_languages.py",
+        "git_blob": "03aa8c0cbb2602c85389a74aac09f5573e8474cb"
+      },
+      "current": [
+        {
+          "path": "carr-library/tests/extract/test_ocr_model_ids.py",
+          "git_blob": "c50487506e17b5d5071ee6e335d978f0c96b3587"
+        },
+        {
+          "path": "carr-library/tests/extract/test_ocr_languages.py",
+          "git_blob": "42afbd950d5ba03fd5807c86f857e697a725bc51"
+        }
+      ],
+      "finding": "All three canonical test purposes remain. The current Config checks pinned duplicate/unsupported policy before general split validation, so eng+eng has the existing unsupported-pinned diagnostic; rejection is preserved. The expanded discovery tests additionally cover native Windows separators, exact model directory/count, bounded output and cancellation."
+    },
+    {
+      "contract": "OCR pack manifest approval and immutable source bytes",
+      "old": {
+        "path": "carr-library/tests/extract/test_model_pack_manifest_identity.py",
+        "git_blob": "de554992d571b7a9819187b187c2b7d7d3b38cc4"
+      },
+      "current": [
+        {
+          "path": "carr-library/tests/extract/test_model_pack_manifest_identity.py",
+          "git_blob": "8b0e6495fd066ce23262365753d7ac529cd9b376"
+        },
+        {
+          "path": "carr-library/tests/extract/test_ocr_packs.py",
+          "git_blob": "b4264d87cefc74f8ef06ee78814157b01ba622c7"
+        },
+        {
+          "path": "carr-library/tests/extract/test_ocr_pack_path_binding.py",
+          "git_blob": "edb676f58fa31fc61340708ea4f980b6475c0aeb"
+        }
+      ],
+      "finding": "The old post-hash manifest swap accepted only the original approved snapshot. Current restored test changes both manifest and model after the actual approved read and requires complete refusal/no destination. Strict duplicate/nonfinite JSON and oversized empty-digest refusal remain. Valid language/script bytes, wrong digest and changed model bytes map to the existing exact approved pack/invalid prepared pack/changed inventory cases. This is source comparison, not OCR inference evidence."
+    },
+    {
+      "contract": "Managed OCR model-store transactions",
+      "old": {
+        "path": "carr-library/tests/extract/test_ocr_model_store.py",
+        "git_blob": "cd69f5d21808c0ff23fac72e37b26e907a2d3677"
+      },
+      "current": [
+        {
+          "path": "carr-library/tests/extract/test_ocr_model_store.py",
+          "git_blob": "d1db430a5798cf869feafb8fc517e01367f56424"
+        }
+      ],
+      "finding": "All 20 canonical test function bodies are unchanged; the current module also adds test_managed_install_cannot_mutate_a_sealed_runtime. Runtime/model fixture eligibility and quality are not inferred from source equality."
+    },
+    {
+      "contract": "Direct-import options and text-only no-dialog behavior",
+      "old": {
+        "path": "carr-library/tests/ui/test_ocr_options.py",
+        "git_blob": "0fe087da52253e58a3e8d04e9445f315d9c550e7"
+      },
+      "current": [
+        {
+          "path": "carr-library/tests/ui/test_ocr_profile_options.py",
+          "git_blob": "0fe087da52253e58a3e8d04e9445f315d9c550e7"
+        },
+        {
+          "path": "carr-library/tests/ui/test_ocr_options.py",
+          "git_blob": "cce8a79e18d73fa7efb5423f50ba9b26c56fc22a"
+        }
+      ],
+      "finding": "The entire old file is retained byte-for-byte as test_ocr_profile_options.py. Current adapter tests additionally require complete Config preservation, dialog destruction on cancellation and no wx import for text-only input."
+    },
+    {
+      "contract": "Installed OCR inventory and ordered language selection",
+      "old": {
+        "path": "carr-library/tests/ui/test_ocr_selection.py",
+        "git_blob": "8de091502fd6385efdf1bcdcd60dd4f4e34effcd"
+      },
+      "current": [
+        {
+          "path": "carr-library/tests/ui/test_ocr_selection.py",
+          "git_blob": "61b38491499b5254780d688b6e34e2b24960a293"
+        },
+        {
+          "path": "carr-library/tests/ui/test_ocr_language_dialog.py",
+          "git_blob": "ca4e38828a4b4e5d934805fe5b472cb5bfc2a634"
+        },
+        {
+          "path": "carr-library/tests/extract/test_ocr_languages.py",
+          "git_blob": "42afbd950d5ba03fd5807c86f857e697a725bc51"
+        }
+      ],
+      "finding": "Thirteen retained function bodies are exact; actual subprocess inventory now explicitly validates both --version and --list-langs. The old fourteen extra private-dialog tests migrate to the single ordered async selector and shared inventory authority. Exact old UI topology and auto-selection are not claimed equivalent; see deliberate differences below."
+    },
+    {
+      "contract": "Import Center saved choices and current library ownership",
+      "old": {
+        "path": "carr-library/tests/ui/test_import_center.py",
+        "git_blob": "c2f9f5056e910c302b2e89c86beff119c1d1fbe4"
+      },
+      "current": [
+        {
+          "path": "carr-library/tests/ui/test_import_center.py",
+          "git_blob": "f9c8a7736aa163bc5f6165024a362890575be71f"
+        },
+        {
+          "path": "carr-library/tests/ui/test_canonical_export_import_choices.py",
+          "new": true
+        }
+      ],
+      "finding": "Twelve common function bodies remain exact. Current plan captures dataclasses.replace(ocr_config) before background work; the changed configuration test actually mutates the visible choice before executing the queued job. Current choose_languages rechecks library identity and busy state after the modal return. New direct regression restores the lost modal-library-change assertion. Current run continues only the retained batch ID and never passes replacement current Config."
+    },
+    {
+      "contract": "Keyboard registration and atomic saved mappings",
+      "old": {
+        "path": "carr-library/tests/ui/test_keyboard_manager.py",
+        "git_blob": "481924034e2e01368759d7a72c43562b0e096bf0"
+      },
+      "current": [
+        {
+          "path": "carr-library/tests/ui/test_keyboard_manager.py",
+          "git_blob": "13a3dc0865c1619ad3c525f7c721284c852ca62f"
+        },
+        {
+          "path": "carr-library/tests/ui/test_keyboard_registration_compatibility.py",
+          "git_blob": "8db72a6cecbe5e090f1f0b820bb5f9189d14b92b"
+        },
+        {
+          "path": "carr-library/tests/ui/test_canonical_export_import_choices.py",
+          "new": true
+        }
+      ],
+      "finding": "Twenty-one common controller test bodies remain exact. The three late optional registration/default-warning tests moved into test_keyboard_registration_compatibility. Current keymap export mutation test covers both initially absent and approved existing files and unchanged live snapshot. New decline/positive tests restore direct early refusal and unchanged active bindings/persisted keymap, using the current typed approval helper and real atomic writer."
+    },
+    {
+      "contract": "Native overwrite consent, new-file race and typed publication",
+      "old": {
+        "path": "carr-library/tests/ui/test_export_confirmation.py",
+        "git_blob": "62ed5adcd81d13a5253f870380ff21f7c6357d7a"
+      },
+      "current": [
+        {
+          "path": "carr-library/tests/ui/test_export_destination_approval.py",
+          "git_blob": "0e047df3557f0374797b97bdde843f865923a1ed"
+        },
+        {
+          "path": "carr-library/tests/reader/test_export_no_clobber.py",
+          "git_blob": "1452984a101ebe83e2b231cc2a8ebccd1c2cb7da"
+        },
+        {
+          "path": "carr-library/tests/reader/test_export_publication_boundary.py",
+          "git_blob": "db2dceee443248f8374766ea730057fc9a1eff61"
+        }
+      ],
+      "finding": "Current approval captures the actual requested path, private root, parent identity, file state and bounded content before asking. Only literal True grants replacement. New destinations remain atomic no-clobber. The same immutable ExportDestination is checked again by _write_payload before staging and publication. Tests cover consent-window changes, all created/modified/replaced/removed states for text and binary writers, changed parent, different-path reuse, late competing publication and post-publication cleanup truth. Native dialogs default to No and always destroy; no native focus/NVDA claim."
+    },
+    {
+      "contract": "Actual desktop document-export handler",
+      "old": {
+        "path": "carr-library/tests/ui/test_academic_export_handler.py",
+        "git_blob": "63320ade10dbfbf0553663193172f03dc25298a7"
+      },
+      "current": [
+        {
+          "path": "carr-library/tests/ui/test_academic_export_handler.py",
+          "git_blob": "0c92e25d3b8c57529fe10a581cab4128059573bb"
+        },
+        {
+          "path": "carr-library/tests/e2e/test_export_destination.py",
+          "git_blob": "8e4b1cb7d914d491d440dee5f3340439f13dc1c6"
+        }
+      ],
+      "finding": "Nine common function bodies are exact. The current handler is extracted from the actual installed/source module, runs real LibraryApp authorization and real text/binary publishers, and tests every DOCX/HTML destination new/existing x queued/render mutation. It preserves suffix resolution before consent, cancellation and library/topic binding. The retained end-to-end decline test preserves output; the actual handler returns before run_job when approval is None."
+    },
+    {
+      "contract": "Obsolete NativeDialogs.approve_export wrapper",
+      "old": {
+        "path": "carr-library/src/carr_library/ui/research_actions.py",
+        "git_blob": "20348348fadaba3a941031d2508c542e46a29fb9"
+      },
+      "current": [
+        {
+          "path": "carr-library/src/carr_library/ui/research_actions.py",
+          "git_blob": "b678c3cd0b001b05a309d3b1e82e024967d1ee64"
+        },
+        {
+          "path": "carr-library/src/carr_library/ui/export_destination.py",
+          "git_blob": "14ea86babd1426902c6fd2f09982e5b04147c544"
+        },
+        {
+          "path": "carr-library/src/carr_library/ui/desktop_app.py",
+          "git_blob": "94fde0a14c7243983e3b1fa0ee1362bc014e2100"
+        },
+        {
+          "path": "carr-library/src/carr_library/ui/keyboard_settings.py",
+          "git_blob": "58912be85954a059c680783ccda66769757ec491"
+        },
+        {
+          "path": "carr-library/src/carr_library/ui/import_center.py",
+          "git_blob": "064ee4bb6c4db0001d64760910c777237f18596f"
+        }
+      ],
+      "finding": "Canonical NativeDialogs.approve_export was a thin delegate to confirm_export_destination. Current export_destination owns approve_export_destination; reviewed current export/keymap/report callers import it directly. The old internal wrapper and wx_module parameter are not claimed present. Copying the old delegate without its removed helper would fail. Its functional capture-before-question and carry-approval-to-writer contract is preserved by the current owner."
+    }
+  ],
+  "unchanged_supporting_files": [
+    {
+      "path": "carr-library/tests/e2e/test_import_batches_ocr.py",
+      "git_blob": "22b421b7ff5158f2352fa9ea8b6ac6d7e15eeccb"
+    },
+    {
+      "path": "carr-library/tests/e2e/test_managed_ocr_import.py",
+      "git_blob": "ef6525077b15009a89d38542032b201d8491b198"
+    },
+    {
+      "path": "carr-library/tests/extract/test_managed_ocr.py",
+      "git_blob": "851971db09b05333bab2f471702197938022eee4"
+    },
+    {
+      "path": "carr-library/tests/extract/test_ocr_evidence_fidelity.py",
+      "git_blob": "1d18912cc4e0bcd4e692d2450748ce9c11ca03df"
+    },
+    {
+      "path": "carr-library/tests/extract/test_ocr_model_catalog.py",
+      "git_blob": "fa51924e3cf36adbb46a6b78ee465bcd3969195a"
+    },
+    {
+      "path": "carr-library/tests/extract/test_ocr_orientation_bridge.py",
+      "git_blob": "c3b57d0a727a18e4f98c7b4c47587a13fb2c83e2"
+    },
+    {
+      "path": "carr-library/tests/extract/test_page_ocr.py",
+      "git_blob": "65a3e2a7772b4fada5cc62d89c8703367dc0c0b4"
+    },
+    {
+      "path": "carr-library/tests/packaging/test_prepare_windows_ocr.py",
+      "git_blob": "22a679ce9d86128a9daafedc3b336f11f4a0e0c3"
+    },
+    {
+      "path": "carr-library/tests/packaging/test_windows_ocr_bundle.py",
+      "git_blob": "2f8908399ce972f2b846a5c3fcd201007f8cbb7a"
+    },
+    {
+      "path": "carr-library/tests/ui/native_import_center_smoke.py",
+      "git_blob": "a74e2ab5dc844d36bbf99085c76a1a03ec9e29c7"
+    },
+    {
+      "path": "carr-library/tests/storage/test_keyboard_preferences.py",
+      "git_blob": "a2b12f19dc58974ce56d70d8262ac077ba1ce3d0"
+    },
+    {
+      "path": "carr-library/tests/citations/test_span_approval_integration.py",
+      "git_blob": "3b80df5b31640da66e72ab3272b5fa49cc879e5c"
+    },
+    {
+      "path": "carr-library/tests/e2e/test_academic_document_export.py",
+      "git_blob": "0d28cab884df5751c45764953c8222e9017b298f"
+    },
+    {
+      "path": "carr-library/tests/reader/test_binary_file_export.py",
+      "git_blob": "86007a1658fe98c6a9161be4a3e092fce38ba73d"
+    },
+    {
+      "path": "carr-library/tests/reader/test_export_change_time.py",
+      "git_blob": "bc2c0117a47d5bb73521fc4777c32888ada08179"
+    },
+    {
+      "path": "carr-library/tests/reader/test_export_publication_boundary.py",
+      "git_blob": "db2dceee443248f8374766ea730057fc9a1eff61"
+    },
+    {
+      "path": "carr-library/tests/reader/test_file_export.py",
+      "git_blob": "19624469ef38a1879480268649924d8845e39017"
+    }
+  ],
+  "exact_common_test_body_comparison": {
+    "tests/ui/test_ocr_selection.py": {
+      "exact_same_bodies": [
+        "test_inventory_parser_preserves_script_identity_case_and_order",
+        "test_untrusted_or_incomplete_model_listing_is_rejected",
+        "test_inventory_parser_rejects_different_bound_model_directory",
+        "test_actual_inventory_process_has_bounded_stdout",
+        "test_actual_inventory_process_has_bounded_stderr",
+        "test_actual_inventory_process_is_killed_at_deadline",
+        "test_actual_inventory_process_cooperatively_cancels",
+        "test_missing_runtime_is_an_explicit_setup_error",
+        "test_selectable_rows_label_known_models_exclude_auxiliary_and_preserve_initial_order",
+        "test_managed_profile_cannot_select_unknown_catalogue_models",
+        "test_config_keeps_resource_limits_and_uses_selected_profile_ids_and_orientation",
+        "test_invalid_or_auxiliary_model_selection_cannot_create_config",
+        "test_compatible_pinned_policy_survives_but_explicit_incompatible_choice_uses_default"
+      ],
+      "same_name_changed": [
+        "test_actual_subprocess_inventory_uses_trusted_runtime_and_bound_directory"
+      ],
+      "removed_names": [
+        "test_native_selection_defaults_to_only_english_and_excludes_auxiliary",
+        "test_native_selection_chooses_one_non_english_model_and_explains_absent_osd",
+        "test_native_manual_mixed_selection_keeps_script_ids_and_orientation",
+        "test_native_empty_selection_stays_open_with_readable_error",
+        "test_profile_cancel_never_discovers_or_opens_model_store",
+        "test_installed_profile_routes_to_background_inventory_and_respects_cancellation",
+        "test_managed_profile_uses_store_inventory_and_never_runs_system_discovery",
+        "test_invalid_native_profile_index_is_explained_not_executed",
+        "test_empty_managed_profile_explains_setup_without_choosing_auxiliary_as_text",
+        "test_missing_engine_requires_explicit_continue_and_preserves_initial_config",
+        "test_broken_runtime_never_offers_native_only_fallback",
+        "test_missing_managed_profile_does_not_fallback_to_installed_model_settings",
+        "test_explicit_native_only_choice_reads_real_pdf_but_keeps_raster_page_unverified",
+        "test_inventory_dialog_runs_future_off_ui_thread_and_can_cancel"
+      ]
+    },
+    "tests/extract/test_ocr_model_store.py": {
+      "exact_same_bodies": [
+        "test_official_catalogue_aliases_and_complete_licenses",
+        "test_actual_official_english_install_selection_and_inference",
+        "test_selection_is_exact_and_inventory_does_not_hash_model_bytes",
+        "test_invalid_selection_cannot_create_or_rewrite_a_store",
+        "test_bad_later_model_keeps_prior_manifest_and_retry_adopts_verified_copy",
+        "test_cancel_between_publications_keeps_old_selection_and_retry_completes",
+        "test_cancel_before_start_creates_no_store",
+        "test_low_disk_space_keeps_prior_manifest_and_is_retryable",
+        "test_partial_license_write_leaves_no_unrecoverable_install",
+        "test_interrupted_link_publication_recovers_only_known_verified_twin",
+        "test_external_hardlinks_are_never_removed_or_accepted",
+        "test_linked_paths_do_not_escape_selected_roots",
+        "test_source_changed_while_streaming_is_not_activated",
+        "test_streamed_model_hash_rejects_unread_mutation_with_unchanged_metadata",
+        "test_selected_identity_detects_tampering",
+        "test_malformed_manifest_is_rejected_without_repairing_unknown_state",
+        "test_manifest_publication_failure_preserves_old_selection_and_retry",
+        "test_existing_target_appearing_at_publication_is_never_overwritten",
+        "test_manifest_change_during_selection_is_not_returned_as_current",
+        "test_manifest_change_during_install_is_not_silently_overwritten"
+      ],
+      "same_name_changed": [],
+      "removed_names": []
+    },
+    "tests/ui/test_keyboard_manager.py": {
+      "exact_same_bodies": [
+        "test_apply_and_reopen_preserve_semantic_bindings_and_menu_display",
+        "test_rejected_maps_leave_active_persisted_and_native_menu_state_unchanged",
+        "test_native_parser_failure_happens_before_any_change",
+        "test_storage_failure_does_not_change_live_or_saved_bindings",
+        "test_native_apply_failure_on_first_save_does_not_create_a_settings_file",
+        "test_native_apply_failure_cannot_commit_then_require_a_second_disk_write",
+        "test_rejected_extension_registration_does_not_leave_partial_command_or_binding",
+        "test_explicit_late_command_registration_is_discoverable_and_rebindable",
+        "test_startup_saved_binding_conflicting_with_new_unmanaged_menu_uses_safe_defaults",
+        "test_startup_default_collision_is_unassigned_with_notice_and_no_disk_write",
+        "test_unknown_menu_shortcut_is_a_real_conflict",
+        "test_disabled_native_item_or_parent_is_unavailable",
+        "test_root_change_loads_the_new_folders_map_without_overwriting_either",
+        "test_invalid_import_keeps_draft_live_map_and_persisted_settings",
+        "test_valid_import_is_only_a_draft_until_save",
+        "test_settings_open_before_root_change_cannot_save_into_new_library",
+        "test_pending_saved_module_map_activates_only_after_all_command_ids_are_known",
+        "test_native_registration_failure_rolls_back_registry_bindings_and_active_profile",
+        "test_failed_registration_cannot_partly_activate_a_pending_saved_map",
+        "test_inserted_top_level_menu_does_not_change_enablement_of_registered_command",
+        "test_registration_queued_before_installation_preserves_saved_module_profile"
+      ],
+      "same_name_changed": [],
+      "removed_names": [
+        "test_optional_late_shortcut_conflict_preserves_stable_default_and_user_file",
+        "test_optional_fallback_does_not_hide_an_unrelated_existing_conflict",
+        "test_late_profile_recovery_does_not_announce_a_stale_startup_warning",
+        "test_keymap_export_preserves_other_work_written_during_validation",
+        "test_declined_keymap_replacement_never_validates_or_writes",
+        "test_confirmed_keymap_export_keeps_the_live_shortcuts_unchanged"
+      ]
+    },
+    "tests/ui/test_import_center.py": {
+      "exact_same_bodies": [
+        "test_invalid_plan_choices_never_start_a_job",
+        "test_progress_is_marshaled_and_completion_preserves_quarantine_status",
+        "test_previous_job_progress_cannot_replace_a_new_batch",
+        "test_previous_job_completion_cannot_finish_the_next_job",
+        "test_mismatched_progress_identity_is_ignored",
+        "test_planning_cancel_and_close_do_not_claim_unsaved_queue_is_saved",
+        "test_failure_restores_controls_then_close_ends_the_modal",
+        "test_closed_view_drops_progress_and_completion",
+        "test_replaced_data_directory_cannot_receive_old_completion",
+        "test_out_of_bounds_file_selection_cannot_mutate_a_row",
+        "test_explicit_file_selection_uses_stable_row_identity",
+        "test_lost_authorization_clears_visible_batch_data"
+      ],
+      "same_name_changed": [
+        "test_plan_captures_choices_and_passes_live_cancellation_to_background_work"
+      ],
+      "removed_names": [
+        "test_custom_fast_script_selection_is_captured_only_for_new_plans",
+        "test_cancel_model_chooser_preserves_previous_selection_and_settings",
+        "test_reconfiguring_models_replaces_the_single_custom_choice",
+        "test_text_folder_plan_never_opens_model_selection_automatically",
+        "test_saved_batch_resume_does_not_replace_recorded_config_with_current_custom_choice",
+        "test_unconfigured_or_invalid_custom_choice_cannot_start_plan",
+        "test_model_chooser_does_not_open_during_an_import_job",
+        "test_model_choice_is_not_applied_after_library_folder_changes"
+      ]
+    },
+    "tests/ui/test_academic_export_handler.py": {
+      "exact_same_bodies": [
+        "test_document_filter_appends_its_suffix_and_publishes_exact_payload",
+        "test_appended_existing_destination_is_confirmed_before_work",
+        "test_cancelled_save_dialog_never_reads_path_or_starts_export",
+        "test_mismatched_suffix_preserves_existing_file_without_starting_work",
+        "test_invalid_filter_index_does_not_select_another_format",
+        "test_cancellation_after_render_preserves_existing_destination",
+        "test_native_handler_keeps_cancellation_live_during_file_publication",
+        "test_changed_binding_before_worker_rejects_without_reading_research",
+        "test_changed_binding_after_render_rejects_before_publication"
+      ],
+      "same_name_changed": [
+        "test_new_document_cannot_be_written_inside_private_library"
+      ],
+      "removed_names": [
+        "test_chosen_destination_cannot_replace_a_newer_file",
+        "test_existing_uppercase_suffix_is_kept_and_confirmation_is_bound_to_it",
+        "test_file_appearing_when_picker_closes_requires_explicit_confirmation",
+        "test_file_changed_during_explicit_confirmation_is_preserved",
+        "test_destination_changed_during_render_preserves_independent_work"
+      ]
+    }
+  },
+  "deliberate_differences": [
+    "The old separate profile-prompt cancellation-before-any-inventory shape is replaced by one explicit ordered OCR dialog with asynchronous selected-runtime inventory, live cancellation and late-result refusal. The prior private dialog methods are not retained.",
+    "Managed model discovery now verifies the current selected local engine version and its bound model inventory after verifying the selected store. It does execute fixed --version/--list-langs; the old managed selector's store-only/no-runtime assertion is not claimed preserved.",
+    "The old private selector could automatically choose an available non-English model if English was absent. Current selector preserves language intent and requires an explicit available selection instead of silently substituting another model.",
+    "Missing engine continuation is an explicit Continue with available text control; broken runtime or wrong managed profile cannot become that fallback. Existing extraction tests keep OCR candidates/unverified raster pages distinct from verified text.",
+    "No whole-file/API equivalence claim is made for the old thin confirm_export_destination/NativeDialogs.approve_export wrappers. The active current typed approval owner is reviewed instead."
+  ],
+  "restored_test_module": "tests/ui/test_canonical_export_import_choices.py",
+  "total_new_cases": 4,
+  "exact_counter": {
+    "tests.ui.test_canonical_export_import_choices": {
+      "test_declined_keymap_replacement_never_validates_or_writes": 1,
+      "test_approved_keymap_export_preserves_live_bindings": 2,
+      "test_ocr_model_choice_is_not_applied_after_library_changes": 1
+    }
+  },
+  "support_files": [
+    "tests/__init__.py",
+    "tests/ui/test_keyboard_manager.py",
+    "tests/ui/test_import_center.py"
+  ],
+  "fixture_parameters": "Only approved keymap export is parametrized over absent/existing destinations. Imported manager, registry and center fixtures have no parametrization. No imported test functions are collected.",
+  "no_product_mutation": true,
+  "verification": "Exact GitData source reads and review only. No local executor, pytest collection, installed execution, OCR model inference, native UI or NVDA result is claimed for these four new cases.",
+  "residual_test_disposition": "Existing controller native populations are unchanged. Canonical UI-private implementation/topology assertions above are replaced intentionally and are not counted as identical retained tests."
+}

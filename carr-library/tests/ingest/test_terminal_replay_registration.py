@@ -3,11 +3,12 @@ from contextlib import closing
 from hashlib import sha256
 import json
 import sqlite3
+from threading import Event
 
 import pytest
 
 from carr_library.application import LibraryApp
-from carr_library.ingest.pipeline import canonical
+from carr_library.ingest.pipeline import Ingest, canonical
 from carr_library.storage.revisions import Storage
 
 
@@ -130,3 +131,80 @@ def test_forged_terminal_journal_without_published_source_does_not_register(tmp_
     assert app.search(workspace, 'railway') == ()
     with app.read(workspace) as db:
         assert db.execute('SELECT count(*) FROM revision').fetchone()[0] == 0
+
+
+@pytest.mark.parametrize('suffix', ['txt', 'pdf'])
+def test_cancellation_after_committed_fresh_import_keeps_success(tmp_path, monkeypatch, suffix):
+    app = LibraryApp(tmp_path / 'library')
+    workspace = app.create_workspace('Completed import')
+    collection = app.create_collection(workspace, 'Included')
+    source = tmp_path / ('source.' + suffix)
+    if suffix == 'pdf':
+        from reportlab.pdfgen.canvas import Canvas
+        canvas = Canvas(str(source))
+        canvas.drawString(72, 700, 'Synthetic railway history')
+        canvas.save()
+    else:
+        source.write_bytes(b'Synthetic railway history\r\n')
+    original_bytes = source.read_bytes()
+    cancelled = Event()
+    original_run = Ingest.run
+    observed = []
+
+    def cancel_after_committed_run(ingest, *args, **kwargs):
+        result = original_run(ingest, *args, **kwargs)
+        assert result['state'] == 'complete'
+        # The cancellation arrives only after an independent reader observes
+        # the sealed source, active revision and requested membership committed.
+        with closing(sqlite3.connect(app.database)) as reader:
+            row = reader.execute(
+                'SELECT a.revision,m.edition FROM active a '
+                'JOIN sealed s ON s.revision=a.revision '
+                'JOIN catalog_membership m ON m.workspace=a.workspace AND m.edition=a.edition '
+                'WHERE a.workspace=? AND m.collection=?', (workspace, collection)).fetchone()
+            observed.append(row)
+        assert row == (result['id'], 'edition')
+        cancelled.set()
+        return result
+
+    monkeypatch.setattr(Ingest, 'run', cancel_after_committed_run)
+    # Use the actual PDF parser/runtime in-process so the precise late Event
+    # can be injected; the public strict TXT entry point remains exercised.
+    importer = app.import_file if suffix == 'txt' else app._import_file
+    result = importer(workspace, source, work_id='work', edition_id='edition',
+                      collections=(collection,), cancelled=cancelled.is_set)
+    assert result['state'] == 'complete' and result['verified'] is (suffix == 'txt')
+    assert observed == [(result['id'], 'edition')]
+    hit, = app.search(workspace, 'railway', collection=collection)
+    assert hit.revision == result['id']
+    assert source.read_bytes() == original_bytes
+
+
+@pytest.mark.parametrize('state', ['complete', 'superseded'])
+def test_late_cancellation_during_terminal_replay_still_blocks_registration(imported, monkeypatch, state):
+    app, workspace, first, requested, source, metadata, initial = imported
+    if state == 'superseded':
+        app.update_metadata(workspace, metadata['edition_id'], title='Current title')
+        metadata = dict(metadata, title='Current title')
+    before = app.search(workspace, 'railway', collection=first)[0]
+    cancelled = Event()
+    original_run = Ingest.run
+    observed = []
+
+    def cancel_after_recovery(ingest, *args, **kwargs):
+        result = original_run(ingest, *args, **kwargs)
+        assert result['state'] == state
+        with closing(sqlite3.connect(app.database)) as reader:
+            observed.append(reader.execute(
+                'SELECT count(*) FROM catalog_membership WHERE workspace=? AND collection=?',
+                (workspace, requested)).fetchone()[0])
+        cancelled.set()
+        return result
+
+    monkeypatch.setattr(Ingest, 'run', cancel_after_recovery)
+    with pytest.raises(InterruptedError, match='cancelled'):
+        app._import_file(workspace, source, collections=(requested,),
+                         cancelled=cancelled.is_set, **metadata)
+    assert observed == [0]
+    assert app.browse(workspace, collection=requested) == ()
+    assert app.search(workspace, 'railway', collection=first)[0].revision == before.revision

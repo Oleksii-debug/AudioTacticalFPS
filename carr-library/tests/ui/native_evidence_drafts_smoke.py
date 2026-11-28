@@ -180,11 +180,17 @@ def run_native(source=None):
             check('native text event publishes its first recovery checkpoint',
                   pump(lambda: store.get(workspace, topic, evidence) is not None))
             panel.note.SetValue('Final pending edit — Slovenská poznámka 🚂')
+            queued_flush, recovery_timer = panel._flush_recovery, panel._recovery_timer
             frame.layout.Detach(panel)
             frame.evidence = None
             panel.Destroy()
             check('destroy flushes pending native edit to the actual sidecar', pump(lambda:
                 store.get(workspace, topic, evidence).text == 'Final pending edit — Slovenská poznámka 🚂'))
+            saved_sidecar = store.path.read_bytes()
+            queued_flush()  # Simulate a callback already delivered to the queue.
+            check('destroyed native owner stops its timer and rejects queued checkpoint work',
+                  panel._recovery_disposed and not recovery_timer.IsRunning()
+                  and store.path.read_bytes() == saved_sidecar)
             check('recovery checkpoint does not commit research note',
                   library.evidence(workspace, topic)[0].note == 'Saved baseline')
 

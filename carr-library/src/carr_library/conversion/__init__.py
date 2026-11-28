@@ -1,5 +1,7 @@
-"""Safe, explicit source-to-reading-copy conversion; never citation approval."""
+"""Source-preserving reading derivatives over the current isolated readers."""
 from .models import ConversionBudget, ConversionError, ConversionResult, ConversionUnavailable
 from .service import ConversionService
+from .capabilities import capabilities
 
-__all__ = ['ConversionService', 'ConversionBudget', 'ConversionResult', 'ConversionError', 'ConversionUnavailable']
+__all__ = ['ConversionBudget', 'ConversionError', 'ConversionResult',
+           'ConversionUnavailable', 'ConversionService', 'capabilities']

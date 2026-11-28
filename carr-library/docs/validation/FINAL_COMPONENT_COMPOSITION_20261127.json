@@ -1,0 +1,63 @@
+{
+  "schema": 1,
+  "kind": "reviewed-component-composition",
+  "parent": "ac186ce5188f63b06f46886ce39b6225382c39b6",
+  "components": [
+    {
+      "commit": "628165d214a3d0b80be73b9ae1bb77002bc627c8",
+      "component": "explicit current assistant transcription",
+      "new_cases": 72,
+      "native_checks": 30
+    },
+    {
+      "commit": "d21997ca4e9bbefdc97016b26ccc9f9a96e3b4a2",
+      "component": "qualified six-format Calibre and bounded unqualified CHM recovery",
+      "new_cases": 42
+    },
+    {
+      "commit": "61adc656bc863db40e2ea2f8487eb0c74eb6526e",
+      "component": "completed speech checkpoint after late stop",
+      "new_cases": 10
+    },
+    {
+      "commit": "7f901654c2257cc1d4796bcab2e54d038a916186",
+      "component": "canonical current-process and measured-signal regression port",
+      "new_cases": 15
+    },
+    {
+      "commit": "c24e883d3dba7b59113e4a427697f1962f38fb59",
+      "component": "explicit pinned optional FFmpeg acquisition",
+      "new_source_only_cases": 69
+    },
+    {
+      "commit": "aa88aea0ce3866ef55dfe1d65da515027ecd7a90",
+      "component": "canonical packaging22 source disposition"
+    }
+  ],
+  "protected": {
+    "source_cases": 4967,
+    "installed_cases": 4766,
+    "source_selectors": 434,
+    "installed_selectors": 298,
+    "native_families": 20,
+    "focused_source_and_installed_cases_each": 383
+  },
+  "preservation": {
+    "canonical_version": "0.2.0.dev2",
+    "office_workspace_cases": 9,
+    "save_actions_cases": 103,
+    "native_sapi_cases": 75,
+    "source_only_packaging_not_claimed_installed": true
+  },
+  "qualification": {
+    "this_composition": "NOT_RUN",
+    "individual_receipts": "Exact predecessor scope only; no transfer of PASS to this source head.",
+    "actual_private_models": "NOT_RUN",
+    "nvda": "NOT_RUN"
+  },
+  "review": {
+    "process_signal": "Root read current process cleanup, stdout quota/final checks and actual FFmpeg API/signals; no product changes.",
+    "download": "Fixed HTTPS allowlisted redirected host checked before connection; exact streamed pin plus immutable no-replace copy; existing preparer/verifier retained. Real download remains unexecuted for this source.",
+    "oracle": "Additive exact counters, with the reviewed legacy wrapper11→13 and six qualified-suffix cases; no old cases removed."
+  }
+}

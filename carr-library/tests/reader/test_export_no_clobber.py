@@ -143,7 +143,8 @@ def test_create_only_export_rejects_existing_file_without_touching_it(export):
     assert not list(target.parent.glob('.research-export-*'))
 
 
-def test_file_created_after_final_destination_check_is_never_replaced(export, monkeypatch):
+@pytest.mark.parametrize('explicit_create_only', [False, True])
+def test_file_created_after_final_destination_check_is_never_replaced(export, monkeypatch, explicit_create_only):
     target, _, publish = export
     inspect = export_file._destination
     checks = 0
@@ -160,7 +161,7 @@ def test_file_created_after_final_destination_check_is_never_replaced(export, mo
 
     monkeypatch.setattr(export_file, '_destination', competing_writer)
     with pytest.raises(FileExistsError):
-        publish(require_absent=True)
+        publish(**({'require_absent': True} if explicit_create_only else {}))
     assert target.read_bytes() == b'Concurrent writer owns this file'
     assert not list(target.parent.glob('.research-export-*'))
 

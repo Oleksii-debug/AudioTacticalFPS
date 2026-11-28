@@ -1,0 +1,1609 @@
+{
+  "live": {
+    "probe": "scripts/windows_live_reading_smoke.py",
+    "arguments": [
+      "--native"
+    ],
+    "modules": [
+      "carr_library.reader.live_speech",
+      "carr_library.ui.live_reading",
+      "carr_library.ui.reading_desk",
+      "carr_library.ui.narration_editor",
+      "carr_library.library_backup",
+      "carr_library.ui.builtin_keyboard_commands",
+      "carr_library.native_runtime"
+    ],
+    "checks": [
+      "named read-only native source control",
+      "all ten live reading actions are native and named",
+      "native emoji and newline selection identifies exact source",
+      "native reading range includes whole book",
+      "actual installed English SAPI voice enumerated",
+      "voice enumeration requires explicit selection",
+      "unsupported SAPI pitch control stays disabled",
+      "actual native keyboard focus reaches selected voice",
+      "actual SAPI utterance became prepared PCM",
+      "measured PCM and exact spoken source digest",
+      "prepared excerpt highlights exact native source range",
+      "preparing does not start a device or advance cursor",
+      "stop retains only the last completed text cursor",
+      "stop releases private utterance PCM",
+      "book resume is exact source-bound",
+      "speech resource reservation is released",
+      "restored cursor uses exact native character position",
+      "where-am-I is exposed through named native status",
+      "native modal exits only after reader owners settle",
+      "immutable source remains byte-identical after the native workflow",
+      "native Unicode cursor roundtrip 0",
+      "native Unicode cursor roundtrip 7",
+      "native Unicode cursor roundtrip 8",
+      "native Unicode cursor roundtrip 11",
+      "native Unicode cursor roundtrip 38",
+      "native Unicode cursor roundtrip 78"
+    ],
+    "fields": {
+      "status": "PASS",
+      "native_controls": "EXECUTED",
+      "physical_playback": "NOT_RUN",
+      "nvda": "NOT_RUN",
+      "word_alignment": "NOT_CLAIMED",
+      "language_quality": "NOT_CLAIMED"
+    },
+    "positive_metrics": [
+      "actual_sapi_pcm.frames",
+      "actual_sapi_pcm.sample_rate"
+    ],
+    "digest_fields": [
+      "actual_sapi_pcm.pcm_sha256",
+      "actual_sapi_pcm.source_sha256"
+    ]
+  },
+  "streamed": {
+    "probe": "tests/ui/probe_streamed_import_native.py",
+    "modules": [
+      "carr_library.application",
+      "carr_library.ui.desktop_app",
+      "carr_library.ui.import_center",
+      "carr_library.ingest.worker",
+      "carr_library.ingest.streamed_text",
+      "carr_library.ingest.streamed_ingest",
+      "carr_library.native_runtime"
+    ],
+    "checks": [
+      "native named numeric profile control",
+      "native focus and Tab to import action",
+      "real existing frame worker and owned import child",
+      "controls disabled until settlement",
+      "captured byte allowance",
+      "canonical request and completed result",
+      "original-byte verified quotation",
+      "unchanged original",
+      "owned native close and destruction"
+    ],
+    "fields": {
+      "status": "PASS",
+      "exact_fragments": 3,
+      "file_picker": "NOT_RUN",
+      "manual_nvda": "NOT_RUN"
+    }
+  },
+  "effects": {
+    "probe": "scripts/windows_audio_effects_smoke.py",
+    "arguments": [
+      "--native"
+    ],
+    "modules": [
+      "carr_library.audio.models",
+      "carr_library.audio.effect_editing",
+      "carr_library.audio.production",
+      "carr_library.ui.audio_effects",
+      "carr_library.native_runtime"
+    ],
+    "probe_modules": [
+      "carr_library.audio.models",
+      "carr_library.audio.effect_editing",
+      "carr_library.audio.production",
+      "carr_library.ui.audio_effects"
+    ],
+    "checks": {
+      "actual Windows wx controls": 1,
+      "effect implementation loaded from installed package": 1,
+      "actual enabled native dialog button": 12,
+      "native dialog button dispatch": 12,
+      "one native choice list retains its exact Unicode inventory": 9,
+      "one modal belongs to the synthetic parent": 12,
+      "named role selector": 5,
+      "Unicode role selection is retained": 5,
+      "named effect selector": 4,
+      "selected typed effect kind": 4,
+      "named parameter dialog": 3,
+      "every numeric control has its name, unit and bounds": 3,
+      "numeric control is editable": 21,
+      "native modal sequence completed": 5,
+      "no effect modal remains after return": 5,
+      "confirmed dialog returns the selected role and typed Effect": 1,
+      "typed parameters match the actual edited controls": 1,
+      "Cancel returns no effect from role": 1,
+      "Cancel returns no effect from effect": 1,
+      "Cancel returns no effect from parameters": 1,
+      "invalid numeric entry is rejected after native confirmation": 1,
+      "no native callback failed": 1,
+      "named native chain window": 2,
+      "native role and effect-order controls": 2,
+      "preset actions are named and require explicit apply": 2,
+      "effect role receives actual native keyboard focus": 2,
+      "selected Unicode role has two effects": 2,
+      "first effect cannot move above the chain": 2,
+      "native bypass retains the selected step": 2,
+      "native reorder changes position and retains bypass": 2,
+      "editing shows the previously selected numeric value": 2,
+      "native edit keeps bypass and changes only numeric settings": 2,
+      "native add inserts one selected typed effect": 2,
+      "native removal affects only the selected step": 2,
+      "master has a distinct actual native target": 2,
+      "dry wet control is named and enabled only for master": 2,
+      "invalid master mix keeps the actual modal open": 2,
+      "native master chain has actual bypass and order controls": 2,
+      "native chain confirmation settled": 2,
+      "native cancel discards pending chain result": 1,
+      "native apply returns a validated script": 1,
+      "accepted typed chain keeps order, settings and bypass": 1,
+      "unselected native role remains unchanged": 1,
+      "native master apply retains typed mix, order and bypass": 1,
+      "native chain retains exact spoken source": 1,
+      "actual bounded preset file roundtrip preserves typed chain": 1,
+      "native cancel leaves the source draft without edits": 1
+    },
+    "fields": {
+      "status": "PASS",
+      "native_controls": "PASS",
+      "typed_parameters": "PASS",
+      "cancellation": "PASS",
+      "role_chain": "PASS",
+      "master_chain": "PASS",
+      "master_mix": "PASS",
+      "preset_file_roundtrip": "PASS",
+      "installed_mode": true,
+      "isolated": true,
+      "nvda": "NOT_RUN",
+      "signal_rendering": "NOT_RUN",
+      "preset_native_picker": "NOT_RUN"
+    }
+  },
+  "clips": {
+    "probe": "scripts/windows_clip_editor_smoke.py",
+    "arguments": [],
+    "modules": [
+      "carr_library.audio.clips",
+      "carr_library.audio.clip_audio",
+      "carr_library.audio.models",
+      "carr_library.audio.production",
+      "carr_library.ui.audio_clips",
+      "carr_library.native_runtime",
+      "carr_library.audio.clip_consolidation"
+    ],
+    "probe_modules": [
+      "carr_library.audio.clips",
+      "carr_library.audio.clip_consolidation",
+      "carr_library.audio.clip_audio",
+      "carr_library.audio.models",
+      "carr_library.audio.production",
+      "carr_library.ui.audio_clips"
+    ],
+    "checks": {
+      "edit: named controls in shown owned modal": 1,
+      "native edit": 1,
+      "move: named controls in shown owned modal": 1,
+      "native move": 1,
+      "duration: named controls in shown owned modal": 1,
+      "native duration": 1,
+      "remove: named controls in shown owned modal": 1,
+      "native remove": 1,
+      "preview: named controls in shown owned modal": 1,
+      "native preview": 1,
+      "copy: named controls in shown owned modal": 1,
+      "native copy": 1,
+      "cut: named controls in shown owned modal": 1,
+      "native cut": 1,
+      "paste: named controls in shown owned modal": 1,
+      "native paste": 1,
+      "split: named controls in shown owned modal": 1,
+      "native split": 1,
+      "join: named controls in shown owned modal": 1,
+      "native join": 1,
+      "consolidate: named controls in shown owned modal": 1,
+      "native consolidate": 1,
+      "cancel: named controls in shown owned modal": 1,
+      "native cancel": 1,
+      "invalid duration retains owned modal": 1,
+      "numeric field retains native focus on the next event turn": 1
+    },
+    "fields": {
+      "status": "PASS",
+      "installed_mode": true,
+      "isolated": true,
+      "actual_pcm_processing": "SEPARATE_STRICT_SUITE",
+      "native_file_picker": "NOT_RUN",
+      "manual_nvda": "NOT_RUN",
+      "playback_device_acceptance": "NOT_RUN"
+    }
+  },
+  "publication": {
+    "probe": "scripts/windows_publication_smoke.py",
+    "arguments": [],
+    "modules": [
+      "carr_library.audio.publishing",
+      "carr_library.audio.daisy",
+      "carr_library.ui.audio_publication",
+      "carr_library.native_runtime"
+    ],
+    "probe_modules": [
+      "carr_library.audio.publishing",
+      "carr_library.audio.daisy",
+      "carr_library.ui.audio_publication"
+    ],
+    "checks": {
+      "epub: named controls in shown owned modal": 2,
+      "daisy-2.02: named controls in shown owned modal": 1,
+      "native cancel": 1,
+      "publisher required": 1,
+      "invalid language retains modal": 2,
+      "creator field retains native focus on the next event turn": 2,
+      "native OK": 2
+    },
+    "fields": {
+      "status": "PASS",
+      "native_metadata_controls": "PASS",
+      "installed_mode": true,
+      "isolated": true,
+      "full_file_picker_flow": "NOT_RUN",
+      "manual_nvda": "NOT_RUN",
+      "third_party_reader_interoperability": "NOT_RUN"
+    }
+  },
+  "live-playback": {
+    "probe": "scripts/windows_live_reading_smoke.py",
+    "arguments": [
+      "--native",
+      "--playback-effects"
+    ],
+    "modules": [
+      "carr_library.reader.live_speech",
+      "carr_library.ui.live_reading",
+      "carr_library.ui.reading_desk",
+      "carr_library.ui.narration_editor",
+      "carr_library.library_backup",
+      "carr_library.ui.builtin_keyboard_commands",
+      "carr_library.reader.live_playback",
+      "carr_library.native_runtime",
+      "carr_library.audio.jobs"
+    ],
+    "checks": {
+      "named read-only native source control": 1,
+      "all ten live reading actions are native and named": 1,
+      "native emoji and newline selection identifies exact source": 1,
+      "native reading range includes whole book": 1,
+      "actual installed English SAPI voice enumerated": 1,
+      "voice enumeration requires explicit selection": 1,
+      "unsupported SAPI pitch control stays disabled": 1,
+      "verified local FFmpeg captured for independent playback": 1,
+      "independent native playback controls are named and enabled": 1,
+      "actual native focus reaches independent playback tempo": 1,
+      "actual native focus reaches independent playback pitch": 1,
+      "actual native keyboard focus reaches selected voice": 1,
+      "actual SAPI utterance became prepared PCM": 1,
+      "prepared utterance retains chosen independent playback settings": 1,
+      "actual transformed PCM has expected independent tempo duration": 1,
+      "measured PCM and exact spoken source digest": 1,
+      "prepared excerpt highlights exact native source range": 1,
+      "preparing does not start a device or advance cursor": 1,
+      "stop retains only the last completed text cursor": 1,
+      "stop releases private utterance PCM": 1,
+      "book resume is exact source-bound": 1,
+      "speech resource reservation is released": 1,
+      "restored cursor uses exact native character position": 1,
+      "where-am-I is exposed through named native status": 1,
+      "native modal exits only after reader owners settle": 1,
+      "immutable source remains byte-identical after the native workflow": 1,
+      "native Unicode cursor roundtrip 0": 1,
+      "native Unicode cursor roundtrip 7": 1,
+      "native Unicode cursor roundtrip 8": 1,
+      "native Unicode cursor roundtrip 11": 1,
+      "native Unicode cursor roundtrip 38": 1,
+      "native Unicode cursor roundtrip 78": 1
+    },
+    "fields": {
+      "status": "PASS",
+      "native_controls": "EXECUTED",
+      "independent_playback": "EXECUTED",
+      "physical_playback": "NOT_RUN",
+      "nvda": "NOT_RUN",
+      "word_alignment": "NOT_CLAIMED",
+      "language_quality": "NOT_CLAIMED"
+    },
+    "positive_metrics": [
+      "actual_sapi_pcm.frames",
+      "actual_sapi_pcm.sample_rate",
+      "actual_sapi_pcm.synthesis_frames",
+      "actual_sapi_pcm.synthesis_sample_rate"
+    ],
+    "digest_fields": [
+      "actual_sapi_pcm.pcm_sha256",
+      "actual_sapi_pcm.source_sha256",
+      "actual_sapi_pcm.ffmpeg_sha256"
+    ],
+    "exact_metrics": {
+      "actual_sapi_pcm.playback_tempo": 1.25,
+      "actual_sapi_pcm.playback_pitch": 3
+    },
+    "runtime_digest_field": "actual_sapi_pcm.ffmpeg_sha256",
+    "runtime_environment": "CARR_FFMPEG"
+  },
+  "audio-batches": {
+    "probe": "scripts/windows_audio_batches_smoke.py",
+    "arguments": [
+      "--native"
+    ],
+    "modules": [
+      "carr_library.audio.batch_models",
+      "carr_library.audio.media_conversion",
+      "carr_library.audio.batches",
+      "carr_library.audio_batch_backup",
+      "carr_library.ui.audio_batches",
+      "carr_library.ui.audio_studio",
+      "carr_library.audio.recording_process",
+      "carr_library.security.admission"
+    ],
+    "probe_modules": [
+      "carr_library.audio.batch_models",
+      "carr_library.audio.media_conversion",
+      "carr_library.audio.batches",
+      "carr_library.audio_batch_backup",
+      "carr_library.ui.audio_batches",
+      "carr_library.ui.audio_studio",
+      "carr_library.audio.recording_process",
+      "carr_library.security.admission"
+    ],
+    "checks": {
+      "actual Windows native queue controls": 1,
+      "owned named native queue modal": 1,
+      "native source actions and durable queue controls are named": 1,
+      "native per-item format rate channel and split selectors": 1,
+      "native exact preview is read only": 1,
+      "queue retains the exact configured host authority": 1,
+      "native filename field receives actual keyboard focus": 1,
+      "invalid numeric preset cannot replace the selected item": 1,
+      "native apply retains explicit numeric preset and Unicode title": 1,
+      "actual retained plan is queued before any codec work": 1,
+      "actual retained original is an independent exact copy": 1,
+      "saved native preview contains exact collision-safe output names": 1,
+      "saved per-item delivery settings cannot be silently edited": 1,
+      "native pause is recorded as an unacknowledged durable request": 1,
+      "owned worker acknowledges the paused checkpoint": 1,
+      "paused first item has no unverified completed output": 1,
+      "actual pinned FFmpeg output was decoded before completion": 1,
+      "actual encoded output matches its source-bound receipt": 1,
+      "immutable selected original remains byte identical": 1,
+      "native completed queue is visible in accessible status": 1,
+      "shared resource lease is released after codec settlement": 1,
+      "completed replay preserves actual output bytes and timestamp": 1,
+      "queue and existing Studio worker settle before native close": 1,
+      "native queue modal closes without a late callback owner": 1,
+      "installed implementation remains unchanged through native execution": 1,
+      "no native queue callback failed": 1
+    },
+    "fields": {
+      "status": "PASS",
+      "installed_mode": true,
+      "isolated": true,
+      "native_controls": "PASS",
+      "nvda": "NOT_RUN",
+      "physical_audio": "NOT_RUN"
+    },
+    "positive_metrics": [
+      "verified_output.bytes"
+    ],
+    "exact_metrics": {
+      "verified_output.frames": 2000,
+      "verified_output.sample_rate": 8000,
+      "verified_output.channels": 1
+    },
+    "runtime_digest_field": "actual_ffmpeg.sha256",
+    "runtime_environment": "CARR_FFMPEG"
+  },
+  "media-overlay": {
+    "probe": "scripts/windows_media_overlay_smoke.py",
+    "arguments": [
+      "--native"
+    ],
+    "modules": [
+      "carr_library.reader.media_overlay",
+      "carr_library.reader.publication_state",
+      "carr_library.audio.playback_processing",
+      "carr_library.ui.media_overlay_dialog",
+      "carr_library.audio.recording_process",
+      "carr_library.audio.cleanup",
+      "carr_library.audio.jobs",
+      "carr_library.audio.publishing",
+      "carr_library.audio.daisy",
+      "carr_library.audio.player",
+      "carr_library.audio.playback",
+      "carr_library.library_backup"
+    ],
+    "probe_modules": [
+      "carr_library.reader.media_overlay",
+      "carr_library.reader.publication_state",
+      "carr_library.audio.playback_processing",
+      "carr_library.ui.media_overlay_dialog",
+      "carr_library.audio.recording_process",
+      "carr_library.audio.cleanup",
+      "carr_library.audio.jobs",
+      "carr_library.audio.publishing",
+      "carr_library.audio.daisy",
+      "carr_library.audio.player",
+      "carr_library.audio.playback",
+      "carr_library.library_backup"
+    ],
+    "checks": {
+      "selected real FFmpeg exists": 1,
+      "native named read-only text epub": 1,
+      "native named read-only text daisy": 1,
+      "thirteen named native reader actions epub": 1,
+      "thirteen named native reader actions daisy": 1,
+      "actual verified PCM prepared epub": 1,
+      "actual verified PCM prepared daisy": 1,
+      "exact full publication identity epub": 1,
+      "exact full publication identity daisy": 1,
+      "native exact Unicode interval epub": 1,
+      "native exact Unicode interval daisy": 1,
+      "whole measured interval has native selection epub": 1,
+      "whole measured interval has native selection daisy": 1,
+      "preparation starts no output device epub": 1,
+      "preparation starts no output device daisy": 1,
+      "resource reservations released epub": 1,
+      "resource reservations released daisy": 1,
+      "actual independent recorded-reader controls epub": 1,
+      "actual independent recorded-reader controls daisy": 1,
+      "deferred native playback keeps both PCM owners epub": 1,
+      "deferred native playback keeps both PCM owners daisy": 1,
+      "recorded-reader source mapping is labelled estimated epub": 1,
+      "recorded-reader source mapping is labelled estimated daisy": 1,
+      "actual native chapter keyboard focus epub": 1,
+      "actual native chapter keyboard focus daisy": 1,
+      "native next chapter selects exact measured text epub": 1,
+      "native next chapter selects exact measured text daisy": 1,
+      "navigation does not start output epub": 1,
+      "navigation does not start output daisy": 1,
+      "accessible where-am-I names actual chapter epub": 1,
+      "accessible where-am-I names actual chapter daisy": 1,
+      "exact-source position saved epub": 1,
+      "exact-source position saved daisy": 1,
+      "stop preserves prepared PCM for replay epub": 1,
+      "stop preserves prepared PCM for replay daisy": 1,
+      "stop releases both playback verification readers epub": 1,
+      "stop releases both playback verification readers daisy": 1,
+      "new load released old owned PCM": 1,
+      "new load released old independent playback PCM": 1,
+      "exact publication cursor restored after another book": 1,
+      "restored native text is exact": 1,
+      "restore starts no output device": 1,
+      "modal exits only after actual owners settle": 1,
+      "final private PCM removed after close": 1,
+      "both original publications remain byte-identical": 1
+    },
+    "fields": {
+      "status": "PASS",
+      "installed_mode": true,
+      "isolated": true,
+      "native_controls": "EXECUTED",
+      "nvda": "NOT_RUN",
+      "physical_playback": "NOT_RUN"
+    },
+    "runtime_digest_field": "actual_ffmpeg.sha256",
+    "runtime_environment": "CARR_FFMPEG"
+  },
+  "legacy-asr": {
+    "probe": "scripts/windows_legacy_transcription_smoke.py",
+    "arguments": [
+      "--native"
+    ],
+    "modules": [
+      "carr_library.legacy_transcription",
+      "carr_library.legacy_transcription_schema",
+      "carr_library.legacy_transcription_values",
+      "carr_library.backup_historical",
+      "carr_library.backup_legacy_state",
+      "carr_library.library_backup",
+      "carr_library.transcription_service",
+      "carr_library.transcription_state",
+      "carr_library.transcription_backup",
+      "carr_library.supplied_transcription_backup",
+      "carr_library.ui.legacy_transcription",
+      "carr_library.ui.transcription_v43_dialog"
+    ],
+    "probe_modules": [
+      "carr_library.legacy_transcription",
+      "carr_library.legacy_transcription_schema",
+      "carr_library.legacy_transcription_values",
+      "carr_library.backup_historical",
+      "carr_library.backup_legacy_state",
+      "carr_library.library_backup",
+      "carr_library.transcription_service",
+      "carr_library.transcription_state",
+      "carr_library.transcription_backup",
+      "carr_library.supplied_transcription_backup",
+      "carr_library.ui.legacy_transcription",
+      "carr_library.ui.transcription_v43_dialog"
+    ],
+    "checks": {
+      "actual Windows controls": 1,
+      "installed current recovery module": 1,
+      "native button enabled and visible": 8,
+      "native button event handled": 8,
+      "one owned recovery modal": 10,
+      "exact native recovery step": 10,
+      "one actual native choice list": 4,
+      "dialog-scoped native action": 5,
+      "current immutable definition was prepared": 1,
+      "old source bytes retained independently": 1,
+      "preparation does not start or complete inference": 1,
+      "current settings are frozen and Start stays separate": 1,
+      "native Cancel preserved the prepared job": 1,
+      "all native recovery steps acknowledged": 1
+    },
+    "fields": {
+      "status": "PASS",
+      "installed_mode": true,
+      "isolated": true,
+      "native_controls": "EXECUTED",
+      "inference": "NOT_RUN",
+      "nvda": "NOT_RUN"
+    },
+    "digest_fields": [
+      "prepared_definition_sha256",
+      "retained_source_sha256",
+      "runtime_manifest_sha256"
+    ]
+  },
+  "playback-queue": {
+    "probe": "scripts/windows_playback_queue_smoke.py",
+    "arguments": [
+      "--native"
+    ],
+    "subprocess_timeout_seconds": 210,
+    "modules": [
+      "carr_library.audio.playlist",
+      "carr_library.audio.playlist_session",
+      "carr_library.audio.player",
+      "carr_library.audio.playback",
+      "carr_library.audio.jobs",
+      "carr_library.audio.ffmpeg",
+      "carr_library.ui.playback_queue",
+      "carr_library.ui.save_all",
+      "carr_library.library_backup",
+      "carr_library.durable_state",
+      "carr_library.operations.broker",
+      "carr_library.backup_files"
+    ],
+    "probe_modules": [
+      "carr_library.audio.playlist",
+      "carr_library.audio.playlist_session",
+      "carr_library.audio.player",
+      "carr_library.audio.playback",
+      "carr_library.audio.jobs",
+      "carr_library.audio.ffmpeg",
+      "carr_library.ui.playback_queue",
+      "carr_library.ui.save_all",
+      "carr_library.library_backup",
+      "carr_library.durable_state",
+      "carr_library.operations.broker",
+      "carr_library.backup_files"
+    ],
+    "checks": {
+      "actual Windows native controls": 1,
+      "installed retained queue modules": 1,
+      "native button enabled and visible": 8,
+      "native button event handled": 8,
+      "initial queue opens without media or device": 1,
+      "native queue has a readable accessible name": 1,
+      "selected originals retained independently": 1,
+      "retained PCM matches exact selected bytes": 1,
+      "captured queue remains an unsaved passive draft": 1,
+      "native queue displays both retained labels": 1,
+      "native selection event handled": 1,
+      "native selection chooses exact queue member": 1,
+      "manual cursor uses exact original frames": 1,
+      "Save All waits for actual confirmed queue publication": 1,
+      "Save All preserves order selection and cursor": 1,
+      "reopen restores passive exact frame and selection": 1,
+      "reopen does not admit retained media automatically": 1,
+      "restored queue requires review before Play": 1,
+      "explicit review restores selected retained bytes without playback": 1,
+      "deferred Play holds all verified input readers": 1,
+      "deferred Play does not open an output device": 1,
+      "Stop cancels delayed playback and releases readers": 1,
+      "Stop preserves manually saved cursor": 1,
+      "first native queue closes after owner settles": 1,
+      "reopened native queue closes after owner settles": 1,
+      "complete backup restores every retained PCM and exact queue": 1,
+      "restored queue remains passive without a device": 1,
+      "restored queue supports verified rebackup": 1,
+      "both selected original files remain byte-identical": 1
+    },
+    "fields": {
+      "status": "PASS",
+      "installed_mode": true,
+      "isolated": true,
+      "native_controls": "EXECUTED",
+      "physical_playback": "NOT_RUN",
+      "nvda": "NOT_RUN"
+    },
+    "exact_metrics": {
+      "saved_items": 2,
+      "selected_index": 1,
+      "cursor_frame": 3000,
+      "sample_rate": 8000
+    },
+    "digest_fields": [
+      "queue_state_sha256",
+      "restored_state_sha256"
+    ],
+    "equal_fields": [
+      [
+        "queue_state_sha256",
+        "restored_state_sha256"
+      ],
+      [
+        "retained_sha256",
+        "original_sha256"
+      ]
+    ],
+    "digest_lists": {
+      "retained_sha256": 2,
+      "original_sha256": 2
+    }
+  },
+  "workflow-templates": {
+    "probe": "scripts/windows_workflow_templates_smoke.py",
+    "arguments": [
+      "--work",
+      "ci-results/full-bundle-workflow-template-fixture"
+    ],
+    "subprocess_timeout_seconds": 240,
+    "modules": [
+      "carr_library.assistant.templates",
+      "carr_library.assistant.template_cli",
+      "carr_library.assistant.service",
+      "carr_library.assistant.snapshots",
+      "carr_library.assistant.models",
+      "carr_library.assistant.validation",
+      "carr_library.ui.assistant_templates",
+      "carr_library.ui.assistant_dialog",
+      "carr_library.ui.save_all",
+      "carr_library.library_backup"
+    ],
+    "probe_modules": [
+      "carr_library.assistant.templates",
+      "carr_library.assistant.template_cli",
+      "carr_library.assistant.service",
+      "carr_library.assistant.snapshots",
+      "carr_library.assistant.models",
+      "carr_library.assistant.validation",
+      "carr_library.ui.assistant_templates",
+      "carr_library.ui.assistant_dialog",
+      "carr_library.ui.save_all",
+      "carr_library.library_backup"
+    ],
+    "checks": {
+      "native_template_controls_named": 1,
+      "native_empty_inventory_no_job": 1,
+      "save_all_observes_pending_settings": 1,
+      "native_save_publishes_inert_draft": 1,
+      "save_all_waits_for_durable_completion": 1,
+      "native_rename_uses_same_identity_revision": 1,
+      "native_update_commits_reviewed_revision": 1,
+      "native_main_template_action_named": 1,
+      "native_original_plan_preview_only": 1,
+      "native_load_clears_previous_permissions": 1,
+      "native_loaded_draft_cannot_run_before_preview": 1,
+      "native_fresh_scope_preview_creates_no_job": 1,
+      "native_explicit_run_completes_current_scope": 1,
+      "native_results_use_only_new_workspace": 1,
+      "actual_selected_template_export": 1,
+      "actual_import_creates_new_inert_identity": 1,
+      "actual_complete_backup_includes_typed_templates": 1,
+      "actual_restore_preserves_exact_inert_templates": 1,
+      "actual_restored_old_job_requires_reapproval": 1,
+      "actual_restored_template_rebind_is_preview_only": 1,
+      "actual_rebackup_preserves_template_inventory": 1,
+      "native_remove_keeps_other_settings_and_jobs": 1,
+      "actual_original_catalog_unchanged": 1,
+      "native_all_settings_writes_settled": 1
+    },
+    "fields": {
+      "status": "PASS",
+      "actual_windows": true,
+      "isolated": true,
+      "nvda": "NOT_RUN",
+      "language_model_quality": "NOT_QUALIFIED",
+      "physical_audio": "NOT_RUN"
+    },
+    "exact_metrics": {
+      "metrics.saved_revision": 3,
+      "metrics.fresh_run_completed_steps": 1,
+      "metrics.template_records_after_import": 2,
+      "metrics.restored_template_records": 2
+    }
+  },
+  "book-duration": {
+    "probe": "scripts/windows_book_duration_smoke.py",
+    "arguments": [
+      "--native"
+    ],
+    "modules": [
+      "carr_library.audio.batch_models",
+      "carr_library.audio.media_conversion",
+      "carr_library.audio.batches",
+      "carr_library.audio_batch_backup",
+      "carr_library.ui.audio_batches",
+      "carr_library.ui.audio_studio",
+      "carr_library.audio.recording_process",
+      "carr_library.security.admission",
+      "carr_library.audio.book_duration",
+      "carr_library.audio.jobs",
+      "carr_library.audio.publishing",
+      "carr_library.audio.ffmpeg"
+    ],
+    "probe_modules": [
+      "carr_library.audio.batch_models",
+      "carr_library.audio.media_conversion",
+      "carr_library.audio.batches",
+      "carr_library.audio_batch_backup",
+      "carr_library.ui.audio_batches",
+      "carr_library.ui.audio_studio",
+      "carr_library.audio.recording_process",
+      "carr_library.security.admission",
+      "carr_library.audio.book_duration",
+      "carr_library.audio.jobs",
+      "carr_library.audio.publishing",
+      "carr_library.audio.ffmpeg"
+    ],
+    "checks": {
+      "actual Windows native queue controls": 1,
+      "owned named native queue modal": 1,
+      "native source actions and durable queue controls are named": 1,
+      "native per-item format rate channel and split selectors": 1,
+      "native exact preview is read only": 1,
+      "queue retains the exact configured host authority": 1,
+      "native filename field receives actual keyboard focus": 1,
+      "invalid numeric preset cannot replace the selected item": 1,
+      "native apply retains explicit numeric preset and Unicode title": 1,
+      "actual retained plan is queued before any codec work": 1,
+      "actual retained original is an independent exact copy": 1,
+      "saved native preview contains exact collision-safe output names": 1,
+      "saved per-item delivery settings cannot be silently edited": 1,
+      "native pause is recorded as an unacknowledged durable request": 1,
+      "owned worker acknowledges the paused checkpoint": 1,
+      "paused first item has no unverified completed output": 1,
+      "actual pinned FFmpeg output was decoded before completion": 1,
+      "actual encoded output matches its source-bound receipt": 1,
+      "immutable selected original remains byte identical": 1,
+      "native completed queue is visible in accessible status": 1,
+      "shared resource lease is released after codec settlement": 1,
+      "completed replay preserves actual output bytes and timestamp": 1,
+      "queue and existing Studio worker settle before native close": 1,
+      "native saved audiobook keeps its reviewed chapter outputs": 1,
+      "native audiobook completes accepted PCM before duration planning": 1,
+      "native measured duration controls are named and enabled": 1,
+      "native measured duration field receives actual keyboard focus": 1,
+      "native duration preview contains every exact reviewed output name": 1,
+      "native duration review retains independent exact accepted PCM": 1,
+      "native measured part intervals cover the source without gaps or overlap": 1,
+      "native duration edit revokes prior publication approval": 1,
+      "native repeated review reopens the same immutable accepted source": 1,
+      "native actual lossless parts rejoin to the exact accepted PCM": 1,
+      "native measured duration publication never resynthesises speech": 1,
+      "native measured parts preserve the original saved audiobook": 1,
+      "native measured PCM and receipts enter the existing typed backup inventory": 1,
+      "native duration worker and shared resource lease settle before reuse": 1,
+      "native duration replay reuses exact completed bytes and timestamps": 1,
+      "native queue modal closes without a late callback owner": 1,
+      "installed implementation remains unchanged through native execution": 1,
+      "no native queue callback failed": 1
+    },
+    "fields": {
+      "status": "PASS",
+      "installed_mode": true,
+      "isolated": true,
+      "native_controls": "PASS",
+      "nvda": "NOT_RUN",
+      "physical_audio": "NOT_RUN",
+      "native_cleanup": "PASS",
+      "file_picker": "NOT_RUN",
+      "speech_quality": "NOT_CLAIMED"
+    },
+    "positive_metrics": [
+      "verified_output.bytes",
+      "measured_duration.source_frames",
+      "measured_duration.parts"
+    ],
+    "exact_metrics": {
+      "verified_output.frames": 2000,
+      "verified_output.sample_rate": 8000,
+      "verified_output.channels": 1
+    },
+    "runtime_digest_field": "actual_ffmpeg.sha256",
+    "runtime_environment": "CARR_FFMPEG",
+    "subprocess_timeout_seconds": 300,
+    "digest_fields": [
+      "measured_duration.source_sha256",
+      "measured_duration.pcm_join_sha256",
+      "measured_duration.source_pcm_sha256"
+    ],
+    "equal_fields": [
+      [
+        "measured_duration.pcm_join_sha256",
+        "measured_duration.source_pcm_sha256"
+      ]
+    ]
+  },
+  "provider-recovery": {
+    "probe": "scripts/windows_provider_recovery_smoke.py",
+    "arguments": [
+      "--work",
+      "ci-results/full-bundle-provider-recovery-fixture"
+    ],
+    "subprocess_timeout_seconds": 180,
+    "modules": [
+      "carr_library.providers",
+      "carr_library.provider_recovery",
+      "carr_library.library_backup",
+      "carr_library.ui.api_connections",
+      "carr_library.ui.export_destination",
+      "carr_library.research.export_file"
+    ],
+    "probe_modules": [
+      "carr_library.providers",
+      "carr_library.provider_recovery",
+      "carr_library.library_backup",
+      "carr_library.ui.api_connections",
+      "carr_library.ui.export_destination",
+      "carr_library.research.export_file"
+    ],
+    "checks": {
+      "actual_complete_backup_retains_provider_record": 1,
+      "actual_complete_backup_verifies": 1,
+      "actual_restore_keeps_profiles_and_ledger_inactive": 1,
+      "actual_recovery_binds_exact_disconnected_settings": 1,
+      "actual_recovery_retains_exact_usage_states": 1,
+      "actual_recovery_contains_no_credential_reference": 1,
+      "native_import_action_named_and_available": 1,
+      "native_recovery_action_named_and_available": 1,
+      "native_import_keyboard_focus": 1,
+      "native_explicit_profile_import_completes": 1,
+      "native_duplicate_import_keeps_existing_accounts": 1,
+      "native_recovery_summary_is_readonly": 1,
+      "native_recovery_history_counts": 1,
+      "native_recovery_import_requires_confirmation": 1,
+      "native_recovered_settings_import_disconnected": 1,
+      "native_recovery_keeps_history_inactive": 1,
+      "native_history_export_preserves_exact_bytes": 1,
+      "native_all_storage_workers_settled": 1,
+      "actual_rebackup_preserves_prior_recovery_record": 1,
+      "actual_original_catalog_is_unchanged": 1,
+      "no_vault_or_provider_request_during_recovery": 1,
+      "native_selected_recovery_record_remains_immutable": 1
+    },
+    "fields": {
+      "status": "PASS",
+      "actual_windows": true,
+      "isolated": true,
+      "native_controls": true,
+      "actual_credential_vault": "NOT_USED",
+      "actual_remote_provider": "NOT_RUN",
+      "nvda": "NOT_RUN",
+      "physical_audio": "NOT_RUN"
+    },
+    "exact_metrics": {
+      "metrics.disconnected_profiles": 2,
+      "metrics.recovered_history_operations": 2,
+      "metrics.recovery_records_after_rebackup": 2,
+      "metrics.provider_requests": 0,
+      "metrics.vault_calls": 0,
+      "metrics.explicit_import_confirmations": 4
+    }
+  },
+  "native-sapi": {
+    "probe": "scripts/windows_native_sapi_smoke.py",
+    "arguments": [
+      "--native"
+    ],
+    "subprocess_timeout_seconds": 270,
+    "modules": [
+      "carr_library.audio.engines",
+      "carr_library.audio.sapi_native_worker",
+      "carr_library.audio.windows_process",
+      "carr_library.audio.jobs",
+      "carr_library.audio.player",
+      "carr_library.audio.playback",
+      "carr_library.reader.live_speech",
+      "carr_library.reader.live_playback",
+      "carr_library.ui.live_reading",
+      "carr_library.library_backup",
+      "carr_library.__main__",
+      "carr_library.audio.recording_process",
+      "carr_library.audio.cleanup"
+    ],
+    "probe_modules": [
+      "carr_library.audio.engines",
+      "carr_library.audio.sapi_native_worker",
+      "carr_library.audio.windows_process",
+      "carr_library.audio.jobs",
+      "carr_library.audio.player",
+      "carr_library.audio.playback",
+      "carr_library.reader.live_speech",
+      "carr_library.reader.live_playback",
+      "carr_library.ui.live_reading",
+      "carr_library.library_backup",
+      "carr_library.__main__",
+      "carr_library.audio.recording_process",
+      "carr_library.audio.cleanup"
+    ],
+    "checks": {
+      "actual Windows native reader controls": 1,
+      "existing reviewed pywin32 dependency": 1,
+      "installed private entrypoint returns actual bounded COM inventory": 1,
+      "installed entrypoint reports actual interpreter architecture": 1,
+      "reader opens without automatic speech or playback": 1,
+      "actual native English SAPI voice enumerated": 1,
+      "actual native voice retains prior token-leaf identifier": 1,
+      "native cache records exact worker and existing COM client": 1,
+      "native punctuation has an accessible capability-bound control": 1,
+      "unsupported native SAPI pitch remains disabled": 1,
+      "selected punctuation captured before preparation": 1,
+      "actual native SAPI utterance reached measured prepared state": 1,
+      "native output is actual nonempty mono PCM16 at 22050 Hz": 1,
+      "actual native PCM contains nonzero samples": 1,
+      "prepared native utterance retains exact selected text hash": 1,
+      "prepared punctuation stays in the current request": 1,
+      "PCM preparation never opens an output device or claims completion": 1,
+      "native stop settles session without inventing a played cursor": 1,
+      "saved schema two retains explicit punctuation and zero observed cursor": 1,
+      "restored position never launches an old voice or playback": 1,
+      "native window closes after actual current owners settle": 1,
+      "actual missing native token fails without an output or substitute": 1,
+      "actual owned native process cancellation is observed": 1,
+      "cancelled native synthesis publishes no partial PCM": 1,
+      "every actual native worker leader and job handle is released": 1,
+      "native discovery and synthesis never invoke PowerShell": 1,
+      "complete backup restores exact optional reading state": 1,
+      "restored punctuation is passive and never starts an engine": 1,
+      "restored native reading state supports complete rebackup": 1,
+      "source library text remains byte-identical": 1,
+      "native refresh voices event handled": 1,
+      "native prepare event handled": 1,
+      "native stop event handled": 1,
+      "native restore cursor event handled": 1,
+      "native close event handled": 1,
+      "actual compatibility hosts use the shared Windows directory and distinct architectures": 1,
+      "spoofed SystemRoot cannot redirect selected saved compatibility voice": 1,
+      "wrong-architecture compatibility host is refused before any process": 1
+    },
+    "fields": {
+      "status": "PASS",
+      "installed_mode": true,
+      "isolated": true,
+      "native_controls": "EXECUTED",
+      "physical_playback": "NOT_RUN",
+      "nvda": "NOT_RUN",
+      "com_client": "pywin32",
+      "com_client_version": "312",
+      "private_entrypoint": "EXECUTED",
+      "native_cancellation": "OBSERVED",
+      "compatibility_host_admission": "PASSIVE_ACTUAL_PATH_CHECKS",
+      "owned_descendant_shutdown": "ACTUAL_FILE_RELEASE_OBSERVED"
+    },
+    "exact_metrics": {
+      "saved_cursor": 0,
+      "actual_native_pcm.sample_rate": 22050,
+      "actual_native_pcm.channels": 1
+    },
+    "positive_metrics": [
+      "actual_native_pcm.frames"
+    ],
+    "digest_fields": [
+      "actual_native_pcm.pcm_sha256",
+      "actual_native_pcm.text_sha256",
+      "reading_state_sha256",
+      "restored_state_sha256"
+    ],
+    "equal_fields": [
+      [
+        "reading_state_sha256",
+        "restored_state_sha256"
+      ]
+    ]
+  },
+  "assistant-topics": {
+    "probe": "scripts/windows_topic_tools_smoke.py",
+    "arguments": [
+      "--work",
+      "ci-results/full-bundle-topic-work"
+    ],
+    "subprocess_timeout_seconds": 180,
+    "modules": [
+      "carr_library.assistant.models",
+      "carr_library.assistant.service",
+      "carr_library.assistant.validation",
+      "carr_library.assistant.topic_tools",
+      "carr_library.assistant.templates",
+      "carr_library.assistant.snapshots",
+      "carr_library.research.topic_tree",
+      "carr_library.research.evidence_export",
+      "carr_library.research.export_file",
+      "carr_library.ui.assistant_dialog"
+    ],
+    "probe_modules": [
+      "carr_library.assistant.models",
+      "carr_library.assistant.service",
+      "carr_library.assistant.validation",
+      "carr_library.assistant.topic_tools",
+      "carr_library.assistant.templates",
+      "carr_library.assistant.snapshots",
+      "carr_library.research.topic_tree",
+      "carr_library.research.evidence_export",
+      "carr_library.research.export_file",
+      "carr_library.ui.assistant_dialog"
+    ],
+    "checks": {
+      "native_current_dialog_completes_five_topic_steps": 1,
+      "native_created_topics_use_deterministic_scoped_references": 1,
+      "native_topic_list_excludes_unselected_workspace": 1,
+      "native_new_child_export_uses_its_resolved_topic": 1,
+      "native_exact_evidence_export_preserves_original_bytes": 1,
+      "native_export_keeps_commentary_separate_and_origins_visible": 1,
+      "native_created_outputs_leave_no_staging_files": 1,
+      "native_run_preserves_original_catalog_and_evidence": 1,
+      "native_result_is_visible_after_owned_worker_finishes": 1,
+      "native_topic_preview_has_no_jobs_or_new_topics": 1,
+      "native_review_exposes_all_three_topic_tools": 1,
+      "native_explicit_run_available_only_after_preview": 1,
+      "native_topic_scope_and_actions_are_named": 1,
+      "native_topic_instruction_accepts_keyboard_focus": 1,
+      "native_unreviewed_topic_draft_cannot_run": 1,
+      "native_assistant_workers_settle_before_backup": 1,
+      "actual_named_topic_workflow_is_an_inert_draft": 1,
+      "actual_backup_restore_preserves_all_scoped_topics": 1,
+      "actual_backup_restore_preserves_exact_evidence": 1,
+      "actual_restored_topic_job_requires_new_approval": 1,
+      "actual_restored_job_does_not_replay_external_exports": 1,
+      "actual_restore_retains_inert_topic_template": 1,
+      "actual_rebound_topic_template_is_preview_only": 1
+    },
+    "fields": {
+      "status": "PASS",
+      "actual_windows": true,
+      "isolated": true,
+      "native_controls": true,
+      "nvda": "NOT_RUN",
+      "language_model_quality": "NOT_QUALIFIED",
+      "physical_audio": "NOT_RUN"
+    },
+    "exact_metrics": {
+      "metrics.completed_steps": 5,
+      "metrics.new_topics": 2,
+      "metrics.exported_files": 2,
+      "metrics.restored_scoped_topics": 3,
+      "metrics.retained_template_records": 1,
+      "metrics.restored_jobs_replayed": 0
+    }
+  },
+  "legacy-reader-session": {
+    "probe": "scripts/windows_legacy_reader_session_smoke.py",
+    "arguments": [
+      "--native"
+    ],
+    "subprocess_timeout_seconds": 210,
+    "modules": [
+      "carr_library.reader.legacy_reading",
+      "carr_library.reader.narration",
+      "carr_library.ui.reading_import",
+      "carr_library.library_backup",
+      "carr_library.reader.reading_desk",
+      "carr_library.audio.jobs"
+    ],
+    "probe_modules": [
+      "carr_library.reader.legacy_reading",
+      "carr_library.reader.narration",
+      "carr_library.ui.reading_import",
+      "carr_library.library_backup",
+      "carr_library.reader.reading_desk",
+      "carr_library.audio.jobs"
+    ],
+    "checks": {
+      "actual Windows historical reader controls": 1,
+      "exact original reader envelope retained in review": 1,
+      "old voice and audio position remain passive observations": 1,
+      "session review preserves complete undo and redo history": 1,
+      "review alone creates no retained project or reading settings": 1,
+      "native revision list preserves Unicode and redo": 1,
+      "native revision list selects exact earlier redo": 1,
+      "native selection returns exact retained revision": 1,
+      "native Cancel leaves original and current stores unchanged": 1,
+      "native accept returns explicitly reviewed Unicode title": 1,
+      "accepted session becomes a new current derivative bound to the full envelope": 1,
+      "complete backup restores exact original envelope and session observations": 1,
+      "restored reader history does not create active speech settings": 1,
+      "restored reader envelope supports exact full rebackup": 1,
+      "external original session bytes remain unchanged": 1,
+      "one owned native revision dialog": 1,
+      "enabled native revision decision button": 1,
+      "dispatched native revision decision event": 1,
+      "settled native revision dialog": 1,
+      "one owned native cancel dialog": 1,
+      "enabled native cancel decision button": 1,
+      "dispatched native cancel decision event": 1,
+      "settled native cancel dialog": 1,
+      "named native cancel review fields": 1,
+      "read-only native cancel historical session observations": 1,
+      "editable native cancel new copy title": 1,
+      "one owned native accept dialog": 1,
+      "enabled native accept decision button": 1,
+      "dispatched native accept decision event": 1,
+      "settled native accept dialog": 1,
+      "named native accept review fields": 1,
+      "read-only native accept historical session observations": 1,
+      "editable native accept new copy title": 1
+    },
+    "fields": {
+      "status": "PASS",
+      "installed_mode": true,
+      "isolated": true,
+      "native_controls": "EXECUTED",
+      "speech_settings_created": false,
+      "nvda": "NOT_RUN",
+      "physical_playback": "NOT_RUN",
+      "engine_execution": "NOT_RUN"
+    },
+    "exact_metrics": {
+      "historical_cursor": 5,
+      "historical_audio_seconds": 12.75,
+      "selected_revision": 2,
+      "saved_revision": 1
+    },
+    "digest_fields": [
+      "archive_sha256",
+      "restored_archive_sha256"
+    ],
+    "equal_fields": [
+      [
+        "archive_sha256",
+        "restored_archive_sha256"
+      ]
+    ]
+  },
+  "local-voice-helper": {
+    "probe": "scripts/windows_local_voice_helper_smoke.py",
+    "arguments": [
+      "--native"
+    ],
+    "subprocess_timeout_seconds": 270,
+    "modules": [
+      "carr_library.audio.local_voice_helper",
+      "carr_library.runtime_settings",
+      "carr_library.audio.model_manifest",
+      "carr_library.audio.engines",
+      "carr_library.audio.windows_process",
+      "carr_library.audio.jobs",
+      "carr_library.ui.engine_settings",
+      "carr_library.ui.transcription_v43_dialog",
+      "carr_library.library_backup"
+    ],
+    "probe_modules": [
+      "carr_library.audio.local_voice_helper",
+      "carr_library.runtime_settings",
+      "carr_library.audio.model_manifest",
+      "carr_library.audio.engines",
+      "carr_library.audio.windows_process",
+      "carr_library.audio.jobs",
+      "carr_library.ui.engine_settings",
+      "carr_library.ui.transcription_v43_dialog",
+      "carr_library.library_backup"
+    ],
+    "checks": {
+      "actual Windows local profile controls": 1,
+      "public pinned helper pack has complete executable and script identity": 1,
+      "old helper declarations remain passive before explicit review": 1,
+      "manifest review launches no helper process": 1,
+      "native review exposes exact helper protocol engine and manifest hash": 1,
+      "native reviewed registration is enabled and names are accessible": 1,
+      "native Save owns the existing supervised operation": 1,
+      "native Save persists the exact reviewed pin and Unicode name": 1,
+      "native registration never invokes the executable": 1,
+      "explicit registration preserves exact schema1 raw history": 1,
+      "native selected helper can be rechecked disabled or removed": 1,
+      "native disable keeps the reviewed runtime and saved identity": 1,
+      "native enable retains the same explicit profile identity": 1,
+      "native Close settles registration workers without executing speech": 1,
+      "passive registry construction never discovers unselected helper code": 1,
+      "actual helper catalogue uses the current registered voice namespace": 1,
+      "actual helper catalogue retains Unicode language license and finite controls": 1,
+      "actual helper cache is bound to the reviewed manifest and profile": 1,
+      "actual helper output is verified bounded PCM16": 1,
+      "actual JSON stdin retains exact literal text and selected controls": 1,
+      "accepted helper output leaves no temporary speech stage": 1,
+      "reopened explicit profile retains exact saved voice and cache identity": 1,
+      "occupied output refuses execution and preserves exact bytes": 1,
+      "disabled captured profile cannot execute or publish": 1,
+      "actual cancellation settles its owned child before returning": 1,
+      "actual cancellation publishes no output and removes private PCM": 1,
+      "every actual helper uses the fixed isolated Python argv": 1,
+      "reviewed executable script and inventory remain unchanged": 1,
+      "complete backup restores no active machine executable registration": 1,
+      "passive restored library supports full rebackup": 1,
+      "all helper process owners are settled at final acceptance": 1
+    },
+    "fields": {
+      "schema": 1,
+      "status": "PASS",
+      "installed_mode": true,
+      "isolated": true,
+      "native_controls": "EXECUTED",
+      "synthetic_helper_execution": "EXECUTED",
+      "native_vendor_execution": "NOT_RUN",
+      "physical_playback": "NOT_RUN",
+      "nvda": "NOT_RUN",
+      "speech_quality": "NOT_CLAIMED",
+      "all_children_settled": true
+    },
+    "exact_metrics": {
+      "sample_rate": 16000,
+      "frames": 512
+    },
+    "positive_metrics": [
+      "actual_processes",
+      "fixture.files",
+      "fixture.bytes"
+    ],
+    "digest_fields": [
+      "output_sha256",
+      "retained_schema1_sha256",
+      "fixture_source_sha256",
+      "fixture.manifest_sha256",
+      "fixture.fixture_script_sha256",
+      "fixture.selected_python_sha256",
+      "fixture.host_python_sha256"
+    ],
+    "equal_fields": [
+      [
+        "fixture",
+        "fixture_after"
+      ]
+    ],
+    "source_digest_fields": {
+      "fixture_source_sha256": "scripts/local_voice_contract_fixture.py"
+    }
+  },
+  "registered-progress": {
+    "probe": "scripts/windows_progress_registered_smoke.py",
+    "arguments": [
+      "--work",
+      "ci-results/full-bundle-registered-progress-work"
+    ],
+    "subprocess_timeout_seconds": 240,
+    "modules": [
+      "carr_library.progress",
+      "carr_library.progress_audio",
+      "carr_library.runtime_settings",
+      "carr_library.audio.engines",
+      "carr_library.audio.model_manifest",
+      "carr_library.ui.operation_progress",
+      "carr_library.library_backup"
+    ],
+    "probe_modules": [
+      "carr_library.progress",
+      "carr_library.progress_audio",
+      "carr_library.runtime_settings",
+      "carr_library.audio.engines",
+      "carr_library.audio.model_manifest",
+      "carr_library.ui.operation_progress",
+      "carr_library.library_backup"
+    ],
+    "checks": {
+      "native_progress_owner_bound_to_first_library": 1,
+      "native_progress_settings_controls_named": 1,
+      "native_registered_voice_has_keyboard_focus": 1,
+      "native_first_library_registration_is_selectable": 1,
+      "native_notice_language_selection_is_explicit": 1,
+      "native_saved_voice_matches_current_registration_fingerprint": 1,
+      "native_synthetic_registration_did_not_enable_audio": 1,
+      "native_cancel_keeps_exact_preferences_and_runtime": 1,
+      "native_library_change_rebinds_same_private_output": 1,
+      "native_second_library_has_its_own_registered_choice": 1,
+      "native_second_library_saves_separate_voice_metadata": 1,
+      "native_changed_owner_refuses_old_voice_selection": 1,
+      "actual_disabled_registration_cannot_reuse_saved_selection": 1,
+      "actual_restore_preserves_preferences_without_machine_activation": 1,
+      "actual_original_voice_assets_unchanged": 1,
+      "native_progress_selection_workers_settled": 1
+    },
+    "fields": {
+      "status": "PASS",
+      "actual_windows": true,
+      "isolated": true,
+      "native_controls": true,
+      "synthetic_registration_assets": true,
+      "model_inference": "NOT_RUN",
+      "model_quality": "NOT_QUALIFIED",
+      "physical_audio": "NOT_RUN",
+      "nvda": "NOT_RUN"
+    },
+    "exact_metrics": {
+      "metrics.registered_libraries": 2,
+      "metrics.selected_registered_voices": 2,
+      "metrics.restored_active_registrations": 0,
+      "metrics.notification_audio_threads": 0,
+      "metrics.changed_owner_refusals": 1
+    }
+  },
+  "save-actions": {
+    "probe": "tests/ui/native_save_all_smoke.py",
+    "arguments": [
+      "--native"
+    ],
+    "subprocess_timeout_seconds": 300,
+    "modules": [
+      "carr_library.ui.productivity",
+      "carr_library.ui.save_all",
+      "carr_library.ui.desktop_app",
+      "carr_library.ui.desktop_evidence_panel",
+      "carr_library.ui.keyboard_settings",
+      "carr_library.evidence_drafts",
+      "carr_library.ui.narration_editor"
+    ],
+    "probe_modules": [
+      "carr_library.ui.productivity",
+      "carr_library.ui.save_all",
+      "carr_library.ui.desktop_app",
+      "carr_library.ui.desktop_evidence_panel",
+      "carr_library.ui.keyboard_settings",
+      "carr_library.evidence_drafts",
+      "carr_library.ui.narration_editor"
+    ],
+    "checks": {
+      "real Windows native controls": 1,
+      "save implementation loaded from installed package": 1,
+      "native_edit_menu_has_six_named_actions": 1,
+      "native_recovery_and_edit_commands_use_current_registry": 1,
+      "native_edit_undo_restores_previous_draft": 1,
+      "native_edit_redo_obeys_current_control_capability": 1,
+      "native_edit_copy_keeps_exact_draft": 1,
+      "native_edit_cut_changes_only_selected_draft": 1,
+      "native_edit_paste_restores_exact_unicode": 1,
+      "native_edit_select_all_covers_current_control": 1,
+      "native_edit_refuses_readonly_mutation": 1,
+      "native_file_recovery_requires_explicit_choice": 1,
+      "native_file_recovery_keeps_saved_note_and_original_unchanged": 1,
+      "Save All waits for the real note transaction": 2,
+      "note is uncommitted while the worker is held": 2,
+      "native Close keeps the editor open during save": 2,
+      "failed note commit cancels the pending close": 1,
+      "failed note remains editable and baseline is preserved": 1,
+      "another valid reading draft still saves after the failure": 1,
+      "reading editor shares the main Save All coordinator": 2,
+      "reading draft survives the complete native event flow": 2,
+      "successful pending close follows both durable writes": 1,
+      "closed reading editor unregisters its save participant": 2,
+      "existing File Save All command reaches the native handler": 1,
+      "native main close is deferred during the write": 1,
+      "main close occurs after the note is committed": 1,
+      "all save operations preserve immutable retained source bytes": 1,
+      "no native callback failed": 1,
+      "native button handler: Save all open drafts": 2,
+      "native button handler: C&lose": 2
+    },
+    "fields": {
+      "status": "PASS",
+      "actual_windows": true,
+      "isolated": true,
+      "native_controls": true,
+      "native_events": "PASS",
+      "durable_stores": "PASS",
+      "deferred_close": "PASS",
+      "physical_audio": "NOT_RUN",
+      "nvda": "NOT_RUN"
+    },
+    "exact_metrics": {
+      "metrics.edit_commands": 6,
+      "metrics.recovery_dialogs": 1,
+      "metrics.failed_save_scenarios": 1,
+      "metrics.successful_save_scenarios": 1
+    }
+  },
+  "assistant-transcription": {
+    "probe": "scripts/windows_assistant_transcription_smoke.py",
+    "arguments": [
+      "--work",
+      "ci-results/full-bundle-assistant-transcription-work"
+    ],
+    "subprocess_timeout_seconds": 240,
+    "modules": [
+      "carr_library.assistant.transcription_tools",
+      "carr_library.assistant.models",
+      "carr_library.assistant.service",
+      "carr_library.assistant.validation",
+      "carr_library.assistant.snapshots",
+      "carr_library.assistant.planner",
+      "carr_library.assistant.cli",
+      "carr_library.ui.assistant_dialog",
+      "carr_library.transcription_service",
+      "carr_library.transcription_state",
+      "carr_library.supplied_transcription_backup",
+      "carr_library.runtime_settings"
+    ],
+    "probe_modules": [
+      "carr_library.assistant.transcription_tools",
+      "carr_library.assistant.models",
+      "carr_library.assistant.service",
+      "carr_library.assistant.validation",
+      "carr_library.assistant.snapshots",
+      "carr_library.assistant.planner",
+      "carr_library.assistant.cli",
+      "carr_library.ui.assistant_dialog",
+      "carr_library.transcription_service",
+      "carr_library.transcription_state",
+      "carr_library.supplied_transcription_backup",
+      "carr_library.runtime_settings"
+    ],
+    "checks": {
+      "native_actual_windows_isolated_interpreter": 1,
+      "native_fixture_exact_reviewed_protocol_bytes": 1,
+      "native_assistant_owned_current_frame": 1,
+      "native_transcription_profile_named_explicit_none": 1,
+      "native_initial_run_disabled": 1,
+      "native_unconfigured_preview_refused": 1,
+      "native_unconfigured_preview_creates_no_job": 1,
+      "native_profile_preview_binds_exact_manifest_and_settings": 1,
+      "native_profile_change_revokes_reviewed_run": 1,
+      "native_repreview_remains_passive": 1,
+      "native_explicit_run_completes_current_assistant_job": 1,
+      "native_actual_child_completion_binds_retained_job": 1,
+      "native_all_four_formats_and_provenance_published": 1,
+      "native_original_source_is_unchanged": 1,
+      "native_accepted_worker_releases_shared_resources": 1,
+      "actual_completed_recovery_preserves_exact_run_without_new_inference": 1,
+      "native_second_library_has_its_own_explicit_profile": 1,
+      "native_cancel_preview_does_not_start_worker": 1,
+      "native_pause_targets_actual_running_protocol_child": 1,
+      "native_pause_waits_for_owned_child_cleanup": 1,
+      "native_cancelled_run_keeps_inputs_without_export": 1,
+      "native_cancelled_worker_releases_shared_resources": 1,
+      "native_uncertain_dispatch_requires_new_review_not_replay": 1,
+      "actual_backup_retains_assistant_and_managed_transcription_producers": 1,
+      "actual_restored_assistant_requires_new_scope_approval": 1,
+      "actual_restored_job_cannot_launch_saved_runtime": 1,
+      "actual_restored_transcripts_read_without_external_source_or_runtime": 1,
+      "actual_rebackup_preserves_passive_cross_binding": 1,
+      "native_fixture_bytes_remain_unchanged": 1,
+      "native_all_assistant_workers_settled_after_close": 1
+    },
+    "fields": {
+      "status": "PASS",
+      "actual_windows": true,
+      "isolated": true,
+      "fixture_sha256": "8fb51637e1d6aba3c2a54374f95bf5ace5844d4dbe2da0fdcf00fa02eface2ac",
+      "synthetic_protocol_worker": true,
+      "actual_asr_model_inference": "NOT_RUN",
+      "language_model_quality": "NOT_QUALIFIED",
+      "nvda": "NOT_RUN",
+      "physical_audio": "NOT_RUN"
+    },
+    "exact_metrics": {
+      "metrics.accepted_domain_jobs": 1,
+      "metrics.accepted_formats": 4,
+      "metrics.exported_files": 5,
+      "metrics.cancelled_domain_jobs": 1,
+      "metrics.profiles_explicitly_selected": 2,
+      "metrics.restored_asr_jobs": 1,
+      "metrics.rebackup_verified": 1
+    },
+    "source_digest_fields": {
+      "fixture_sha256": "tests/assistant/transcription_fixture.py"
+    }
+  },
+  "studio-controls": {
+    "probe": "tests/ui/native_studio_controls_smoke.py",
+    "arguments": [
+      "--work",
+      "ci-results/full-bundle-studio-controls-work"
+    ],
+    "subprocess_timeout_seconds": 240,
+    "modules": [
+      "carr_library.audio.studio_controls",
+      "carr_library.ui.studio_controls",
+      "carr_library.ui.audio_studio",
+      "carr_library.audio.models",
+      "carr_library.audio.production",
+      "carr_library.audio.effect_editing",
+      "carr_library.audio.managed",
+      "carr_library.reader.narration_text",
+      "carr_library.ui.save_all"
+    ],
+    "probe_modules": [
+      "carr_library.audio.studio_controls",
+      "carr_library.ui.studio_controls",
+      "carr_library.ui.audio_studio",
+      "carr_library.audio.models",
+      "carr_library.audio.production",
+      "carr_library.audio.effect_editing",
+      "carr_library.audio.managed",
+      "carr_library.reader.narration_text",
+      "carr_library.ui.save_all"
+    ],
+    "checks": {
+      "actual installed Windows Studio owner": 1,
+      "role and output actions are named native buttons": 1,
+      "unlisted saved default ID remains visible without automatic substitution": 1,
+      "default voice changes only after explicit native selection": 1,
+      "role form has exact current modal owner": 1,
+      "all role and output controls have native accessible names": 1,
+      "pending native fields do not mutate the current draft": 1,
+      "native Cancel preserves source draft undo history and saved bytes": 1,
+      "cancelled native form returns focus to its current opening button": 1,
+      "actual role Choice receives keyboard focus": 1,
+      "role form loads exact saved pan voice and language": 1,
+      "new voice does not silently choose an advertised language": 1,
+      "unsupported saved controls remain visible for explicit reset": 1,
+      "native Apply refuses unsupported nondefault voice controls": 1,
+      "native Apply commits exactly one undoable draft edit": 1,
+      "native role controls use existing exact units": 1,
+      "final gain retains the earlier effect chain": 1,
+      "native output controls retain sample rate and disk budget": 1,
+      "accepted controls invalidate old result and displayed preview": 1,
+      "accepted form preserves immutable source and waits for explicit save": 1,
+      "accepted native form returns focus to its opening button": 1,
+      "existing native Undo restores exact original script": 1,
+      "existing native Redo restores accepted controls": 1,
+      "explicit native Preview describes the current edited plan": 1,
+      "current native Save All durably saves the accepted script": 1,
+      "output route initially focuses the actual final-format Choice": 1,
+      "unlisted saved role ID stays visibly selected without replacement": 1,
+      "unavailable role keeps exact language and disabled unsupported defaults": 1,
+      "output-only acceptance preserves the unlisted role and original source": 1,
+      "native Apply refuses a changed current draft and leaves the form open": 1,
+      "stale form cannot replace the later draft or its output settings": 1,
+      "Save All retains the newer edit after stale form refusal": 1,
+      "native window Close cancels only the owned form and preserves the draft": 1,
+      "form controls never create a second Studio save participant": 1,
+      "native Studio close settles the owned executor and unregisters its draft": 1,
+      "no Studio worker thread remains after native close": 1,
+      "native initial-load failure destroys its allocated form": 1,
+      "native flow preserves the exact immutable Unicode source": 1,
+      "exact installed form implementation remains unchanged": 1
+    },
+    "fields": {
+      "status": "PASS",
+      "actual_windows": true,
+      "isolated": true,
+      "native_controls": true,
+      "native_events": "PASS",
+      "draft_lifecycle": "PASS",
+      "source_preserved": true,
+      "cleanup_complete": true,
+      "voice_metadata": "SYNTHETIC_PROTOCOL_ONLY",
+      "speech_quality": "NOT_QUALIFIED",
+      "physical_audio": "NOT_RUN",
+      "nvda": "NOT_RUN",
+      "total_checks": 39
+    },
+    "exact_metrics": {
+      "metrics.forms_applied": 2,
+      "metrics.forms_cancelled": 3,
+      "metrics.capability_refusals": 1,
+      "metrics.stale_refusals": 1,
+      "metrics.accepted_draft_edits": 2,
+      "metrics.save_all_commits": 2,
+      "metrics.initial_load_cleanup": 1
+    }
+  }
+}

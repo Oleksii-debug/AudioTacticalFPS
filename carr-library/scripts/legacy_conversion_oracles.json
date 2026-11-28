@@ -1,0 +1,158 @@
+{
+  "schema": 1,
+  "status": "NOT_RUN",
+  "portable_cases": 236,
+  "portable": {
+    "tests.conversion.test_conversion": {
+      "test_actual_worker_keeps_utf8_crlf_formfeed_and_original": 1,
+      "test_current_text_adapters_execute_in_supervised_worker": 3,
+      "test_actual_fb2_reuses_existing_bounded_xml_reader": 1,
+      "test_actual_docx_uses_ordered_body_and_simple_tables": 1,
+      "test_actual_epub_uses_spine_instead_of_zip_order": 1,
+      "test_actual_pdf_keeps_physical_page_order_without_claiming_printed_labels": 1,
+      "test_real_resource_rejections_publish_nothing": 3,
+      "test_actual_pdf_page_budget_is_checked_before_publication": 1,
+      "test_cancel_during_real_private_source_copy_keeps_original": 1,
+      "test_source_change_after_actual_worker_rejects_publication": 1,
+      "test_only_explicit_inputs_and_output_root_are_authorized": 1,
+      "test_portable_filename_rejection_precedes_worker": 3,
+      "test_existing_output_or_report_never_changes": 2,
+      "test_receipt_collision_rolls_back_only_new_own_text": 1,
+      "test_post_move_sync_failure_preserves_matching_pair_but_is_not_success": 1,
+      "test_first_post_move_sync_failure_removes_only_unchanged_own_text": 3,
+      "test_actual_batch_preserves_completed_first_file_when_later_reader_rejects": 1,
+      "test_worker_rejects_wrong_action_and_extra_request_keys": 1,
+      "test_capability_inventory_matches_current_registry_and_never_enables_legacy": 1,
+      "test_capability_rejects_reader_version_the_existing_docx_parser_rejects": 1,
+      "test_unicode_batch_name_fits_portable_component_budget": 1
+    },
+    "tests.conversion.test_conversion_ui": {
+      "test_ui_selects_exact_files_and_uses_existing_job_cancel_event": 1,
+      "test_ui_does_not_write_unregistered_files_inside_library": 1,
+      "test_image_selection_uses_existing_model_dialog_and_cancel_starts_no_job": 1,
+      "test_rtf_converter_picker_cancel_does_not_activate_a_path_tool": 1,
+      "test_native_flow_passes_both_explicit_selections_to_the_current_service": 1,
+      "test_office_picker_cancel_starts_no_worker_or_output": 1,
+      "test_office_choice_and_shared_application_broker_reach_existing_worker": 1
+    },
+    "tests.conversion.test_selected_adapters": {
+      "test_document_extension_never_activates_an_implicit_converter": 3,
+      "test_ocr_flag_requires_an_explicit_typed_model_choice": 1,
+      "test_inventory_distinguishes_optional_adapters_from_unintegrated_legacy": 1,
+      "test_additional_budgets_are_typed_and_bounded": 5,
+      "test_all_headers_are_bounded_before_ocr_runtime_discovery": 3,
+      "test_raster_header_must_match_extension_before_engine_execution": 1,
+      "test_rtf_selected_executable_hash_is_rechecked_before_start": 1,
+      "test_worker_refuses_unapproved_image_adapter_payload": 3,
+      "test_unselected_converter_path_cannot_come_from_source_metadata": 1,
+      "test_queued_conversion_cannot_adopt_a_changed_selected_converter": 3
+    },
+    "tests.conversion.test_office_selection": {
+      "test_selected_inventory_checks_fixed_installed_filter_without_executing": 1,
+      "test_queued_selection_refuses_new_authority_before_worker": 3,
+      "test_snapshot_rechecks_earlier_component_after_last_hash": 1,
+      "test_worker_admission_refuses_changed_or_incomplete_inventory": 5,
+      "test_fixed_adapter_rejects_false_format_before_runtime_admission": 5,
+      "test_expired_deadline_never_spawns_a_native_process": 1,
+      "test_native_launch_keeps_existing_owner_and_scrubs_unselected_configuration": 1,
+      "test_staging_budget_and_lookup_failures_cannot_report_complete": 4,
+      "test_profile_is_per_operation_and_disables_active_content_and_external_updates": 1,
+      "test_private_phase_survives_failure_without_publishing_source_or_native_logs": 3,
+      "test_progress_refuses_untrusted_marker_content_and_aliased_marker": 1,
+      "test_gui_launcher_is_not_silently_promoted_to_unselected_console": 1,
+      "test_selected_console_manifest_binds_both_launchers_before_native_work": 1
+    },
+    "tests.conversion.test_legacy_adapters": {
+      "test_unexecuted_native_formats_never_become_available_from_selection_alone": 8,
+      "test_relative_or_path_discovered_runtime_is_never_selected": 3,
+      "test_selected_component_change_cannot_start_a_conversion": 4,
+      "test_large_component_inventory_keeps_existing_worker_request_bound": 1,
+      "test_cancel_during_runtime_snapshot_creates_no_manifest": 1,
+      "test_resealed_foreign_inventory_path_is_not_authority": 1,
+      "test_unqualified_service_requires_explicit_fixture_preview": 1,
+      "test_encrypted_palm_header_is_refused_before_native_reader": 2,
+      "test_protected_lit_marker_is_refused_before_calibre": 2,
+      "test_renamed_or_foreign_book_formats_are_not_conversion_inputs": 5,
+      "test_djvu_shared_or_external_reference_is_refused_before_native_reader": 1,
+      "test_djvu_framing_and_page_authority_are_bounded": 4,
+      "test_chm_member_path_cannot_escape_or_spoof_listing": 6,
+      "test_chm_ambiguous_or_excessive_listing_never_selects_members": 5,
+      "test_chm_worker_uses_declared_toc_and_existing_inert_html_reader": 1,
+      "test_chm_truncated_member_publishes_no_complete_worker_report": 1,
+      "test_fixed_calibre_wrapper_enforces_private_io_and_no_network_or_programs": 13,
+      "test_tcr_dictionary_and_actual_expansion_are_bounded_before_native_decoder": 3,
+      "test_windows_cached_directory_metadata_does_not_invalidate_regular_components": 1,
+      "test_real_hardlink_alias_remains_refused_after_fresh_windows_stat": 1,
+      "test_native_chm_empty_final_property_keeps_its_delimiter": 2,
+      "test_chm_known_legacy_doctype_is_inert_and_original_bytes_stay_bound": 4,
+      "test_chm_undeclared_or_complex_doctype_remains_refused": 4,
+      "test_large_selected_code_closure_keeps_every_reader_until_native_scope_exits": 2,
+      "test_excessive_code_handle_inventory_is_refused_before_any_native_lease": 1,
+      "test_djvu_final_odd_chunk_ends_exactly_at_its_containing_form": 4,
+      "test_djvu_final_padding_exception_never_relaxes_chunk_bounds_or_sibling_alignment": 2,
+      "test_qualified_djvu_requires_explicit_selection_and_does_not_enable_other_families": 1,
+      "test_chm_legacy_orphan_paragraph_end_preserves_decoding_and_text_order": 3,
+      "test_chm_paragraph_normalization_keeps_active_hidden_and_literal_tokens_inert": 1,
+      "test_chm_paragraph_normalization_does_not_relax_other_malformed_structure": 3,
+      "test_chm_undeclared_html_and_general_html_reader_keep_their_strict_endtag_contract": 1,
+      "test_chm_paragraph_normalization_uses_current_text_and_absolute_time_budgets": 2,
+      "test_qualified_calibre_formats_still_require_explicit_selection_and_do_not_select_chm": 6,
+      "test_qualified_chm_requires_explicit_selection_and_does_not_select_other_families": 1
+    },
+    "tests.conversion.test_chm_html_recovery": {
+      "test_complete_observed_publisher_shape_population_preserves_order": 11,
+      "test_recovery_retains_declared_charset_and_numeric_unicode_without_replacement": 3,
+      "test_recovery_preserves_active_hidden_and_comment_suppression": 1,
+      "test_general_or_undeclared_html_never_enters_legacy_recovery": 3,
+      "test_later_unsafe_tokens_still_fail_after_an_admitted_orphan_end": 7,
+      "test_original_reader_budgets_apply_before_native_html_recovery": 4,
+      "test_serialized_recovery_expansion_is_bounded_before_a_reading_is_returned": 1,
+      "test_recovery_cannot_silently_drop_reorder_or_expose_text": 3,
+      "test_existing_conversion_worker_keeps_raw_and_recovered_member_identities": 1,
+      "test_exact_publisher_unterminated_entity_keeps_its_html_prefix_meaning": 2,
+      "test_legacy_named_reference_preserves_exact_source_terminator": 5,
+      "test_observed_repeated_description_start_materializes_existing_implicit_close": 2,
+      "test_named_reference_and_description_repairs_do_not_rewrite_attributes_or_expose_suppression": 1,
+      "test_new_legacy_repairs_do_not_admit_orphan_description_ends_or_ambiguous_attributes": 2,
+      "test_legacy_named_reference_keeps_full_word_digest_not_only_token_count": 1,
+      "test_unterminated_named_reference_expansion_keeps_existing_output_bound": 1
+    }
+  },
+  "native_cases": 17,
+  "native": {
+    "calibre": {
+      "tests.conversion.test_legacy_adapters_native": {
+        "test_real_calibre_unprotected_format_retains_original_and_bound_text": 6,
+        "test_real_calibre_protected_palm_input_is_refused_without_decryption": 1,
+        "test_real_calibre_output_budget_publishes_nothing": 1,
+        "test_real_calibre_cancel_after_native_text_settles_before_private_cleanup": 1
+      }
+    },
+    "djvu": {
+      "tests.conversion.test_legacy_adapters_native": {
+        "test_real_djvulibre_reads_every_embedded_text_page": 2,
+        "test_real_djvu_without_text_layer_is_not_reported_as_ocr": 1,
+        "test_real_djvu_external_reference_is_refused_before_adjacent_content_read": 1
+      }
+    },
+    "chm": {
+      "tests.conversion.test_legacy_adapters_native": {
+        "test_real_chm_static_toc_order_does_not_execute_or_read_active_content": 1,
+        "test_real_chm_public_publisher_help_exercises_compressed_container": 1,
+        "test_real_chm_output_budget_keeps_original_and_empty_destination": 1,
+        "test_real_chm_unsafe_member_inventory_is_refused_before_extracting_html": 1
+      }
+    }
+  },
+  "source_and_installed_required": true,
+  "qualifications_advertised": [
+    ".azw",
+    ".azw3",
+    ".chm",
+    ".djvu",
+    ".lit",
+    ".mobi",
+    ".prc",
+    ".tcr"
+  ]
+}

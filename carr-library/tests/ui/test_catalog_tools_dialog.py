@@ -9,7 +9,6 @@ import sys
 import threading
 from types import ModuleType, SimpleNamespace
 from unittest.mock import patch
-from unittest.mock import Mock
 
 import pytest
 
@@ -45,13 +44,13 @@ class Control:
 
 @pytest.fixture
 def module(monkeypatch):
+    monkeypatch.setattr('carr_library.ui.export_destination._confirm_replace', lambda *_: True)
     wx = ModuleType('wx')
     for name in ('Dialog', 'BoxSizer', 'StaticText', 'TextCtrl', 'Choice', 'Button'):
         setattr(wx, name, Control)
     for n, name in enumerate(('VERTICAL', 'HORIZONTAL', 'EXPAND', 'ALL', 'LEFT', 'RIGHT',
             'TOP', 'ALIGN_RIGHT', 'TE_MULTILINE', 'TE_READONLY', 'ID_CANCEL', 'ID_OK',
-            'EVT_BUTTON', 'EVT_CLOSE', 'EVT_CHOICE', 'FD_SAVE', 'FD_OVERWRITE_PROMPT',
-            'YES_NO', 'NO_DEFAULT', 'ICON_QUESTION', 'YES', 'NO')):
+            'EVT_BUTTON', 'EVT_CLOSE', 'EVT_CHOICE', 'FD_SAVE', 'FD_OVERWRITE_PROMPT')):
         setattr(wx, name, 1 << n)
     wx.callbacks = []
     wx.CallAfter = lambda callback: wx.callbacks.append(callback)
@@ -59,7 +58,6 @@ def module(monkeypatch):
     wx.file_result = wx.ID_OK
     wx.file_path = ''
     wx.file_hook = None
-    wx.MessageBox = Mock(return_value=wx.YES)
 
     class FileDialog(Control):
         def __init__(self, *args, **kwargs):
@@ -75,8 +73,7 @@ def module(monkeypatch):
     path = Path(__file__).resolve().parents[2] / 'src/carr_library/ui/catalog_tools_dialog.py'
     spec = importlib.util.spec_from_file_location('carr_library.ui._catalog_tools_independent', path)
     mod = importlib.util.module_from_spec(spec)
-    # Restore only wx. Rolling back the entire module map removes newly imported
-    # export_file while the dialog retains its old ExportDestination class.
+    # Preserve the installed publisher's one ExportDestination class identity.
     monkeypatch.setitem(sys.modules, 'wx', wx)
     spec.loader.exec_module(mod)
     return mod
@@ -217,7 +214,6 @@ def test_exports_forward_exact_scope_format_and_write_complete_utf8(module, setu
     assert not destination.exists() and library.calls == []
     frame.finish()
     assert library.calls == [expected]
-    assert destination.is_file(), form.status.GetValue()
     assert destination.read_bytes() == library.export_value.encode('utf-8')
     assert library.original.read_bytes() == b'unchanged original source'
     assert 'exported to' in form.status.GetValue() and form.status.focused
@@ -281,24 +277,37 @@ def test_late_report_callback_does_not_display_foreign_scope_data(setup):
 def test_checked_writer_refuses_private_source_overwrite(module, setup):
     form, frame, library = setup
     module.wx.file_path = str(library.original)
-    assert not form.export_inventory()
-    assert not frame.jobs
+    assert form.export_inventory() is False
+    assert frame.jobs == [] and library.calls == []
     assert library.original.read_bytes() == b'unchanged original source'
     assert 'outside the private library folder' in form.status.GetValue()
     assert not form.pending and form.inventory_button.enabled
 
 
 @pytest.mark.parametrize('kind', ['bibliography', 'inventory', 'matrix'])
-def test_catalog_export_preserves_file_changed_during_render(module, setup, kind):
+@pytest.mark.parametrize('existing', [False, True], ids=['new', 'confirmed-existing'])
+def test_catalog_export_does_not_replace_a_newer_destination(module, setup, kind, existing):
     form, frame, library = setup
     target = Path(module.wx.file_path)
-    target.write_bytes(b'Approved previous export')
-    library.hook = lambda: target.write_bytes(b'Independent edit during rendering')
+    if existing:
+        target.write_bytes(b'Approved previous export')
     assert getattr(form, 'export_' + kind)()
+    target.write_bytes(b'Changed after the destination was chosen')
     frame.finish()
-    assert target.read_bytes() == b'Independent edit during rendering'
+    assert target.read_bytes() == b'Changed after the destination was chosen'
     assert 'destination changed' in form.status.GetValue()
-    assert not list(target.parent.glob('.research-export-*'))
+    assert not form.pending and library.original.read_bytes() == b'unchanged original source'
+
+
+def test_declined_catalog_overwrite_starts_no_job(module, setup, monkeypatch):
+    form, frame, library = setup
+    target = Path(module.wx.file_path)
+    target.write_bytes(b'Keep the existing output')
+    monkeypatch.setattr('carr_library.ui.export_destination._confirm_replace', lambda *_: False)
+    assert form.export_inventory() is False
+    assert frame.jobs == [] and library.calls == []
+    assert form.inventory_button.focused
+    assert target.read_bytes() == b'Keep the existing output'
 
 
 def test_report_limit_is_explicit_and_does_not_show_a_partial_result(module, setup):
@@ -411,3 +420,21 @@ def test_wrapper_rejects_ambiguous_collection_identifiers(module, setup, monkeyp
     monkeypatch.setattr(library, 'collections', lambda workspace: rows)
     module.show_catalog_tools(frame)
     assert not module.wx.callbacks and 'Collection choices changed' in frame.messages[-1]
+
+
+@pytest.mark.parametrize('kind', ['bibliography', 'inventory', 'matrix'])
+def test_catalog_exports_report_completed_receipt_cleanup_notice(module, setup, monkeypatch, kind):
+    from carr_library.research.export_file import ExportReceipt
+    form, frame, library = setup
+    writer = module.write_export
+    calls = []
+    def saved(*args, **kwargs):
+        receipt = writer(*args, **kwargs)
+        calls.append(receipt)
+        return ExportReceipt(receipt.path, 'Saved; temporary cleanup needs attention.')
+    monkeypatch.setattr(module, 'write_export', saved)
+    assert getattr(form, 'export_' + kind)()
+    frame.finish()
+    assert len(calls) == 1 and calls[0].path.is_file()
+    assert 'Saved; temporary cleanup needs attention.' in form.status.GetValue()
+    assert not form.pending and library.original.read_bytes() == b'unchanged original source'

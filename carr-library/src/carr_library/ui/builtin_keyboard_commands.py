@@ -16,6 +16,7 @@ MAIN_COMMANDS = (
     ('library.restore', 'Library', 'Restore archived library', ''),
     ('library.import', 'Library', 'Import books', 'Ctrl+I'),
     ('library.import_center', 'Library', 'Import Center: files, folders and queues', ''),
+    ('library.ocr_models', 'Library', 'OCR language models: Fast and Best', ''),
     ('library.resume_import', 'Library', 'Resume interrupted import', 'Ctrl+Shift+I'),
     ('library.review_import', 'Library', 'Review pending imported page', ''),
     ('library.add_text', 'Library', 'Add original text', 'Ctrl+Shift+N'),
@@ -67,6 +68,7 @@ READER_COMMANDS = (
     CommandSpec('reader.help', 'Reader keyboard guide', 'reader', 'F1'),
     CommandSpec('reader.commands', 'Find a reader command', 'reader', 'Ctrl+Shift+P'),
     CommandSpec('reader.settings', 'Reader keyboard shortcuts', 'reader', 'Ctrl+Alt+K'),
+    CommandSpec('reader.speak', 'Read aloud from this source', 'reader', 'Ctrl+Alt+R'),
 )
 
 

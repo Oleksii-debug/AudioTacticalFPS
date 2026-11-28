@@ -1,0 +1,40 @@
+{
+  "schema": 1,
+  "checks": [
+    "installed-about-module-origins",
+    "one-native-help-about-command",
+    "native-help-event-opens-real-modal",
+    "named-read-only-about-and-status-controls",
+    "named-focusable-component-and-action-controls",
+    "real-installed-component-version-in-catalogue",
+    "real-product-version-and-component-specific-terms",
+    "catalogue-read-runs-on-owned-background-worker",
+    "native-choice-keys-select-installed-component",
+    "native-read-key-opens-notice-inventory",
+    "native-picker-lists-actual-installed-notices",
+    "native-picker-key-opens-upstream-text",
+    "upstream-text-matches-verified-installed-notice",
+    "upstream-reader-is-named-readonly-and-focused",
+    "native-escape-keeps-parent-about-open",
+    "native-refresh-rereads-installed-catalogue",
+    "all-product-notice-reads-use-background-workers",
+    "native-close-destroys-only-about",
+    "parent-library-and-notice-bytes-preserved"
+  ],
+  "expected_check_count": 19,
+  "required_true": [
+    "actual_native_keys",
+    "actual_installed_metadata",
+    "actual_background_workers",
+    "actual_window_destroyed"
+  ],
+  "statuses": {
+    "nvda": "NOT_RUN",
+    "redistribution_clearance": "NOT_ASSESSED"
+  },
+  "module_origins": [
+    "carr_library.component_notices",
+    "carr_library.ui.about_dialog",
+    "carr_library.ui.desktop_app"
+  ]
+}

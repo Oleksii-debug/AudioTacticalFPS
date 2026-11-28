@@ -259,11 +259,23 @@ def run_native(source=None, timeout=120):
             action.Enable(True)
             before = keymap.read_bytes()
 
-            # Ctrl+Alt+J belongs to the real local assistant in the complete
-            # application. Verify a free draft key before testing Escape.
-            cancel_shortcut = 'Ctrl+Alt+Shift+J'
-            manager.validate({**manager.overrides, test_id: cancel_shortcut})
+            # Integrated modules legitimately own additional shortcuts (the
+            # assistant owns Ctrl+Alt+J). The cancellation case needs a valid,
+            # unapplied draft; the separate case below tests a real conflict.
+            cancel_shortcut = None
+            for letter in 'JKLMNOPQRSTUVWXYZ':
+                candidate = 'Ctrl+Alt+Shift+' + letter
+                try:
+                    manager.validate({**manager.overrides, test_id: candidate})
+                except ValueError:
+                    continue
+                cancel_shortcut = candidate
+                break
+            check('cancel probe chooses an available integrated shortcut', cancel_shortcut is not None)
+
             def cancel(dialog):
+                # The integrated Local assistant owns Ctrl+Alt+J. Keep this
+                # unsaved Cancel fixture distinct from every live command.
                 dialog.shortcut.SetValue(cancel_shortcut)
                 activate(button(dialog.dialog, caption='Assign shortcut'))
                 check('cancel probe has an unapplied native settings draft',

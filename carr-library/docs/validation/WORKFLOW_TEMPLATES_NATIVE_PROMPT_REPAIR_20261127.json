@@ -1,0 +1,120 @@
+{
+  "schema": 1,
+  "kind": "workflow-templates-native-prompt-observed-repair",
+  "observed_at": "2026-11-27",
+  "aggregate_status": "FAIL",
+  "source_commit": "10423cd3d072f31bece580e070920815578d75c1",
+  "source_tree": "e5d1b8908b17ecc948f68f6ef1d5c1511fd04ff7",
+  "run_id": 46037470825,
+  "job_id": 140636415051,
+  "run_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46037470825",
+  "artifact": {
+    "id": 15221541757,
+    "name": "carr-workflow-templates-10423cd3d072f31bece580e070920815578d75c1-1",
+    "size_in_bytes": 465218,
+    "url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15221541757",
+    "archive_download_url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15221541757/zip",
+    "expired": false,
+    "created_at": "2026-11-27T17:36:56Z",
+    "expires_at": "2026-12-27T17:36:56Z",
+    "updated_at": "2026-11-27T17:36:56Z",
+    "digest": "sha256:f528985de6cb5ede488749983c256cf02d8dc6c73cfd2a6766d3537839f06737",
+    "workflow_run": {
+      "id": 46037470825,
+      "repository_id": 1341777614,
+      "head_repository_id": 1341777614,
+      "head_branch": "carr/workflow-templates-r18-punctuation-d3a-20261127",
+      "head_sha": "10423cd3d072f31bece580e070920815578d75c1"
+    }
+  },
+  "oracle_sha256": "3cdd589040920280e0fb3db1d5312d5219e0d613359c0b52840b3f3f16d56169",
+  "wheel_sha256": "ee4b5298c7acd79b19e078b7770a742427d35da095d77247faeffe1483413ffe",
+  "failed_probe_sha256": "ddb7fb1bf4929d0361acc720bb8361092952adf34d6d597930f2899e7e74bf58",
+  "observed_source": {
+    "status": "PASS",
+    "cases": 518,
+    "exact_function_counter_verified": true
+  },
+  "observed_installed": {
+    "status": "PASS",
+    "cases": 518,
+    "exact_function_counter_verified": true,
+    "isolated": true
+  },
+  "observed_native": {
+    "status": "FAIL",
+    "declared_checks": 24,
+    "observed_checks": [
+      "native_main_template_action_named",
+      "native_original_plan_preview_only",
+      "native_template_controls_named",
+      "native_empty_inventory_no_job",
+      "save_all_observes_pending_settings",
+      "native_save_publishes_inert_draft",
+      "save_all_waits_for_durable_completion",
+      "native_rename_uses_same_identity_revision",
+      "native_update_commits_reviewed_revision",
+      "native_load_clears_previous_permissions",
+      "native_loaded_draft_cannot_run_before_preview",
+      "native_fresh_scope_preview_creates_no_job",
+      "native_explicit_run_completes_current_scope",
+      "native_results_use_only_new_workspace",
+      "actual_selected_template_export",
+      "actual_import_creates_new_inert_identity",
+      "actual_complete_backup_includes_typed_templates",
+      "actual_restore_preserves_exact_inert_templates",
+      "actual_restored_old_job_requires_reapproval",
+      "actual_restored_template_rebind_is_preview_only",
+      "actual_rebackup_preserves_template_inventory"
+    ],
+    "reason": "GetDlgItem(IDYES) found no enabled visible direct button in the exactly owned native removal prompt. Failure cleanup then attempted to end an outer wx modal while the inner native modal was still active.",
+    "secondary_failure": "wxEventLoopBase::Exit: IsRunning() failed; the 200-second native watchdog ended execution.",
+    "layout_interpretation": "The existing log does not expose native child layout. Nested or virtual TaskDialog controls are an explanation to test, not an observed layout claim."
+  },
+  "successor": {
+    "base_commit": "ac186ce5188f63b06f46886ce39b6225382c39b6",
+    "status": "SOURCE_ONLY_NOT_RUN",
+    "changed_product_files": [],
+    "source_cases": 518,
+    "installed_cases": 518,
+    "native_checks": 24,
+    "changes": [
+      "Inspect at most 128 descendants of the exact current-process, exact-owner native prompt and log at most eight changing class/control-ID/visibility inventories; never select controls by displayed button caption.",
+      "Use the documented TDM_CLICK_BUTTON(IDYES) task-dialog action. For legacy MessageBox only, a delayed BM_CLICK is permitted after one real, enabled, visible, same-process descendant Button with IDYES is observed and revalidated.",
+      "The existing durable template inventory, unchanged jobs, catalog and settled-writes checks remain required; sending a message never counts as a completed operation.",
+      "On failure, send only the negative IDNO answer to the exact owned native prompt, then close one innermost owned wx modal per event turn through its existing product close handler. Refuse window destruction while any owned modal remains active.",
+      "Preserve the 518/518 exact source and isolated-installed Counters and all 24 native check labels."
+    ],
+    "probe_sha256": "d760dc56541e81018e30578144b12ec3fa72d17ce5b0a9c0c65db8e9e9a9b897"
+  },
+  "primary_sources": [
+    {
+      "url": "https://github.com/wxWidgets/wxWidgets/blob/v3.2.8/src/msw/msgdlg.cpp",
+      "supports": "Pinned wxMSW native TaskDialogIndirect and its standard IDYES/IDNO button configuration.",
+      "read_source_sha256": "44c44216a86c0fca2e5c4f47e7e0ecd7d34d5ef9b2b33ba237d8f3c2349b15f4"
+    },
+    {
+      "url": "https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-enumchildwindows",
+      "supports": "Descendant enumeration includes nested child windows."
+    },
+    {
+      "url": "https://learn.microsoft.com/en-us/windows/win32/controls/tdm-click-button",
+      "supports": "Task-dialog click dispatch uses the supplied button ID."
+    },
+    {
+      "url": "https://github.com/microsoft/win32metadata/blob/main/generation/WinSDK/RecompiledIdlHeaders/um/CommCtrl.h",
+      "supports": "Official SDK TDM_CLICK_BUTTON value is WM_USER+102.",
+      "read_source_sha256": "64aeed65c893c3c853995ad144699ccc59ddc6af696b623669d623db1e955820"
+    },
+    {
+      "url": "https://learn.microsoft.com/en-us/windows/win32/controls/bm-click",
+      "supports": "An actual Button can receive BM_CLICK; activate its dialog first."
+    }
+  ],
+  "qualifications": {
+    "nvda": "NOT_RUN",
+    "language_model_quality": "NOT_QUALIFIED",
+    "physical_audio": "NOT_RUN",
+    "successor_runtime": "NOT_RUN"
+  }
+}

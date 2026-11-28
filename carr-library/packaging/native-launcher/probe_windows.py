@@ -50,7 +50,7 @@ def run_probe(launcher, child):
                     if line.startswith("ARG=")]
 
         ready = fixture("Готова бібліотека (A & B)", ready=True)
-        for path in ("models/minilm-manifest.json", "ocr/ocr-manifest.json", "audio/bin/ffmpeg.exe", "citation-runtime/node.exe"):
+        for path in ("models/minilm-manifest.json", "ocr/ocr-manifest.json", "audio-runtime/ffmpeg.exe", "citation-runtime/node.exe"):
             target = ready / path
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_bytes(b"synthetic availability marker")
@@ -61,7 +61,7 @@ def run_probe(launcher, child):
                                                           "--model-manifest", str(ready / "models/minilm-manifest.json")]
         report = (ready / "probe-app.txt").read_text(encoding="utf-16le")
         assert "HF_HUB_OFFLINE=\nVALUE=1" in report and "ORT_DISABLE_TELEMETRY=\nVALUE=1" in report
-        assert str(ready / "audio/bin") in report and str(ready / "citation-runtime") in report
+        assert str(ready / "audio-runtime") in report and str(ready / "citation-runtime") in report
         assert str(ready / "ocr") in report
         results.append("unicode-spaces-fixed-argv-offline-optional-runtimes")
         before = (ready / "probe-app.txt").read_bytes()

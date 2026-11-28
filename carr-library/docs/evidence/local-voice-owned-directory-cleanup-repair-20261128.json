@@ -1,0 +1,176 @@
+{
+  "schema": 1,
+  "status": "SOURCE_REVIEWABLE_NOT_EXECUTED",
+  "component": "Owned local voice-helper directory cleanup after native process settlement",
+  "source_parent": "c31e680b15d2334420f6cf19d5587636e948258b",
+  "source_parent_tree": "f5766d63cec62a4723191ac10e22da9f7ddeb7f0",
+  "observed_failure": {
+    "run_id": 46099459968,
+    "job_id": 140838351981,
+    "head": "c31e680b15d2334420f6cf19d5587636e948258b",
+    "job_conclusion": "failure",
+    "module": "tests/audio/test_local_voice_helper.py",
+    "passed": 66,
+    "failed": 1,
+    "skipped": 0,
+    "failed_case": "test_actual_running_child_stops_before_private_pcm_cleanup[deadline]",
+    "case_seconds": 2.44,
+    "module_seconds": 21.84,
+    "cancel_case_seconds": 0.44,
+    "raw_log": {
+      "job": 140838351981,
+      "run": 46099459968,
+      "head": "c31e680b15d2334420f6cf19d5587636e948258b",
+      "utf8_bytes": 4746293,
+      "sha256": "8ad4fd29622354685701500be6617965ab1053b8e2543cd018f5bd7fa708fc26"
+    },
+    "artifact": {
+      "id": 15247755531,
+      "bytes": 300102,
+      "sha256": "6b5401f32c39f52319b6e82d573a2d0997748dfafb7af03816b0fbf3df903619",
+      "metadata_independently_read": true,
+      "zip_downloaded_or_decoded": false
+    },
+    "sequence": [
+      "engines._run.check raised the intended selected per-segment TimeoutError at engines.py:276.",
+      "LocalVoiceHelperEngine.synthesize then unwound TemporaryDirectory at local_voice_helper.py:233.",
+      "Windows refused shutil's root-directory rmdir with WinError32; tempfile's fallback also failed and the final sharing error masked the timeout.",
+      "The log contains no explicit process-accounting or stream-cleanup exception. The identity of the remaining directory handle is not observed."
+    ]
+  },
+  "current_process_contract": {
+    "unchanged": true,
+    "owner": "engines._run -> engines._stop -> recording_process._stop_owned",
+    "boundaries": [
+      "exact owned Windows Job Object termination",
+      "leader wait and leader-handle close",
+      "active process accounting reaches zero before job-handle close",
+      "existing pending_cleanup retains streams/staging until a failed owner settles",
+      "stdin/stdout/stderr scopes close before _run unwinds",
+      "selected manifest/executable/script readers close before outer helper directory cleanup"
+    ],
+    "no_pid_killer_added": true,
+    "no_inference_deadline_change": true
+  },
+  "correction": {
+    "owner": "audio.local_voice_helper._private_directory",
+    "creation": "mkdtemp with explicit validated local parent; no TemporaryDirectory finalizer",
+    "cleanup": "Validate retained parent and stage device/inode and ordinary-directory chain before each deletion attempt.",
+    "retry": "Only OSError.winerror32 or33 when os.name is nt, for at most the existing5-second post-settlement cleanup interval, in at most20ms waits.",
+    "persistent_or_nonsharing_errors": "Remain visible; no permission reset, no ignore_errors and no false success.",
+    "replacement": "Refuse a changed stage or parent and retain replacement bytes without an automatic finalizer.",
+    "original_exception": "After successful cleanup the original timeout/cancellation propagates unchanged.",
+    "scope": [
+      "catalogue staging",
+      "speech staging"
+    ],
+    "precedent": "ingest.worker._request_directory already applies the same bounded Windows32/33-only post-settlement cleanup policy."
+  },
+  "tests": {
+    "old_module_cases": 67,
+    "new_module_cases": 77,
+    "added_cases": 10,
+    "added_function_counter": {
+      "test_helper_private_directory_cleanup_waits_for_owned_process_and_reader_settlement": 2,
+      "test_private_helper_directory_retries_only_transient_windows_sharing": 2,
+      "test_private_helper_directory_does_not_retry_other_cleanup_errors": 3,
+      "test_private_helper_directory_refuses_replaced_ownership": 2,
+      "test_private_helper_directory_permanent_sharing_error_is_bounded_and_visible": 1
+    },
+    "old_module_prefix_exact": true,
+    "old_module_sha256": "4a34c71538369eeb8e414d8fe7209e4a087bdae075b51d55cf449551e36f6773",
+    "new_module_sha256": "a60405f1ca2468b5a899de61adefa98bde09003ca98c1d71d3b7e0619e3967b3",
+    "process_regressions": "Actual pinned synthetic helper deadline and cancellation; removal observes every captured process ended, actual Windows job handles closed, all three redirected streams and selected input readers closed. Actual Windows deny-delete directory handle releases only after the removal refusal is observed.",
+    "non_windows_control": "The sharing refusal alone is synthetic on POSIX; the process/reader scopes and filesystem remain real.",
+    "other_regressions": [
+      "transient32 and33",
+      "non-sharing access5/13 and POSIX32 refusal",
+      "actual stage and parent rename/replacement, followed by garbage collection",
+      "bounded persistent sharing failure preserving bytes and original exception context"
+    ],
+    "execution": "NOT_RUN"
+  },
+  "focused_oracle": {
+    "path": "carr-library/scripts/local_voice_helper_oracles.json",
+    "before_total": 111,
+    "after_total": 121,
+    "retained_other_modules": 44,
+    "native_checks": 31,
+    "native_contract_unchanged": true
+  },
+  "full_oracle_delta": {
+    "modules_unchanged": true,
+    "module": "tests.audio.test_local_voice_helper",
+    "source_add": 10,
+    "installed_add": 10,
+    "owner": "Root composes this exact additive Counter onto reviewed5af V3, separately from this component."
+  },
+  "source_bindings": {
+    "carr-library/src/carr_library/audio/local_voice_helper.py": {
+      "git_blob": "c8ba69fef0c3cadaf10ea6517c7db920ad45156e",
+      "sha256": "f550bd4e58a5d981e0e2f0028346d5df458db610b6887984624cb90fec33a0e1"
+    },
+    "carr-library/src/carr_library/audio/engines.py": {
+      "git_blob": "8d6de25b95df92be03b25955244aee6c16602963",
+      "sha256": "e21881786193d83a1f63e03535fb41dae175c8766a095df86138231540ef2cd6"
+    },
+    "carr-library/src/carr_library/audio/recording_process.py": {
+      "git_blob": "d1f78ee864868f6d12cc9d19b567744ee22f745e",
+      "sha256": "0252f3d6bb4c2f4bf5bb8f6c637ddf444e458f823f25625aa31c13bb3ba3b4cb"
+    },
+    "carr-library/src/carr_library/audio/windows_process.py": {
+      "git_blob": "2dd7caa0300fe9a9c28583cdc0cdd25867c45c92",
+      "sha256": "b9636fe98e4a8a594c8a6680d1ac507ef857869cd18964b24cee573ac0447272"
+    },
+    "carr-library/src/carr_library/audio/cleanup.py": {
+      "git_blob": "647374f2fbca142799ded772cb4ce15c0b0b2ce6",
+      "sha256": "c71dad18606fbccc10bfc981f1f44b80ca57897aabdbcaaa0129eb609bb4efcf"
+    },
+    "carr-library/src/carr_library/ingest/worker.py": {
+      "git_blob": "22ea65b3ed5b6c218cd660d15b78e90aa05de338",
+      "sha256": "5a2e3ef34402492fac63512cc4de65cbd48a9cef3015978de0f52d8f5f0b16ef"
+    },
+    "carr-library/tests/audio/test_local_voice_helper.py": {
+      "git_blob": "43896c8fa9a0b43596da3b056a530e5c52b2f3dd",
+      "sha256": "4a34c71538369eeb8e414d8fe7209e4a087bdae075b51d55cf449551e36f6773"
+    },
+    "carr-library/scripts/local_voice_contract_fixture.py": {
+      "git_blob": "1134b755b1c54e7c061c6cc328c72c7004231aff",
+      "sha256": "cdd525bba513c4f58ace97b99882f2045ce87f387ab80ba366d487ea79d344f5"
+    },
+    "carr-library/scripts/local_voice_helper_oracles.json": {
+      "git_blob": "87d02a8353b5bec0b3a87376cf989013e653e0b6",
+      "sha256": "9d78ea3f4bf10641db9801c02916839bbb777f05309b54bcd4e6bfec061a2a04"
+    }
+  },
+  "prepared_sources": {
+    "carr-library/src/carr_library/audio/local_voice_helper.py": {
+      "sha256": "c00a8d29ff3dcda35725918f9f501e166a6702f36b4d1880ae6456045bbe5d67"
+    },
+    "carr-library/tests/audio/test_local_voice_helper.py": {
+      "sha256": "a60405f1ca2468b5a899de61adefa98bde09003ca98c1d71d3b7e0619e3967b3"
+    },
+    "carr-library/scripts/local_voice_helper_oracles.json": {
+      "sha256": "2543a76de12efc54e80cc339478e45c3f85d567aaabcc25e3640b2ec76eeac35"
+    }
+  },
+  "primary_references": [
+    {
+      "url": "https://learn.microsoft.com/en-us/windows/win32/api/winnt/ns-winnt-jobobject_basic_accounting_information",
+      "scope": "ActiveProcesses is decremented after terminated process exit and release of process references; this does not identify the observed directory lock holder."
+    },
+    {
+      "url": "https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-terminateprocess",
+      "scope": "Termination is asynchronous; current owner already waits before resource release."
+    },
+    {
+      "url": "https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-removedirectoryw",
+      "scope": "Directory removal depends on its outstanding handles; the new test uses an explicit native deny-delete handle."
+    }
+  ],
+  "limits": [
+    "No actual successor execution, native qualification or full-application PASS is claimed.",
+    "No external scanner or live-descendant explanation is asserted for the old sharing violation.",
+    "Runtime selection, manifest/cache/voice identities, request protocol and inference deadline are unchanged."
+  ]
+}

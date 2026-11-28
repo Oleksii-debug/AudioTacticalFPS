@@ -1,0 +1,72 @@
+{
+  "schema": 1,
+  "component": "explicit-reading-preparation",
+  "status": "PASS",
+  "observed_at_utc": "2026-11-27T13:33:38Z",
+  "tested_commit": "f9a0f1bf84a8fd2af6ce3b56e12acdc531c59521",
+  "tested_tree": "4dd85371ce655a03bd4b37717a0528a9af8a2869",
+  "run": {
+    "id": 46007444485,
+    "job_id": 140534088132,
+    "branch": "carr/v3-reading-preparation-r9-d3a-fix1-20261127",
+    "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46007444485",
+    "conclusion": "success",
+    "runner": "windows-2022"
+  },
+  "summary": {
+    "host_core_changed": false,
+    "installed_cases": 76,
+    "languages_135": "NOT_RUN",
+    "native_checks": 29,
+    "native_speaker_quality": "NOT_RUN",
+    "nvda": "NOT_RUN",
+    "optional_manifests": {
+      "hunspell": "ab4628d5ef34dc3df07e0d952904ba6fdb2b8738864ccdc7436e3877c9d52619",
+      "normalizer": "a4bd6f58674a9805ec31991fd8cc44a721615125d4a065fb784befb5b116b921"
+    },
+    "schema": 1,
+    "source_cases": 76,
+    "status": "PASS"
+  },
+  "artifact": {
+    "id": 15201184163,
+    "name": "carr-r9-reading-preparation-f9a0f1bf84a8fd2af6ce3b56e12acdc531c59521",
+    "size_bytes": 19440,
+    "file_count": 21,
+    "sha256": "3a29a37d95ec39f54c17f15ac4b9b4428b1018996bb7d6c7e9d38970ef5a516f",
+    "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46007444485/artifacts/15201184163",
+    "digest_evidence": [
+      "GitHub artifact metadata",
+      "upload-artifact terminal log"
+    ]
+  },
+  "qualification": {
+    "source_and_isolated_installed": true,
+    "exact_committed_function_counters": true,
+    "zero_skipped_or_xfail": true,
+    "native_wx_controls": true,
+    "selected_native_hunspell_dll": true,
+    "selected_isolated_num2words_and_babel_worker": true,
+    "source_bound_derivative_and_backup_checks": true,
+    "actual_outbound_python_firewall_rule": true,
+    "firewall_profiles_and_owned_rule_cleanup": "PASS",
+    "host_core_dependencies_changed": false
+  },
+  "limits": {
+    "nvda": "NOT_RUN",
+    "native_speaker_quality": "NOT_RUN",
+    "languages_135": "NOT_RUN",
+    "dictionary_scope": "Public synthetic qualification dictionary; no general language-quality claim.",
+    "speech_quality": "NOT_RUN",
+    "later_commits": "This receipt qualifies only the exact tested commit; later composed heads require their own checks."
+  },
+  "prior_failure": {
+    "run_id": 45999808113,
+    "commit": "9d54aaeb2afe05aabd9a362ab6d7716fb46bbc2f",
+    "status": "FAIL",
+    "stage": "Optional pack builder stdout encoding",
+    "cause": "Isolated Python ignored inherited UTF-8 environment and could not print the Ukrainian output path through cp1252.",
+    "repair": "Explicit -X utf8 on both isolated prepare_reading_tools.py invocations.",
+    "unchanged": "Unicode path fixture and all source/installed/native assertions remain enabled."
+  }
+}

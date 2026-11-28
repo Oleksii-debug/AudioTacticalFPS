@@ -1,0 +1,136 @@
+{
+  "schema": "carr-observed-acceptance/1",
+  "source_commit": "67b35910262d49859a137275bc19aacb46cceaef",
+  "source_tree": "0111577a2064bed915b85f73599de3599f3fd71c",
+  "run_id": 45999900625,
+  "job_id": 140508564389,
+  "status": "PASS",
+  "source": {
+    "passed": 121,
+    "failed": 0,
+    "skipped": 0
+  },
+  "installed": {
+    "passed": 121,
+    "failed": 0,
+    "skipped": 0
+  },
+  "native": {
+    "actual_windows": true,
+    "checks": 32,
+    "full_platform": "NOT_CLAIMED",
+    "installed_package": true,
+    "isolated": true,
+    "kind": "live-playback",
+    "module_origins": {
+      "carr_library.audio.jobs": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\audio\\jobs.py",
+        "sha256": "684ddb40ca6cc885adfcf1dfc8cd3fd45809a14701a200c67ecff00f4d364b0b"
+      },
+      "carr_library.library_backup": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\library_backup.py",
+        "sha256": "e590841d06dc84244bfbe9d31ee1125c31bd2c42b9f0054360d36822c03eca73"
+      },
+      "carr_library.native_runtime": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\native_runtime.py",
+        "sha256": "5145a7f3164c53416bc63f501a37b68699516159d0a6b0ba71d3c91407a5deaf"
+      },
+      "carr_library.reader.live_playback": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\reader\\live_playback.py",
+        "sha256": "3989683af1d5929a89c7ba6d4bdc7644cfd4dcf44b1a57213302573ebb5178bb"
+      },
+      "carr_library.reader.live_speech": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\reader\\live_speech.py",
+        "sha256": "c5a910bfd3064f1a373702a7586761dec2ef8fb231d9f602086ab82b0e994ecb"
+      },
+      "carr_library.ui.builtin_keyboard_commands": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ui\\builtin_keyboard_commands.py",
+        "sha256": "cefc1920c5e91e1c0470f12677f00145965e873cd1f65211402f9c7df1cc99d0"
+      },
+      "carr_library.ui.live_reading": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ui\\live_reading.py",
+        "sha256": "aa44dea13336558eb9eafa8ed8ef7f7b87eaee3f44e9480e85b692c80cb429ed"
+      },
+      "carr_library.ui.narration_editor": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ui\\narration_editor.py",
+        "sha256": "c702aec341c19ad21a804fccca97f26eb3ecbe305ddbf9ceb9222b4eabf97624"
+      },
+      "carr_library.ui.reading_desk": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ui\\reading_desk.py",
+        "sha256": "a3d1fe09172bffcbd832a89dda3e7f59da96c6db3659ff6898006a3dcf57efde"
+      }
+    },
+    "native": {
+      "actual_sapi_pcm": {
+        "ffmpeg_sha256": "3ab4a9c404504ebff6662d6a48661db952f88ee7fb7d5949a711cad7a763b2cf",
+        "frames": 47012,
+        "pcm_sha256": "0aa325db1b52e053089e5e69022f4a411cfebd331b2c35976e3c5c3f1a997186",
+        "playback_pitch": 3,
+        "playback_tempo": 1.25,
+        "sample_rate": 24000,
+        "source_sha256": "843dd0e38e88be7772e076d512d855aab5f074dfb395fe0da188f7ab477046f0",
+        "synthesis_frames": 59988,
+        "synthesis_sample_rate": 24000
+      },
+      "checks": [
+        "named read-only native source control",
+        "all ten live reading actions are native and named",
+        "native emoji and newline selection identifies exact source",
+        "native Unicode cursor roundtrip 0",
+        "native Unicode cursor roundtrip 7",
+        "native Unicode cursor roundtrip 8",
+        "native Unicode cursor roundtrip 11",
+        "native Unicode cursor roundtrip 38",
+        "native Unicode cursor roundtrip 78",
+        "native reading range includes whole book",
+        "actual installed English SAPI voice enumerated",
+        "voice enumeration requires explicit selection",
+        "unsupported SAPI pitch control stays disabled",
+        "verified local FFmpeg captured for independent playback",
+        "independent native playback controls are named and enabled",
+        "actual native focus reaches independent playback tempo",
+        "actual native focus reaches independent playback pitch",
+        "actual native keyboard focus reaches selected voice",
+        "actual SAPI utterance became prepared PCM",
+        "prepared utterance retains chosen independent playback settings",
+        "actual transformed PCM has expected independent tempo duration",
+        "measured PCM and exact spoken source digest",
+        "prepared excerpt highlights exact native source range",
+        "preparing does not start a device or advance cursor",
+        "stop retains only the last completed text cursor",
+        "stop releases private utterance PCM",
+        "book resume is exact source-bound",
+        "speech resource reservation is released",
+        "restored cursor uses exact native character position",
+        "where-am-I is exposed through named native status",
+        "native modal exits only after reader owners settle",
+        "immutable source remains byte-identical after the native workflow"
+      ],
+      "independent_playback": "EXECUTED",
+      "language_quality": "NOT_CLAIMED",
+      "native_controls": "EXECUTED",
+      "nvda": "NOT_RUN",
+      "physical_playback": "NOT_RUN",
+      "status": "PASS",
+      "word_alignment": "NOT_CLAIMED"
+    },
+    "nvda": "NOT_RUN",
+    "physical_audio": "NOT_RUN",
+    "probe_sha256": "1e4d138851b41a6bffa6f214b7fe4cb78f28037673cec23300629aa75a985f14",
+    "schema": 1,
+    "source_commit": "67b35910262d49859a137275bc19aacb46cceaef",
+    "source_tree": "0111577a2064bed915b85f73599de3599f3fd71c",
+    "status": "PASS"
+  },
+  "artifact": {
+    "id": 15198338112,
+    "bytes": 17578,
+    "sha256": "65ac39eb40c07242b6f6a11dec06493b2b3125071f6a05584f0911617af0eee3"
+  },
+  "limitations": [
+    "No physical audio output or microphone qualification",
+    "No manual NVDA run",
+    "No natural-language speech-quality qualification",
+    "Later source commits require their own gates"
+  ]
+}

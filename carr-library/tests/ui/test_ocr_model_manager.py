@@ -248,7 +248,7 @@ def test_progress_coalesces_callbacks_without_stealing_focus(manager, tmp_path):
         manager._queue_progress(manager._job, 'ukr', complete, 100)
     assert len(manager.callbacks) == 1
     drain(manager)
-    assert manager.progress.value == 1000
+    assert manager.progress.value == 999
     assert '100 of 100 bytes processed' in manager.status.value
     assert not manager.status.focused
 

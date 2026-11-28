@@ -1,0 +1,163 @@
+{
+  "schema": "carr.office-cumulative-integration.v1",
+  "status": "ORDINARY_COMPONENT_QUALIFIED_INDEPENDENT_RAW_READ_PASS",
+  "base": {
+    "sha": "9e4406b380927d6d0b69d28fca2a533953dad854",
+    "tree": "6ab4fbd43d1cf6aecbd54aa875eec9451e335343"
+  },
+  "product_source_component": "2f220f52d00ee583fe1845cfc55956a23b2acedb",
+  "bytecode_source_component": "d7295d13a096c0148559657f7b9d64b865051875",
+  "paths": [
+    {
+      "path": "carr-library/src/carr_library/conversion/office.py",
+      "before_blob": "d9c52a9e9613bd561f9cac20874610d9458bc177",
+      "after_blob": "dcbcac43c08ecab48567427f2d3ea8816ad8a51f",
+      "after_sha256": "abfe05739d1d6d132f93656ed34c23b6e93602d085929e72fa57505ae7b4092e"
+    },
+    {
+      "path": "carr-library/tests/conversion/test_office_selection.py",
+      "before_blob": "291977cad0942dc903d8deb12f3f2a92a3b068c4",
+      "after_blob": "2deaaba308ceccf28ccb6652055cf0d6523ed3a4",
+      "after_sha256": "71c176d23f4b781ed5b98b4c0752bedff9f1d16bd6526bdc2d9c2203c001200d"
+    },
+    {
+      "path": "carr-library/tests/conversion/test_office_stage_races.py",
+      "before_blob": "eeb1b89babb0383ec7b22144ac8dbb916dca7d8b",
+      "after_blob": "4f77b1fb7f5ca4d6f392da30133030978f595419",
+      "after_sha256": "195300bde1313c765e34952a1e9fc187d3d63f53425ac763458b68372bea4b5a"
+    },
+    {
+      "path": "carr-library/tests/conversion/test_office_native.py",
+      "before_blob": "e6a6ca3b211711505161f7efcccedcbdbb2d9bd4",
+      "after_blob": "c3e94b4878bb827059babf1739e3b5b2c35c8fb9",
+      "after_sha256": "ee11ef7ae58d7421b9f183e75250be87e64d20fb00de9672193d8ecd2dc8052a"
+    },
+    {
+      "path": "carr-library/scripts/conversion_acceptance.py",
+      "before_blob": "d9dc536b86ee27595e8fb0969b9eedbaf553ad62",
+      "after_blob": "5dbfb75cb7d63db984bda282653a52db36f1b8cf",
+      "after_sha256": "5a254ba909a665f055a56273c93bd8d9d8b4284b5bb13c73f64a65e66c16e04f"
+    },
+    {
+      "path": "carr-library/docs/evidence/office-stage-events-independent-read-20261127.json",
+      "before_blob": null,
+      "after_blob": "077ebab29a1f98ee6acdedc4406b0bf5b6f09e4e",
+      "after_sha256": "1c618f8c4f5ff3bda51eee6fae1adf3dafc654e88094e559438b6a10276df239"
+    },
+    {
+      "path": "carr-library/docs/evidence/office-transient-lstat-repair-20261127.json",
+      "before_blob": null,
+      "after_blob": "1474a005df5bd6d5ca7ef10073f580ddbfcee9c0",
+      "after_sha256": "cba30516efbae6406d8b89d7f7467eb90e57480171ff5f7fa628513471b82746"
+    },
+    {
+      "path": "carr-library/docs/evidence/office-portable-boundary-gate-20261127.json",
+      "before_blob": null,
+      "after_blob": "6bfe93866c5e28f0cb4203936db9cfd0c9698f4a",
+      "after_sha256": "c1b9ace61873242ba866b212f2238cdd585344668e4e52a0a78945db0f3a520e"
+    },
+    {
+      "path": "carr-library/docs/evidence/office-runtime-bytecode-repair-20261127.json",
+      "before_blob": null,
+      "after_blob": "7e366406831201fcd5c944e997912677d06aaf62",
+      "after_sha256": "a88a287b8a65b87426cd0fbcf9f9ed50697b9e06cfb7d001589dd4c1bc8f9709"
+    },
+    {
+      "path": "carr-library/docs/evidence/office-stage-diagnostic-independent-read-20261127.json",
+      "before_blob": null,
+      "after_blob": "0f4c6ac12d1f9e9010fa1c8dc6e80d5ea2308298",
+      "after_sha256": "6c41cf49657b2641c53ddba1ec6e51f8c0e0467c3d5f90daa0d6971aead58797"
+    },
+    {
+      "path": "carr-library/docs/evidence/converters-print-layout-independent-read-20261127.json",
+      "before_blob": null,
+      "after_blob": "f2a6ae928a918e8deadd65a46365547575f75367",
+      "after_sha256": "39b466802c5d754e2589387b7885323df4ef8952a0d2a15a77cc78ad94150aec"
+    },
+    {
+      "path": "carr-library/docs/DOCUMENT_CONVERSION.md",
+      "before_blob": "060ee08cffbdd737c71e1116ff21eb48660c7eb7",
+      "after_blob": "08d82a446f8ede0e6c52b5299a5376f3b75026e4",
+      "after_sha256": "b4c514e8571ae945b55403211523f75451f300cc9564396240fa80b8f13f3b03"
+    },
+    {
+      "path": "carr-library/docs/OPTIONAL_CONVERTER_QUALIFICATION.md",
+      "before_blob": "0e9c920ae6467626c2667f84a136f7cfa1e75adb",
+      "after_blob": "a243166237eef2d395c0e6c400086c402f8b580c",
+      "after_sha256": "135313f090f88c397a667de2ad65e9f40ccee25394c584b291cfe6e826bc0b0a"
+    },
+    {
+      "path": "carr-library/docs/evidence/office-ordinary-admission-independent-read-20261127.json",
+      "before_blob": null,
+      "after_blob": "0a9f79de7fa34e4331d8432de02aac61b5de6f1d",
+      "after_sha256": "b9abf2fcf4aa1a5818394d6aff17a605191123a8d64b70c87b2f1add1ade4614"
+    }
+  ],
+  "unchanged_dependencies": {
+    ".github/workflows/carr-converters.yml": "c371b7fbc3749ccf936f2ddbf30b58de55d91e40",
+    "carr-library/src/carr_library/audio/jobs.py": "f903172a16ac537f6f29adf213a1174ac737a69a",
+    "carr-library/src/carr_library/conversion/service.py": "3f283ab3f26430156c1253252d556e6bde6999ac",
+    "carr-library/src/carr_library/conversion/worker.py": "e12850d3c0d66fe2c2bd11a6a527210b51091aef",
+    "carr-library/src/carr_library/extract/document_formats_xml.py": "21fd297a9554ab70bac71cc22a86491183a0307e",
+    "carr-library/src/carr_library/ingest/worker.py": "22ea65b3ed5b6c218cd660d15b78e90aa05de338"
+  },
+  "ordinary_native": {
+    "source": 7,
+    "installed": 7,
+    "bootstrap_diagnostic_hook": false,
+    "xls_repetition": false,
+    "whole_runtime_inventory": true
+  },
+  "portable_office": {
+    "source": 40,
+    "installed": 40,
+    "selection_cases": 28,
+    "stage_cases": 12,
+    "old_stage_cases": 10,
+    "new_stage_cases": 2,
+    "functions": {
+      "tests.conversion.test_office_selection": {
+        "test_selected_inventory_checks_fixed_installed_filter_without_executing": 1,
+        "test_queued_selection_refuses_new_authority_before_worker": 3,
+        "test_snapshot_rechecks_earlier_component_after_last_hash": 1,
+        "test_worker_admission_refuses_changed_or_incomplete_inventory": 5,
+        "test_fixed_adapter_rejects_false_format_before_runtime_admission": 5,
+        "test_expired_deadline_never_spawns_a_native_process": 1,
+        "test_native_launch_keeps_existing_owner_and_scrubs_unselected_configuration": 1,
+        "test_staging_budget_and_lookup_failures_cannot_report_complete": 4,
+        "test_profile_is_per_operation_and_disables_active_content_and_external_updates": 1,
+        "test_private_phase_survives_failure_without_publishing_source_or_native_logs": 3,
+        "test_progress_refuses_untrusted_marker_content_and_aliased_marker": 1,
+        "test_gui_launcher_is_not_silently_promoted_to_unselected_console": 1,
+        "test_selected_console_manifest_binds_both_launchers_before_native_work": 1
+      },
+      "tests.conversion.test_office_stage_races": {
+        "test_native_removed_profile_entry_does_not_abort_the_remaining_stage_census": 2,
+        "test_valueerror_for_a_still_existing_stage_entry_is_never_treated_as_disappearance": 2,
+        "test_permission_failure_during_missing_entry_confirmation_remains_a_failure": 1,
+        "test_missing_native_entry_cannot_hide_lost_or_replaced_private_stage_root": 2,
+        "test_disappearance_after_observed_policy_violation_cannot_make_stage_valid": 3,
+        "test_reappeared_owned_descendant_does_not_turn_a_missing_snapshot_into_a_live_entry_refusal": 2
+      }
+    }
+  },
+  "composition_notes": [
+    "Sole parent is the current reviewed root baseline; selected-source provenance is recorded here without acknowledging unrelated donor ancestors.",
+    "Native test starts from the root baseline and adds only the fixed no-bytecode environment flag; diagnostic bootstrap, event files and repeated XLS loop are absent.",
+    "Existing main workflow, full-suite oracle, shared service/worker, ODF print-layout parser and audio.jobs bytes are unchanged.",
+    "The current CHM ordinary proof and EML documentation remain intact.",
+    "The native seven/seven counts are distinct from the separate forty/fourty portable boundary population."
+  ],
+  "actual_qualification": {
+    "commit": "f03f8791f100de41d5e24e060b15f36d879184b2",
+    "tree": "84ef7b439a32680dcc14aacc4c140921cf8b6036",
+    "run_id": 46066912589,
+    "job_id": 140734323246,
+    "portable_each": 40,
+    "native_each": 7,
+    "independent_reader_run": 46067545746,
+    "evidence": "carr-library/docs/evidence/office-ordinary-admission-independent-read-20261127.json"
+  },
+  "product_changes_after_qualified_candidate": false,
+  "proof_only_successor": true
+}

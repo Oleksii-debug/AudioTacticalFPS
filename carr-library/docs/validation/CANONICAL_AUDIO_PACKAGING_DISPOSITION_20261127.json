@@ -1,0 +1,1172 @@
+{
+  "schema": 1,
+  "date": "2026-11-27",
+  "title": "Canonical audio packaging and runtime disposition",
+  "canonical": {
+    "commit": "a44fac04072389caa40e0d6e799b13797712f797",
+    "tree": "3cc479898b1430b49774fc0226630a667d94d2d2"
+  },
+  "audited_current": {
+    "commit": "23a09923584eb43d62d90b54f5c25b098a49d233",
+    "tree": "1bf04768ebc47d3293d692c5de204838f6b1c15e"
+  },
+  "method": "Exact source/blob reads and a finite contract comparison; no local execution, compilation, external download or new runtime qualification.",
+  "requested_canonical_paths": 22,
+  "rows": [
+    {
+      "canonical_path": ".github/workflows/carr-v3.yml",
+      "canonical_blob": "700a88782aad660cdd06bb0814d1b47e31c23ebe",
+      "current_same_path_blob": null,
+      "status": "REPLACED_BY_CURRENT_GATES_NO_VERDICT_TRANSFER",
+      "canonical_contract": "Canonical build/probe orchestration for its own audio/runtime/Studio families.",
+      "current_owners": [
+        {
+          "path": ".github/workflows/carr-windows.yml",
+          "blob": "1ccff9984cf45c24bcf6141d01c1a98070747fc0"
+        },
+        {
+          "path": ".github/workflows/carr-standard-native.yml",
+          "blob": "ee48d350408439d0ba17de5f5c5f87acb76c41fa"
+        },
+        {
+          "path": "carr-library/scripts/r7_native_gate.py",
+          "blob": "29e75a6415eb914894e9aec62b87b315ccb97f16"
+        },
+        {
+          "path": "carr-library/scripts/r7_native_oracles.json",
+          "blob": "0371afeaed5033f1b1274b2638fa43fa1079bbed"
+        }
+      ],
+      "current_test_references": [
+        {
+          "path": "carr-library/tests/packaging/test_standard_library_qualification.py",
+          "blob": "82558c4b06a6699daf767a427752648f92d383e3",
+          "functions": [
+            "test_exact_six_workflow_reports_require_all_fifty_cases",
+            "test_actual_origin_files_must_be_installed_and_match_the_wheel_bytes",
+            "test_resealed_or_changed_source_identity_does_not_pass_after_tests"
+          ]
+        },
+        {
+          "path": "carr-library/tests/packaging/test_audio_bundle.py",
+          "blob": "587bab23e4d0d632b36d873edfea432282527bc2",
+          "functions": [
+            "test_sealed_audio_runtime_and_notices_are_installed_with_exact_inventory",
+            "test_runtime_changed_during_copy_cannot_be_sealed",
+            "test_installer_rejects_extra_and_unannounced_audio_payloads"
+          ]
+        }
+      ],
+      "limitation": "Current private-bundle and audio-free standard-generation gates bind their own exact source/wheel/oracles. Old workflow results are not qualification of current code or different binaries."
+    },
+    {
+      "canonical_path": "carr-library/packaging/acquire_audio_runtime.py",
+      "canonical_blob": "9de23d3f79bf179a2b3da4d759d324086e09675b",
+      "current_same_path_blob": null,
+      "status": "GENUINE_USER_WORKFLOW_GAP_RESTORED_IN_SEPARATE_COMPONENT_NOT_RUN",
+      "canonical_contract": "Opt-in fixed acquisition of the BtbN archive plus exact FFmpeg/build-recipe source archives; no-write default.",
+      "current_owners": [
+        {
+          "path": "carr-library/packaging/setup_local_audio.py",
+          "blob": "85e282ae275118a5b73d6af06862314f3399fc26"
+        },
+        {
+          "path": "carr-library/packaging/prepare_ffmpeg_runtime.py",
+          "blob": "d8b2fbef5defb741a12f553bd5555e0bdbd94bd8"
+        },
+        {
+          "path": "carr-library/docs/LOCAL_AUDIO_SETUP.md",
+          "blob": "d459d2be7de6ffe3083535ccd6e587b287514e9a"
+        }
+      ],
+      "current_test_references": [
+        {
+          "path": "carr-library/tests/packaging/test_local_audio_setup.py",
+          "blob": "9369df27f0279150ceb6a43ae0db14d59b199614",
+          "functions": [
+            "test_default_plan_is_read_only_and_uses_current_pinned_inventory",
+            "test_changed_selected_archive_requires_a_new_review",
+            "test_synthetic_pinned_archive_uses_existing_preparer_and_final_verifier"
+          ]
+        }
+      ],
+      "limitation": "At the audited root, manual archive preparation existed but end-user opt-in acquisition did not. Component c24e restores explicit acquisition for the one current Gyan full archive, with 69 authored cases; it does not fetch or reattribute BtbN source archives."
+    },
+    {
+      "canonical_path": "carr-library/packaging/add_audio_runtime.py",
+      "canonical_blob": "90f6acb4101d4adca90b7244043b678e82fe1900",
+      "current_same_path_blob": null,
+      "status": "CURRENT_BUNDLE_OWNER_REPLACES_OLD_MUTATOR",
+      "canonical_contract": "Add verified canonical runtime and notices to an exact private bundle and reseal its inventory.",
+      "current_owners": [
+        {
+          "path": "carr-library/packaging/build_windows_bundle.py",
+          "blob": "d7bc7b4aede8789bca67d877034da7e386435696"
+        },
+        {
+          "path": "carr-library/packaging/install_windows.py",
+          "blob": "b72dafbc6affb1a4f1fd77cc15ae49ae02fb2c25"
+        },
+        {
+          "path": "carr-library/src/carr_library/audio/runtime.py",
+          "blob": "4b8dd520d74375e3d9e43303fe971d5236ed44e6"
+        },
+        {
+          "path": "carr-library/packaging/create_delivery.py",
+          "blob": "6b105aee0643d3afcac8342a067960d4f30d25ef"
+        }
+      ],
+      "current_test_references": [
+        {
+          "path": "carr-library/tests/packaging/test_audio_bundle.py",
+          "blob": "587bab23e4d0d632b36d873edfea432282527bc2",
+          "functions": [
+            "test_sealed_audio_runtime_and_notices_are_installed_with_exact_inventory",
+            "test_runtime_changed_during_copy_cannot_be_sealed",
+            "test_installer_rejects_extra_and_unannounced_audio_payloads"
+          ]
+        },
+        {
+          "path": "carr-library/tests/packaging/test_delivery_archive.py",
+          "blob": "8c4bd6e6ccd505914411f35eef0f68d5af6dfa5c",
+          "functions": [
+            "test_transfer_rejects_unreviewed_audio_before_staging",
+            "test_explicit_audio_absence_preserves_transfer"
+          ]
+        }
+      ],
+      "limitation": "Current --audio-dir copies the current exact runtime with inner and outer seals. No compatibility promise for an old BtbN manifest and no public transfer clearance."
+    },
+    {
+      "canonical_path": "carr-library/packaging/audio-runtime/README.txt",
+      "canonical_blob": "3b2d20479de5994a9c9d1497a196459f14cd05c3",
+      "current_same_path_blob": null,
+      "status": "DIFFERENT_RUNTIME_PROVENANCE_MUST_NOT_BE_RELABELED",
+      "canonical_contract": "Describe the BtbN shared package, included headers/docs/source recipes and private-use/qualification limits.",
+      "current_owners": [
+        {
+          "path": "carr-library/packaging/audio-runtime/source-lock.json",
+          "blob": "53ab236497ca4644713a86714317198853ac9e17"
+        },
+        {
+          "path": "carr-library/packaging/prepare_ffmpeg_runtime.py",
+          "blob": "d8b2fbef5defb741a12f553bd5555e0bdbd94bd8"
+        },
+        {
+          "path": "carr-library/docs/FFMPEG_RUNTIME.md",
+          "blob": "1b63046821630cb60749dc8ed4fc6d92351edb90"
+        },
+        {
+          "path": "carr-library/docs/LOCAL_AUDIO_SETUP.md",
+          "blob": "d459d2be7de6ffe3083535ccd6e587b287514e9a"
+        }
+      ],
+      "current_test_references": [
+        {
+          "path": "carr-library/tests/audio/test_audio_runtime.py",
+          "blob": "8b2bf7a6d83db5a4b978dcee7f2d8942a8bd6c78",
+          "functions": [
+            "test_full_runtime_preserves_every_reviewed_publisher_file",
+            "test_package_preparer_rejects_wrong_archive_before_destination",
+            "test_invalid_bundle_fails_before_execution"
+          ]
+        }
+      ],
+      "limitation": "Current Gyan original README/license are retained, while the wrapper documentation explicitly records different provenance and incomplete corresponding-source clearance."
+    },
+    {
+      "canonical_path": "carr-library/packaging/audio-runtime/licenses/BUILD_RECIPES_LICENSE",
+      "canonical_blob": "b9444ddc2718d07086ff655e306741d9cabf84b4",
+      "current_same_path_blob": null,
+      "status": "OLD_BUILD_NOTICE_RETAINED_IN_HISTORY_NOT_REATTRIBUTED",
+      "canonical_contract": "The exact BUILD_RECIPES_LICENSE notice associated with canonical BtbN source/build materials.",
+      "current_owners": [
+        {
+          "path": "carr-library/packaging/audio-runtime/source-lock.json",
+          "blob": "53ab236497ca4644713a86714317198853ac9e17"
+        },
+        {
+          "path": "carr-library/packaging/prepare_ffmpeg_runtime.py",
+          "blob": "d8b2fbef5defb741a12f553bd5555e0bdbd94bd8"
+        },
+        {
+          "path": "carr-library/docs/FFMPEG_RUNTIME.md",
+          "blob": "1b63046821630cb60749dc8ed4fc6d92351edb90"
+        }
+      ],
+      "current_test_references": [
+        {
+          "path": "carr-library/tests/audio/test_audio_runtime.py",
+          "blob": "8b2bf7a6d83db5a4b978dcee7f2d8942a8bd6c78",
+          "functions": [
+            "test_full_runtime_preserves_every_reviewed_publisher_file",
+            "test_package_preparer_rejects_wrong_archive_before_destination",
+            "test_invalid_bundle_fails_before_execution"
+          ]
+        },
+        {
+          "path": "carr-library/tests/packaging/test_audio_bundle.py",
+          "blob": "587bab23e4d0d632b36d873edfea432282527bc2",
+          "functions": [
+            "test_sealed_audio_runtime_and_notices_are_installed_with_exact_inventory",
+            "test_runtime_changed_during_copy_cannot_be_sealed",
+            "test_installer_rejects_extra_and_unannounced_audio_payloads"
+          ]
+        }
+      ],
+      "limitation": "Current Gyan original LICENSE/README and all publisher documentation are retained through the current manifest. This old notice file is not proof of the different build's licensing/completeness; current source/redistribution clearance remains absent."
+    },
+    {
+      "canonical_path": "carr-library/packaging/audio-runtime/licenses/COPYING.GPLv2",
+      "canonical_blob": "d159169d1050894d3ea3b98e1c965c4058208fe1",
+      "current_same_path_blob": null,
+      "status": "OLD_BUILD_NOTICE_RETAINED_IN_HISTORY_NOT_REATTRIBUTED",
+      "canonical_contract": "The exact COPYING.GPLv2 notice associated with canonical BtbN source/build materials.",
+      "current_owners": [
+        {
+          "path": "carr-library/packaging/audio-runtime/source-lock.json",
+          "blob": "53ab236497ca4644713a86714317198853ac9e17"
+        },
+        {
+          "path": "carr-library/packaging/prepare_ffmpeg_runtime.py",
+          "blob": "d8b2fbef5defb741a12f553bd5555e0bdbd94bd8"
+        },
+        {
+          "path": "carr-library/docs/FFMPEG_RUNTIME.md",
+          "blob": "1b63046821630cb60749dc8ed4fc6d92351edb90"
+        }
+      ],
+      "current_test_references": [
+        {
+          "path": "carr-library/tests/audio/test_audio_runtime.py",
+          "blob": "8b2bf7a6d83db5a4b978dcee7f2d8942a8bd6c78",
+          "functions": [
+            "test_full_runtime_preserves_every_reviewed_publisher_file",
+            "test_package_preparer_rejects_wrong_archive_before_destination",
+            "test_invalid_bundle_fails_before_execution"
+          ]
+        },
+        {
+          "path": "carr-library/tests/packaging/test_audio_bundle.py",
+          "blob": "587bab23e4d0d632b36d873edfea432282527bc2",
+          "functions": [
+            "test_sealed_audio_runtime_and_notices_are_installed_with_exact_inventory",
+            "test_runtime_changed_during_copy_cannot_be_sealed",
+            "test_installer_rejects_extra_and_unannounced_audio_payloads"
+          ]
+        }
+      ],
+      "limitation": "Current Gyan original LICENSE/README and all publisher documentation are retained through the current manifest. This old notice file is not proof of the different build's licensing/completeness; current source/redistribution clearance remains absent."
+    },
+    {
+      "canonical_path": "carr-library/packaging/audio-runtime/licenses/COPYING.GPLv3",
+      "canonical_blob": "94a9ed024d3859793618152ea559a168bbcbb5e2",
+      "current_same_path_blob": null,
+      "status": "OLD_BUILD_NOTICE_RETAINED_IN_HISTORY_NOT_REATTRIBUTED",
+      "canonical_contract": "The exact COPYING.GPLv3 notice associated with canonical BtbN source/build materials.",
+      "current_owners": [
+        {
+          "path": "carr-library/packaging/audio-runtime/source-lock.json",
+          "blob": "53ab236497ca4644713a86714317198853ac9e17"
+        },
+        {
+          "path": "carr-library/packaging/prepare_ffmpeg_runtime.py",
+          "blob": "d8b2fbef5defb741a12f553bd5555e0bdbd94bd8"
+        },
+        {
+          "path": "carr-library/docs/FFMPEG_RUNTIME.md",
+          "blob": "1b63046821630cb60749dc8ed4fc6d92351edb90"
+        }
+      ],
+      "current_test_references": [
+        {
+          "path": "carr-library/tests/audio/test_audio_runtime.py",
+          "blob": "8b2bf7a6d83db5a4b978dcee7f2d8942a8bd6c78",
+          "functions": [
+            "test_full_runtime_preserves_every_reviewed_publisher_file",
+            "test_package_preparer_rejects_wrong_archive_before_destination",
+            "test_invalid_bundle_fails_before_execution"
+          ]
+        },
+        {
+          "path": "carr-library/tests/packaging/test_audio_bundle.py",
+          "blob": "587bab23e4d0d632b36d873edfea432282527bc2",
+          "functions": [
+            "test_sealed_audio_runtime_and_notices_are_installed_with_exact_inventory",
+            "test_runtime_changed_during_copy_cannot_be_sealed",
+            "test_installer_rejects_extra_and_unannounced_audio_payloads"
+          ]
+        }
+      ],
+      "limitation": "Current Gyan original LICENSE/README and all publisher documentation are retained through the current manifest. This old notice file is not proof of the different build's licensing/completeness; current source/redistribution clearance remains absent."
+    },
+    {
+      "canonical_path": "carr-library/packaging/audio-runtime/licenses/COPYING.LGPLv2.1",
+      "canonical_blob": "40924c2a6da76a2b0c639f6fe7ef0b2d095a6adb",
+      "current_same_path_blob": null,
+      "status": "OLD_BUILD_NOTICE_RETAINED_IN_HISTORY_NOT_REATTRIBUTED",
+      "canonical_contract": "The exact COPYING.LGPLv2.1 notice associated with canonical BtbN source/build materials.",
+      "current_owners": [
+        {
+          "path": "carr-library/packaging/audio-runtime/source-lock.json",
+          "blob": "53ab236497ca4644713a86714317198853ac9e17"
+        },
+        {
+          "path": "carr-library/packaging/prepare_ffmpeg_runtime.py",
+          "blob": "d8b2fbef5defb741a12f553bd5555e0bdbd94bd8"
+        },
+        {
+          "path": "carr-library/docs/FFMPEG_RUNTIME.md",
+          "blob": "1b63046821630cb60749dc8ed4fc6d92351edb90"
+        }
+      ],
+      "current_test_references": [
+        {
+          "path": "carr-library/tests/audio/test_audio_runtime.py",
+          "blob": "8b2bf7a6d83db5a4b978dcee7f2d8942a8bd6c78",
+          "functions": [
+            "test_full_runtime_preserves_every_reviewed_publisher_file",
+            "test_package_preparer_rejects_wrong_archive_before_destination",
+            "test_invalid_bundle_fails_before_execution"
+          ]
+        },
+        {
+          "path": "carr-library/tests/packaging/test_audio_bundle.py",
+          "blob": "587bab23e4d0d632b36d873edfea432282527bc2",
+          "functions": [
+            "test_sealed_audio_runtime_and_notices_are_installed_with_exact_inventory",
+            "test_runtime_changed_during_copy_cannot_be_sealed",
+            "test_installer_rejects_extra_and_unannounced_audio_payloads"
+          ]
+        }
+      ],
+      "limitation": "Current Gyan original LICENSE/README and all publisher documentation are retained through the current manifest. This old notice file is not proof of the different build's licensing/completeness; current source/redistribution clearance remains absent."
+    },
+    {
+      "canonical_path": "carr-library/packaging/audio-runtime/licenses/COPYING.LGPLv3",
+      "canonical_blob": "65c5ca88a67c30becee01c5a8816d964b03862f9",
+      "current_same_path_blob": null,
+      "status": "OLD_BUILD_NOTICE_RETAINED_IN_HISTORY_NOT_REATTRIBUTED",
+      "canonical_contract": "The exact COPYING.LGPLv3 notice associated with canonical BtbN source/build materials.",
+      "current_owners": [
+        {
+          "path": "carr-library/packaging/audio-runtime/source-lock.json",
+          "blob": "53ab236497ca4644713a86714317198853ac9e17"
+        },
+        {
+          "path": "carr-library/packaging/prepare_ffmpeg_runtime.py",
+          "blob": "d8b2fbef5defb741a12f553bd5555e0bdbd94bd8"
+        },
+        {
+          "path": "carr-library/docs/FFMPEG_RUNTIME.md",
+          "blob": "1b63046821630cb60749dc8ed4fc6d92351edb90"
+        }
+      ],
+      "current_test_references": [
+        {
+          "path": "carr-library/tests/audio/test_audio_runtime.py",
+          "blob": "8b2bf7a6d83db5a4b978dcee7f2d8942a8bd6c78",
+          "functions": [
+            "test_full_runtime_preserves_every_reviewed_publisher_file",
+            "test_package_preparer_rejects_wrong_archive_before_destination",
+            "test_invalid_bundle_fails_before_execution"
+          ]
+        },
+        {
+          "path": "carr-library/tests/packaging/test_audio_bundle.py",
+          "blob": "587bab23e4d0d632b36d873edfea432282527bc2",
+          "functions": [
+            "test_sealed_audio_runtime_and_notices_are_installed_with_exact_inventory",
+            "test_runtime_changed_during_copy_cannot_be_sealed",
+            "test_installer_rejects_extra_and_unannounced_audio_payloads"
+          ]
+        }
+      ],
+      "limitation": "Current Gyan original LICENSE/README and all publisher documentation are retained through the current manifest. This old notice file is not proof of the different build's licensing/completeness; current source/redistribution clearance remains absent."
+    },
+    {
+      "canonical_path": "carr-library/packaging/audio-runtime/licenses/LICENSE.md",
+      "canonical_blob": "371b0913ce7c199c4092d9344680c80f78ebeb2a",
+      "current_same_path_blob": null,
+      "status": "OLD_BUILD_NOTICE_RETAINED_IN_HISTORY_NOT_REATTRIBUTED",
+      "canonical_contract": "The exact LICENSE.md notice associated with canonical BtbN source/build materials.",
+      "current_owners": [
+        {
+          "path": "carr-library/packaging/audio-runtime/source-lock.json",
+          "blob": "53ab236497ca4644713a86714317198853ac9e17"
+        },
+        {
+          "path": "carr-library/packaging/prepare_ffmpeg_runtime.py",
+          "blob": "d8b2fbef5defb741a12f553bd5555e0bdbd94bd8"
+        },
+        {
+          "path": "carr-library/docs/FFMPEG_RUNTIME.md",
+          "blob": "1b63046821630cb60749dc8ed4fc6d92351edb90"
+        }
+      ],
+      "current_test_references": [
+        {
+          "path": "carr-library/tests/audio/test_audio_runtime.py",
+          "blob": "8b2bf7a6d83db5a4b978dcee7f2d8942a8bd6c78",
+          "functions": [
+            "test_full_runtime_preserves_every_reviewed_publisher_file",
+            "test_package_preparer_rejects_wrong_archive_before_destination",
+            "test_invalid_bundle_fails_before_execution"
+          ]
+        },
+        {
+          "path": "carr-library/tests/packaging/test_audio_bundle.py",
+          "blob": "587bab23e4d0d632b36d873edfea432282527bc2",
+          "functions": [
+            "test_sealed_audio_runtime_and_notices_are_installed_with_exact_inventory",
+            "test_runtime_changed_during_copy_cannot_be_sealed",
+            "test_installer_rejects_extra_and_unannounced_audio_payloads"
+          ]
+        }
+      ],
+      "limitation": "Current Gyan original LICENSE/README and all publisher documentation are retained through the current manifest. This old notice file is not proof of the different build's licensing/completeness; current source/redistribution clearance remains absent."
+    },
+    {
+      "canonical_path": "carr-library/packaging/audio-runtime/provenance/build-configuration.txt",
+      "canonical_blob": "51177e3d9c022ee90a11e0e60c953d5c7ee400a3",
+      "current_same_path_blob": null,
+      "status": "OLD_BUILD_EVIDENCE_NOT_TRANSFERABLE",
+      "canonical_contract": "Embedded configuration of the exact BtbN build.",
+      "current_owners": [
+        {
+          "path": "carr-library/packaging/audio-runtime/source-lock.json",
+          "blob": "53ab236497ca4644713a86714317198853ac9e17"
+        },
+        {
+          "path": "carr-library/packaging/prepare_ffmpeg_runtime.py",
+          "blob": "d8b2fbef5defb741a12f553bd5555e0bdbd94bd8"
+        },
+        {
+          "path": "carr-library/docs/FFMPEG_RUNTIME.md",
+          "blob": "1b63046821630cb60749dc8ed4fc6d92351edb90"
+        }
+      ],
+      "current_test_references": [
+        {
+          "path": "carr-library/tests/audio/test_audio_runtime.py",
+          "blob": "8b2bf7a6d83db5a4b978dcee7f2d8942a8bd6c78",
+          "functions": [
+            "test_full_runtime_preserves_every_reviewed_publisher_file",
+            "test_package_preparer_rejects_wrong_archive_before_destination",
+            "test_invalid_bundle_fails_before_execution"
+          ]
+        }
+      ],
+      "limitation": "Current native -version/-filters/-L records concern Gyan. The BtbN configuration is not evidence for the current build."
+    },
+    {
+      "canonical_path": "carr-library/packaging/audio-runtime/provenance/checksums.sha256",
+      "canonical_blob": "8351116133798ac35ff04f72bf727fbc89b9a7df",
+      "current_same_path_blob": null,
+      "status": "DISTINCT_PUBLISHER_PIN_INVENTORY",
+      "canonical_contract": "Original publisher checksums for the BtbN release.",
+      "current_owners": [
+        {
+          "path": "carr-library/packaging/audio-runtime/source-lock.json",
+          "blob": "53ab236497ca4644713a86714317198853ac9e17"
+        },
+        {
+          "path": "carr-library/src/carr_library/audio/runtime.py",
+          "blob": "4b8dd520d74375e3d9e43303fe971d5236ed44e6"
+        },
+        {
+          "path": "carr-library/packaging/prepare_ffmpeg_runtime.py",
+          "blob": "d8b2fbef5defb741a12f553bd5555e0bdbd94bd8"
+        }
+      ],
+      "current_test_references": [
+        {
+          "path": "carr-library/tests/audio/test_audio_runtime.py",
+          "blob": "8b2bf7a6d83db5a4b978dcee7f2d8942a8bd6c78",
+          "functions": [
+            "test_full_runtime_preserves_every_reviewed_publisher_file",
+            "test_package_preparer_rejects_wrong_archive_before_destination",
+            "test_invalid_bundle_fails_before_execution"
+          ]
+        },
+        {
+          "path": "carr-library/tests/packaging/test_audio_bundle.py",
+          "blob": "587bab23e4d0d632b36d873edfea432282527bc2",
+          "functions": [
+            "test_sealed_audio_runtime_and_notices_are_installed_with_exact_inventory",
+            "test_runtime_changed_during_copy_cannot_be_sealed",
+            "test_installer_rejects_extra_and_unannounced_audio_payloads"
+          ]
+        }
+      ],
+      "limitation": "Current fixed Gyan archive and every one of its 45 original files are hashed separately. Matching a license text does not make the binaries or build provenance identical."
+    },
+    {
+      "canonical_path": "carr-library/packaging/audio-runtime/provenance/dependency-source-index.json",
+      "canonical_blob": "69dab303955ac5a6622e3a5a223d8ff3cf0cf4ed",
+      "current_same_path_blob": null,
+      "status": "PROVENANCE_SCOPE_REDUCTION_EXPLICIT_NOT_CLEARED",
+      "canonical_contract": "Dependency/revision declarations from the exact BtbN build recipes; not a complete transitive source bundle.",
+      "current_owners": [
+        {
+          "path": "carr-library/packaging/audio-runtime/source-lock.json",
+          "blob": "53ab236497ca4644713a86714317198853ac9e17"
+        },
+        {
+          "path": "carr-library/docs/FFMPEG_RUNTIME.md",
+          "blob": "1b63046821630cb60749dc8ed4fc6d92351edb90"
+        },
+        {
+          "path": "carr-library/docs/LOCAL_AUDIO_SETUP.md",
+          "blob": "d459d2be7de6ffe3083535ccd6e587b287514e9a"
+        },
+        {
+          "path": "carr-library/packaging/create_delivery.py",
+          "blob": "6b105aee0643d3afcac8342a067960d4f30d25ef"
+        }
+      ],
+      "current_test_references": [
+        {
+          "path": "carr-library/tests/packaging/test_delivery_archive.py",
+          "blob": "8c4bd6e6ccd505914411f35eef0f68d5af6dfa5c",
+          "functions": [
+            "test_transfer_rejects_unreviewed_audio_before_staging",
+            "test_explicit_audio_absence_preserves_transfer"
+          ]
+        }
+      ],
+      "limitation": "There is no equivalent complete Gyan dependency-source index or packaged corresponding-source bundle in the audited output. The old index cannot attest a different static build; redistribution remains blocked/unqualified."
+    },
+    {
+      "canonical_path": "carr-library/packaging/audio-runtime/source-lock.json",
+      "canonical_blob": "be9955a9485b4fa419cc286aaa7920b48fecff07",
+      "current_same_path_blob": "53ab236497ca4644713a86714317198853ac9e17",
+      "status": "CURRENT_DISTINCT_FIXED_RUNTIME_LOCK",
+      "canonical_contract": "BtbN archive224 plus extra12 inventory, executable paths, two source archives, source/build commits and explicit review limitations.",
+      "current_owners": [
+        {
+          "path": "carr-library/packaging/audio-runtime/source-lock.json",
+          "blob": "53ab236497ca4644713a86714317198853ac9e17"
+        },
+        {
+          "path": "carr-library/src/carr_library/audio/runtime.py",
+          "blob": "4b8dd520d74375e3d9e43303fe971d5236ed44e6"
+        },
+        {
+          "path": "carr-library/packaging/prepare_ffmpeg_runtime.py",
+          "blob": "d8b2fbef5defb741a12f553bd5555e0bdbd94bd8"
+        }
+      ],
+      "current_test_references": [
+        {
+          "path": "carr-library/tests/audio/test_audio_runtime.py",
+          "blob": "8b2bf7a6d83db5a4b978dcee7f2d8942a8bd6c78",
+          "functions": [
+            "test_full_runtime_preserves_every_reviewed_publisher_file",
+            "test_package_preparer_rejects_wrong_archive_before_destination",
+            "test_invalid_bundle_fails_before_execution"
+          ]
+        },
+        {
+          "path": "carr-library/tests/packaging/test_audio_bundle.py",
+          "blob": "587bab23e4d0d632b36d873edfea432282527bc2",
+          "functions": [
+            "test_sealed_audio_runtime_and_notices_are_installed_with_exact_inventory",
+            "test_runtime_changed_during_copy_cannot_be_sealed",
+            "test_installer_rejects_extra_and_unannounced_audio_payloads"
+          ]
+        }
+      ],
+      "limitation": "Same pathname now denotes a different Gyan9.1 full-build lock. Current output manifest carries archive/source/license identity but does not include the old source/recipe archives or old lock as its provenance."
+    },
+    {
+      "canonical_path": "carr-library/packaging/prepare_audio_runtime.py",
+      "canonical_blob": "2ddde57cc6e7b29fd33ff8fc25d184b35c4b991d",
+      "current_same_path_blob": null,
+      "status": "CURRENT_OFFLINE_PREPARER_REPLACES_OLD_LAYOUT",
+      "canonical_contract": "Prepare the exact canonical BtbN bundle, including its extra provenance/source files, without native execution.",
+      "current_owners": [
+        {
+          "path": "carr-library/packaging/prepare_ffmpeg_runtime.py",
+          "blob": "d8b2fbef5defb741a12f553bd5555e0bdbd94bd8"
+        },
+        {
+          "path": "carr-library/src/carr_library/audio/runtime.py",
+          "blob": "4b8dd520d74375e3d9e43303fe971d5236ed44e6"
+        },
+        {
+          "path": "carr-library/packaging/setup_local_audio.py",
+          "blob": "85e282ae275118a5b73d6af06862314f3399fc26"
+        }
+      ],
+      "current_test_references": [
+        {
+          "path": "carr-library/tests/audio/test_audio_runtime.py",
+          "blob": "8b2bf7a6d83db5a4b978dcee7f2d8942a8bd6c78",
+          "functions": [
+            "test_full_runtime_preserves_every_reviewed_publisher_file",
+            "test_package_preparer_rejects_wrong_archive_before_destination",
+            "test_invalid_bundle_fails_before_execution"
+          ]
+        },
+        {
+          "path": "carr-library/tests/packaging/test_local_audio_setup.py",
+          "blob": "9369df27f0279150ceb6a43ae0db14d59b199614",
+          "functions": [
+            "test_default_plan_is_read_only_and_uses_current_pinned_inventory",
+            "test_changed_selected_archive_requires_a_new_review",
+            "test_synthetic_pinned_archive_uses_existing_preparer_and_final_verifier"
+          ]
+        }
+      ],
+      "limitation": "Current preparation retains all45 Gyan publisher files and verifies optional fixed native probes. Old layout/manifest source evidence is not silently adopted."
+    },
+    {
+      "canonical_path": "carr-library/packaging/prepare_windows_audio.py",
+      "canonical_blob": "da79feb9899820c89809c04551c2a5fee3fd9961",
+      "current_same_path_blob": null,
+      "status": "ALTERNATE_ESSENTIALS_FAMILY_NOT_IMPORTED",
+      "canonical_contract": "Separate Gyan9.1 essentials profile with four selected members and optional fixed-host acquisition.",
+      "current_owners": [
+        {
+          "path": "carr-library/packaging/prepare_ffmpeg_runtime.py",
+          "blob": "d8b2fbef5defb741a12f553bd5555e0bdbd94bd8"
+        },
+        {
+          "path": "carr-library/src/carr_library/audio/runtime.py",
+          "blob": "4b8dd520d74375e3d9e43303fe971d5236ed44e6"
+        },
+        {
+          "path": "carr-library/packaging/setup_local_audio.py",
+          "blob": "85e282ae275118a5b73d6af06862314f3399fc26"
+        }
+      ],
+      "current_test_references": [
+        {
+          "path": "carr-library/tests/audio/test_audio_runtime.py",
+          "blob": "8b2bf7a6d83db5a4b978dcee7f2d8942a8bd6c78",
+          "functions": [
+            "test_full_runtime_preserves_every_reviewed_publisher_file",
+            "test_package_preparer_rejects_wrong_archive_before_destination",
+            "test_invalid_bundle_fails_before_execution"
+          ]
+        },
+        {
+          "path": "carr-library/tests/packaging/test_local_audio_setup.py",
+          "blob": "9369df27f0279150ceb6a43ae0db14d59b199614",
+          "functions": [
+            "test_default_plan_is_read_only_and_uses_current_pinned_inventory",
+            "test_changed_selected_archive_requires_a_new_review",
+            "test_synthetic_pinned_archive_uses_existing_preparer_and_final_verifier"
+          ]
+        }
+      ],
+      "limitation": "Current full build requires ffplay and Flite and has a different archive/binary hash. Its preparer is reused; c24e adapts only the finite opt-in/redirect concept, not the old essentials runtime."
+    },
+    {
+      "canonical_path": "carr-library/packaging/wheel-notices/SOURCES.json",
+      "canonical_blob": "2479850e2fe160df01418082ae735eb8fcbb560e",
+      "current_same_path_blob": "4639fdfb928edca4723b5a10683c27008828d950",
+      "status": "CURRENT_DEPENDENCY_SPECIFIC_NOTICE_INVENTORY",
+      "canonical_contract": "Reviewed notice-source mappings including canonical comtypes.",
+      "current_owners": [
+        {
+          "path": "carr-library/packaging/wheel-notices/SOURCES.json",
+          "blob": "4639fdfb928edca4723b5a10683c27008828d950"
+        },
+        {
+          "path": "carr-library/packaging/windows-integrated-cp311.lock",
+          "blob": "d2ced1652d80b33680a7247ca1afa47fd271d8f4"
+        },
+        {
+          "path": "carr-library/packaging/windows-integrated-sbom.cdx.json",
+          "blob": "6b6b40dfa5689d3b9a9f2229a36adee29c0ead5a"
+        },
+        {
+          "path": "carr-library/packaging/build_windows_bundle.py",
+          "blob": "d7bc7b4aede8789bca67d877034da7e386435696"
+        }
+      ],
+      "current_test_references": [],
+      "limitation": "Current selected dependency is pywin32==312, with separate COM/WIN32 reviewed notices. Current inventory is for current selected wheels, not a copy of all old notices."
+    },
+    {
+      "canonical_path": "carr-library/packaging/wheel-notices/comtypes-LICENSE.txt",
+      "canonical_blob": "d7c5350e98f8aa354955441437c3ffdc4fe227af",
+      "current_same_path_blob": null,
+      "status": "UNUSED_WRAPPER_NOTICE_NOT_COPIED_AS_ACTIVE_DEPENDENCY",
+      "canonical_contract": "Canonical comtypes wrapper notice.",
+      "current_owners": [
+        {
+          "path": "carr-library/src/carr_library/audio/SAPI_NATIVE_PROVENANCE.md",
+          "blob": "797b64b801619e2243ca0f27b3654cee92a9c627"
+        },
+        {
+          "path": "carr-library/packaging/wheel-notices/pywin32-312-COM-LICENSE.txt",
+          "blob": "d8f3c9484922bf935c4c4810c971df69bd8674d4"
+        },
+        {
+          "path": "carr-library/packaging/wheel-notices/pywin32-312-WIN32-LICENSE.txt",
+          "blob": "8971178abbb3dbef40e1f723476127d3bd86b1e5"
+        },
+        {
+          "path": "carr-library/packaging/wheel-notices/SOURCES.json",
+          "blob": "4639fdfb928edca4723b5a10683c27008828d950"
+        },
+        {
+          "path": "carr-library/packaging/windows-integrated-cp311.lock",
+          "blob": "d2ced1652d80b33680a7247ca1afa47fd271d8f4"
+        }
+      ],
+      "current_test_references": [],
+      "limitation": "Current SAPI protocol uses the already selected pywin32 wrapper; no comtypes implementation was copied into the current worker. Protocol provenance is retained separately. Current COM native rerun remains distinct."
+    },
+    {
+      "canonical_path": "carr-library/packaging/windows-audio.lock.json",
+      "canonical_blob": "2bc706ffc6208f5596a10abee61d3da33f20e6c6",
+      "current_same_path_blob": null,
+      "status": "ALTERNATE_ESSENTIALS_LOCK_NOT_SUBSTITUTABLE",
+      "canonical_contract": "Exact Gyan essentials archive and four member identities, private use and no transitive-source clearance.",
+      "current_owners": [
+        {
+          "path": "carr-library/packaging/audio-runtime/source-lock.json",
+          "blob": "53ab236497ca4644713a86714317198853ac9e17"
+        },
+        {
+          "path": "carr-library/src/carr_library/audio/runtime.py",
+          "blob": "4b8dd520d74375e3d9e43303fe971d5236ed44e6"
+        },
+        {
+          "path": "carr-library/docs/FFMPEG_RUNTIME.md",
+          "blob": "1b63046821630cb60749dc8ed4fc6d92351edb90"
+        }
+      ],
+      "current_test_references": [
+        {
+          "path": "carr-library/tests/audio/test_audio_runtime.py",
+          "blob": "8b2bf7a6d83db5a4b978dcee7f2d8942a8bd6c78",
+          "functions": [
+            "test_full_runtime_preserves_every_reviewed_publisher_file",
+            "test_package_preparer_rejects_wrong_archive_before_destination",
+            "test_invalid_bundle_fails_before_execution"
+          ]
+        }
+      ],
+      "limitation": "Current Gyan full profile is not byte-compatible with essentials even though the source revision/license text overlap."
+    },
+    {
+      "canonical_path": "carr-library/scripts/windows_audio_runtime_smoke.py",
+      "canonical_blob": "79f24d2c4110709869085f336e727edbbccbc697",
+      "current_same_path_blob": null,
+      "status": "DISTRIBUTED_CURRENT_NATIVE_CONTRACTS_NO_OLD_PASS_TRANSFER",
+      "canonical_contract": "Nine canonical checks: sealed BtbN runtime/version, filters/encoders, Unicode PCM timing/signal, actual FLAC/MP3, original identity.",
+      "current_owners": [
+        {
+          "path": "carr-library/packaging/prepare_ffmpeg_runtime.py",
+          "blob": "d8b2fbef5defb741a12f553bd5555e0bdbd94bd8"
+        },
+        {
+          "path": "carr-library/src/carr_library/audio/runtime.py",
+          "blob": "4b8dd520d74375e3d9e43303fe971d5236ed44e6"
+        },
+        {
+          "path": "carr-library/scripts/windows_audio_effects_smoke.py",
+          "blob": "642f07905354104657d6b76ef34711b31b3cd4db"
+        },
+        {
+          "path": "carr-library/scripts/r7_native_gate.py",
+          "blob": "29e75a6415eb914894e9aec62b87b315ccb97f16"
+        },
+        {
+          "path": "carr-library/scripts/r7_native_oracles.json",
+          "blob": "0371afeaed5033f1b1274b2638fa43fa1079bbed"
+        }
+      ],
+      "current_test_references": [
+        {
+          "path": "carr-library/tests/audio/test_audio_runtime.py",
+          "blob": "8b2bf7a6d83db5a4b978dcee7f2d8942a8bd6c78",
+          "functions": [
+            "test_full_runtime_preserves_every_reviewed_publisher_file",
+            "test_package_preparer_rejects_wrong_archive_before_destination",
+            "test_invalid_bundle_fails_before_execution"
+          ]
+        },
+        {
+          "path": "carr-library/tests/packaging/test_audio_bundle.py",
+          "blob": "587bab23e4d0d632b36d873edfea432282527bc2",
+          "functions": [
+            "test_sealed_audio_runtime_and_notices_are_installed_with_exact_inventory",
+            "test_runtime_changed_during_copy_cannot_be_sealed",
+            "test_installer_rejects_extra_and_unannounced_audio_payloads"
+          ]
+        }
+      ],
+      "limitation": "Current probes cover current Gyan filters/helpers and actual current signal/production cases. This ledger does not claim those runs or oldBtbN nine checks passed at the audited current commit."
+    },
+    {
+      "canonical_path": "carr-library/scripts/windows_transferable_bundle_smoke.py",
+      "canonical_blob": "1a2dc53026622f639f2de08caac869ff067b1217",
+      "current_same_path_blob": null,
+      "status": "TRANSFERABLE_QUALIFICATION_SCOPE_DIFFERENT",
+      "canonical_contract": "Audio-free installed bundle/source/model/OCR/native identity plus fifteen declared library test modules.",
+      "current_owners": [
+        {
+          "path": "carr-library/scripts/qualify_standard_library.py",
+          "blob": "47e868ebfd69cab27a395cda436a4eece1c60643"
+        },
+        {
+          "path": "carr-library/scripts/qualify_standard_library.ps1",
+          "blob": "1a4417a3c40e50033d5eb40bb3ed6db1bac3d962"
+        },
+        {
+          "path": ".github/workflows/carr-standard-native.yml",
+          "blob": "ee48d350408439d0ba17de5f5c5f87acb76c41fa"
+        },
+        {
+          "path": ".github/workflows/carr-windows.yml",
+          "blob": "1ccff9984cf45c24bcf6141d01c1a98070747fc0"
+        }
+      ],
+      "current_test_references": [
+        {
+          "path": "carr-library/tests/packaging/test_standard_library_qualification.py",
+          "blob": "82558c4b06a6699daf767a427752648f92d383e3",
+          "functions": [
+            "test_exact_six_workflow_reports_require_all_fifty_cases",
+            "test_actual_origin_files_must_be_installed_and_match_the_wheel_bytes",
+            "test_resealed_or_changed_source_identity_does_not_pass_after_tests"
+          ]
+        },
+        {
+          "path": "carr-library/tests/packaging/test_delivery_archive.py",
+          "blob": "8c4bd6e6ccd505914411f35eef0f68d5af6dfa5c",
+          "functions": [
+            "test_transfer_rejects_unreviewed_audio_before_staging",
+            "test_explicit_audio_absence_preserves_transfer"
+          ]
+        }
+      ],
+      "limitation": "Current focused audio-free standard-generation qualifier requires six selectors/fifty cases. All old fifteen module paths appear in the broader main gate, but private-bundle execution is not the same scope as audio-free transferable execution; no all-fifteen equivalence or fresh PASS is asserted."
+    },
+    {
+      "canonical_path": "carr-library/scripts/windows_v3_smoke.py",
+      "canonical_blob": "7fbcfaf0e4d8dfc61aef05eef77fcc64a5f1e690",
+      "current_same_path_blob": null,
+      "status": "CURRENT_PRODUCTION_AND_NATIVE_SAPI_OWNERS_REPLACE_OLD_FAMILY",
+      "canonical_contract": "Canonical actual SAPI-to-PCM, role/music/pause production, FLAC/chapters/stems/restart and named wx menus/dialogs.",
+      "current_owners": [
+        {
+          "path": "carr-library/scripts/windows_audio_smoke.py",
+          "blob": "4b287221937e5a71d33f8f2c3edd1b5a2dd58e89"
+        },
+        {
+          "path": "carr-library/scripts/windows_audio_effects_smoke.py",
+          "blob": "642f07905354104657d6b76ef34711b31b3cd4db"
+        },
+        {
+          "path": "carr-library/scripts/windows_native_sapi_smoke.py",
+          "blob": "cc28d6f7fc5122da2c12e66a2caa4263b6742a47"
+        },
+        {
+          "path": "carr-library/scripts/native_sapi_oracles.json",
+          "blob": "4553e44e23a061e1a6cfc26a932ca43708975a62"
+        },
+        {
+          "path": "carr-library/scripts/r7_native_gate.py",
+          "blob": "29e75a6415eb914894e9aec62b87b315ccb97f16"
+        },
+        {
+          "path": "carr-library/scripts/r7_native_oracles.json",
+          "blob": "0371afeaed5033f1b1274b2638fa43fa1079bbed"
+        }
+      ],
+      "current_test_references": [],
+      "limitation": "Current managed Studio/production and explicit PowerShell compatibility probes are distinct from the new native COM probe. Old voice/rate/cache receipts cannot be relabeled as current native SAPI acceptance. Current fcc57 corrected75/75/35 rerun is queued when authored."
+    }
+  ],
+  "runtime_families": {
+    "canonical_btbn": {
+      "package_id": "ffmpeg-win64-lgpl-shared-20261126",
+      "version": "n9.0.2-982-g836df4e858-20261126",
+      "archive": {
+        "asset_id": 795900712,
+        "name": "ffmpeg-n9.0.2-982-g836df4e858-win64-lgpl-shared-9.0.zip",
+        "publisher": "FFmpeg-Builds/FFmpeg-Builds",
+        "release_tag": "autobuild-2026-11-26-12-56",
+        "root": "ffmpeg-n9.0.2-982-g836df4e858-win64-lgpl-shared-9.0",
+        "sha256": "f7ba27e7986a2d0835881e742a682dec17896f6dc2cdcf9e596f043d2763d894",
+        "size": 77787475,
+        "url": "https://github.com/FFmpeg-Builds/FFmpeg-Builds/releases/download/autobuild-2026-11-26-12-56/ffmpeg-n9.0.2-982-g836df4e858-win64-lgpl-shared-9.0.zip"
+      },
+      "archive_files": 224,
+      "extra_files": 12,
+      "source_commit": "836df4e85894b757debe268f84ffc08c57623a73",
+      "build_recipe_commit": "d05871a37b5fc80e00714c708edec35c7b9ebfb0",
+      "source_packages": [
+        {
+          "name": "FFmpeg-836df4e85894b757debe268f84ffc08c57623a73.tar.gz",
+          "sha256": "5490d8410d95889639976ab1ac8b569a30b060f1a99d5463949174acbedf431c",
+          "size": 17387251,
+          "url": "https://codeload.github.com/FFmpeg/FFmpeg/tar.gz/836df4e85894b757debe268f84ffc08c57623a73"
+        },
+        {
+          "name": "FFmpeg-Builds-d05871a37b5fc80e00714c708edec35c7b9ebfb0.tar.gz",
+          "sha256": "94a8469b1db8628932c54a30beadd2ec656e8465d3f2de6a47b3ffdacc15ebf8",
+          "size": 119568,
+          "url": "https://codeload.github.com/FFmpeg-Builds/FFmpeg-Builds/tar.gz/d05871a37b5fc80e00714c708edec35c7b9ebfb0"
+        }
+      ],
+      "review": {
+        "archive_identity": "publisher GitHub asset digest and checksums.sha256 independently match",
+        "ffmpeg_source_and_build_recipes": "included at exact upstream Git commits",
+        "public_distribution_clearance": false,
+        "third_party_complete_source_bundle": false,
+        "windows_execution": "NOT_RUN"
+      }
+    },
+    "canonical_gyan_essentials": {
+      "version": "9.1-essentials_build-www.gyan.dev",
+      "archive": {
+        "url": "https://github.com/GyanD/codexffmpeg/releases/download/9.1/ffmpeg-9.1-essentials_build.zip",
+        "filename": "ffmpeg-9.1-essentials_build.zip",
+        "size": 119467219,
+        "sha256": "b9bbbb3acece000cbeec994f856649354e52c773807841e78908374b24d658fd",
+        "format": "zip"
+      },
+      "output_file_count": 4,
+      "source": {
+        "revision": "74e4393595cf2b5857f0da925c4e0dd74ea306e5",
+        "url": "https://github.com/FFmpeg/FFmpeg/tree/74e4393595cf2b5857f0da925c4e0dd74ea306e5",
+        "vendor_revision_reference": "https://github.com/FFmpeg/FFmpeg/commit/74e4393595",
+        "transitive_source_status": "The retained vendor README inventories linked components. A complete corresponding-source archive for all linked dependencies has not been assembled by this application. This lock does not authorize public binary redistribution."
+      },
+      "deployment": {
+        "profile": "private personal use and local CI validation",
+        "download_default": false,
+        "public_binary_distribution": false,
+        "application_runtime_network": false,
+        "notes": "Obtain this runtime directly from its publisher in an explicit setup/build step or provide the already verified ZIP offline. Keep license and vendor README together with the executables. No model weights, private voices or recordings are included."
+      }
+    },
+    "current_gyan_full": {
+      "version": "9.1",
+      "archive": {
+        "url": "https://github.com/GyanD/codexffmpeg/releases/download/9.1/ffmpeg-9.1-full_build.zip",
+        "size_bytes": 264268459,
+        "sha256": "f9a83be8f97b8989a223a15e4af234accd0842bacf7c126af5a3aae759785e48"
+      },
+      "original_file_count": 45,
+      "source": {
+        "repository": "https://github.com/FFmpeg/FFmpeg",
+        "commit": "74e4393595cf2b5857f0da925c4e0dd74ea306e5",
+        "url": "https://github.com/FFmpeg/FFmpeg/tree/74e4393595cf2b5857f0da925c4e0dd74ea306e5"
+      },
+      "license": "GPL-3.0-or-later",
+      "rights": "Keep every original license and documentation file. This installer prepares a private local runtime only; it is not an authorization to redistribute linked GPL components without their corresponding source and notices."
+    }
+  },
+  "confirmed_user_workflow": {
+    "finding": "Canonical opt-in acquisition was a documented end-user SetupLocalAudio workflow, not only developer build tooling.",
+    "evidence": [
+      {
+        "path": "carr-library/docs/RUNNING.md",
+        "blob": "d2a2da18aff0117ab20cca466aab37ee3fd84d63",
+        "contract": "Optional local audio setup tells the user to open SetupLocalAudio.cmd and review/confirm the three pinned inputs."
+      },
+      {
+        "path": "carr-library/packaging/SetupLocalAudio.cmd",
+        "blob": "eede996f0f90bf09a81fccdefad9b392aa998760",
+        "contract": "Installed isolated Python launches the fixed setup helper with --interactive."
+      },
+      {
+        "path": "carr-library/packaging/setup_local_audio.py",
+        "blob": "2df676d830a4aedd2a417315f9f757d65129272d",
+        "contract": "Read-only default and explicit YES/--download acquire pinned files and prepare a fresh external folder; no engine activation."
+      }
+    ],
+    "audited_current_gap": "Manual selected-archive preparation and CI Invoke-WebRequest did not preserve the canonical end-user download route.",
+    "restoration": {
+      "commit": "c24e883d3dba7b59113e4a427697f1962f38fb59",
+      "tree": "513f9fe70bdd250ea22ebb8856815fe3e15d4c51",
+      "paths": [
+        {
+          "path": "carr-library/packaging/prepare_ffmpeg_runtime.py",
+          "blob": "4ed56f7a1eecc6cfe9d7750c32abd2b7400925a4"
+        },
+        {
+          "path": "carr-library/packaging/setup_local_audio.py",
+          "blob": "886542875e19bd0d95e7bf47211fc417efba0ef9"
+        },
+        {
+          "path": "carr-library/packaging/SetupLocalAudio.cmd",
+          "blob": "642685dcdee01cd739b61d2903c17f4b84539448"
+        },
+        {
+          "path": "carr-library/tests/packaging/test_audio_acquisition.py",
+          "blob": "4d9f1440af7cef91dd110a45358c61a6da7a3e42"
+        },
+        {
+          "path": "carr-library/tests/packaging/test_local_audio_download.py",
+          "blob": "dff54f38cc93f612e451a52aa7cad5cdadbcc71a"
+        },
+        {
+          "path": "carr-library/docs/LOCAL_AUDIO_SETUP.md",
+          "blob": "3707eeac43ee5fc15e8dd63964510c0a41b7607e"
+        },
+        {
+          "path": "carr-library/docs/FFMPEG_RUNTIME.md",
+          "blob": "e8333328dbd5aaa5da21251e58ff571074ae5912"
+        },
+        {
+          "path": "carr-library/docs/validation/EXPLICIT_AUDIO_ACQUISITION_20261127.json",
+          "blob": "d75710df1faa48648dcb931c9fec6e7547dfd1cf"
+        }
+      ],
+      "new_case_count": 69,
+      "status": "AUTHORED_NOT_RUN",
+      "workflow": "Root-owned exact main-step hunk is retained in EXPLICIT_AUDIO_ACQUISITION_20261127.json; actual existing main setup must qualify the real download.",
+      "source_review": "Independent bounded core and test integration GO; all69 cases and real acquisition remain NOT_RUN."
+    }
+  },
+  "provenance_and_rights": {
+    "old_scope": "Exact FFmpeg and BtbN build-recipe source archives plus dependency-recipe index were present. Canonical itself declares no complete transitive corresponding-source bundle or public distribution clearance.",
+    "current_scope": "All45 Gyan original files, fixed archive/member digests, publisher/source URL and commit and license notes. The old BtbN source/recipe archives/index are not included or applicable.",
+    "difference": "This is an explicit provenance-scope reduction/change; it is not a verified corresponding-source substitute. The fixed-download restoration does not close that separate distribution qualification.",
+    "public_binary_distribution": "NOT_CLEARED",
+    "transfer_guard": {
+      "path": "carr-library/packaging/create_delivery.py",
+      "blob": "6b105aee0643d3afcac8342a067960d4f30d25ef"
+    }
+  },
+  "wrappers_and_notices": {
+    "canonical_wrapper": "comtypes",
+    "current_wrapper": "pywin32==312",
+    "current_lock": {
+      "path": "carr-library/packaging/windows-integrated-cp311.lock",
+      "blob": "d2ced1652d80b33680a7247ca1afa47fd271d8f4"
+    },
+    "current_sbom": {
+      "path": "carr-library/packaging/windows-integrated-sbom.cdx.json",
+      "blob": "6b6b40dfa5689d3b9a9f2229a36adee29c0ead5a"
+    },
+    "notice_sources": [
+      {
+        "component": "pywin32",
+        "commit": "2a277cb5552756c2b4d42b524dc36d25e0bb6354",
+        "source": "https://github.com/mhammond/pywin32/blob/2a277cb5552756c2b4d42b524dc36d25e0bb6354/com/License.txt",
+        "file": "pywin32-312-COM-LICENSE.txt",
+        "sha256": "6ad44d8d785d93773a1d0430a17187337841e34f01e7f289c92bd9d8be6156c4"
+      },
+      {
+        "component": "pywin32",
+        "commit": "2a277cb5552756c2b4d42b524dc36d25e0bb6354",
+        "source": "https://github.com/mhammond/pywin32/blob/2a277cb5552756c2b4d42b524dc36d25e0bb6354/win32/License.txt",
+        "file": "pywin32-312-WIN32-LICENSE.txt",
+        "sha256": "ae254460373deef5dff3e08104f4c1f03a045c2ae1b34760b5c30f7efcef9078"
+      }
+    ],
+    "protocol_provenance": {
+      "path": "carr-library/src/carr_library/audio/SAPI_NATIVE_PROVENANCE.md",
+      "blob": "797b64b801619e2243ca0f27b3654cee92a9c627"
+    },
+    "no_claim": "No comtypes implementation was copied; retaining a protocol concept does not imply copied-wrapper provenance or current native execution."
+  },
+  "qualification": {
+    "canonical_transfer_module_count": 15,
+    "current_focused_transfer": {
+      "selectors": 6,
+      "cases": 50,
+      "owner": {
+        "path": "carr-library/scripts/qualify_standard_library.py",
+        "blob": "47e868ebfd69cab27a395cda436a4eece1c60643"
+      }
+    },
+    "current_main_contains_all_fifteen_canonical_module_paths": true,
+    "scope_limit": "The broader private installed bundle is not the same tested configuration as the audio-free standard-generation payload. This source map is not a PASS receipt.",
+    "native_sapi": {
+      "frozen_commit": "fcc57dd0ef016e7743b7005a4273c5d6612951ac",
+      "run_id": 46039343585,
+      "job_id": 140642779359,
+      "declared": {
+        "source": 75,
+        "installed": 75,
+        "native": 35
+      },
+      "status_at_authoring": "QUEUED",
+      "original_failure_retained": "ecfc source69/2FAIL and installed69/2FAIL; corrected fixtures/factory are documented separately."
+    },
+    "actual_download": "NOT_RUN by this component",
+    "model_or_voice_quality": "NOT_QUALIFIED",
+    "physical_audio": "NOT_RUN",
+    "nvda": "NOT_RUN"
+  },
+  "version_audit": {
+    "audited_current_version": "0.2.0.dev1",
+    "canonical_version": "0.2.0.dev2",
+    "source_paths": [
+      {
+        "path": "carr-library/pyproject.toml",
+        "blob": "43a2a71b17bf96e94d17d5abffed474ffbad946f"
+      },
+      {
+        "path": "carr-library/src/carr_library/__init__.py",
+        "blob": "9fb44eec01211b86f073d56f6e74c5ca03fafc45"
+      }
+    ],
+    "recommendation": "Restore canonical dev2 in both current files. No pin to dev1 was found in the bounded packaging/setup/build owners or main workflow.",
+    "owners": [
+      {
+        "path": "carr-library/packaging/source_wheel.py",
+        "blob": "daf1b6ad2cd6d7efe1d34349a59745c8b41f6fd0"
+      },
+      {
+        "path": "carr-library/packaging/build_windows_bundle.py",
+        "blob": "d7bc7b4aede8789bca67d877034da7e386435696"
+      },
+      {
+        "path": "carr-library/packaging/build_standard_installer.py",
+        "blob": "bd258f3d71767f97c99fd65a8c2ebd484b49b770"
+      },
+      {
+        "path": "carr-library/packaging/install_windows.py",
+        "blob": "b72dafbc6affb1a4f1fd77cc15ae49ae02fb2c25"
+      },
+      {
+        "path": "carr-library/packaging/create_delivery.py",
+        "blob": "6b105aee0643d3afcac8342a067960d4f30d25ef"
+      }
+    ],
+    "basis": "source_wheel verifies filename/METADATA/dist-info against committed pyproject; builder derives install.lock from the actual wheel. Inno AppVersion uses the source short hash and independent VersionInfoVersion=0.0.0.0. This is not an exhaustive repository grep or an installer run.",
+    "canonical_source_paths": [
+      {
+        "path": "carr-library/pyproject.toml",
+        "blob": "ab769a044f386e8ece581b03a4f18481bbe79d04"
+      },
+      {
+        "path": "carr-library/src/carr_library/__init__.py",
+        "blob": "ee09576cfebe843794b34e7609dd3bb1b86b59a0"
+      }
+    ]
+  },
+  "limits": [
+    "No entire obsolete runtime or workflow family is copied merely to restore a filename.",
+    "No old PASS is transferred to current binaries, worker protocols, versions or settings.",
+    "Private/model tests not actually run remain unqualified.",
+    "Source and build provenance differences remain explicit even when a generic license text is byte-identical."
+  ],
+  "discovery": {
+    "current_owner": {
+      "path": "carr-library/src/carr_library/audio/runtime.py",
+      "blob": "4b8dd520d74375e3d9e43303fe971d5236ed44e6"
+    },
+    "current_priority": [
+      "explicit absolute path",
+      "CARR_FFMPEG",
+      "verified private audio-runtime at sys.prefix.parent",
+      "absolute PATH entries"
+    ],
+    "guards": "Invalid explicit/bundled selection refuses instead of silently falling back; current working directory is not searched; discovery itself never executes or downloads.",
+    "limit": "A manually selected external executable remains a separate authority from a sealed current bundle. An old BtbN/essentials manifest is not a current full-build admission."
+  }
+}

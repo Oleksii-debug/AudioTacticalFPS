@@ -1,0 +1,308 @@
+name: CARR named assistant workflow templates
+on:
+  push:
+    branches: ['carr/v3-acceptance-*', 'carr/workflow-templates-*']
+    paths: ['carr-library/**', '.github/workflows/carr-workflow-templates.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# New development heads do not cancel a different exact-SHA acceptance run.
+concurrency:
+  group: carr-workflow-templates-${{ github.sha }}
+  cancel-in-progress: false
+
+jobs:
+  source-installed-native:
+    name: Windows / complete assistant regressions and native named workflows
+    runs-on: windows-2022
+    timeout-minutes: 90
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: carr-library
+    env:
+      PYTHONUTF8: '1'
+      PYTHONUNBUFFERED: '1'
+      PIP_DISABLE_PIP_VERSION_CHECK: '1'
+      PYTEST_DISABLE_PLUGIN_AUTOLOAD: '1'
+      ORT_DISABLE_TELEMETRY: '1'
+      HF_HUB_OFFLINE: '1'
+      HF_HUB_DISABLE_TELEMETRY: '1'
+      HF_HUB_DISABLE_IMPLICIT_TOKEN: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      DO_NOT_TRACK: '1'
+    steps:
+      - name: Check out the exact event source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Record exact candidate and initial qualification status
+        run: |
+          New-Item -ItemType Directory -Path workflow-templates-ci-results -ErrorAction Stop | Out-Null
+          $head = (& git rev-parse HEAD).Trim()
+          if ($LASTEXITCODE -ne 0) { throw 'Cannot resolve source commit.' }
+          $tree = (& git rev-parse 'HEAD^{tree}').Trim()
+          if ($LASTEXITCODE -ne 0) { throw 'Cannot resolve source tree.' }
+          @{
+            schema = 1; status = 'NOT_RUN'; source_commit = $head; source_tree = $tree
+            github_sha = $env:GITHUB_SHA; workflow_ref = $env:GITHUB_WORKFLOW_REF
+            workflow_sha = $env:GITHUB_WORKFLOW_SHA; run_id = $env:GITHUB_RUN_ID
+            run_attempt = $env:GITHUB_RUN_ATTEMPT
+          } | ConvertTo-Json | Set-Content -Encoding utf8 workflow-templates-ci-results/source-provenance.json
+          @{ schema = 1; status = 'NOT_RUN'; reason = 'Required actual Windows source and installed phases have not completed.' } |
+            ConvertTo-Json | Set-Content -Encoding utf8 workflow-templates-ci-results/workflow-template-gate.json
+          if ($head -ne $env:GITHUB_SHA) { throw 'The checkout differs from the event source.' }
+          & git diff --exit-code HEAD --
+          if ($LASTEXITCODE -ne 0) { throw 'Tracked source differs from the candidate.' }
+
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+          architecture: x64
+
+      - name: Build the source-bound wheel and install the existing 56-pin runtime with signed-admission fixtures
+        timeout-minutes: 10
+        run: |
+          $work = Join-Path $env:RUNNER_TEMP ("carr-workflow-templates-" + $env:GITHUB_RUN_ID + "-" + $env:GITHUB_RUN_ATTEMPT)
+          $wheels = Join-Path $work 'application-wheels'
+          $environment = Join-Path $work 'installed'
+          if (Test-Path -LiteralPath $work) { throw 'The qualification environment must be fresh.' }
+          New-Item -ItemType Directory $wheels -ErrorAction Stop | Out-Null
+          python -m pip install --only-binary=:all: setuptools==84.2.1 wheel==0.48.0 packaging==26.4
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m pip wheel --no-deps --no-build-isolation --wheel-dir $wheels .
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $built = @(Get-ChildItem -LiteralPath $wheels -Filter '*.whl')
+          if ($built.Count -ne 1) { throw 'Expected exactly one application wheel.' }
+          $sourceCommit = (git rev-parse HEAD).Trim()
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $verifyWheel = @'
+          import importlib.util, json, pathlib, sys
+          spec = importlib.util.spec_from_file_location('source_wheel_verification', pathlib.Path('packaging/source_wheel.py').resolve())
+          module = importlib.util.module_from_spec(spec)
+          spec.loader.exec_module(module)
+          print(json.dumps(module.verify_application_wheel(pathlib.Path(sys.argv[1]), pathlib.Path.cwd().parent, sys.argv[2]), sort_keys=True))
+          '@
+          python -I -B -c $verifyWheel $built[0].FullName $sourceCommit | Tee-Object 'workflow-templates-ci-results/source-wheel.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m venv $environment
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $python = Join-Path $environment 'Scripts/python.exe'
+          & $python -I -m pip install --only-binary=:all: --require-hashes -r packaging/windows-integrated-cp311.lock
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -I -m pip install --no-deps --no-index --no-compile $built[0].FullName
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $installedSources = @'
+          import hashlib, importlib, json, pathlib, sys, zipfile
+          wheel = pathlib.Path(sys.argv[1])
+          prefix = pathlib.Path(sys.prefix).resolve(strict=True)
+          origins, files = {}, {}
+          for name in ("carr_library", "bootstrap"):
+              package = importlib.import_module(name)
+              origin = pathlib.Path(package.__file__).resolve(strict=True)
+              if not origin.is_relative_to(prefix) or "site-packages" not in {part.casefold() for part in origin.parts}:
+                  raise ValueError("Application package resolved outside the isolated installed environment.")
+              origins[name] = str(origin)
+              for path in origin.parent.rglob("*.py"):
+                  actual = path.resolve(strict=True)
+                  if not actual.is_relative_to(origin.parent):
+                      raise ValueError("Installed source inventory escaped its package.")
+                  files[name + "/" + path.relative_to(origin.parent).as_posix()] = hashlib.sha256(actual.read_bytes()).hexdigest()
+          with zipfile.ZipFile(wheel) as archive:
+              expected = {name: hashlib.sha256(archive.read(name)).hexdigest()
+                          for name in archive.namelist()
+                          if name.endswith(".py") and name.split("/")[0] in ("carr_library", "bootstrap")}
+          if not files or files != expected or not sys.flags.isolated:
+              raise ValueError("Installed source differs from the source-bound wheel.")
+          print(json.dumps({"status": "PASS", "isolated": True, "module_origins": origins,
+                            "installed_python": files, "wheel_sha256": hashlib.sha256(wheel.read_bytes()).hexdigest()},
+                           sort_keys=True))
+          '@
+          & $python -I -B -c $installedSources $built[0].FullName |
+            Tee-Object 'workflow-templates-ci-results/installed-source.json'
+          if ($LASTEXITCODE -ne 0) { throw 'Installed wheel source binding failed.' }
+          $inventory = @'
+          import importlib.metadata as metadata, json, pathlib, re
+          pins = dict(re.findall(r'^([A-Za-z0-9_.-]+)==([^\s]+)', pathlib.Path('packaging/windows-integrated-cp311.lock').read_text(), re.M))
+          actual = {name: metadata.version(name) for name in pins}
+          assert len(pins) == 56 and actual == pins
+          print(json.dumps(actual, sort_keys=True))
+          '@
+          & $python -I -B -c $inventory | Tee-Object 'workflow-templates-ci-results/runtime-56-pins.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          # Test tooling follows the complete production-inventory check.
+          & $python -I -m pip install --only-binary=:all: pytest==9.0.2
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -I -B -c $inventory | Tee-Object 'workflow-templates-ci-results/runtime-56-pins-after-test-tools.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          "CARR_BATCH_PYTHON=$python" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "CARR_BATCH_WORK=$work" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "CARR_BATCH_WHEEL=$($built[0].FullName)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          $sourceCommit | Set-Content 'workflow-templates-ci-results/source-commit.txt'
+
+
+      - name: Prepare only the existing pinned FFmpeg runtime
+        id: prepare-runtime
+        timeout-minutes: 10
+        run: |
+          $python = $env:CARR_BATCH_PYTHON
+          $work = $env:CARR_BATCH_WORK
+          $pin = & $python -I -c "import json; from carr_library.audio.runtime import FFMPEG_ARCHIVE_URL,FFMPEG_ARCHIVE_SHA256,FFMPEG_ARCHIVE_BYTES; print(json.dumps(dict(url=FFMPEG_ARCHIVE_URL,sha256=FFMPEG_ARCHIVE_SHA256,size=FFMPEG_ARCHIVE_BYTES)))" | ConvertFrom-Json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (-not $pin.url.StartsWith('https://') -or $pin.size -le 0 -or $pin.sha256 -cnotmatch '^[0-9a-f]{64}$') { throw 'Invalid reviewed FFmpeg pin.' }
+          $archive = Join-Path $work 'ffmpeg-pinned.zip'
+          $partial = $archive + '.partial'
+          Invoke-WebRequest -Uri $pin.url -OutFile $partial -TimeoutSec 180 -MaximumRedirection 5
+          if ((Get-Item -LiteralPath $partial).Length -ne $pin.size -or (Get-FileHash -LiteralPath $partial -Algorithm SHA256).Hash.ToLowerInvariant() -ne $pin.sha256) { throw 'Pinned FFmpeg archive byte identity mismatch.' }
+          Move-Item -LiteralPath $partial -Destination $archive
+          $audio = Join-Path $work 'audio-runtime'
+          & $python -I -B packaging/prepare_ffmpeg_runtime.py --archive $archive --destination $audio --verify-native | Tee-Object 'workflow-templates-ci-results/audio-runtime.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          "CARR_FFMPEG=$(Join-Path $audio 'ffmpeg.exe')" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          # Retained production regressions discover this same reviewed runtime by name.
+          # Only the byte-verified private runtime directory is added for later steps.
+          $audio | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+      - name: Enforce actual Python and FFmpeg outbound blocks
+        id: firewall
+        timeout-minutes: 3
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $path = 'workflow-templates-ci-results/offline-firewall.json'
+          $programs = @([IO.Path]::GetFullPath($env:CARR_BATCH_PYTHON), [IO.Path]::GetFullPath($env:CARR_FFMPEG))
+          $names = @(("CARR-Templates-" + [guid]::NewGuid().ToString('N')), ("CARR-Templates-" + [guid]::NewGuid().ToString('N')))
+          $before = @(Get-NetFirewallProfile -PolicyStore ActiveStore | Sort-Object Name | ForEach-Object { @{ name = [string]$_.Name; enabled = [string]$_.Enabled } })
+          if ($before.Count -ne 3 -or (@($before.name | Sort-Object) -join ',') -ne 'Domain,Private,Public' -or @($before | Where-Object { $_.enabled -notin @('True', 'False') }).Count -ne 0) { throw 'Expected all three actual firewall profiles with restorable explicit values.' }
+          foreach ($name in $names) {
+            if (@(Get-NetFirewallRule -Name $name -ErrorAction SilentlyContinue).Count -ne 0) { throw 'Refuse a pre-existing rule identity.' }
+          }
+          $receipt = @{
+            schema = 1; status = 'FAIL'; cleanup_status = 'NOT_RUN'
+            profiles_before = $before; profiles_enabled = @(); profiles_restored = @()
+            rule_names = $names; programs = $programs; actual_rules = @(); owned_rules_absent = $false
+          }
+          $receipt | ConvertTo-Json -Depth 10 | Set-Content -Encoding utf8 $path
+          try {
+            Set-NetFirewallProfile -Name Domain,Private,Public -Enabled True
+            for ($i = 0; $i -lt 2; $i++) {
+              New-NetFirewallRule -Name $names[$i] -DisplayName $names[$i] -Direction Outbound -Action Block -Program $programs[$i] -Profile Any -Enabled True | Out-Null
+              $rules = @(Get-NetFirewallRule -PolicyStore ActiveStore -Name $names[$i])
+              if ($rules.Count -ne 1) { throw 'The actual outbound rule did not read back uniquely.' }
+              $rule = $rules[0]
+              $filters = @($rule | Get-NetFirewallApplicationFilter)
+              if ($filters.Count -ne 1 -or $filters[0].Program -ine $programs[$i] -or [string]$rule.Action -ne 'Block' -or [string]$rule.Direction -ne 'Outbound' -or [string]$rule.Enabled -ne 'True') { throw 'The actual program/block rule differs.' }
+              $receipt.actual_rules += @{ name = [string]$rule.Name; program = [string]$filters[0].Program; action = [string]$rule.Action; direction = [string]$rule.Direction; enabled = [string]$rule.Enabled }
+            }
+            $receipt.profiles_enabled = @(Get-NetFirewallProfile -PolicyStore ActiveStore | Sort-Object Name | ForEach-Object { @{ name = [string]$_.Name; enabled = [string]$_.Enabled } })
+            if ($receipt.profiles_enabled.Count -ne 3 -or @($receipt.profiles_enabled | Where-Object enabled -ne 'True').Count -ne 0) { throw 'An actual firewall profile is not enabled.' }
+            $receipt.status = 'PASS'
+          } catch {
+            $receipt.reason = $_.Exception.Message
+            throw
+          } finally {
+            $receipt | ConvertTo-Json -Depth 10 | Set-Content -Encoding utf8 $path
+          }
+
+      - name: Run all retained assistant and new named-template source regressions
+        id: source
+        timeout-minutes: 28
+        run: |
+          & $env:CARR_BATCH_PYTHON -I -B -X utf8 scripts/workflow_template_acceptance.py source --results workflow-templates-ci-results --work $env:CARR_BATCH_WORK 2>&1 | Tee-Object 'workflow-templates-ci-results/source-runner.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Run the identical installed regression inventory
+        id: installed
+        if: ${{ !cancelled() && steps.prepare-runtime.outcome == 'success' && steps.firewall.outcome == 'success' }}
+        timeout-minutes: 28
+        run: |
+          & $env:CARR_BATCH_PYTHON -I -B -X utf8 scripts/workflow_template_acceptance.py installed --results workflow-templates-ci-results --work $env:CARR_BATCH_WORK 2>&1 | Tee-Object 'workflow-templates-ci-results/installed-runner.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Run actual installed native template controls and current-scope recovery
+        id: native
+        if: ${{ !cancelled() && steps.prepare-runtime.outcome == 'success' && steps.firewall.outcome == 'success' }}
+        timeout-minutes: 7
+        run: |
+          & $env:CARR_BATCH_PYTHON -I -B -X utf8 scripts/workflow_template_acceptance.py native --results workflow-templates-ci-results --work $env:CARR_BATCH_WORK 2>&1 | Tee-Object 'workflow-templates-ci-results/native-dispatch.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Remove only owned outbound rules and restore actual prior profiles
+        id: cleanup
+        if: always()
+        timeout-minutes: 3
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $path = 'workflow-templates-ci-results/offline-firewall.json'
+          if (-not (Test-Path -LiteralPath $path)) { throw 'The owned firewall receipt was not created.' }
+          $receipt = Get-Content -LiteralPath $path -Raw | ConvertFrom-Json
+          $failures = @()
+          for ($i = 0; $i -lt $receipt.rule_names.Count; $i++) {
+            try {
+              $name = $receipt.rule_names[$i]
+              if ($name -cnotmatch '^CARR-Templates-[0-9a-f]{32}$') { throw 'Invalid owned rule identity.' }
+              $rules = @(Get-NetFirewallRule -Name $name -ErrorAction SilentlyContinue)
+              if ($rules.Count -gt 1) { throw 'Owned rule identity is ambiguous.' }
+              if ($rules.Count -eq 1) {
+                $filters = @($rules[0] | Get-NetFirewallApplicationFilter)
+                if ($filters.Count -ne 1 -or $filters[0].Program -ine $receipt.programs[$i] -or [string]$rules[0].Action -ne 'Block' -or [string]$rules[0].Direction -ne 'Outbound') { throw 'Refuse to remove a differently bound rule.' }
+                Remove-NetFirewallRule -Name $name
+              }
+            } catch { $failures += $_.Exception.Message }
+          }
+          foreach ($profile in $receipt.profiles_before) {
+            try {
+              if ($profile.name -notin @('Domain', 'Private', 'Public') -or $profile.enabled -notin @('True', 'False')) { throw 'Invalid saved profile value.' }
+              Set-NetFirewallProfile -Name $profile.name -Enabled ([string]$profile.enabled)
+            } catch { $failures += $_.Exception.Message }
+          }
+          $receipt.profiles_restored = @(Get-NetFirewallProfile -PolicyStore ActiveStore | Sort-Object Name | ForEach-Object { @{ name = [string]$_.Name; enabled = [string]$_.Enabled } })
+          $receipt.owned_rules_absent = $true
+          foreach ($name in $receipt.rule_names) {
+            if (@(Get-NetFirewallRule -PolicyStore ActiveStore -Name $name -ErrorAction SilentlyContinue).Count -ne 0) { $receipt.owned_rules_absent = $false }
+          }
+          $expected = @($receipt.profiles_before | ForEach-Object { "$($_.name)=$($_.enabled)" }) -join ';'
+          $actual = @($receipt.profiles_restored | ForEach-Object { "$($_.name)=$($_.enabled)" }) -join ';'
+          if ($expected -ne $actual -or -not $receipt.owned_rules_absent) { $failures += 'Actual cleanup readback differs from the saved profiles or owned-rule absence.' }
+          $receipt.cleanup_status = if ($failures.Count -eq 0) { 'PASS' } else { 'FAIL' }
+          $receipt | Add-Member -NotePropertyName cleanup_errors -NotePropertyValue $failures -Force
+          $receipt | ConvertTo-Json -Depth 10 | Set-Content -Encoding utf8 $path
+          if ($failures.Count -ne 0) { throw ($failures -join '; ') }
+
+      - name: Require exact source, installed, native and firewall receipts
+        if: always()
+        timeout-minutes: 3
+        env:
+          SOURCE_OUTCOME: ${{ steps.source.outcome }}
+          INSTALLED_OUTCOME: ${{ steps.installed.outcome }}
+          NATIVE_OUTCOME: ${{ steps.native.outcome }}
+          FIREWALL_OUTCOME: ${{ steps.firewall.outcome }}
+          CLEANUP_OUTCOME: ${{ steps.cleanup.outcome }}
+        run: |
+          if (-not $env:CARR_BATCH_PYTHON -or -not (Test-Path -LiteralPath $env:CARR_BATCH_PYTHON)) {
+            @{ schema = 1; status = 'FAIL'; reason = 'The installed qualification environment was not prepared.' } |
+              ConvertTo-Json | Set-Content -Encoding utf8 workflow-templates-ci-results/workflow-template-gate.json
+            throw 'The installed qualification environment was not prepared.'
+          }
+          & $env:CARR_BATCH_PYTHON -I -B -X utf8 scripts/workflow_template_acceptance.py finalize --results workflow-templates-ci-results
+          if ($LASTEXITCODE -ne 0) { throw 'Named-workflow qualification FAIL; preserve the exact raw evidence.' }
+
+      - name: Preserve textual qualification evidence on every outcome
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: carr-workflow-templates-${{ github.sha }}-${{ github.run_attempt }}
+          path: |
+            carr-library/workflow-templates-ci-results/*.json
+            carr-library/workflow-templates-ci-results/*.xml
+            carr-library/workflow-templates-ci-results/*.txt
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Remove this run's ephemeral synthetic fixtures and runtime payloads
+        if: always()
+        run: |
+          $work = Join-Path $env:RUNNER_TEMP ("carr-workflow-templates-" + $env:GITHUB_RUN_ID + "-" + $env:GITHUB_RUN_ATTEMPT)
+          if (Test-Path -LiteralPath $work) { Remove-Item -LiteralPath $work -Recurse -Force }

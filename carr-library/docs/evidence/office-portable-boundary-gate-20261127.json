@@ -1,0 +1,51 @@
+{
+  "schema": "carr.office-portable-boundary-gate.v1",
+  "status": "PASS",
+  "portable_office": {
+    "tests.conversion.test_office_selection": {
+      "test_selected_inventory_checks_fixed_installed_filter_without_executing": 1,
+      "test_queued_selection_refuses_new_authority_before_worker": 3,
+      "test_snapshot_rechecks_earlier_component_after_last_hash": 1,
+      "test_worker_admission_refuses_changed_or_incomplete_inventory": 5,
+      "test_fixed_adapter_rejects_false_format_before_runtime_admission": 5,
+      "test_expired_deadline_never_spawns_a_native_process": 1,
+      "test_native_launch_keeps_existing_owner_and_scrubs_unselected_configuration": 1,
+      "test_staging_budget_and_lookup_failures_cannot_report_complete": 4,
+      "test_profile_is_per_operation_and_disables_active_content_and_external_updates": 1,
+      "test_private_phase_survives_failure_without_publishing_source_or_native_logs": 3,
+      "test_progress_refuses_untrusted_marker_content_and_aliased_marker": 1,
+      "test_gui_launcher_is_not_silently_promoted_to_unselected_console": 1,
+      "test_selected_console_manifest_binds_both_launchers_before_native_work": 1
+    },
+    "tests.conversion.test_office_stage_races": {
+      "test_native_removed_profile_entry_does_not_abort_the_remaining_stage_census": 2,
+      "test_valueerror_for_a_still_existing_stage_entry_is_never_treated_as_disappearance": 2,
+      "test_permission_failure_during_missing_entry_confirmation_remains_a_failure": 1,
+      "test_missing_native_entry_cannot_hide_lost_or_replaced_private_stage_root": 2,
+      "test_disappearance_after_observed_policy_violation_cannot_make_stage_valid": 3,
+      "test_reappeared_owned_descendant_does_not_turn_a_missing_snapshot_into_a_live_entry_refusal": 2
+    }
+  },
+  "required_cases_per_mode": 40,
+  "native_required_cases_per_mode": 7,
+  "unchanged_native_functions": {
+    "test_real_selected_legacy_filter_retains_original_and_exact_provenance": 5,
+    "test_selected_office_cancellation_settles_family_before_private_profile_cleanup": 1,
+    "test_selected_office_text_budget_keeps_destination_empty": 1
+  },
+  "method": "Reuse the existing exact Counter run_population twice under portable-office before the unchanged native source/installed populations. Bind both portable files in the pre/post fixture SHA inventory. Source uses checkout packages; installed uses -I, pythonpath disabled and the actual installed prefix. No runtime inventory exception or source/native count conflation.",
+  "authoring_status": "NOT_RUN",
+  "actual_ordinary_qualification": {
+    "source_commit": "f03f8791f100de41d5e24e060b15f36d879184b2",
+    "source_tree": "84ef7b439a32680dcc14aacc4c140921cf8b6036",
+    "run_id": 46066912589,
+    "job_id": 140734323246,
+    "portable_source": 40,
+    "portable_installed": 40,
+    "native_source": 7,
+    "native_installed": 7,
+    "independent_reader_run": 46067545746,
+    "evidence": "office-ordinary-admission-independent-read-20261127.json",
+    "limits": "Exact declared synthetic fixture population on the pinned LibreOffice26.2.7 Windows runtime; historical failures and diagnostic scope remain recorded."
+  }
+}

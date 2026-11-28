@@ -18,6 +18,7 @@ import sys
 import tempfile
 
 from .ocr_runtime import OcrRuntimeError, _relative, _stamp, _stat, _unique_object
+from .ocr_languages import valid_model_code
 
 CATALOGUE = 'ocr-model-catalog.json'
 MAX_CATALOGUE = 2 * 1024 * 1024
@@ -96,7 +97,7 @@ def load_source(profile='fast'):
         raise OcrRuntimeError('The OCR catalogue license identity does not match.')
     models, paths = [], set()
     for code, value in sorted(source['models'].items()):
-        if (not CODE.fullmatch(code) or value['path'] != code + '.traineddata'
+        if (not valid_model_code(code) or value['path'] != code + '.traineddata'
                 or not HEX40.fullmatch(value['git_blob_sha1'])
                 or type(value['size']) is not int or not 0 < value['size'] <= 512 * 1024**2
                 or value['kind'] not in ('language', 'script', 'special')):
@@ -116,7 +117,7 @@ def load_source(profile='fast'):
         target = value.get('resolved_code') or value.get('target_code')
         if target is None:
             target = value.get('target', '').removesuffix('.traineddata')
-        if not CODE.fullmatch(code) or target not in source['models']:
+        if not valid_model_code(code) or target not in source['models']:
             raise OcrRuntimeError('Invalid OCR catalogue alias.')
         aliases.append((code, target))
     return Source(profile, repository, source['revision'], license_raw.decode('utf-8'),
@@ -227,11 +228,12 @@ def prepare_offline_pack(source_directory, destination, codes, *, profile='fast'
     and best are separate packs; a profile mismatch fails byte verification.
     Aliases resolve to the official regular model, never to symlink payloads.
     """
+    from .language_manager import check_pack_destination, _publish
     source = load_source(profile)
     models = _selection(source, codes, max_bytes)
     source_directory = _local_path(source_directory, exists=True)
     _stat(source_directory, directory=True)
-    destination = _local_path(destination)
+    destination = check_pack_destination(destination)
     if os.path.lexists(destination):
         raise FileExistsError('Choose a new directory for the prepared OCR pack.')
     parent = _local_path(destination.parent, exists=True)
@@ -280,7 +282,7 @@ def prepare_offline_pack(source_directory, destination, codes, *, profile='fast'
                 if target.parent != destination and not target.parent.exists():
                     target.parent.mkdir(mode=0o700)
                     created_directories.append(target.parent)
-                os.link(path, target)
+                _publish(path, target, lambda: _checkpoint(cancelled))
                 published.append(target)
             for directory in sorted({p.parent for p in published}, reverse=True):
                 _sync(directory)
@@ -303,6 +305,10 @@ def prepare_offline_pack(source_directory, destination, codes, *, profile='fast'
                         tuple(model.code for model in models), total, sha256(raw).hexdigest())
 
 
+from ..installation_lease import installed_entrypoint
+
+
+@installed_entrypoint
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest='action', required=True)
@@ -316,13 +322,23 @@ def main(argv=None):
     prepare.add_argument('--destination', type=Path, required=True)
     prepare.add_argument('--models', nargs='+', required=True)
     prepare.add_argument('--max-bytes', type=int, default=DEFAULT_MAX_BYTES)
+    install = sub.add_parser('install', help='Install a reviewed pack into a new separate directory.')
+    install.add_argument('--source', type=Path, required=True)
+    install.add_argument('--destination', type=Path, required=True)
+    install.add_argument('--manifest-sha256', required=True,
+                         help='Independent checksum recorded during preparation or supplied with the reviewed pack')
+    install.add_argument('--max-bytes', type=int, default=DEFAULT_MAX_BYTES)
     args = parser.parse_args(argv)
     try:
         if args.action == 'list':
             result = [asdict(model) for model in list_models(args.profile, query=args.query, kind=args.kind)]
-        else:
+        elif args.action == 'prepare':
             result = asdict(prepare_offline_pack(args.source, args.destination, args.models,
                                                profile=args.profile, max_bytes=args.max_bytes))
+        else:
+            from .language_manager import install_offline_pack
+            result = install_offline_pack(args.source, args.destination,
+                expected_manifest_sha256=args.manifest_sha256, max_bytes=args.max_bytes)
         # JSON escapes preserve Unicode paths even when Windows stdout uses an
         # older console encoding. Do not report failure after creating a pack.
         print(json.dumps(result, ensure_ascii=True, indent=2))

@@ -1,0 +1,37 @@
+{
+  "schema": 1,
+  "status": "OBSERVED_TEST_FIXTURE_REPAIR_NOT_RUN",
+  "observed": {
+    "commit": "0e613dc9931a9ed7ffeca20f89a966309d222e6f",
+    "run_id": 46025967681,
+    "job_id": 140597328150,
+    "source": {
+      "passed": 5,
+      "failed": 8,
+      "total": 13
+    },
+    "installed": "NOT_RUN",
+    "native_install": "NOT_RUN",
+    "a_to_b": "NOT_RUN",
+    "artifact": {
+      "id": 15215507492,
+      "bytes": 6268,
+      "sha256": "79c1e67b115e1545b0d3f9b0dba49155ba5d167cd1a37cc1e2ab238bcf3b4098"
+    },
+    "actual_error": "AttributeError: types.SimpleNamespace object has no attribute GetDriveTypeW"
+  },
+  "cause": "The synthetic GetSystemDirectoryW test patched the shared ctypes.WinDLL attribute. This also replaced audio.jobs' real kernel32 object during the independent local-drive path check.",
+  "repair": "Use a proxy only for security.standard_windows.ctypes. Its selected WinDLL loader remains synthetic; all other ctypes attributes delegate to the original module. audio.jobs and other modules retain the real ctypes.WinDLL.",
+  "preserved": [
+    "All13 cases and exact multiplicities.",
+    "Real synthetic hardlinks, parent/leaf reparse guards, invalid API lengths and no environment fallback.",
+    "Production standard_windows.py and security._files.py are unchanged by this fixture correction.",
+    "The actual native install and A-to-B helper metadata gates are still required."
+  ],
+  "validation": {
+    "source_review": "Module identity and traceback matched against exact observed failure.",
+    "new_source": "NOT_RUN",
+    "new_installed": "NOT_RUN",
+    "native_a_to_b": "NOT_RUN"
+  }
+}

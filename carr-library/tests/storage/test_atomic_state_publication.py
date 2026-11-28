@@ -7,6 +7,7 @@ import threading
 import pytest
 
 from carr_library import durable_state as state
+from carr_library.audio import jobs
 
 
 def _sharing_error():
@@ -19,7 +20,7 @@ def test_atomic_state_update_survives_reader_without_exposing_partial_bytes(tmp_
     destination = tmp_path / 'control.json'
     state.atomic_json(destination, {'command': 'run'})
     original = destination.read_bytes()
-    replace = os.replace
+    replace = jobs._replace_state_file
     attempts, timers = [], []
     released = threading.Event()
     closed = threading.Event()
@@ -64,7 +65,7 @@ def test_atomic_state_update_survives_reader_without_exposing_partial_bytes(tmp_
                 timer.start()
             raise
 
-    monkeypatch.setattr(state.os, 'replace', collide)
+    monkeypatch.setattr(jobs, '_replace_state_file', collide)
     try:
         state.atomic_json(destination, {'command': 'pause', 'label': 'Пауза'}, replace=True)
     finally:
@@ -89,7 +90,7 @@ def test_permanent_replace_denial_keeps_old_state_and_cleans_own_stage(tmp_path,
         attempts.append((source, target))
         raise _sharing_error() if windows_sharing else PermissionError('No write access')
 
-    monkeypatch.setattr(state.os, 'replace', denied)
+    monkeypatch.setattr(jobs, '_replace_state_file', denied)
     with pytest.raises(PermissionError):
         state.atomic_json(destination, {'command': 'pause'}, replace=True)
     assert destination.read_bytes() == original
@@ -107,7 +108,7 @@ def test_unrelated_publication_error_is_not_retried(tmp_path, monkeypatch):
         attempts.append((source, target))
         raise OSError('Storage device failure')
 
-    monkeypatch.setattr(state.os, 'replace', failed)
+    monkeypatch.setattr(jobs, '_replace_state_file', failed)
     with pytest.raises(OSError, match='Storage device failure'):
         state.atomic_json(destination, {'command': 'pause'}, replace=True)
     assert len(attempts) == 1 and destination.read_bytes() == original
@@ -128,7 +129,7 @@ def test_windows_retry_budget_reuses_one_complete_stage(tmp_path, monkeypatch, w
         error.winerror = winerror
         raise error
 
-    monkeypatch.setattr(state.os, 'replace', denied)
+    monkeypatch.setattr(jobs, '_replace_state_file', denied)
     monkeypatch.setattr(state.time, 'sleep', delays.append)
     with pytest.raises(PermissionError):
         state.atomic_json(destination, {'command': 'pause'}, replace=True)

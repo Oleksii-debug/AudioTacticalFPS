@@ -1,0 +1,70 @@
+{
+  "schema": 1,
+  "component": "named-inert-assistant-workflow-templates",
+  "authoring_status": "SOURCE_COMPLETE_QUALIFICATION_NOT_RUN",
+  "parent": "aa89b6f2e11bf49dd1b1350b28e8c055f54e62ac",
+  "donor": "ed74d168c81a21e68bbe1673a729181dfef96ee4",
+  "donor_template_blob": "5f30e456acd385106d33381213b14b93e17f0675",
+  "record_schema": "carr-assistant-template/1",
+  "namespace": "state/assistant/templates/<32hex>.json",
+  "metadata_only": true,
+  "permissions_saved": false,
+  "execution_approval_saved": false,
+  "limits": {
+    "records": 256,
+    "steps_per_draft": 128,
+    "record_bytes": 8388608,
+    "template_collection_bytes": 67108864,
+    "existing_jobs_and_controls_bytes": 67108864,
+    "combined_assistant_bytes": 134217728
+  },
+  "reuse": [
+    "current Plan/Step and 13-tool pure argument validator",
+    "existing JobStore service; existing review_instruction remains unchanged",
+    "application writer followed by the existing assistant state_write_guard",
+    "existing source-bound full backup, verify, restore and incremental wrappers"
+  ],
+  "historical_route": "Historical foreign backups remain inert archives. A selected donor template JSON can be explicitly imported as a new validated identity; no old Scope or approval is accepted.",
+  "library_backup_hunks": [
+    {
+      "before": "    MAX_JOBS as MAX_ASSISTANT_JOBS, MAX_SNAPSHOT_BYTES as MAX_ASSISTANT_BYTES,\n",
+      "after": "    MAX_JOBS as MAX_ASSISTANT_JOBS, MAX_TOTAL_SNAPSHOT_BYTES as MAX_ASSISTANT_BYTES,\n    MAX_SNAPSHOT_BYTES as MAX_ASSISTANT_JOB_BYTES,\n"
+    },
+    {
+      "before": "    state_paths as _assistant_files, validate_state_tree as _validate_assistants,\n)\n",
+      "after": "    state_paths as _assistant_files, validate_state_tree as _validate_assistants,\n)\nfrom .assistant.templates import (\n    MAX_TEMPLATES as MAX_ASSISTANT_TEMPLATES,\n    MAX_COLLECTION_BYTES as MAX_ASSISTANT_TEMPLATE_BYTES,\n    is_state_path as _assistant_template_path,\n)\n"
+    },
+    {
+      "before": "                for identity in sorted({path.name[:32] for path in assistant}):\n",
+      "after": "                for identity in sorted({path.name[:32] for path in assistant\n                                        if path.parent == directory}):\n"
+    },
+    {
+      "before": "        assistant_total, assistant_jobs, assistant_controls = 0, 0, 0\n",
+      "after": "        assistant_total, assistant_jobs, assistant_controls = 0, 0, 0\n        assistant_job_bytes, assistant_template_bytes, assistant_templates = 0, 0, 0\n"
+    },
+    {
+      "before": "                assistant_total += entry['size_bytes']\n                assistant_controls += int(entry[field].endswith('.control.json'))\n                assistant_jobs += int(not entry[field].endswith('.control.json'))\n                if (entry['size_bytes'] > _assistant_limit(entry[field])\n                        or assistant_total > MAX_ASSISTANT_BYTES\n                        or max(assistant_jobs, assistant_controls) > MAX_ASSISTANT_JOBS):\n                    raise RestoreError('assistant sidecar count or byte limit')\n",
+      "after": "                assistant_total += entry['size_bytes']\n                if _assistant_template_path(entry[field]):\n                    assistant_templates += 1\n                    assistant_template_bytes += entry['size_bytes']\n                else:\n                    assistant_job_bytes += entry['size_bytes']\n                    assistant_controls += int(entry[field].endswith('.control.json'))\n                    assistant_jobs += int(not entry[field].endswith('.control.json'))\n                if (entry['size_bytes'] > _assistant_limit(entry[field])\n                        or assistant_total > MAX_ASSISTANT_BYTES\n                        or assistant_job_bytes > MAX_ASSISTANT_JOB_BYTES\n                        or assistant_template_bytes > MAX_ASSISTANT_TEMPLATE_BYTES\n                        or assistant_templates > MAX_ASSISTANT_TEMPLATES\n                        or max(assistant_jobs, assistant_controls) > MAX_ASSISTANT_JOBS):\n                    raise RestoreError('assistant sidecar count or byte limit')\n"
+    }
+  ],
+  "pending": [
+    "actual Windows source/installed/native execution",
+    "human NVDA qualification remains separate"
+  ],
+  "qualification_parent": "48e038ef1993879605ecb83e0dfa17794382a851",
+  "source_cases": 506,
+  "installed_cases": 506,
+  "retained_cases": 412,
+  "new_cases": 94,
+  "native_checks": 24,
+  "oracle": "scripts/workflow_template_oracle.json",
+  "native_probe": "scripts/windows_workflow_templates_smoke.py",
+  "native_ui": "Existing assistant Templates action; actual name dialogs and owner-bound native removal confirmation; current scope Preview then Run",
+  "cli": "Existing research-library-assistant --templates (list/load/save/update/rename/remove/import/export/rebind); --run refused",
+  "shared_ui": "Existing borrowed assistant executor, current root/revision guard, completion-aware SaveCoordinator and shared progress observer",
+  "quality": {
+    "nvda": "NOT_RUN",
+    "language_model_quality": "NOT_QUALIFIED",
+    "physical_audio": "NOT_RUN"
+  }
+}

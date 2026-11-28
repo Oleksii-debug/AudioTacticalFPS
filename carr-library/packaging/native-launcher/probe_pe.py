@@ -6,14 +6,25 @@ from pathlib import Path
 import struct
 
 
+MAX_PE_BYTES = 2 * 1024 * 1024
+
+
 def inspect_pe(path):
-    data = Path(path).read_bytes()
-    if len(data) > 2 * 1024 * 1024 or data[:2] != b"MZ":
+    with Path(path).open("rb") as stream:
+        data = stream.read(MAX_PE_BYTES + 1)
+    return inspect_pe_bytes(data, Path(path).name)
+
+
+def inspect_pe_bytes(data, filename="ResearchLibrary.exe"):
+    """Inspect the exact bounded snapshot that a packager will seal."""
+    if not isinstance(data, bytes) or not 64 <= len(data) <= MAX_PE_BYTES or data[:2] != b"MZ":
         raise ValueError("Expected a small native Windows PE launcher")
     pe = struct.unpack_from("<I", data, 0x3C)[0]
     if data[pe:pe + 4] != b"PE\0\0":
         raise ValueError("Invalid PE signature")
     machine, sections, timestamp, _, _, optional_size, _ = struct.unpack_from("<HHIIIHH", data, pe + 4)
+    if not 1 <= sections <= 96 or optional_size < 240:
+        raise ValueError("Invalid PE section or optional-header bounds")
     optional = pe + 24
     magic = struct.unpack_from("<H", data, optional)[0]
     subsystem, dll_flags = struct.unpack_from("<HH", data, optional + 68)
@@ -66,7 +77,7 @@ def inspect_pe(path):
     resource_rva, resource_size = struct.unpack_from("<II", data, optional + 112 + 2 * 8)
     if not resource_rva or not resource_size:
         raise ValueError("The manifest must be embedded in the PE resources")
-    return {"schema": 1, "file": Path(path).name, "bytes": len(data),
+    return {"schema": 1, "file": filename, "bytes": len(data),
             "sha256": hashlib.sha256(data).hexdigest(), "machine": "x86_64", "subsystem": "windows-gui",
             "aslr": True, "high_entropy_aslr": True, "dep": True, "timestamp": timestamp,
             "imports": imports, "reproducible_build_marker": reproducible_marker,

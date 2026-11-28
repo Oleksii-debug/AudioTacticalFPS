@@ -5,13 +5,14 @@ handlers, authorization checks and dirty-note protection. The persisted file
 contains stable IDs and shortcut text, never Python callbacks or wx IDs.
 """
 from dataclasses import dataclass
+from hashlib import sha256
 import json
 from pathlib import Path
 import weakref
 
 from ..keyboard_preferences import KeymapStore
 from ..research.export_file import write_export
-from .export_destination import confirm_export_destination
+from .export_destination import approve_export_destination
 from .builtin_keyboard_commands import MAIN_COMMANDS, builtin_commands, plain_caption
 from .command_registry import CommandRegistry, normalize_shortcut
 
@@ -78,6 +79,7 @@ class KeyboardManager:
         self.store = KeymapStore(Path(root) / 'keyboard-shortcuts.json')
         self._load()
         self.activate_loaded()
+        migrate_legacy_keymap(self, getattr(self, 'legacy_command_ids', {}))
         if self.load_notice and self.frame is not None:
             import wx
             wx.CallAfter(lambda: self.frame.report(self.load_notice)
@@ -439,9 +441,8 @@ class KeyboardSettingsDialog:
         try:
             root = (self.manager.store.path.parent if self.manager.store is not None
                     else self.manager.private_root)
-            approval = confirm_export_destination(self.dialog, path, private_root=root, wx_module=wx)
+            approval = approve_export_destination(self.dialog, path, private_root=root)
             if approval is None:
-                self._message('Keymap export cancelled. No file was written.')
                 return
             normalized = self.manager.validate(self.draft)
             content = json.dumps({'version': 1, 'bindings': normalized}, ensure_ascii=False, indent=2) + '\n'
@@ -574,6 +575,59 @@ def register_menu_command(frame, spec, item, *, fallback_unassigned=False):
     frame._pending_keyboard_commands = [*pending, (spec, item)]
 
 
+def _complete_menu_registry(frame, registry, pending):
+    """Adapt older menu installers to the same registry without losing commands.
+
+    Built-in and explicitly registered semantic IDs take precedence. Remaining
+    historical menu paths receive a stable digest ID, independent of wx IDs or
+    menu positions. Their old identities are retained for keymap migration.
+    New modules should use register_menu_command with an explicit semantic ID.
+    """
+    from .command_registry import CommandSpec
+    from .productivity import collect_commands
+    explicit = {item.GetId(): spec.command_id for spec, item in pending}
+    known = {(plain_caption(menu), plain_caption(label)): identity
+             for identity, menu, label, _ in MAIN_COMMANDS}
+    discovered, legacy = [], {}
+    for binding in collect_commands(frame.GetMenuBar()):
+        command = binding.command
+        if not command.configurable:
+            continue
+        parts = command.identity.split('/')
+        identity = explicit.get(binding.item.GetId()) or known.get(
+            (plain_caption(parts[0]), plain_caption(parts[-1])))
+        if identity is None:
+            identity = 'menu.' + sha256(command.identity.encode('utf-8')).hexdigest()[:24]
+            registry.register(CommandSpec(identity, command.label, 'main', command.shortcut))
+        legacy[command.identity] = identity
+        discovered.append((identity, binding.item))
+    return discovered, legacy
+
+
+def migrate_legacy_keymap(manager, legacy_ids):
+    """Preserve a valid old map when there is no newer map; never erase it."""
+    from ..keybindings import FILENAME, KeybindingStore
+    if manager.store is None or manager.store.path.exists():
+        return False
+    if not (manager.store.path.parent / FILENAME).exists():
+        return False
+    try:
+        legacy_store = KeybindingStore(manager.store.path.parent)
+        old = legacy_store.load()
+        unavailable = set(old) - legacy_ids.keys()
+        if unavailable:
+            raise ValueError('An older shortcut refers to a command unavailable in this version.')
+        translated = {legacy_ids[name]: value for name, value in old.items()}
+        if len(translated) != len(old):
+            raise ValueError('Several older shortcuts refer to the same command.')
+        manager.apply_overrides(translated)
+    except (ValueError, OSError) as exc:
+        manager.load_notice = ('The older keyboard preferences were kept unchanged. '
+            'Review Options, Keyboard shortcuts before using them. ' + str(exc))
+        return False
+    return True
+
+
 def install_keyboard_settings(frame):
     import wx
     existing = getattr(frame, 'keyboard_commands', None)
@@ -586,16 +640,19 @@ def install_keyboard_settings(frame):
     frame.GetMenuBar().Append(menu, '&Options')
     pending = getattr(frame, '_pending_keyboard_commands', [])
     registry = CommandRegistry((*builtin_commands(), *(spec for spec, _ in pending)))
+    discovered, legacy_ids = _complete_menu_registry(frame, registry, pending)
     manager = KeyboardManager(frame, registry=registry,
                               store=KeymapStore(Path(frame.library.root) / 'keyboard-shortcuts.json'))
-    for spec, item in pending:
-        manager.bindings[spec.command_id] = _MenuBinding(
+    manager.legacy_command_ids = legacy_ids
+    for identity, item in discovered:
+        manager.bindings[identity] = _MenuBinding(
             item, item.GetItemLabel().split('\t', 1)[0], manager._top_index(item))
     frame._pending_keyboard_commands = []
     frame.keyboard_commands = manager
     frame.Bind(wx.EVT_MENU, lambda event: show_command_launcher(frame, manager), commands)
     frame.Bind(wx.EVT_MENU, lambda event: show_keyboard_settings(frame, manager), settings)
     manager.activate_loaded()
+    migrate_legacy_keymap(manager, legacy_ids)
     if manager.load_notice:
         wx.CallAfter(lambda: frame.report(manager.load_notice)
                      if manager.load_notice and not getattr(frame, '_closing', False) else None)

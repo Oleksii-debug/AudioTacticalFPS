@@ -1,0 +1,460 @@
+{
+  "schema": 1,
+  "status": "PASS",
+  "scope": "Exact frozen local voice helper component, Windows source/installed/native fixture qualification",
+  "recorded_utc_date": "2026-11-27",
+  "source_commit": "f9291652a6bb05ac6b896e924568d8ccbc3b634f",
+  "source_tree": "f459e6a8debe8d00d89bfe5a780055f0fd06366f",
+  "run_id": 46029759866,
+  "job_id": 140610308737,
+  "run_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46029759866",
+  "artifact": {
+    "id": 15219008393,
+    "name": "carr-local-voice-helper-f9291652a6bb05ac6b896e924568d8ccbc3b634f-1",
+    "bytes": 400863,
+    "github_sha256": "3a17d94457c62f04848299a44d2f00b85c4d088910b5bfdcd7dfef7f738a6e0f",
+    "expires_at": "2026-12-27T17:11:58Z",
+    "downloaded_and_rehashed": false
+  },
+  "oracle": {
+    "path": "carr-library/scripts/local_voice_helper_oracles.json",
+    "git_blob": "87d02a8353b5bec0b3a87376cf989013e653e0b6",
+    "sha256": "9d78ea3f4bf10641db9801c02916839bbb777f05309b54bcd4e6bfec061a2a04"
+  },
+  "verification_method": [
+    "Read actual completed job logs, step outcomes and GitHub artifact metadata.",
+    "Independently compared both logged full function/multiplicity Counters to the exact committed f929 oracle.",
+    "Independently compared the actual native check Counter and all emitted PASS labels to its 31 exact labels.",
+    "Compared native module-origin names, fixture-source digest, fixture before/after identity, source/tree/wheel/oracle bindings and completed cleanup step outcomes.",
+    "The workflow also enforces raw JUnit, installed Python inventory, source wheel and firewall receipts. This record does not claim a second ZIP download or local execution."
+  ],
+  "source": {
+    "schema": 1,
+    "status": "PASS",
+    "mode": "source",
+    "declared_cases": 111,
+    "timeout_seconds": 1200,
+    "oracle_sha256": "9d78ea3f4bf10641db9801c02916839bbb777f05309b54bcd4e6bfec061a2a04",
+    "source_commit": "f9291652a6bb05ac6b896e924568d8ccbc3b634f",
+    "source_tree": "f459e6a8debe8d00d89bfe5a780055f0fd06366f",
+    "wheel_sha256": "f42d5a65f317d2dddf9d91a0d7ea67a521cbab4bb31137d3444c1f55adcb66e9",
+    "checkout_manifest_sha256": "2ce94ec262512921c15177e01929d0ef53e947fd9aeb3c48ae92bf25fa1df673",
+    "tracked_source_files": 1484,
+    "source_only_python": {
+      "bootstrap/semantic_compat/probe.py": "c51758108a418c7bf98ddd459cefdca852777b07cfc95ac669855b1195398ac7",
+      "bootstrap/semantic_compat/test_probe.py": "ae093cae9f00307c09d2ea787dacf7c8c1522184e5480a411c0979023b7b70bb"
+    },
+    "actual_ffmpeg": null,
+    "test_source_sha256": {
+      "tests/audio/test_local_voice_helper.py": "4a34c71538369eeb8e414d8fe7209e4a087bdae075b51d55cf449551e36f6773",
+      "tests/audio/test_engine_profiles.py": "96d8583d05b239ac85d981664e00bd79d29fb6e1bafbc669f9910169c7656c7e",
+      "tests/ui/test_engine_settings.py": "a73198f0a2e685188b0239456941843d3b3cfe2f473efd38e5aa4e62cdaf45d8",
+      "tests/__init__.py": "bda1d1b86fa69f604fb87c19f27628942b6bd77aa46b605efbc9cb9d4457183d",
+      "tests/ui/test_transcription_v43_dialog.py": "a26bcabd34324f6450e1b2be6910c33339ff28086b0b448a176edc19965e5639",
+      "scripts/local_voice_contract_fixture.py": "cdd525bba513c4f58ace97b99882f2045ce87f387ab80ba366d487ea79d344f5",
+      "scripts/windows_local_voice_helper_smoke.py": "b48f523e8ed42b0a33a326ee3b34b1772b3f260f8bf706316ad381be341ba44b"
+    },
+    "runner_sha256": {
+      "audio_batch_acceptance.py": "3fcb217a7ed9d535ea9d277191a27504f8e6f452bef235b728036358f9e6e003",
+      "ci_check.py": "a7e90c3a14dc51b78c9af17850a7038bf21513cc5ba41466293cc853cd0e2842",
+      "ci_watchdog.py": "e02be6a6c3406bdf1d9d4c24673363894d03a1ee7948b3b77d6b20fcc2bfc057"
+    },
+    "pytest_exit": 0,
+    "case_counter": {
+      "tests.audio.test_engine_profiles": {
+        "test_registration_is_persistent_and_does_not_execute_or_import_assets": 1,
+        "test_registering_the_same_reviewed_installation_preserves_profile_identity": 1,
+        "test_content_change_is_rejected_even_when_size_and_mtime_are_restored": 1,
+        "test_captured_manifest_hash_cannot_be_silently_replaced_at_registration": 1,
+        "test_explicit_new_manifest_revision_gets_a_new_id_and_disables_the_old_one": 1,
+        "test_unreviewed_or_incomplete_installations_never_create_registration": 4,
+        "test_portable_project_cannot_register_its_own_executable_installation": 1,
+        "test_legacy_paths_remain_inert_and_exact_bytes_are_preserved_on_explicit_registration": 1,
+        "test_disconnected_installation_remains_listed_and_can_be_disabled_or_removed": 1,
+        "test_disabling_and_removing_never_delete_installed_assets": 1,
+        "test_cancellation_during_inventory_verification_preserves_previous_registry": 1,
+        "test_concurrent_settings_writer_is_not_overridden": 1,
+        "test_new_registration_cannot_overwrite_a_duplicate_display_name": 1,
+        "test_registry_schema_rejects_malformed_or_unscoped_records": 9,
+        "test_copied_registry_at_another_library_root_is_not_active": 1,
+        "test_captured_store_rejects_replaced_library_directory": 1,
+        "test_music_reference_is_a_registered_id_and_cannot_be_a_project_path": 1,
+        "test_registered_speech_ids_coexist_and_revalidate_before_every_call": 1,
+        "test_invalid_local_registry_does_not_disable_installed_system_voices": 1,
+        "test_machine_engine_registrations_are_excluded_from_complete_backup": 1,
+        "test_write_budget_rejection_retains_the_last_readable_registry": 1,
+        "test_profile_labels_use_normalized_unicode_before_duplicate_check": 1,
+        "test_production_resolves_optional_music_before_any_engine_execution": 1,
+        "test_existing_hardlinked_settings_lock_cannot_touch_another_file": 1,
+        "test_existing_directory_settings_lock_is_rejected_before_publication": 1,
+        "test_legacy_archive_failure_preserves_source_and_retries_without_partial_final": 2
+      },
+      "tests.audio.test_local_voice_helper": {
+        "test_constructor_and_manifest_verification_never_execute": 1,
+        "test_closed_manifest_contract_rejects_unreviewed_authority": 18,
+        "test_native_launch_is_one_exact_pinned_executable_without_shell_arguments": 1,
+        "test_actual_catalogue_has_stable_exact_tokens_and_only_supported_controls": 1,
+        "test_actual_invalid_or_authority_bearing_reply_never_publishes_catalogue": 6,
+        "test_catalogue_fields_tokens_and_budgets_are_exact": 10,
+        "test_actual_literal_unicode_and_controls_cross_json_stdin_without_shell": 1,
+        "test_controls_not_declared_by_selected_voice_fail_before_render": 7,
+        "test_actual_invalid_render_has_no_visible_output_and_removes_private_stage": 5,
+        "test_existing_output_is_never_replaced_or_sent_to_helper": 1,
+        "test_changed_reviewed_pack_is_rejected_before_process_start": 3,
+        "test_hardlinked_launch_file_is_denied": 1,
+        "test_selected_voice_removed_after_render_is_not_published": 1,
+        "test_rendered_pcm_remains_held_through_final_catalogue_recheck": 1,
+        "test_actual_running_child_stops_before_private_pcm_cleanup": 2,
+        "test_precancelled_operation_never_starts_a_process": 1,
+        "test_helper_profile_registration_is_passive_and_old_raw_settings_are_exact": 1,
+        "test_current_registered_helper_voice_runs_through_same_registry_and_reopens_stably": 1,
+        "test_registered_helper_rechecks_current_profile_before_every_render": 3,
+        "test_two_registered_helpers_keep_distinct_saved_ids_without_silent_rebinding": 1,
+        "test_helper_machine_registration_and_runtime_are_excluded_from_actual_backup": 1
+      },
+      "tests.ui.test_engine_settings": {
+        "test_selecting_another_profile_clears_previous_registration_authority": 1,
+        "test_saving_uses_the_exact_reviewed_manifest_pin_in_the_shared_worker": 1,
+        "test_changed_manifest_error_preserves_registration_review_and_never_reports_success": 1,
+        "test_close_waits_for_cancelled_verification_before_releasing_modal": 1,
+        "test_profile_settings_menu_is_semantic_idempotent_and_does_not_open_on_install": 1,
+        "test_studio_default_pipeline_resolves_music_only_through_local_profiles": 1
+      }
+    },
+    "interpreter_sha256": "c6385dd3ba8db9e48d838ff1a91461fa10f5e8aa303363f25614e600199ee3d3",
+    "actual_cases": 111,
+    "elapsed_seconds": 23.922000000000025
+  },
+  "installed": {
+    "schema": 1,
+    "status": "PASS",
+    "mode": "installed",
+    "declared_cases": 111,
+    "timeout_seconds": 1200,
+    "oracle_sha256": "9d78ea3f4bf10641db9801c02916839bbb777f05309b54bcd4e6bfec061a2a04",
+    "source_commit": "f9291652a6bb05ac6b896e924568d8ccbc3b634f",
+    "source_tree": "f459e6a8debe8d00d89bfe5a780055f0fd06366f",
+    "wheel_sha256": "f42d5a65f317d2dddf9d91a0d7ea67a521cbab4bb31137d3444c1f55adcb66e9",
+    "checkout_manifest_sha256": "2ce94ec262512921c15177e01929d0ef53e947fd9aeb3c48ae92bf25fa1df673",
+    "tracked_source_files": 1484,
+    "source_only_python": {
+      "bootstrap/semantic_compat/probe.py": "c51758108a418c7bf98ddd459cefdca852777b07cfc95ac669855b1195398ac7",
+      "bootstrap/semantic_compat/test_probe.py": "ae093cae9f00307c09d2ea787dacf7c8c1522184e5480a411c0979023b7b70bb"
+    },
+    "actual_ffmpeg": null,
+    "test_source_sha256": {
+      "tests/audio/test_local_voice_helper.py": "4a34c71538369eeb8e414d8fe7209e4a087bdae075b51d55cf449551e36f6773",
+      "tests/audio/test_engine_profiles.py": "96d8583d05b239ac85d981664e00bd79d29fb6e1bafbc669f9910169c7656c7e",
+      "tests/ui/test_engine_settings.py": "a73198f0a2e685188b0239456941843d3b3cfe2f473efd38e5aa4e62cdaf45d8",
+      "tests/__init__.py": "bda1d1b86fa69f604fb87c19f27628942b6bd77aa46b605efbc9cb9d4457183d",
+      "tests/ui/test_transcription_v43_dialog.py": "a26bcabd34324f6450e1b2be6910c33339ff28086b0b448a176edc19965e5639",
+      "scripts/local_voice_contract_fixture.py": "cdd525bba513c4f58ace97b99882f2045ce87f387ab80ba366d487ea79d344f5",
+      "scripts/windows_local_voice_helper_smoke.py": "b48f523e8ed42b0a33a326ee3b34b1772b3f260f8bf706316ad381be341ba44b"
+    },
+    "runner_sha256": {
+      "audio_batch_acceptance.py": "3fcb217a7ed9d535ea9d277191a27504f8e6f452bef235b728036358f9e6e003",
+      "ci_check.py": "a7e90c3a14dc51b78c9af17850a7038bf21513cc5ba41466293cc853cd0e2842",
+      "ci_watchdog.py": "e02be6a6c3406bdf1d9d4c24673363894d03a1ee7948b3b77d6b20fcc2bfc057"
+    },
+    "pytest_exit": 0,
+    "case_counter": {
+      "tests.audio.test_engine_profiles": {
+        "test_registration_is_persistent_and_does_not_execute_or_import_assets": 1,
+        "test_registering_the_same_reviewed_installation_preserves_profile_identity": 1,
+        "test_content_change_is_rejected_even_when_size_and_mtime_are_restored": 1,
+        "test_captured_manifest_hash_cannot_be_silently_replaced_at_registration": 1,
+        "test_explicit_new_manifest_revision_gets_a_new_id_and_disables_the_old_one": 1,
+        "test_unreviewed_or_incomplete_installations_never_create_registration": 4,
+        "test_portable_project_cannot_register_its_own_executable_installation": 1,
+        "test_legacy_paths_remain_inert_and_exact_bytes_are_preserved_on_explicit_registration": 1,
+        "test_disconnected_installation_remains_listed_and_can_be_disabled_or_removed": 1,
+        "test_disabling_and_removing_never_delete_installed_assets": 1,
+        "test_cancellation_during_inventory_verification_preserves_previous_registry": 1,
+        "test_concurrent_settings_writer_is_not_overridden": 1,
+        "test_new_registration_cannot_overwrite_a_duplicate_display_name": 1,
+        "test_registry_schema_rejects_malformed_or_unscoped_records": 9,
+        "test_copied_registry_at_another_library_root_is_not_active": 1,
+        "test_captured_store_rejects_replaced_library_directory": 1,
+        "test_music_reference_is_a_registered_id_and_cannot_be_a_project_path": 1,
+        "test_registered_speech_ids_coexist_and_revalidate_before_every_call": 1,
+        "test_invalid_local_registry_does_not_disable_installed_system_voices": 1,
+        "test_machine_engine_registrations_are_excluded_from_complete_backup": 1,
+        "test_write_budget_rejection_retains_the_last_readable_registry": 1,
+        "test_profile_labels_use_normalized_unicode_before_duplicate_check": 1,
+        "test_production_resolves_optional_music_before_any_engine_execution": 1,
+        "test_existing_hardlinked_settings_lock_cannot_touch_another_file": 1,
+        "test_existing_directory_settings_lock_is_rejected_before_publication": 1,
+        "test_legacy_archive_failure_preserves_source_and_retries_without_partial_final": 2
+      },
+      "tests.audio.test_local_voice_helper": {
+        "test_constructor_and_manifest_verification_never_execute": 1,
+        "test_closed_manifest_contract_rejects_unreviewed_authority": 18,
+        "test_native_launch_is_one_exact_pinned_executable_without_shell_arguments": 1,
+        "test_actual_catalogue_has_stable_exact_tokens_and_only_supported_controls": 1,
+        "test_actual_invalid_or_authority_bearing_reply_never_publishes_catalogue": 6,
+        "test_catalogue_fields_tokens_and_budgets_are_exact": 10,
+        "test_actual_literal_unicode_and_controls_cross_json_stdin_without_shell": 1,
+        "test_controls_not_declared_by_selected_voice_fail_before_render": 7,
+        "test_actual_invalid_render_has_no_visible_output_and_removes_private_stage": 5,
+        "test_existing_output_is_never_replaced_or_sent_to_helper": 1,
+        "test_changed_reviewed_pack_is_rejected_before_process_start": 3,
+        "test_hardlinked_launch_file_is_denied": 1,
+        "test_selected_voice_removed_after_render_is_not_published": 1,
+        "test_rendered_pcm_remains_held_through_final_catalogue_recheck": 1,
+        "test_actual_running_child_stops_before_private_pcm_cleanup": 2,
+        "test_precancelled_operation_never_starts_a_process": 1,
+        "test_helper_profile_registration_is_passive_and_old_raw_settings_are_exact": 1,
+        "test_current_registered_helper_voice_runs_through_same_registry_and_reopens_stably": 1,
+        "test_registered_helper_rechecks_current_profile_before_every_render": 3,
+        "test_two_registered_helpers_keep_distinct_saved_ids_without_silent_rebinding": 1,
+        "test_helper_machine_registration_and_runtime_are_excluded_from_actual_backup": 1
+      },
+      "tests.ui.test_engine_settings": {
+        "test_selecting_another_profile_clears_previous_registration_authority": 1,
+        "test_saving_uses_the_exact_reviewed_manifest_pin_in_the_shared_worker": 1,
+        "test_changed_manifest_error_preserves_registration_review_and_never_reports_success": 1,
+        "test_close_waits_for_cancelled_verification_before_releasing_modal": 1,
+        "test_profile_settings_menu_is_semantic_idempotent_and_does_not_open_on_install": 1,
+        "test_studio_default_pipeline_resolves_music_only_through_local_profiles": 1
+      }
+    },
+    "interpreter_sha256": "048a00b6394bfaa1a33acd2a7e08333e559fac82d58eb1449d9d2002f6403609",
+    "actual_cases": 111,
+    "elapsed_seconds": 23.25
+  },
+  "native": {
+    "schema": 1,
+    "status": "PASS",
+    "installed_mode": true,
+    "isolated": true,
+    "native_controls": "EXECUTED",
+    "synthetic_helper_execution": "EXECUTED",
+    "native_vendor_execution": "NOT_RUN",
+    "physical_playback": "NOT_RUN",
+    "nvda": "NOT_RUN",
+    "speech_quality": "NOT_CLAIMED",
+    "source_commit": "f9291652a6bb05ac6b896e924568d8ccbc3b634f",
+    "fixture_source_sha256": "cdd525bba513c4f58ace97b99882f2045ce87f387ab80ba366d487ea79d344f5",
+    "checks": [
+      "actual Windows local profile controls",
+      "public pinned helper pack has complete executable and script identity",
+      "old helper declarations remain passive before explicit review",
+      "manifest review launches no helper process",
+      "native review exposes exact helper protocol engine and manifest hash",
+      "native reviewed registration is enabled and names are accessible",
+      "native Save owns the existing supervised operation",
+      "native Save persists the exact reviewed pin and Unicode name",
+      "native registration never invokes the executable",
+      "explicit registration preserves exact schema1 raw history",
+      "native selected helper can be rechecked disabled or removed",
+      "native disable keeps the reviewed runtime and saved identity",
+      "native enable retains the same explicit profile identity",
+      "native Close settles registration workers without executing speech",
+      "passive registry construction never discovers unselected helper code",
+      "actual helper catalogue uses the current registered voice namespace",
+      "actual helper catalogue retains Unicode language license and finite controls",
+      "actual helper cache is bound to the reviewed manifest and profile",
+      "actual helper output is verified bounded PCM16",
+      "actual JSON stdin retains exact literal text and selected controls",
+      "accepted helper output leaves no temporary speech stage",
+      "reopened explicit profile retains exact saved voice and cache identity",
+      "occupied output refuses execution and preserves exact bytes",
+      "disabled captured profile cannot execute or publish",
+      "actual cancellation settles its owned child before returning",
+      "actual cancellation publishes no output and removes private PCM",
+      "every actual helper uses the fixed isolated Python argv",
+      "reviewed executable script and inventory remain unchanged",
+      "complete backup restores no active machine executable registration",
+      "passive restored library supports full rebackup",
+      "all helper process owners are settled at final acceptance"
+    ],
+    "fixture": {
+      "manifest_sha256": "988bd3f900a5bb897f0026843b736490ef70c00ed5c77547a07f7790331a1eac",
+      "fixture_script_sha256": "ea79724938d26739a572496a53bee71715dac331e7e90eaaca7f34cc1a2e2940",
+      "selected_python_sha256": "21bb438c0d4a6f1f164b9a646f6ee000340185e5871180aec06db8d3f07c0082",
+      "host_python_sha256": "5f7b89a612c9b8af1d6456cdfcd1dbe5ca630849e79aebced9bee9a6694952ec",
+      "host_python_version": "3.11.9 (tags/v3.11.9:de54cf5, Apr  2 2024, 10:12:12) [MSC v.1938 64 bit (AMD64)]",
+      "files": 8,
+      "bytes": 571630,
+      "launch": "python",
+      "protocol": "carr.local-voice.v1"
+    },
+    "fixture_after": {
+      "manifest_sha256": "988bd3f900a5bb897f0026843b736490ef70c00ed5c77547a07f7790331a1eac",
+      "fixture_script_sha256": "ea79724938d26739a572496a53bee71715dac331e7e90eaaca7f34cc1a2e2940",
+      "selected_python_sha256": "21bb438c0d4a6f1f164b9a646f6ee000340185e5871180aec06db8d3f07c0082",
+      "host_python_sha256": "5f7b89a612c9b8af1d6456cdfcd1dbe5ca630849e79aebced9bee9a6694952ec",
+      "host_python_version": "3.11.9 (tags/v3.11.9:de54cf5, Apr  2 2024, 10:12:12) [MSC v.1938 64 bit (AMD64)]",
+      "files": 8,
+      "bytes": 571630,
+      "launch": "python",
+      "protocol": "carr.local-voice.v1"
+    },
+    "output_sha256": "664d2ed7297f1760bfbca21d713e4b59353922897ed4bef7b134ac567ed01692",
+    "actual_processes": 10,
+    "sample_rate": 16000,
+    "frames": 512,
+    "all_children_settled": true,
+    "retained_schema1_sha256": "12e4d3ad5a61980bc5cf6de89e3e6caffddf85f3faac89ca8f8091831e0e2db3",
+    "module_origins": {
+      "carr_library.audio.local_voice_helper": {
+        "path": "D:\\a\\_temp\\carr-local-voice-helper-46029759866-1\\installed\\Lib\\site-packages\\carr_library\\audio\\local_voice_helper.py",
+        "sha256": "f550bd4e58a5d981e0e2f0028346d5df458db610b6887984624cb90fec33a0e1"
+      },
+      "carr_library.runtime_settings": {
+        "path": "D:\\a\\_temp\\carr-local-voice-helper-46029759866-1\\installed\\Lib\\site-packages\\carr_library\\runtime_settings.py",
+        "sha256": "4343243d94e816c7be5809b6cf07cea2f91660583465a13c35d4b52fe9fbe9dc"
+      },
+      "carr_library.audio.model_manifest": {
+        "path": "D:\\a\\_temp\\carr-local-voice-helper-46029759866-1\\installed\\Lib\\site-packages\\carr_library\\audio\\model_manifest.py",
+        "sha256": "28419689f800edea7b0d53b8b9066e203d7eaf7f9e7acf7287d6b2c0aeda0239"
+      },
+      "carr_library.audio.engines": {
+        "path": "D:\\a\\_temp\\carr-local-voice-helper-46029759866-1\\installed\\Lib\\site-packages\\carr_library\\audio\\engines.py",
+        "sha256": "1ec6425b30a1a1961bddba13b1686e4cc7766eb205d48c3c981c9de409230d1f"
+      },
+      "carr_library.audio.windows_process": {
+        "path": "D:\\a\\_temp\\carr-local-voice-helper-46029759866-1\\installed\\Lib\\site-packages\\carr_library\\audio\\windows_process.py",
+        "sha256": "b9636fe98e4a8a594c8a6680d1ac507ef857869cd18964b24cee573ac0447272"
+      },
+      "carr_library.audio.jobs": {
+        "path": "D:\\a\\_temp\\carr-local-voice-helper-46029759866-1\\installed\\Lib\\site-packages\\carr_library\\audio\\jobs.py",
+        "sha256": "584f4a512067b13847ef4f60af9be6b3bdf0917608010e4bc7235056ac956a33"
+      },
+      "carr_library.ui.engine_settings": {
+        "path": "D:\\a\\_temp\\carr-local-voice-helper-46029759866-1\\installed\\Lib\\site-packages\\carr_library\\ui\\engine_settings.py",
+        "sha256": "c97b823a0794f0d91353a3d4cd3c43320d5041a763a05bd7cef72b85adab0298"
+      },
+      "carr_library.ui.transcription_v43_dialog": {
+        "path": "D:\\a\\_temp\\carr-local-voice-helper-46029759866-1\\installed\\Lib\\site-packages\\carr_library\\ui\\transcription_v43_dialog.py",
+        "sha256": "419390f18defc627353f37de5c0ce98ab488485c7cb66dda9161977a1b477a3b"
+      },
+      "carr_library.library_backup": {
+        "path": "D:\\a\\_temp\\carr-local-voice-helper-46029759866-1\\installed\\Lib\\site-packages\\carr_library\\library_backup.py",
+        "sha256": "22e553adc507439fb096239149c6497528371e04fefdc252267220777bfeca15"
+      }
+    }
+  },
+  "aggregate": {
+    "schema": 1,
+    "status": "PASS",
+    "source_cases": 111,
+    "installed_cases": 111,
+    "native_checks": 31,
+    "oracle_sha256": "9d78ea3f4bf10641db9801c02916839bbb777f05309b54bcd4e6bfec061a2a04",
+    "nvda": "NOT_RUN",
+    "physical_playback": "NOT_RUN",
+    "speech_quality": "NOT_CLAIMED",
+    "native_vendor_execution": "NOT_RUN",
+    "source_commit": "f9291652a6bb05ac6b896e924568d8ccbc3b634f",
+    "source_tree": "f459e6a8debe8d00d89bfe5a780055f0fd06366f",
+    "wheel_sha256": "f42d5a65f317d2dddf9d91a0d7ea67a521cbab4bb31137d3444c1f55adcb66e9",
+    "actual_ffmpeg": null,
+    "native_receipt_sha256": "747ace31b75bd9adc1c9c4c0f42b04e87a1158a83c3b859565697a14adbbb356"
+  },
+  "job_steps": [
+    {
+      "name": "Set up job",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 1
+    },
+    {
+      "name": "Check out the exact event source",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 2
+    },
+    {
+      "name": "Record exact candidate and initial qualification status",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 3
+    },
+    {
+      "name": "Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 4
+    },
+    {
+      "name": "Build the source-bound wheel and install the existing 56-pin runtime with signed-admission fixtures",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 5
+    },
+    {
+      "name": "Deny outgoing network for the exact installed selected local voice-helper host",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 6
+    },
+    {
+      "name": "Run exact source helper and preserved profile regressions",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 7
+    },
+    {
+      "name": "Run exact installed helper and preserved profile regressions",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 8
+    },
+    {
+      "name": "Run actual installed profile controls and deterministic helper children",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 9
+    },
+    {
+      "name": "Release and verify this run's exact native firewall rule",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 10
+    },
+    {
+      "name": "Require every exact source installed and native receipt",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 11
+    },
+    {
+      "name": "Preserve textual qualification evidence on every outcome",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 12
+    },
+    {
+      "name": "Remove this run's ephemeral synthetic fixtures and the installed environment",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 13
+    },
+    {
+      "name": "Post Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 25
+    },
+    {
+      "name": "Post Check out the exact event source",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 26
+    },
+    {
+      "name": "Complete job",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 27
+    }
+  ],
+  "limits": [
+    "The frozen source is f9291652; this result does not qualify every later root composition or an installer.",
+    "The helper is deterministic public synthetic code executed by a fixed selected pinned Python form; no actual vendor helper or model was executed.",
+    "Native controls, literal JSON/control handling, process cancellation and passive backup/rebackup were exercised; no physical playback, speech quality or NVDA claim.",
+    "The copied interpreter fixture intentionally retains the recorded host-standard-library dependency; it is not a self-contained vendor distribution.",
+    "Artifact digest is GitHub-reported metadata, not a separately downloaded-and-rehashed archive."
+  ]
+}

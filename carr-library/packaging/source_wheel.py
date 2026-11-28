@@ -203,6 +203,8 @@ def verify_application_wheel(wheel, repository, source_commit):
     if resolved != source_commit:
         raise ValueError('Source identity must name the exact commit, not a tag object.')
     source_tree = _git(repository, 'rev-parse', '--verify', source_commit + '^{tree}').decode('ascii').strip()
+    if re.fullmatch('[0-9a-f]{40}', source_tree) is None:
+        raise ValueError('The exact committed source tree is unavailable.')
     entries = _tree(repository, source_commit)
     project = tomllib.loads(_blob(repository, entries, PROJECT + '/pyproject.toml').decode('utf-8'))
     metadata = project.get('project', {})

@@ -1,0 +1,121 @@
+{
+  "schema": 1,
+  "status": "SOURCE_REPAIR_RUNTIME_NOT_RUN",
+  "scope": "Known declared legacy CHM only; general HTML unchanged",
+  "observed": {
+    "source_commit": "65ae1e9cac0352ae950b92f0f58ad6449728a0a9",
+    "source_tree": "f0c7c3b22cc8b7b1657a19a9232f22b28ff30b88",
+    "windows": {
+      "run_id": 46055252984,
+      "job_id": 140696062803,
+      "status": "FAIL",
+      "source_passed": 234,
+      "source_failed": 1,
+      "installed": "NOT_RUN",
+      "native": "NOT_RUN",
+      "failure": "test_legacy_named_reference_preserves_exact_source_terminator[&ltswitch;-<switch;]",
+      "refusal": "CHM HTML recovery changed the ordered visible text.",
+      "artifact": {
+        "id": 15226044157,
+        "bytes": 1143294,
+        "sha256": "cd4a0ca7646e7ddcedd636431aa7fb268bedc364a4a0ec2a8d916afefa06c8c9"
+      }
+    },
+    "linux": {
+      "run_id": 46055252984,
+      "job_id": 140696063040,
+      "status": "PASS",
+      "source_cases": 148,
+      "artifact": {
+        "id": 15225659056,
+        "bytes": 874883,
+        "sha256": "aacd8b4b0fdeaf150493cf7c45f0084702896e8deb56378333eeb9e08951cc9d"
+      }
+    },
+    "exact_public_member_forensics": {
+      "run_id": 46055108640,
+      "job_id": 140695580612,
+      "source_commit": "3cbdc290e1f0fbec3400fa8a5bdda7f6aeaf7137",
+      "source_tree": "c8057cff13f0c951776f1a71de4fc6e63a41d795",
+      "status": "DIAGNOSTIC_COMPLETE",
+      "source_sha256": {
+        "src/carr_library/conversion/legacy.py": "a0ba909c4fea88b6af84154701586a80021f73eb33d3a33acbf460ecce66a1c1",
+        "src/carr_library/conversion/models.py": "c1c6e9ca9f969d1c68c72c22174391240919506ce5118db52a9894fb0324211c",
+        "src/carr_library/extract/document_formats_text.py": "0e81fa6b2c22e8ff1745fc474484cf879fdf6b1c3fcd69d804f1bf78d1e78d7f"
+      },
+      "host_parser": {
+        "path": "/usr/bin/7z",
+        "scope": "Host diagnostic archive parser only; no extracted program is executed.",
+        "sha256": "60fc00b4e1ed37668972c51f03426973d8006db3c7224075878f6d66196d7c27",
+        "version_excerpt": "\n7-Zip 23.01 (x64) : Copyright (c) 1999-2023 Igor Pavlov : 2023-06-20\n 64-bit locale=C.UTF-8 Threads:4 OPEN_MAX:65536\n\n\nLibs:\n 0 : 23.01 : /usr/lib/7zip/7z.so\n 1 : 23.01 : /usr/lib/7zip/Codecs/Rar.so\n\nFormats:\n 0 C...F..........c.a.m+.. w...0  7z       7z            7 z BC AF ' 1C\n 0  ......................  APFS     apfs img      offset=32 N X S B 00\n 0  ......................  APM      apm           E R\n 0  ......................  Ar       ar a deb udeb lib ! < a r c h > 0A\n 0  ......................  Arj      arj           ` EA\n 0  K.....O.....X.........  Base64   b64           \n 0  ......O...............  COFF     obj           \n 0  ...F..................  Cab      cab           M S C F 00 00 00 00\n 0  ......................  Chm      chm chi chq chw I T S F 03 00 00 00 ` 00 00 00\n 0  ",
+        "version_output_sha256": "75e5fe45b7f7aae67d558377af999ceb25a12af6834a43ed468430f089c20c32"
+      },
+      "lxml": {
+        "libxml": [
+          2,
+          14,
+          6
+        ],
+        "version": [
+          6,
+          1,
+          3,
+          0
+        ],
+        "wheel_sha256": "527195c188d7d0af748cd48d220ab8cdc5cb99be3d49ac4d9be7324d8abf9bc0"
+      },
+      "publisher": {
+        "bytes": 2003456,
+        "sha256": "6dc822569e777d9a3ecd5ffcbc22b55600af87e6c5d9810a64e8566cf5a4af9f",
+        "url": "https://github.com/ip7z/7zip/releases/download/26.06/7z2606-x64.msi",
+        "version": "26.06"
+      },
+      "members": [
+        {
+          "member": "fm/plugins/7-zip/add.htm",
+          "bytes": 16035,
+          "sha256": "b6bff175f02f13a83cd585b3b959afa634b85bec8a082d6331ac3663cce41fb0",
+          "recovered_sha256": "21f0578b5a707aa017566bf22b12c28decf434f1bcdc535d0ac345acbaae388f",
+          "status": "RETURNED"
+        },
+        {
+          "member": "cmdline/switches/index.htm",
+          "bytes": 7746,
+          "sha256": "38308f9d9bbdf73d55b19facdd13f4fe97e30a89141aa08aabe9c7ae0de064e8",
+          "recovered_sha256": "d1b47e7feadd0f557851d897fe9da0072fb86d5b8b79fe7a5ca0a4e57d7d67f4",
+          "status": "RETURNED"
+        }
+      ],
+      "qualification": "NOT_WINDOWS_OR_PRODUCT_QUALIFICATION",
+      "temporary_payload_removed": true,
+      "artifact": {
+        "id": 15226301539,
+        "bytes": 4760,
+        "sha256": "6cba268d30a7466a4d054fadee4f7ac55d115dbfb80db5cb932934b562faa09a"
+      }
+    },
+    "evidence_access": "Exact workflow job logs and GitHub artifact metadata read; archive contents were not independently downloaded in this review."
+  },
+  "change": {
+    "reason": "A terminated unknown named reference also has a valid HTML prefix. The existing strict reader and Windows libxml do not produce the same final semicolon for this spelling.",
+    "behavior": "Capture every exact named-reference callback lexeme and encode its current strict decoded value numerically in a reading copy only when normalization is already required. A terminated named reference alone still returns the existing doctype-normalized input without native recovery.",
+    "unchanged": [
+      "Source bytes and raw/parsed member hashes",
+      "Known PUBLIC declaration dispatch only",
+      "Duplicate attributes/unsafe nesting/control refusal",
+      "Full ordered visible-word digest comparison",
+      "No-network/deny-resolver native HTML parser",
+      "All existing byte/node/depth/deadline bounds",
+      "Native CHM case Counter 4",
+      "CHM remains unqualified"
+    ],
+    "tests": "The existing five terminator cases now require exact numeric input at the recovery boundary and, for terminated references, no native recovery for otherwise valid markup.",
+    "case_counts": {
+      "chm_module": 48,
+      "portable_each_mode": 235,
+      "linux_selected": 148,
+      "native_each_mode": 4
+    }
+  },
+  "new_runtime_status": "NOT_RUN"
+}

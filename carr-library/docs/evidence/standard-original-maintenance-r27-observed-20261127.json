@@ -1,0 +1,350 @@
+{
+  "schema": "carr.standard-original-maintenance-observed.v1",
+  "status": "PARTIAL_NATIVE_RESULT_PRESERVED_OVERALL_UPDATE_FAILED",
+  "observed_source": {
+    "commit": "2d1a4bd89b3c8d63d55848f129e38489e2ea4157",
+    "tree": "f3da6aa231f49c3c8d321128925ff4f790a22221",
+    "run_id": 46061428962,
+    "job_id": 140716369082,
+    "branch": "carr/standard-native-r26-complete-history-d3a-20261127",
+    "conclusion": "failure"
+  },
+  "independent_reader": {
+    "commit": "4d28c4410a6309cd49b71d36ffa7e919d7e2e11b",
+    "tree": "c6ef5ff16a8c0f905876985daa12aafe9907095c",
+    "script_blob": "ab9b6a50aea9fded40807d37cbf21383181a3de0",
+    "workflow_blob": "8eea8c1f56144c0f00a0591410970528a2c90b44",
+    "run_id": 46065840863,
+    "job_id": 140730809423,
+    "conclusion": "success",
+    "log_utf8_sha256": "9201339429d9ac1e636d43e9603def6a0f982be4f06a24560dfc67cafb5f7217",
+    "archive_read": "Existing isolated Ubuntu standard-library ZIP reader; no extraction, archive import or execution.",
+    "bound_checks": [
+      "Artifact ID, source head, run ID, exact byte length and SHA256 match GitHub metadata.",
+      "Downloaded archive bytes have the exact metadata/pinned SHA256 and size.",
+      "Unique ZIP member names, at most 10,000 members and 512 MiB total uncompressed size; selected members at most 4 MiB.",
+      "Selected JSON values are inert data; native UTF-16/UTF-8 logs are decoded as text only.",
+      "Exact maintenance field set, four ordered checks and three True flags were independently matched.",
+      "Maintenance sources and setup/manifest digests agree with inputs, compiled-build metadata and independently measured manifest member SHA256."
+    ]
+  },
+  "artifact": {
+    "run": 46061428962,
+    "commit": "2d1a4bd89b3c8d63d55848f129e38489e2ea4157",
+    "id": 15229972246,
+    "bytes": 1697192,
+    "sha256": "3e2f5f9ab7011612950c0196849edcd6ae89f8d78616c86c389fd897eeb78af9",
+    "kind": "standard-original-maintenance-and-managed-health-failure",
+    "name": "carr-standard-native-2d1a4bd89b3c8d63d55848f129e38489e2ea4157-1",
+    "metadata": {
+      "id": 15229972246,
+      "name": "carr-standard-native-2d1a4bd89b3c8d63d55848f129e38489e2ea4157-1",
+      "size_in_bytes": 1697192,
+      "url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15229972246",
+      "archive_download_url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15229972246/zip",
+      "expired": false,
+      "created_at": "2026-11-27T20:37:28Z",
+      "expires_at": "2026-12-04T20:37:26Z",
+      "updated_at": "2026-11-27T20:37:28Z",
+      "digest": "sha256:3e2f5f9ab7011612950c0196849edcd6ae89f8d78616c86c389fd897eeb78af9",
+      "workflow_run": {
+        "id": 46061428962,
+        "repository_id": 1341777614,
+        "head_repository_id": 1341777614,
+        "head_branch": "carr/standard-native-r26-complete-history-d3a-20261127",
+        "head_sha": "2d1a4bd89b3c8d63d55848f129e38489e2ea4157"
+      }
+    }
+  },
+  "inventory": {
+    "total_members": 87,
+    "selected": [
+      "standard-update/candidate-application-wheel.json",
+      "standard-update/disk-budget.json",
+      "standard-update/inputs.json",
+      "standard-update/maintenance-install.log",
+      "standard-update/native-managed-1ae8ab74f2ce41caa4d5c99e64aab394.log",
+      "standard-update/native-probe.log",
+      "standard-update/original-build.json",
+      "standard-update/original-candidate-application-wheel.json",
+      "standard-update/original-install.log",
+      "standard-update/original-maintenance.json",
+      "standard-update/original-manifest.json",
+      "standard-update/previous-build.json",
+      "standard-update/previous-manifest.json"
+    ],
+    "absent_requested_records": [
+      "library.json",
+      "native-restart-crash-after-activation.json",
+      "native-restart-recover.json",
+      "native.json",
+      "proof.json",
+      "verdict.log"
+    ]
+  },
+  "selected_member_identities": [
+    {
+      "name": "standard-update/candidate-application-wheel.json",
+      "bytes": 362,
+      "sha256": "2bafc24463c8b6561b31361dfd5b156f63f2329c46aa0217856e8098ba75e356"
+    },
+    {
+      "name": "standard-update/disk-budget.json",
+      "bytes": 667,
+      "sha256": "1b6bbe78cdc11bce2269cd0444a45d04a8474fe30946ff498b6c6e366bdd275e"
+    },
+    {
+      "name": "standard-update/inputs.json",
+      "bytes": 1276,
+      "sha256": "cceb50bc2f91ad76e5a0126ed29c0715df8f6888f95bae5f70dcefa4d53c7567"
+    },
+    {
+      "name": "standard-update/maintenance-install.log",
+      "bytes": 3191106,
+      "sha256": "d856e5329c54cddfa9c8e3df71bb64d884587a1f0f8deb04166185ec60b9252d"
+    },
+    {
+      "name": "standard-update/native-managed-1ae8ab74f2ce41caa4d5c99e64aab394.log",
+      "bytes": 3194068,
+      "sha256": "2a300b16238da2eefcf673cf7ff05598b9d6e80e7b48fe4fe99c6faa7d158473"
+    },
+    {
+      "name": "standard-update/native-probe.log",
+      "bytes": 2231,
+      "sha256": "bf0d0ae5cdd25d720336c629699826a527fde7bf5abdd5cda2c2e52916fd67ea"
+    },
+    {
+      "name": "standard-update/original-build.json",
+      "bytes": 878,
+      "sha256": "9157942adf4bf28c9501692192ac79c4eac31c126f3ab700393b786fee2d9934"
+    },
+    {
+      "name": "standard-update/original-candidate-application-wheel.json",
+      "bytes": 362,
+      "sha256": "2bafc24463c8b6561b31361dfd5b156f63f2329c46aa0217856e8098ba75e356"
+    },
+    {
+      "name": "standard-update/original-install.log",
+      "bytes": 3190683,
+      "sha256": "76311bdaab5c761730c5decab03343d67283e9f792b13e8d8960bb7a9a5cd363"
+    },
+    {
+      "name": "standard-update/original-maintenance.json",
+      "bytes": 731,
+      "sha256": "bd08c407eb7f091540c3ca1f75e0e6d615d911cebabdbd6a7d3dddb276655e79"
+    },
+    {
+      "name": "standard-update/original-manifest.json",
+      "bytes": 543072,
+      "sha256": "afacc9f2d4c34532c3f91494e8e033ce963a25dedbf776b61328ae5071694c7d"
+    },
+    {
+      "name": "standard-update/previous-build.json",
+      "bytes": 878,
+      "sha256": "a17ce31f2815ce5434abb9377033831c66198df2cae71b0828ae5a1785f64709"
+    },
+    {
+      "name": "standard-update/previous-manifest.json",
+      "bytes": 543072,
+      "sha256": "ce9efa582e9f311b12b62f1c02a9a1bc1fe3cf915b26d36813c82fed1ce256e8"
+    }
+  ],
+  "actual_maintenance_receipt": {
+    "actual_original_process_preserved": true,
+    "actual_original_sealed_generation_preserved": true,
+    "checks": [
+      "exact-original-source-installed",
+      "ordinary-maintenance-installer-without-update-authority",
+      "original-process-and-sealed-generation-preserved",
+      "maintenance-native-self-test-and-user-data-preserved"
+    ],
+    "original_manifest_sha256": "afacc9f2d4c34532c3f91494e8e033ce963a25dedbf776b61328ae5071694c7d",
+    "original_setup_sha256": "9dc575f94b496b2295ac37d139b95ab3fa7a6969cde06325dc3987d2c802ff44",
+    "original_source": "91332206578b4d8dc779fec08c8d51a67962b0ff",
+    "previous_source": "3cefda9cc3be02a96d4e40b291645f1bfc1fcc6f",
+    "status": "passed",
+    "user_data_preserved": true
+  },
+  "actual_input_receipt": {
+    "authenticode_verified": false,
+    "candidate_manifest_sha256": "594859eb0dc81897761aac044570efbf2ad6298f7ad7962bd894f95e4a94e8eb",
+    "candidate_setup_sha256": "09e27dd52dbe00e72b30813269ab38c83ceaf8a8a387b1e559dcb449503d42ea",
+    "candidate_source": "2d1a4bd89b3c8d63d55848f129e38489e2ea4157",
+    "candidate_tree": "f3da6aa231f49c3c8d321128925ff4f790a22221",
+    "compiler_engine_sha256": "1a6ff68241e7f3b18543bb875283788913abbdd7b9d7403ac094598d044def7a",
+    "compiler_sha256": "eb6f4410c8db367a5f74127e8025ad2ccacc0afabbe783959d237df3050f97fb",
+    "dependency_lock_sha256": "12d587307f4ca4ebfadc881726ee9f0710b2f58af797fdebd5d4a732cc803edd",
+    "dependency_sbom_sha256": "a8e0dd50c3eeb598c6b33f00057aea9fed4749367b434796be57813eac9e6a79",
+    "existing_full_manifest_sha256": "4cdf7e207561e745b9d3d1dc828b72fdc3ec3dbaaf909ba7f516438c2e5f5c87",
+    "nvda_verified": false,
+    "original_source": "91332206578b4d8dc779fec08c8d51a67962b0ff",
+    "original_tree": "8f9de28e362ad3c53addb247ad8d774c16a9b46a",
+    "previous_source": "3cefda9cc3be02a96d4e40b291645f1bfc1fcc6f",
+    "previous_tree": "ac71a966c6ea7a26e3265b53ce6859a87d0fcc57",
+    "production_authority_qualified": false,
+    "schema": 1,
+    "status": "verified-inputs",
+    "synthetic_publisher_and_anchor": true
+  },
+  "actual_original_build_receipt": {
+    "authenticode_verified": false,
+    "automatic_network": false,
+    "compiler_sha256": "eb6f4410c8db367a5f74127e8025ad2ccacc0afabbe783959d237df3050f97fb",
+    "installer": {
+      "bytes": 656131620,
+      "path": "dist/Resonance-Setup-91332206578b.exe",
+      "sha256": "9dc575f94b496b2295ac37d139b95ab3fa7a6969cde06325dc3987d2c802ff44"
+    },
+    "kind": "standard-windows-installer",
+    "managed_update_protocol": "resonance-standard-update/1",
+    "manifest_sha256": "afacc9f2d4c34532c3f91494e8e033ce963a25dedbf776b61328ae5071694c7d",
+    "native_install_repair_uninstall": "NOT_RUN",
+    "nvda_verified": false,
+    "payload_files": 4330,
+    "recipe_sha256": "eb748eb9793ec6cbf408379ad07e5e0678058cd86e4b7c9042a5d0405469515b",
+    "schema": 1,
+    "source_commit": "91332206578b4d8dc779fec08c8d51a67962b0ff",
+    "status": "compiled",
+    "update_or_entitlement_authority": false
+  },
+  "actual_previous_build_receipt": {
+    "authenticode_verified": false,
+    "automatic_network": false,
+    "compiler_sha256": "eb6f4410c8db367a5f74127e8025ad2ccacc0afabbe783959d237df3050f97fb",
+    "installer": {
+      "bytes": 656134700,
+      "path": "dist/Resonance-Setup-3cefda9cc3be.exe",
+      "sha256": "d3d2a5e1efd78aac2bafeacd2e347572f266b255781cf4f8492068ccba56ee9c"
+    },
+    "kind": "standard-windows-installer",
+    "managed_update_protocol": "resonance-standard-update/1",
+    "manifest_sha256": "ce9efa582e9f311b12b62f1c02a9a1bc1fe3cf915b26d36813c82fed1ce256e8",
+    "native_install_repair_uninstall": "NOT_RUN",
+    "nvda_verified": false,
+    "payload_files": 4330,
+    "recipe_sha256": "95bc869e5aa14573292bfd9af8f5abad43615d0df9622781567ad196373522d0",
+    "schema": 1,
+    "source_commit": "3cefda9cc3be02a96d4e40b291645f1bfc1fcc6f",
+    "status": "compiled",
+    "update_or_entitlement_authority": false
+  },
+  "actual_original_manifest_summary": {
+    "bundled_audio_runtime": false,
+    "bundled_model": true,
+    "bundled_native_launcher": true,
+    "bundled_native_runtime": true,
+    "bundled_ocr": true,
+    "bundled_python": true,
+    "files": {
+      "canonical_sha256": "bf6eb0bf6a8baadbcd2e12350f2e0d1d0021e8ab5296baa9e87a0159262bce52",
+      "entries": 4330
+    },
+    "schema": 1,
+    "source_commit": "91332206578b4d8dc779fec08c8d51a67962b0ff",
+    "target": "Windows x64 / CPython 3.11"
+  },
+  "actual_previous_manifest_summary": {
+    "bundled_audio_runtime": false,
+    "bundled_model": true,
+    "bundled_native_launcher": true,
+    "bundled_native_runtime": true,
+    "bundled_ocr": true,
+    "bundled_python": true,
+    "files": {
+      "canonical_sha256": "13480fd59a03e4c958e22afbebb8915807f7b97fbab82a908cc6b92e17fc2ef0",
+      "entries": 4330
+    },
+    "schema": 1,
+    "source_commit": "3cefda9cc3be02a96d4e40b291645f1bfc1fcc6f",
+    "target": "Windows x64 / CPython 3.11"
+  },
+  "actual_disk_reservation_receipt": {
+    "actual_maintenance_environment_measurement": "NOT_YET_INSTALLED",
+    "actual_original_environment_measurement": "NOT_YET_INSTALLED",
+    "candidate_payload_bytes": 798375296,
+    "headroom_bytes": 536870912,
+    "maintenance_application_expanded_bytes": 6450261,
+    "maintenance_payload_bytes": 797921869,
+    "measured_candidate_environment_bytes": 306135412,
+    "native_environment_reservation_bytes": 1543576176,
+    "native_payload_reservation_bytes": 3990969077,
+    "native_setup_reservation_bytes": 9847894424,
+    "original_application_expanded_bytes": 6448855,
+    "original_payload_bytes": 797921320,
+    "required_free_bytes": 15919310589,
+    "schema": 1
+  },
+  "native_setup_log_summaries": [
+    {
+      "member": "standard-update/maintenance-install.log",
+      "verified_member": {
+        "name": "standard-update/maintenance-install.log",
+        "bytes": 3191106,
+        "sha256": "d856e5329c54cddfa9c8e3df71bb64d884587a1f0f8deb04166185ec60b9252d"
+      },
+      "success_lines": [
+        "2026-11-27 20:34:45.007   Installation process succeeded.",
+        "2026-11-27 20:34:45.007   Need to restart Windows? No",
+        "2026-11-27 20:34:45.874   Log closed."
+      ]
+    },
+    {
+      "member": "standard-update/native-managed-1ae8ab74f2ce41caa4d5c99e64aab394.log",
+      "verified_member": {
+        "name": "standard-update/native-managed-1ae8ab74f2ce41caa4d5c99e64aab394.log",
+        "bytes": 3194068,
+        "sha256": "2a300b16238da2eefcf673cf7ff05598b9d6e80e7b48fe4fe99c6faa7d158473"
+      },
+      "success_lines": [
+        "2026-11-27 20:37:05.738   Installation process succeeded.",
+        "2026-11-27 20:37:05.738   Need to restart Windows? No",
+        "2026-11-27 20:37:06.613   Log closed."
+      ]
+    },
+    {
+      "member": "standard-update/original-install.log",
+      "verified_member": {
+        "name": "standard-update/original-install.log",
+        "bytes": 3190683,
+        "sha256": "76311bdaab5c761730c5decab03343d67283e9f792b13e8d8960bb7a9a5cd363"
+      },
+      "success_lines": [
+        "2026-11-27 20:32:55.184   Installation process succeeded.",
+        "2026-11-27 20:32:55.184   Need to restart Windows? No",
+        "2026-11-27 20:32:56.059   Log closed."
+      ]
+    }
+  ],
+  "actual_native_failure_log": "{\"system_helper_preflight\": {\"attributes\": 32, \"bytes\": 450560, \"device\": 2695480082, \"inode\": 281474976769205, \"links\": 2, \"mode\": 33279, \"mtime_ns\": 1792922310181340300, \"path\": \"C:\\\\Windows\\\\System32\\\\WindowsPowerShell\\\\v1.0\\\\powershell.exe\", \"selection\": \"GetSystemDirectoryW/fixed-WindowsPowerShell-v1.0\"}}\nTraceback (most recent call last):\n  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\packaging\\probe_standard_update_windows.py\", line 528, in <module>\n    main()\n  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\packaging\\probe_standard_update_windows.py\", line 519, in main\n    value = inspect(args)\n            ^^^^^^^^^^^^^\n  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\packaging\\probe_standard_update_windows.py\", line 325, in inspect\n    transaction.apply(package)\n  File \"D:\\a\\_temp\\carr-bundle-ci\\complete bundle\\.venv\\Lib\\site-packages\\carr_library\\security\\standard_installation.py\", line 482, in apply\n    if code or not self.host.health(self.root, observed, release, cancelled=cancelled):\n                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\packaging\\probe_standard_update_windows.py\", line 139, in health\n    good = super().health(root, snapshot, release, cancelled=cancelled)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"D:\\a\\_temp\\carr-bundle-ci\\complete bundle\\.venv\\Lib\\site-packages\\carr_library\\security\\standard_windows.py\", line 379, in health\n    self.health_adapter._verify_release(generation, release)\n  File \"D:\\a\\_temp\\carr-bundle-ci\\complete bundle\\.venv\\Lib\\site-packages\\carr_library\\security\\installation.py\", line 238, in _verify_release\n    self._require_portable(root)\n  File \"D:\\a\\_temp\\carr-bundle-ci\\complete bundle\\.venv\\Lib\\site-packages\\carr_library\\security\\installation.py\", line 230, in _require_portable\n    raise TrustError('This managed installation requires its reviewed setup/maintenance procedure. '\ncarr_library.security._files.TrustError: This managed installation requires its reviewed setup/maintenance procedure. A program-only update cannot replace installer ownership receipts.\n",
+  "observed_results": {
+    "ordinary_original_to_maintenance": {
+      "status": "PASS",
+      "checks": 4,
+      "source": "91332206578b4d8dc779fec08c8d51a67962b0ff",
+      "maintenance_source": "3cefda9cc3be02a96d4e40b291645f1bfc1fcc6f"
+    },
+    "managed_candidate_setup": {
+      "status": "INNO_INSTALLATION_LOG_REPORTED_SUCCESS",
+      "source": "2d1a4bd89b3c8d63d55848f129e38489e2ea4157",
+      "does_not_imply_health_or_rollback": true
+    },
+    "managed_health": {
+      "status": "FAIL",
+      "boundary": "WindowsStandardHost.health called WindowsBundleAdapter._verify_release, whose unchanged portable-owner guard rejected the managed generation.",
+      "error": "TrustError: This managed installation requires its reviewed setup/maintenance procedure. A program-only update cannot replace installer ownership receipts."
+    },
+    "rollback": {
+      "status": "NOT_VERIFIED_BY_RETAINED_RECEIPT",
+      "reason": "The source has rollback-on-exception, but this failure rethrows before the probe's exact rollback assertions. No native completion/restart/library/final verdict receipt is present; no successful rollback is inferred from the call stack or installer exit."
+    },
+    "restart_recovery": "NOT_REACHED_OR_NOT_RECORDED",
+    "installed_library50": "NOT_REACHED_OR_NOT_RECORDED",
+    "complete_managed15": "FAIL"
+  },
+  "limits": [
+    "This preserves the four actual ordinary-maintenance checks separately from the overall failing managed-update run; it does not turn the whole run green.",
+    "Complete original and maintenance setup bytes are not in the selected artifact members. Their digests match the executed build/maintenance receipts; the independent reader does not claim to rehash those missing setup executables.",
+    "Native installer log output is the bounded 48,000-character tail of each fully digest-verified member. Native failure text is within that bound and is retained here.",
+    "Large manifest file maps are summarized by the existing reader; member bytes/SHA256 remain exact. No new source, redistribution, Authenticode, production update authority or NVDA qualification is claimed."
+  ]
+}

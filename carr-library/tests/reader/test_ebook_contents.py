@@ -20,7 +20,7 @@ from carr_library.reader import ebook_contents
 from carr_library.reader.ebook import list_ebooks, read_ebook_section
 from carr_library.reader.ebook_contents import extraction_settings, open_ebook, read_chapter
 from carr_library.reader.reading_desk import ReadingDesk
-from carr_library.storage.revisions import Page, Storage
+from carr_library.storage.revisions import Page, Storage, CURRENT_SCHEMA_VERSION
 
 
 write_book = runpy.run_path(str(Path(__file__).with_name('test_ebook_reader.py')))['book']
@@ -55,7 +55,7 @@ def _published(tmp_path, *, enhanced, mutate=None, revision_override=None, sourc
                           ('Catalog author',), 'uk', None, None, ())
     with exclusive_writer(app.root):
         app.assets.retain(asset.data, asset.mime, asset.digest)
-        with closing(Storage(app.database)) as storage:
+        with closing(Storage(app.database, schema_version=CURRENT_SCHEMA_VERSION)) as storage:
             _CatalogPublisher(storage, record).publish_revision(workspace, 'edition', revision,
                 asset.digest, config, tuple(Page(item['raw_text']) for item in extracted['records']))
     return app, workspace, revision, source, extracted, config

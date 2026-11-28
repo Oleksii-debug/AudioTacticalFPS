@@ -86,8 +86,9 @@ def capture_backup_receipt(directory, manifest_sha256, *, max_bytes, max_files,
                            cancelled=lambda: False):
     """Hash a complete backup within the approved byte/file budget.
 
-    The creating service must also pass its byte limit to ``app.backup`` so
-    oversized output is rejected before publication. This scan independently
+    The caller stages the existing backup service's output and enforces this
+    receipt before publication. Its snapshot creation retains the existing
+    backup service's separate working-space limits. This scan independently
     validates the resulting artifact and keeps job checkpoint size constant.
     """
     _digest(manifest_sha256)

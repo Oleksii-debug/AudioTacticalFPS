@@ -1,0 +1,255 @@
+{
+  "schema": 1,
+  "status": "FAIL",
+  "scope": "Original frozen current Save/Edit menu gate; no aggregate native qualification.",
+  "source_commit": "dc30b29d724b0033f968b838142366469e3901b8",
+  "source_tree": "a76e0a803d8bf8a310317ff6b2d99bce5becb008",
+  "run_id": 46033018901,
+  "job_id": 140621325572,
+  "artifact": {
+    "id": 15219665535,
+    "bytes": 408453,
+    "sha256": "13621968938271b1ef21aabf6c126e72a83392b30fd7db549d6366fcd6d079fd"
+  },
+  "source": {
+    "status": "PASS",
+    "cases": 89,
+    "receipt": {
+      "schema": 1,
+      "status": "PASS",
+      "mode": "source",
+      "declared_cases": 89,
+      "timeout_seconds": 1500,
+      "oracle_sha256": "9def58508c66d1006512318073bd6eef9658a41c5e2e686fb8708594b1576acf",
+      "source_commit": "dc30b29d724b0033f968b838142366469e3901b8",
+      "source_tree": "a76e0a803d8bf8a310317ff6b2d99bce5becb008",
+      "wheel_sha256": "111100c6f590d660677549a19e33914b1d1dda663d318889f551872724bf1118",
+      "checkout_manifest_sha256": "93195d874c5a8530cb7814d87282509ffd3b924410ff50ec411a6032ef9f0029",
+      "tracked_source_files": 1536,
+      "source_only_python": {
+        "bootstrap/semantic_compat/probe.py": "c51758108a418c7bf98ddd459cefdca852777b07cfc95ac669855b1195398ac7",
+        "bootstrap/semantic_compat/test_probe.py": "ae093cae9f00307c09d2ea787dacf7c8c1522184e5480a411c0979023b7b70bb"
+      },
+      "actual_ffmpeg": {
+        "sha256": "3ab4a9c404504ebff6662d6a48661db952f88ee7fb7d5949a711cad7a763b2cf",
+        "version": "ffmpeg version 9.1-full_build-www.gyan.dev Copyright (c) 2000-2026 the FFmpeg developers",
+        "version_sha256": "900a9c75d78682e23c3f73e9e13d4c9625b24a8f0dfb921a879fc5f9e445bc64"
+      },
+      "test_source_sha256": {
+        "tests/ui/test_productivity.py": "4b21f45fda571892aef969c870e4e84a3600f629e28022f5801cc8b27573ffa7",
+        "tests/ui/test_save_all.py": "b9d5616849ef97e5990e1371d37aadcc283a1e45e209dd99f2d8f77a810fcae9",
+        "tests/ui/test_save_all_current_drafts.py": "b3fb4a602a956f19d146ee33a5c5496cce7efe04f4d109f510ae511db9436e78",
+        "tests/ui/test_save_actions_routes.py": "1d9602922ddf7e5f789fa0e134838bf2ff7b586b8924ef0331ab2b1bb7d20136",
+        "tests/__init__.py": "bda1d1b86fa69f604fb87c19f27628942b6bd77aa46b605efbc9cb9d4457183d"
+      },
+      "runner_sha256": {
+        "audio_batch_acceptance.py": "3fcb217a7ed9d535ea9d277191a27504f8e6f452bef235b728036358f9e6e003",
+        "ci_check.py": "a7e90c3a14dc51b78c9af17850a7038bf21513cc5ba41466293cc853cd0e2842",
+        "ci_watchdog.py": "e02be6a6c3406bdf1d9d4c24673363894d03a1ee7948b3b77d6b20fcc2bfc057"
+      },
+      "pytest_exit": 0,
+      "case_counter": {
+        "tests.ui.test_productivity": {
+          "test_shortcut_normalization": 5,
+          "test_typing_system_and_malformed_keys_are_rejected": 17,
+          "test_conflict_check_is_atomic_and_explains_owner": 1,
+          "test_preferences_survive_reopen_and_conflict_keeps_old_file": 1,
+          "test_preferences_reject_duplicate_fields_and_untrusted_data": 1,
+          "test_preferences_atomic_write_failure_keeps_previous": 1,
+          "test_preferences_refuse_linked_target": 1,
+          "test_dynamic_menu_inventory_keeps_fixed_shortcut_and_nested_ids": 1,
+          "test_legacy_preferences_export_keeps_newer_external_file": 2,
+          "test_keyboard_reload_invalid_file_falls_back_without_erasing_it": 1,
+          "test_failed_keymap_persistence_does_not_change_active_keys": 1,
+          "test_save_routes_dirty_note_without_premature_success": 1,
+          "test_save_during_operation_keeps_draft_and_reports_no_success": 1,
+          "test_save_no_draft_is_honest_about_modal_editors": 1
+        },
+        "tests.ui.test_save_actions_routes": {
+          "test_installation_adds_one_edit_menu_and_recovery_to_existing_save_owner": 1,
+          "test_new_commands_reuse_semantic_registry_without_text_key_overrides": 1,
+          "test_menu_events_read_current_focus_instead_of_captured_first_control": 1,
+          "test_edit_routes_only_the_explicit_native_action": 6,
+          "test_foreign_or_cyclic_focus_cannot_receive_main_window_edit": 3,
+          "test_readonly_native_selection_allows_copy_and_select_all": 2,
+          "test_readonly_native_selection_refuses_mutating_actions": 4,
+          "test_current_control_capability_refusal_keeps_its_text": 5,
+          "test_destroyed_native_control_cannot_retarget_another_window": 1,
+          "test_closing_host_never_invokes_a_text_or_recovery_action": 2,
+          "test_recovery_route_uses_the_current_existing_panel_without_saving": 1,
+          "test_recovery_without_selected_evidence_reports_actionable_status": 2,
+          "test_unknown_edit_action_cannot_gain_arbitrary_method_access": 3,
+          "test_adding_recovery_route_keeps_durable_save_all_waiting_for_confirmation": 1,
+          "test_reinstall_retains_existing_routes_and_coordinator_without_duplicate_menus": 1
+        },
+        "tests.ui.test_save_all": {
+          "test_coordinator_follows_native_parent_links_and_rejects_a_cycle": 1,
+          "test_many_clean_documents_do_not_exhaust_the_ui_stack": 1,
+          "test_many_synchronous_durable_saves_finish_once_without_recursion": 1,
+          "test_cancel_check_failure_releases_busy_and_retains_drafts": 1,
+          "test_async_completion_waits_for_durable_result_and_preserves_newer_edit": 1,
+          "test_failure_does_not_skip_other_drafts_or_claim_all_saved": 1,
+          "test_newly_opened_dirty_document_prevents_false_complete": 1,
+          "test_cancellation_after_one_completed_draft_reports_remaining": 1,
+          "test_unregister_is_lease_scoped_and_replacement_is_not_lost": 1,
+          "test_truthy_return_is_not_a_completed_save": 1,
+          "test_close_waits_for_successful_completion_and_rechecks_at_dispatch": 1,
+          "test_failed_save_cancels_pending_close_and_preserves_dirty_state": 1,
+          "test_edit_between_save_confirmation_and_close_dispatch_keeps_window_open": 1,
+          "test_late_save_completion_never_touches_a_destroyed_window": 1,
+          "test_late_close_dispatch_never_touches_a_destroyed_window": 1,
+          "test_close_validation_failure_is_visible_and_cannot_destroy_the_window": 1,
+          "test_forced_shutdown_is_not_falsely_claimed_to_be_delayed": 1
+        },
+        "tests.ui.test_save_all_current_drafts": {
+          "test_save_all_writes_current_managed_studio_and_reading_copy_without_source_edits": 1,
+          "test_studio_conflict_retains_the_other_writer_and_saves_other_open_drafts": 1,
+          "test_running_studio_job_is_reported_as_pending_without_a_concurrent_save": 1
+        }
+      },
+      "interpreter_sha256": "6ca311db2cd01c2a945b9e92b5a1130f5a610516ed3c0d69641e47b6aefc730f",
+      "actual_cases": 89,
+      "elapsed_seconds": 7.561999999999983
+    }
+  },
+  "installed": {
+    "status": "PASS",
+    "cases": 89,
+    "receipt": {
+      "schema": 1,
+      "status": "PASS",
+      "mode": "installed",
+      "declared_cases": 89,
+      "timeout_seconds": 1500,
+      "oracle_sha256": "9def58508c66d1006512318073bd6eef9658a41c5e2e686fb8708594b1576acf",
+      "source_commit": "dc30b29d724b0033f968b838142366469e3901b8",
+      "source_tree": "a76e0a803d8bf8a310317ff6b2d99bce5becb008",
+      "wheel_sha256": "111100c6f590d660677549a19e33914b1d1dda663d318889f551872724bf1118",
+      "checkout_manifest_sha256": "93195d874c5a8530cb7814d87282509ffd3b924410ff50ec411a6032ef9f0029",
+      "tracked_source_files": 1536,
+      "source_only_python": {
+        "bootstrap/semantic_compat/probe.py": "c51758108a418c7bf98ddd459cefdca852777b07cfc95ac669855b1195398ac7",
+        "bootstrap/semantic_compat/test_probe.py": "ae093cae9f00307c09d2ea787dacf7c8c1522184e5480a411c0979023b7b70bb"
+      },
+      "actual_ffmpeg": {
+        "sha256": "3ab4a9c404504ebff6662d6a48661db952f88ee7fb7d5949a711cad7a763b2cf",
+        "version": "ffmpeg version 9.1-full_build-www.gyan.dev Copyright (c) 2000-2026 the FFmpeg developers",
+        "version_sha256": "900a9c75d78682e23c3f73e9e13d4c9625b24a8f0dfb921a879fc5f9e445bc64"
+      },
+      "test_source_sha256": {
+        "tests/ui/test_productivity.py": "4b21f45fda571892aef969c870e4e84a3600f629e28022f5801cc8b27573ffa7",
+        "tests/ui/test_save_all.py": "b9d5616849ef97e5990e1371d37aadcc283a1e45e209dd99f2d8f77a810fcae9",
+        "tests/ui/test_save_all_current_drafts.py": "b3fb4a602a956f19d146ee33a5c5496cce7efe04f4d109f510ae511db9436e78",
+        "tests/ui/test_save_actions_routes.py": "1d9602922ddf7e5f789fa0e134838bf2ff7b586b8924ef0331ab2b1bb7d20136",
+        "tests/__init__.py": "bda1d1b86fa69f604fb87c19f27628942b6bd77aa46b605efbc9cb9d4457183d"
+      },
+      "runner_sha256": {
+        "audio_batch_acceptance.py": "3fcb217a7ed9d535ea9d277191a27504f8e6f452bef235b728036358f9e6e003",
+        "ci_check.py": "a7e90c3a14dc51b78c9af17850a7038bf21513cc5ba41466293cc853cd0e2842",
+        "ci_watchdog.py": "e02be6a6c3406bdf1d9d4c24673363894d03a1ee7948b3b77d6b20fcc2bfc057"
+      },
+      "pytest_exit": 0,
+      "case_counter": {
+        "tests.ui.test_productivity": {
+          "test_shortcut_normalization": 5,
+          "test_typing_system_and_malformed_keys_are_rejected": 17,
+          "test_conflict_check_is_atomic_and_explains_owner": 1,
+          "test_preferences_survive_reopen_and_conflict_keeps_old_file": 1,
+          "test_preferences_reject_duplicate_fields_and_untrusted_data": 1,
+          "test_preferences_atomic_write_failure_keeps_previous": 1,
+          "test_preferences_refuse_linked_target": 1,
+          "test_dynamic_menu_inventory_keeps_fixed_shortcut_and_nested_ids": 1,
+          "test_legacy_preferences_export_keeps_newer_external_file": 2,
+          "test_keyboard_reload_invalid_file_falls_back_without_erasing_it": 1,
+          "test_failed_keymap_persistence_does_not_change_active_keys": 1,
+          "test_save_routes_dirty_note_without_premature_success": 1,
+          "test_save_during_operation_keeps_draft_and_reports_no_success": 1,
+          "test_save_no_draft_is_honest_about_modal_editors": 1
+        },
+        "tests.ui.test_save_actions_routes": {
+          "test_installation_adds_one_edit_menu_and_recovery_to_existing_save_owner": 1,
+          "test_new_commands_reuse_semantic_registry_without_text_key_overrides": 1,
+          "test_menu_events_read_current_focus_instead_of_captured_first_control": 1,
+          "test_edit_routes_only_the_explicit_native_action": 6,
+          "test_foreign_or_cyclic_focus_cannot_receive_main_window_edit": 3,
+          "test_readonly_native_selection_allows_copy_and_select_all": 2,
+          "test_readonly_native_selection_refuses_mutating_actions": 4,
+          "test_current_control_capability_refusal_keeps_its_text": 5,
+          "test_destroyed_native_control_cannot_retarget_another_window": 1,
+          "test_closing_host_never_invokes_a_text_or_recovery_action": 2,
+          "test_recovery_route_uses_the_current_existing_panel_without_saving": 1,
+          "test_recovery_without_selected_evidence_reports_actionable_status": 2,
+          "test_unknown_edit_action_cannot_gain_arbitrary_method_access": 3,
+          "test_adding_recovery_route_keeps_durable_save_all_waiting_for_confirmation": 1,
+          "test_reinstall_retains_existing_routes_and_coordinator_without_duplicate_menus": 1
+        },
+        "tests.ui.test_save_all": {
+          "test_coordinator_follows_native_parent_links_and_rejects_a_cycle": 1,
+          "test_many_clean_documents_do_not_exhaust_the_ui_stack": 1,
+          "test_many_synchronous_durable_saves_finish_once_without_recursion": 1,
+          "test_cancel_check_failure_releases_busy_and_retains_drafts": 1,
+          "test_async_completion_waits_for_durable_result_and_preserves_newer_edit": 1,
+          "test_failure_does_not_skip_other_drafts_or_claim_all_saved": 1,
+          "test_newly_opened_dirty_document_prevents_false_complete": 1,
+          "test_cancellation_after_one_completed_draft_reports_remaining": 1,
+          "test_unregister_is_lease_scoped_and_replacement_is_not_lost": 1,
+          "test_truthy_return_is_not_a_completed_save": 1,
+          "test_close_waits_for_successful_completion_and_rechecks_at_dispatch": 1,
+          "test_failed_save_cancels_pending_close_and_preserves_dirty_state": 1,
+          "test_edit_between_save_confirmation_and_close_dispatch_keeps_window_open": 1,
+          "test_late_save_completion_never_touches_a_destroyed_window": 1,
+          "test_late_close_dispatch_never_touches_a_destroyed_window": 1,
+          "test_close_validation_failure_is_visible_and_cannot_destroy_the_window": 1,
+          "test_forced_shutdown_is_not_falsely_claimed_to_be_delayed": 1
+        },
+        "tests.ui.test_save_all_current_drafts": {
+          "test_save_all_writes_current_managed_studio_and_reading_copy_without_source_edits": 1,
+          "test_studio_conflict_retains_the_other_writer_and_saves_other_open_drafts": 1,
+          "test_running_studio_job_is_reported_as_pending_without_a_concurrent_save": 1
+        }
+      },
+      "interpreter_sha256": "49a27b0ab453e98097bd4dc2ce542d7c57500c42783d72e2f1854a4788a7a9d3",
+      "actual_cases": 89,
+      "elapsed_seconds": 6.046999999999997
+    }
+  },
+  "native": {
+    "status": "FAIL",
+    "required_labels": 38,
+    "observed_labels": [
+      "real Windows native controls",
+      "save implementation loaded from installed package",
+      "native_edit_menu_has_six_named_actions",
+      "native_recovery_and_edit_commands_use_current_registry",
+      "native_edit_undo_restores_previous_draft",
+      "native_edit_redo_obeys_current_control_capability",
+      "native_edit_copy_keeps_exact_draft",
+      "native_edit_cut_changes_only_selected_draft",
+      "native_edit_paste_restores_exact_unicode",
+      "native_edit_select_all_covers_current_control",
+      "native_edit_refuses_readonly_mutation"
+    ],
+    "reason": "The probe required the evidence panel as SingleChoiceDialog.GetParent(), but wxAnyChoiceDialog promotes that panel to its current top-level frame.",
+    "product_outcome": "The native probe stopped before choosing recovery. Product recovery success was not measured in this run."
+  },
+  "repair": {
+    "classification": "qualification probe ownership mismatch",
+    "paths": [
+      "carr-library/tests/ui/native_save_all_smoke.py"
+    ],
+    "current_base": "3f2e047ffea5179831970098acd3d662786de212",
+    "rules": [
+      "Select only live, shown, modal, non-deleting SingleChoiceDialog instances.",
+      "Refuse multiple active matching dialogs.",
+      "Require the exact current frame, exact current evidence panel, and unchanged displayed evidence.",
+      "Retain all 89 source, 89 installed, and 38 native required checks; watchdog remains 240 seconds."
+    ],
+    "primary_sources": [
+      "https://github.com/wxWidgets/wxWidgets/blob/v3.2.8/src/generic/choicdgg.cpp",
+      "https://github.com/wxWidgets/wxWidgets/blob/v3.2.8/src/common/dlgcmn.cpp"
+    ],
+    "execution": "NOT_RUN"
+  },
+  "nvda": "NOT_RUN",
+  "physical_audio": "NOT_RUN"
+}

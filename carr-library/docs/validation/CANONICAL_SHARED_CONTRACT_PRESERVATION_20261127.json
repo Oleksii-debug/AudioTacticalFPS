@@ -1,0 +1,60 @@
+{
+  "schema": 1,
+  "kind": "canonical-shared-contract-preservation",
+  "canonical_commit": "e5c64a5245583f8f8b404a0f042f6ca438c24d7f",
+  "parent": "5070b0e9808e1242936fac314bab9a8d9f20213a",
+  "source_review": {
+    "confirmed_gap": "A complete pending import result previously checked sealed revision/workspace/edition without the original asset. Optional journal/candidate relations did not compensate for result binding.",
+    "independent_peer": "durable_payload_composition confirmed missing result/asset link",
+    "repair": "Restore the exact canonical _result asset predicate and both request/batch callers; retain current streamed profiles, request locks and typed original budgets."
+  },
+  "regressions": {
+    "pending_completed_source": {
+      "canonical_module": "tests/storage/test_pending_backup.py",
+      "canonical_function": "test_completed_docx_request_cannot_rebind_its_published_source",
+      "current_module": "tests/storage/test_pending_completion_binding.py",
+      "cases": 3,
+      "assertions": "Current valid completed DOCX backup/restore succeeds; changed saved source, changed result source and missing saved source each refuse backup without changing originals."
+    },
+    "presentation": {
+      "component": "e0ba9cfe516eaa2533db752e7db28b94bff7d5b8",
+      "cases": 1,
+      "fixture_git_blob": "58b0d7cce78a50883ed4bcf1e73cbbcc40675d44",
+      "fixture_bytes": 29150,
+      "installed_staging": "Exact binary copy and source-hash receipt through existing qualification support staging."
+    },
+    "retained_shared_assertions": {
+      "tests/e2e/test_extended_document_workflows.py": {
+        "test_format_listing_rejects_another_operation_before_opening_any_runtime": 4,
+        "test_format_listing_does_not_open_a_library_or_native_runtime": 1
+      },
+      "tests/e2e/test_search_operation_budget.py": {
+        "test_busy_search_fails_promptly_and_preserves_previous_selection": 5,
+        "test_federated_name_lookup_obeys_busy_search_policy": 1
+      },
+      "tests/ingest/test_import_replay_identity.py": {
+        "test_fresh_post_commit_cancellation_returns_committed_source": 2
+      },
+      "tests/ingest/test_txt_replay_registration.py": {
+        "test_cancelled_completed_replay_never_adds_membership": 1,
+        "test_cancellation_during_completed_replay_validation_rolls_back_membership": 1
+      }
+    },
+    "ocr_pending": "Canonical actual OCR assertion remains in tests/storage/test_pending_backup_ocr.py; no duplicate optional OCR test added."
+  },
+  "probe_component": "2fead63e2c0fdd7f24011b90a514e6eac9fc0848",
+  "menu_predecessor_evidence": "d824e4c1847d97aa54191c08b62cdc7e991742a9: exact ea08 89/89/38 only; later103 is not qualified by it.",
+  "protected": {
+    "source": 4986,
+    "installed": 4785,
+    "focused_each": 387,
+    "source_selectors": 437,
+    "installed_selectors": 302
+  },
+  "qualification": {
+    "this_source": "NOT_RUN",
+    "canonical_function_restoration": "Source retained; runtime execution remains required.",
+    "template_native_successor": "NOT_RUN",
+    "manual_nvda": "NOT_RUN"
+  }
+}

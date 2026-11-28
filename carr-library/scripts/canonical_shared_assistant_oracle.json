@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "component": "canonical-shared-assistant-evidence-contracts",
+  "canonical_source": "e5c64a5245583f8f8b404a0f042f6ca438c24d7f",
+  "current_review_baseline": "5070b0e9808e1242936fac314bab9a8d9f20213a",
+  "execution_status": "NOT_RUN",
+  "new_case_counter": {
+    "tests/assistant/test_planning_handlers.py": {
+      "test_saved_job_resume_waits_for_its_current_native_result_callback": 2,
+      "test_silent_change_of_reviewed_goal_requires_fresh_preview": 1
+    },
+    "tests/ui/test_evidence_draft_recovery.py": {
+      "test_save_all_waits_for_actual_note_commit_and_retains_newer_edit": 1,
+      "test_save_all_never_claims_a_blocked_or_stale_note_was_saved": 3
+    },
+    "tests/assistant/test_translation.py": {
+      "test_encoded_credential_refusal_preserves_existing_language_cache_and_job_receipts": 4
+    },
+    "tests/e2e/test_google_translation_gateway.py": {
+      "test_known_unsent_reservation_rejects_every_changed_original_binding": 6,
+      "test_sent_or_unresolved_translation_reservation_never_replays": 3,
+      "test_each_failed_http_translation_remains_uncertain_without_automatic_retry": 5
+    }
+  },
+  "new_cases": 25,
+  "tests": [
+    "tests/assistant/test_planning_handlers.py",
+    "tests/ui/test_evidence_draft_recovery.py",
+    "tests/assistant/test_translation.py",
+    "tests/e2e/test_google_translation_gateway.py"
+  ],
+  "existing_tests": "Every pre-existing function, decorator, assertion and fixture in these four current modules is preserved; additions only.",
+  "product_files_changed": [],
+  "frozen_684_and_518_runs": "Unchanged; neither old result is transferred to these additions."
+}

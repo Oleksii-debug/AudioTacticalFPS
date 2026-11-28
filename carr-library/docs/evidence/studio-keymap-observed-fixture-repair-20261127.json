@@ -1,0 +1,41 @@
+{
+  "schema": 1,
+  "component": "observed-studio-keymap-fixture-repair",
+  "source_parent": "f1ee73aa62a28aa26c5ceff81d12611fa70a0ef1",
+  "failure_source": "5070b0e9808e1242936fac314bab9a8d9f20213a",
+  "run_id": 46044488676,
+  "job_id": 140660201649,
+  "artifact": {
+    "id": 15224465165,
+    "name": "carr-request-cleanup-5070b0e9808e1242936fac314bab9a8d9f20213a-1",
+    "size_in_bytes": 454573,
+    "url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15224465165",
+    "archive_download_url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15224465165/zip",
+    "expired": false,
+    "created_at": "2026-11-27T18:26:59Z",
+    "expires_at": "2026-12-27T18:26:57Z",
+    "updated_at": "2026-11-27T18:26:59Z",
+    "digest": "sha256:5c61bbf9a892328ec689da04c36b13c2ba19208ccecc2b5e9eabefeddc8ee545",
+    "workflow_run": {
+      "id": 46044488676,
+      "repository_id": 1341777614,
+      "head_repository_id": 1341777614,
+      "head_branch": "carr/request-cleanup-r21-audio-completion-d3a-20261127",
+      "head_sha": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+    }
+  },
+  "observed": {
+    "source": {
+      "passed": 379,
+      "failed": 4
+    },
+    "installed": {
+      "passed": 379,
+      "failed": 4
+    },
+    "scope": "Three Studio-keymap failures selected Ctrl+Shift+A, which the existing shared key guard deliberately reserves for native editing. The separate completed-speech hardlink failure is recorded but not fixed by this fixture change."
+  },
+  "change": "Use Ctrl+Alt+Shift+A as the explicit nondefault saved Studio assignment in the same three cases. Keep the complete four-case population, real KeymapStore persistence, stable semantic IDs, late registration, changed captions/native IDs and exact saved bytes assertions. Product shortcut/reserved-key policy is unchanged.",
+  "cases": 4,
+  "execution_status": "NOT_RUN"
+}

@@ -5,6 +5,8 @@ import json
 import re
 import shutil
 import subprocess
+import sys
+from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
@@ -18,6 +20,19 @@ class Settings:
     timeout: int = 30
     orientation: bool = False
     model_policy: str = 'default'
+
+
+@pytest.fixture
+def developer_path_runtime(tmp_path, monkeypatch):
+    # These cases specifically exercise the unbundled PATH/TESSDATA_PREFIX
+    # authority. An installed portable runtime correctly takes precedence over
+    # both, so give discovery an empty interpreter hierarchy for this boundary.
+    # Keep real executable discovery, native CLI calls and model hashing intact.
+    prefix = tmp_path / 'unbundled' / 'python' / 'runtime'
+    prefix.mkdir(parents=True)
+    monkeypatch.delenv('CARR_OCR_DIR', raising=False)
+    monkeypatch.setattr(ri.ocr_runtime, 'sys', SimpleNamespace(
+        prefix=str(prefix), base_prefix=str(prefix), platform=sys.platform))
 
 
 @pytest.fixture(autouse=True)
@@ -46,7 +61,7 @@ def test_real_pinned_multilingual_and_osd():
     assert a != ri.runtime_identity(replace(cfg, orientation=False))
 
 
-def test_real_default_model_change_and_pinned_rejection(tmp_path, monkeypatch):
+def test_real_default_model_change_and_pinned_rejection(tmp_path, monkeypatch, developer_path_runtime):
     exe = shutil.which('tesseract')
     if not exe:
         pytest.skip('Tesseract unavailable')
@@ -69,7 +84,7 @@ def test_real_default_model_change_and_pinned_rejection(tmp_path, monkeypatch):
         ri.runtime_identity(Settings())
 
 
-def test_missing_engine_and_source_change(source_fixture):
+def test_missing_engine_and_source_change(source_fixture, developer_path_runtime):
     with patch.object(ri.shutil, 'which', return_value=None):
         a = ri.runtime_identity(Settings())
         assert a['ocr'] == {'state': 'missing'}
@@ -86,7 +101,7 @@ def test_resource_limit(tmp_path):
 
 
 @pytest.mark.parametrize('module', ['ocr_languages.py', 'ocr_process.py'])
-def test_model_identifier_rules_are_bound_to_resume_identity(source_fixture, module):
+def test_model_identifier_rules_are_bound_to_resume_identity(source_fixture, module, developer_path_runtime):
     with patch.object(ri.shutil, 'which', return_value=None):
         before = ri.runtime_identity(Settings())
         (source_fixture / module).write_bytes(b'changed OCR execution or model identifier rules')
@@ -102,7 +117,7 @@ def test_unsafe_model_identifiers_fail_before_engine_discovery(languages):
             ri.runtime_identity(Settings(languages=languages))
 
 
-def test_engine_version_change_detected():
+def test_engine_version_change_detected(developer_path_runtime):
     # Only version response is injected; no unknown executable is run.
     with patch.object(ri, '_hash', return_value='a'*64), \
          patch.object(ri.shutil, 'which', return_value='trusted-fixture'):

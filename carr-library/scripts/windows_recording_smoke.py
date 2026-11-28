@@ -1,0 +1,339 @@
+"""Installed native recording controls and real FFmpeg with synthetic input only.
+
+Run using the installed interpreter with -I -B and an explicitly selected test
+FFmpeg executable. This never discovers or opens a microphone. Hardware output
+monitoring and listening remain separate acceptance tasks.
+"""
+import argparse
+from hashlib import file_digest, sha256
+import json
+import os
+from pathlib import Path
+import sys
+from tempfile import TemporaryDirectory
+from threading import Event, Thread
+from types import SimpleNamespace
+from time import monotonic
+import traceback
+
+
+def main():
+    if sys.platform != 'win32':
+        raise RuntimeError('This acceptance probe requires actual Windows.')
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--ffmpeg', required=True)
+    arguments = parser.parse_args()
+    from carr_library.native_runtime import activate_bundled_runtime
+    native_handle = activate_bundled_runtime()
+    import wx
+    from carr_library.application import LibraryApp
+    from carr_library.audio.recording import AudioCancelled
+    from carr_library.audio.runtime import resolve_ffmpeg
+    import carr_library.audio.recording_process as process_module
+    import carr_library.audio.recording as recording_module
+    import carr_library.ui.recording_dialog as dialog_module
+    from carr_library.ui.desktop_app import DesktopFrame
+
+    checks, errors, captures, completed, cancelled_captures = [], [], [], [], []
+    audio_proof = {}
+    part_runs, pause_observation = [], []
+    deadline = monotonic() + 80
+    stage, dialog, frame, finished = 0, None, None, False
+    dialog_id, dialog_destroyed = None, False
+
+    def check(name, condition):
+        if not condition:
+            raise AssertionError(name)
+        checks.append(name)
+        print('PASS: ' + name, flush=True)
+
+    def verify_audio(runtime):
+        binary = Path(runtime.ffmpeg).resolve(strict=True)
+        with binary.open('rb') as stream:
+            digest = file_digest(stream, 'sha256').hexdigest()
+        audio_proof['ffmpeg'] = {'path': str(binary), 'sha256': digest}
+        check('explicit local FFmpeg executable', binary == Path(arguments.ffmpeg).resolve(strict=True))
+        check('selected executable hash retained', len(digest) == 64)
+
+    checkout = Path(__file__).resolve().parents[1]
+    for module in (process_module, recording_module, dialog_module):
+        actual = Path(module.__file__).resolve()
+        expected = checkout / 'src' / Path(*module.__name__.split('.')).with_suffix('.py')
+        check('installed exact source: ' + module.__name__, not actual.is_relative_to(checkout)
+              and sha256(actual.read_bytes()).digest() == sha256(expected.read_bytes()).digest())
+
+    class ProbeApp(wx.App):
+        def OnExceptionInMainLoop(self):
+            errors.append(traceback.format_exc())
+            abort()
+            return True
+
+    app = ProbeApp(False)
+    simulator = wx.UIActionSimulator()
+    original_factory = dialog_module.RecordingService
+    original_run_process = recording_module.run_process
+
+    def observed_process(*args, **kwargs):
+        part = {'active': True, 'owned_tree': kwargs.get('owned_tree')}
+        part_runs.append(part)
+        try:
+            return original_run_process(*args, **kwargs)
+        finally:
+            part['active'] = False
+    recording_module.run_process = observed_process
+
+    with TemporaryDirectory(prefix='resonance-native-recording-', ignore_cleanup_errors=True) as temporary:
+        root = Path(temporary)
+        library = LibraryApp(root / 'library')
+        library.create_workspace('Synthetic recording acceptance')
+        runtime = SimpleNamespace(ffmpeg=str(resolve_ffmpeg(arguments.ffmpeg)))
+        verify_audio(runtime)
+        service = recording_module.RecordingService(library.root, runtime=runtime)
+        alternative = '@device_test_explicit_synthetic'
+        device = recording_module.RecordingDevice(sha256(alternative.encode()).hexdigest(),
+            'Synthetic FFmpeg input, no microphone', alternative)
+
+        # Test-only source adapter. Production exposes only explicit DirectShow
+        # identities and contains no lavfi selector or arbitrary capture argv.
+        def discover(*, cancelled):
+            if cancelled():
+                raise AudioCancelled('Synthetic inventory cancelled')
+            service._devices = {device.id: device}
+            service._engine_hash = recording_module._digest(runtime.ffmpeg)
+            return (device,)
+        service.devices = discover
+        service._input_arguments = lambda selected: [
+            '-re', '-f', 'lavfi', '-i', 'sine=frequency=440:sample_rate=24000']
+        real_capture = service.capture
+
+        def capture(device_id, **kwargs):
+            item = {'seconds': 0, 'active': True, 'state': 'starting'}
+            captures.append(item)
+            observe = kwargs['progress']
+            def report(seconds):
+                item['seconds'] = seconds
+                observe(seconds)
+            kwargs['progress'] = report
+            observe_state = kwargs['state_changed']
+            def changed(state, seconds):
+                item['state'], item['seconds'] = state, seconds
+                observe_state(state, seconds)
+            kwargs['state_changed'] = changed
+            try:
+                result = real_capture(device_id, **kwargs)
+                completed.append(result)
+                return result
+            except AudioCancelled:
+                cancelled_captures.append(item)
+                raise
+            finally:
+                item['active'] = False
+        service.capture = capture
+        def selected_service(selected_root, **kwargs):
+            assert Path(selected_root) == library.root
+            service.progress_hub = kwargs.get('progress_hub')
+            return service
+        dialog_module.RecordingService = selected_service
+
+        def control(name):
+            found = wx.FindWindowByName(name, dialog)
+            if found is None:
+                raise AssertionError('Missing accessible native control: ' + name)
+            return found
+
+        def abort():
+            if frame is not None:
+                frame.cancel_event.set()
+            if dialog is not None and bool(dialog):
+                dialog.Close()
+            else:
+                app.ExitMainLoop()
+
+        def guarded(callback):
+            def invoke():
+                try:
+                    callback()
+                except Exception:
+                    errors.append(traceback.format_exc())
+                    abort()
+            return invoke
+
+        def press(target, key=wx.WXK_SPACE):
+            target.SetFocus()
+            def dispatch():
+                check('native focus reaches ' + target.GetName(), wx.Window.FindFocus() == target)
+                check('native key dispatch: ' + target.GetName(), simulator.Char(key))
+            wx.CallLater(25, guarded(dispatch))
+
+        def drive():
+            nonlocal stage, dialog, dialog_id, dialog_destroyed
+            if errors or finished:
+                return
+            if monotonic() >= deadline:
+                raise TimeoutError('Native recording acceptance exceeded its deadline')
+            if dialog is None:
+                dialog = next((window for window in wx.GetTopLevelWindows()
+                    if isinstance(window, wx.Dialog) and window.GetTitle() == 'Local microphone recording'), None)
+                if dialog is not None:
+                    dialog_id = dialog.GetId()
+                    def destroyed(event):
+                        nonlocal dialog_destroyed
+                        if event.GetId() == dialog_id:
+                            dialog_destroyed = True
+                        event.Skip()
+                    dialog.Bind(wx.EVT_WINDOW_DESTROY, destroyed)
+            if dialog is None:
+                wx.CallLater(25, guarded(drive))
+                return
+            refresh = control('Refresh microphones')
+            start = control('Start recording')
+            retake = control('Record retake of selected recording')
+            pause = control('Pause recording')
+            resume = control('Resume recording')
+            stop = control('Stop and save recording')
+            cancel = control('Cancel unfinished recording')
+            selection = control('Microphone device (explicit selection required)')
+            saved = control('Saved recordings')
+            status = control('Recording status')
+            if stage == 0 and refresh.IsEnabled():
+                check('opening the dialog does not discover or capture', not service._devices and not captures)
+                check('recording progress has a native accessible gauge',
+                      isinstance(control('Recording operation progress'), wx.Gauge))
+                check('native live monitoring is off until explicitly selected',
+                      isinstance(control('Live monitoring through selected output'), wx.CheckBox)
+                      and not control('Live monitoring through selected output').GetValue()
+                      and control('Monitoring output device (explicit selection required)').GetSelection() == wx.NOT_FOUND)
+                check('native retake waits for a selected original', not retake.IsEnabled())
+                check('native Pause and Resume wait for an active capture',
+                      not pause.IsEnabled() and not resume.IsEnabled())
+                stage = 1
+                press(refresh)
+            elif stage == 1 and selection.GetCount() == 1 and refresh.IsEnabled():
+                check('single discovered input is not automatically selected', selection.GetSelection() == wx.NOT_FOUND)
+                check('Start remains disabled until explicit selection', not start.IsEnabled() and not captures)
+                stage = 2
+                press(selection, wx.WXK_DOWN)
+            elif stage == 2 and selection.GetSelection() == 0 and start.IsEnabled():
+                control('Maximum recording duration in minutes').SetValue(1)
+                control('Recording title').SetValue('Native synthetic recording')
+                stage = 3
+                press(start)
+            elif stage == 3 and captures and captures[0]['seconds'] >= .1 and stop.IsEnabled():
+                check('actual FFmpeg reports recorded PCM while UI remains responsive', captures[0]['active'])
+                stage = 31
+                press(pause)
+            elif stage == 31 and captures[0]['state'] == 'paused' and resume.IsEnabled():
+                if not pause_observation:
+                    pause_observation.append((monotonic(), captures[0]['seconds']))
+                elif monotonic() - pause_observation[0][0] >= .15:
+                    check('Pause confirms the exact owned capture tree has closed',
+                          len(part_runs) == 1 and part_runs[0]['owned_tree']
+                          and not any(part['active'] for part in part_runs))
+                    check('paused native capture does not advance recorded samples',
+                          captures[0]['seconds'] == pause_observation[0][1] and not pause.IsEnabled())
+                    stage = 32
+                    press(resume)
+            elif (stage == 32 and captures[0]['state'] == 'recording' and pause.IsEnabled()
+                  and captures[0]['seconds'] >= pause_observation[0][1] + .1):
+                check('Resume opens another owned part while the native dialog remains responsive',
+                      len(part_runs) == 2 and part_runs[-1]['active'])
+                stage = 4
+                press(stop)
+            elif stage == 4 and saved.GetCount() == 1 and start.IsEnabled():
+                check('Stop finalizes and verifies an actual retained recording', len(completed) == 1
+                    and completed[0]['completion'] == 'stopped' and service.get(completed[0]['id']) == completed[0])
+                check('Stop reports retained completion', status.GetValue().startswith('Saved and verified.'))
+                check('paused native recording retains both verified PCM parts without inserted silence',
+                      completed[0]['schema'] == 'carr-recording/3'
+                      and completed[0]['capture']['pause_count'] == 1
+                      and len(completed[0]['capture']['parts']) == 2
+                      and sum(part['frames'] for part in completed[0]['capture']['parts'])
+                          == completed[0]['audio']['frames'])
+                check('native retake targets the displayed saved original', retake.IsEnabled()
+                      and saved.GetSelection() == 0)
+                stage = 5
+                press(retake)
+            elif stage == 5 and len(captures) == 2 and captures[1]['seconds'] >= .1 and stop.IsEnabled():
+                stage = 6
+                press(stop)
+            elif stage == 6 and saved.GetCount() == 2 and start.IsEnabled():
+                check('retake preserves the previous verified original', len(completed) == 2
+                    and completed[1]['retake']['previous_id'] == completed[0]['id']
+                    and service.get(completed[0]['id']) == completed[0]
+                    and service.get(completed[1]['id']) == completed[1])
+                stage = 7
+                press(start)
+            elif stage == 7 and len(captures) == 3 and captures[2]['seconds'] >= .1:
+                stage = 8
+                press(cancel)
+            elif stage == 8 and start.IsEnabled() and len(cancelled_captures) == 1:
+                check('Cancel removes unfinished audio and preserves both originals', len(service.list()) == 2
+                    and all(service.get(item['id']) == item for item in completed)
+                    and len(list(service.root.glob('*.wav'))) == 2 and not list(service.root.glob('.pending-*')))
+                check('Cancel is announced distinctly', status.GetValue().startswith('Cancelled.'))
+                stage = 9
+                press(start)
+            elif stage == 9 and len(captures) == 4 and captures[3]['seconds'] >= .1:
+                stage = 10
+                press(stop, wx.WXK_ESCAPE)
+            wx.CallLater(25, guarded(drive))
+
+        def open_recording():
+            nonlocal frame, finished
+            if frame.working:
+                if monotonic() >= deadline:
+                    raise TimeoutError('Canonical desktop did not become ready')
+                wx.CallLater(25, guarded(open_recording))
+                return
+            wx.CallLater(25, guarded(drive))
+            result = dialog_module.show_recording(frame)
+            app.Yield()
+            finished = True
+            if not errors:
+                check('native recording owner window actually destroyed', dialog_destroyed
+                      and dialog_id is not None and wx.FindWindowById(dialog_id) is None)
+                check('Escape closes only after active capture cleanup', stage == 10 and result is None
+                    and len(cancelled_captures) == 2 and not any(item['active'] for item in captures))
+                check('closing preserves exactly the verified originals', len(service.list()) == 2
+                    and all(service.get(item['id']) == item for item in completed)
+                    and not list(service.root.glob('.pending-*')))
+            app.ExitMainLoop()
+
+        try:
+            frame = DesktopFrame(library)
+            app.SetTopWindow(frame)
+            frame.Show()
+            frame.Raise()
+            wx.CallAfter(guarded(open_recording))
+            app.MainLoop()
+            if errors:
+                raise AssertionError('\n'.join(errors))
+        finally:
+            dialog_module.RecordingService = original_factory
+            recording_module.run_process = original_run_process
+            if frame is not None:
+                frame.cancel_event.set()
+                frame.executor.shutdown(wait=True, cancel_futures=True)
+                frame.Destroy()
+                app.Yield()
+            if native_handle is not None:
+                native_handle.close()
+    print(json.dumps({'status': 'PASS', 'checks': checks, 'actual_native_keys': True,
+        'actual_ffmpeg_synthetic_capture': True, 'audio_runtime': audio_proof, 'physical_microphone': 'NOT_RUN',
+        'nvda': 'NOT_RUN', 'audio_listening': 'NOT_RUN', 'physical_monitor_output': 'NOT_RUN'},
+        ensure_ascii=False, indent=2))
+
+
+if __name__ == '__main__':
+    finished_probe = Event()
+    def watchdog():
+        if not finished_probe.wait(110):
+            print(json.dumps({'status': 'FAIL', 'reason': 'Recording probe exceeded 110 seconds',
+                              'physical_microphone': 'NOT_RUN', 'physical_monitor_output': 'NOT_RUN',
+                              'nvda': 'NOT_RUN', 'audio_listening': 'NOT_RUN'}), flush=True)
+            os._exit(1)
+    Thread(target=watchdog, name='recording-probe-watchdog', daemon=True).start()
+    try:
+        main()
+    finally:
+        finished_probe.set()

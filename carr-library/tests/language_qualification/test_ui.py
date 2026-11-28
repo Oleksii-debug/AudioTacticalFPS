@@ -6,8 +6,12 @@ from types import SimpleNamespace
 
 import pytest
 
-from carr_library.speech import Voice
-from carr_library import runtime_settings
+from carr_library.audio.engines import Voice as EngineVoice
+from carr_library.ui import language_matrix as matrix_module
+
+
+def Voice(identifier, name, engine, language, license='Synthetic metadata fixture'):
+    return EngineVoice(identifier, name, (language,), engine, license=license)
 from carr_library.ui.language_matrix import (
     CAPABILITY_LABELS, InstalledVoiceInventory, LanguageMatrixController,
     collect_installed_voices, request_voice_inventory,
@@ -18,7 +22,7 @@ def test_initial_view_and_filters_never_discover_voices(monkeypatch):
     def forbidden(*args, **kwargs):
         raise AssertionError("Initial catalog rendering must not discover a local voice.")
 
-    monkeypatch.setattr(runtime_settings, "voice_registry", forbidden)
+    monkeypatch.setattr(matrix_module, "_voice_registry", forbidden)
     controller = LanguageMatrixController()
     assert len(controller.filter()) == 135
     assert len(controller.filter(region="europe")) == 37
@@ -94,11 +98,11 @@ def test_explicit_refresh_schedules_configured_registry_on_existing_frame_worker
     calls = []
     voices = synthetic_inventory().voices
 
-    def loader(state_root):
-        calls.append(state_root)
-        return SimpleNamespace(voices=lambda: voices, notices=["Configured adapter notice"])
+    def loader(library):
+        calls.append(library)
+        return SimpleNamespace(voices=lambda **kwargs: voices, notices=["Configured adapter notice"])
 
-    monkeypatch.setattr(runtime_settings, "voice_registry", loader)
+    monkeypatch.setattr(matrix_module, "_voice_registry", loader)
     jobs = []
     frame = SimpleNamespace(library=SimpleNamespace(root=tmp_path / "chosen-library"), cancel_event=Event(),
         working=False, busy=False, _closing=False,
@@ -110,7 +114,7 @@ def test_explicit_refresh_schedules_configured_registry_on_existing_frame_worker
     assert not calls and len(jobs) == 1  # It has only been scheduled, not executed on the GUI thread.
     _, operation, done, failed = jobs[0]
     inventory = operation()
-    assert calls == [frame.library.root / "state"]
+    assert calls == [frame.library]
     assert controller.inventory is None
     done(inventory)
     assert completed == [inventory] and not errors
@@ -121,12 +125,12 @@ def test_cancelled_enumeration_retains_previous_inventory(tmp_path, monkeypatch)
     cancel = Event()
     calls = []
 
-    def loader(state_root):
-        calls.append(state_root)
+    def loader(library):
+        calls.append(library)
         cancel.set()
-        return SimpleNamespace(voices=lambda: synthetic_inventory().voices, notices=[])
+        return SimpleNamespace(voices=lambda **kwargs: synthetic_inventory().voices, notices=[])
 
-    monkeypatch.setattr(runtime_settings, "voice_registry", loader)
+    monkeypatch.setattr(matrix_module, "_voice_registry", loader)
     controller = LanguageMatrixController()
     previous = synthetic_inventory()
     controller.set_inventory(previous)
@@ -154,3 +158,21 @@ def test_changed_library_or_busy_frame_cannot_apply_an_old_inventory(tmp_path):
     with pytest.raises(ValueError, match="changed"):
         jobs[0][1](synthetic_inventory())
     assert controller.inventory is None
+
+
+def test_existing_registry_notice_records_are_readable_without_language_inference(monkeypatch, tmp_path):
+    voice = EngineVoice("fixture:one", "Declared voice", ("uk-UA", "en-US"), "fixture")
+    calls = []
+    def voices(**kwargs):
+        calls.append(kwargs)
+        return (voice,)
+    monkeypatch.setattr(matrix_module, "_voice_registry",
+        lambda library: SimpleNamespace(voices=voices,
+            notices=[{"engine": "fixture", "available": False, "reason": "Optional pack is absent"}]))
+    inventory = collect_installed_voices(SimpleNamespace(root=tmp_path))
+    assert calls[0]["refresh"] is True and callable(calls[0]["cancelled"])
+    assert inventory.notices == ("fixture: Optional pack is absent",)
+    controller = LanguageMatrixController()
+    controller.set_inventory(inventory)
+    assert "uk-UA, en-US" in controller.inventory_text()
+    assert controller.matrix.summary()["qualified_entries"] == 0

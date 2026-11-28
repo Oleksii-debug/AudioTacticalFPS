@@ -30,6 +30,42 @@ def test_missing_or_ambiguous_consent_is_rejected_before_app_or_network(argument
     assert 'error:' in capsys.readouterr().err
 
 
+def test_document_formats_is_offline_and_does_not_open_a_library(tmp_path, capsys, monkeypatch):
+    def forbidden(*args, **kwargs):
+        raise AssertionError('Format help must not open a library or start acquisition.')
+
+    monkeypatch.setattr('carr_library.application.LibraryApp', forbidden)
+    monkeypatch.setattr('carr_library.acquisition.transport.SafeTransport', forbidden)
+    data_dir = tmp_path / 'unopened-library'
+    assert main(['--data-dir', str(data_dir), '--document-formats']) == 0
+    text = capsys.readouterr().out
+    assert 'HTML' in text and 'Markdown' in text and 'PowerPoint' in text
+    assert 'unverified logical segments' in text
+    assert not data_dir.exists()
+
+
+@pytest.mark.parametrize('arguments', (
+    ['--document-formats', '--lookup-doi', '10.5555/example'],
+    ['--document-formats', '--allow-online-doi'],
+    ['--document-formats', '--doi-provider', 'crossref'],
+    ['--document-formats', '--save-doi-reference'],
+    ['--document-formats', '--self-test'],
+    ['--document-formats', '--backup', 'unused-backup'],
+    ['--document-formats', '--restore', 'unused-backup'],
+    ['--lookup-doi', '10.5555/example', '--allow-online-doi', '--workspace', 'one', '--self-test'],
+))
+def test_combined_document_and_acquisition_operations_fail_before_any_action(arguments, capsys, monkeypatch):
+    def forbidden(*args, **kwargs):
+        raise AssertionError('Conflicting operations must fail before opening data or contacting a provider.')
+
+    monkeypatch.setattr('carr_library.application.LibraryApp', forbidden)
+    monkeypatch.setattr('carr_library.acquisition.transport.SafeTransport', forbidden)
+    with pytest.raises(SystemExit) as result:
+        main(arguments)
+    assert result.value.code == 2
+    assert 'error:' in capsys.readouterr().err
+
+
 def test_cli_preview_outputs_no_raw_payload_or_contact_email(monkeypatch, capsys):
     from carr_library.acquisition.models import MetadataPreview
     from carr_library.acquisition.service import AcquisitionPreview

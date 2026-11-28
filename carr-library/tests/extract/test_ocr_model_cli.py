@@ -69,6 +69,9 @@ def test_cli_actual_official_model_install_verify_and_list(tmp_path, monkeypatch
     ['--ocr-model', 'eng'],
     ['--ocr-model-search', 'ukr'],
     ['--list-ocr-models', '--self-test'],
+    ['--list-ocr-models', '--document-formats'],
+    ['--list-ocr-models', '--lookup-doi', '10.1000/example'],
+    ['--list-ocr-models', '--audio-voices'],
     ['--install-ocr-models', 'offline-source', '--ocr-all-models', '--ocr-model', 'eng'],
 ])
 def test_ambiguous_cli_operations_fail_before_opening_the_application(options, monkeypatch):

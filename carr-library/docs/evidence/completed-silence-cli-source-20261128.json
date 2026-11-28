@@ -1,0 +1,93 @@
+{
+  "schema": "carr-completed-silence-cli-source-component/1",
+  "status": "SOURCE_PREPARED_NOT_RUN",
+  "authored_utc": "2026-11-28",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "parent_commit": "c31e680b15d2334420f6cf19d5587636e948258b",
+  "parent_tree": "f5766d63cec62a4723191ac10e22da9f7ddeb7f0",
+  "authority": "Mandatory completed-audio long-silence inspection through the existing production owner.",
+  "scope": {
+    "application_path": "carr-library/src/carr_library/audio_cli.py",
+    "test_path": "carr-library/tests/e2e/test_audio_cli_resources.py",
+    "dependencies": [
+      "The separately reviewed production.inspect_completed_silence backend must be composed before execution."
+    ],
+    "shared_documentation_owner": "The Studio component maintains AUDIO_STUDIO_V3.md; this component carries the CLI example without editing that shared file.",
+    "no_ref_or_workflow_change": true,
+    "no_runtime_result_claim": true
+  },
+  "interface": {
+    "operation": "--audio-inspect-silence COMPLETION_JSON",
+    "required": [
+      "--audio-silence-threshold-dbfs DBFS",
+      "--audio-silence-minimum-seconds SECONDS"
+    ],
+    "optional": [
+      "--audio-silence-run-key RUN_KEY",
+      "--audio-silence-max-intervals COUNT"
+    ],
+    "example": "research-library --audio-inspect-silence \"C:\\Audio\\Project\\renders\\RUN_KEY\\complete.json\" --audio-silence-threshold-dbfs -50 --audio-silence-minimum-seconds 3",
+    "example_note": "Replace RUN_KEY with the actual selected completed-production directory. The two numeric values are explicit inspection criteria, not a universal quality judgement.",
+    "criteria_validation": "The shared production service enforces finite threshold -120..0 dBFS, finite minimum >0..86400 seconds, interval cap 1..1000 and optional exact lowercase 64-hex run identity.",
+    "output": "Unmodified JSON-safe shared-service report on stdout; status on stderr.",
+    "cancellation": "Existing SIGINT event, restored previous handler, exit 130 with status cancelled. A stop observed after service return cannot emit a complete report.",
+    "no_file_export": true
+  },
+  "boundaries": [
+    "The selected operation branches before batch, voice, model, FFmpeg, broker and profile discovery in run_audio.",
+    "The public entrypoint retains its existing optional bundled-runtime/installation-lease wrapper.",
+    "Rendering and inference-specific flags are refused for inspection; both numerical criteria must be explicit.",
+    "No modification of completion manifest, source plan, completed media, cache or old receipts is introduced.",
+    "The CLI delegates retained-media identity, sample scanning, mutation refusal and report bounds to the same shared production service used by the desktop."
+  ],
+  "source_identity": {
+    "audio_cli": {
+      "before_git_blob": "111f95d4c92b79f9eff49e6fb37e96dd5547de18",
+      "before_sha256": "907b1f77aae310d8375277b01fea53486929f4531fa831dac051c58500c20bda",
+      "after_sha256": "7d0cae8418942c0ab275b2a09172dd91049bcfcc5c3dcec89971fce7621c76f3"
+    },
+    "test_audio_cli_resources": {
+      "before_git_blob": "b29cc52aa4b1775bd1c67cad1b18240ccc085dc9",
+      "before_sha256": "810bca582e65517fef623a98148690ff8b7d576f5a4e32186aa6a74b91c4f075",
+      "after_sha256": "94469ff3fb7591c108ef4c9d4b777ab974723518ba694d2f35049c50293372d6"
+    }
+  },
+  "preservation": {
+    "inverse_source_hunks": 4,
+    "inverse_source_equals_parent": true,
+    "original_test_prefix_characters": 12521,
+    "original_test_prefix_equals_parent": true,
+    "existing_cases": 9,
+    "added_cases": 21,
+    "required_module_cases_per_mode": 30,
+    "added_function_counter": {
+      "test_silence_cli_requires_selected_completion_and_both_explicit_criteria": 6,
+      "test_silence_cli_refuses_unrelated_rendering_or_runtime_authority": 7,
+      "test_silence_cli_cannot_share_a_command_with_another_operation": 4,
+      "test_silence_cli_real_completed_pcm_report_preserves_all_retained_bytes": 1,
+      "test_silence_cli_cancel_restores_handler_without_a_partial_complete_report": 2,
+      "test_silence_cli_invalid_completion_is_reported_without_repair_or_engine_start": 1
+    }
+  },
+  "authored_regressions": [
+    "Exact operation/criteria and unrelated-authority refusals use the public CLI before optional runtime activation.",
+    "A real pause-only producer completion is inspected through the actual shared backend; its JSON is emitted unchanged and exact 1600-frame/8000-Hz/stereo interval, source/media hashes and all retained bytes are checked.",
+    "The real-completion fixture uses FFmpeg only to create its retained source; inspection forbids registry, FFmpeg resolver, render, resource-broker, profile and library-root selection.",
+    "Two explicit signal-callback boundary fixtures exercise during-inspection and after-service-return cancellation, handler restoration, no complete output and byte preservation; they do not claim native signal delivery.",
+    "An invalid selected completion is refused through the public CLI and actual backend without repairing or starting an engine."
+  ],
+  "validation": {
+    "performed": [
+      "Exact literal source inverse comparison in JavaScript",
+      "Byte-for-byte retained test prefix comparison",
+      "Manual parameter-population accounting: 6+7+4+1+2+1=21"
+    ],
+    "not_performed": [
+      "Python compilation",
+      "pytest source execution",
+      "pytest isolated installed execution",
+      "Native execution"
+    ],
+    "required_next": "Compose the reviewed backend and this CLI source, then execute all old and added cases under the existing source and isolated installed gates."
+  }
+}

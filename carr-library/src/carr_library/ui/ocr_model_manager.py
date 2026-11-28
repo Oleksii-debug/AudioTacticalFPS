@@ -217,7 +217,8 @@ class OcrModelManagerActions:
         if self.closed or not self.pending or update is None or update[0] != self._job:
             return
         _, identifier, completed, total = update
-        self.progress.SetValue(min(1000, completed * 1000 // total))
+        # Copied bytes still need final verification and manifest activation.
+        self.progress.SetValue(min(999, completed * 1000 // total))
         if self.cancelled.is_set():
             self.report('Cancellation requested. Waiting for the current copy to stop safely.', focus=False)
         else:

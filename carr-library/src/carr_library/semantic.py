@@ -208,7 +208,8 @@ class OfflineSemanticRanker:
 
 
 def search_snapshot(db, workspace, allowed, query, ranker, *, limit=100,
-                    timeout=60.0, cancelled=lambda: False, on_status=None, cache=None):
+                    timeout=60.0, cancelled=lambda: False, on_status=None, cache=None,
+                    page_ids=None):
     """Read active pages and rank windows inside the caller's authorized snapshot."""
     if (not db.in_transaction or db.execute('PRAGMA read_uncommitted').fetchone()[0]
             or not isinstance(workspace, str) or not workspace
@@ -241,24 +242,32 @@ def search_snapshot(db, workspace, allowed, query, ranker, *, limit=100,
         # Repeated coarse clock ticks may round subtraction above the limit.
         return min(timeout, value)
 
+    from .search.literal import _page_ids
+    page_ids = _page_ids(page_ids)
+
     def fallback(reason):
         check()
         if on_status is not None:
             on_status('The local model\'s text limit was reached. Keyword search used. '
                       'Shorten the query or narrow the source filters to use the local model.')
         hits = search_active(db, workspace, allowed, query, limit=limit,
-                             timeout=remaining(), cancelled=stopped)
+                             timeout=remaining(), cancelled=stopped, page_ids=page_ids)
         for hit in hits:
             hit['reason'] = 'Semantic window limit reached; using lexical thematic search. ' + reason
         return hits
 
     check()
-    if not allowed:
+    if not allowed or page_ids == ():
         return []
     placeholders = ','.join('?' for _ in allowed)
-    cursor = db.execute('SELECT id,workspace,edition,revision,asset,ordinal,physical,printed,'
-                        'verified,raw,digest FROM active_page WHERE workspace=? AND edition IN ('
-                        + placeholders + ') ORDER BY edition,ordinal,id', (workspace, *allowed))
+    sql = ('SELECT id,workspace,edition,revision,asset,ordinal,physical,printed,'
+           'verified,raw,digest FROM active_page WHERE workspace=? AND edition IN ('
+           + placeholders + ')')
+    params = (workspace, *allowed)
+    if page_ids is not None:
+        sql += ' AND id IN (' + ','.join('?' for _ in page_ids) + ')'
+        params += page_ids
+    cursor = db.execute(sql + ' ORDER BY edition,ordinal,id', params)
     passages, metadata = [], {}
     try:
         for row in cursor:

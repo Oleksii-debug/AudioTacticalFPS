@@ -10,14 +10,20 @@ import shutil
 import sqlite3
 import subprocess
 import sys
-import time
-from types import SimpleNamespace
 
 import pytest
 
 from carr_library.application import LibraryApp
+from carr_library.audio import engines
 from carr_library.extract.page_ocr import Config
 from carr_library.ingest import worker
+
+
+# The loaded Windows runner needs up to 6.5 s to reach the actual PDF commit.
+# Keep the child paused longer than this finite test-only supervisor deadline;
+# marker assertions below still require reaching the intended commit boundary.
+PUBLICATION_TIMEOUT = 12.0
+BARRIER_HOLD_SECONDS = 30.0
 
 
 def _source(root, kind):
@@ -43,12 +49,11 @@ def _metadata(collections=()):
                 work_id='source-work', edition_id='source-edition')
 
 
-def _barrier(monkeypatch, marker, *, boundary, exit_after=False, startup_delay=0):
+def _barrier(monkeypatch, marker, *, boundary, exit_after=False):
     """Pause the real child before/after commit, without replacing its result."""
-    popen = subprocess.Popen
+    popen = engines._start_process
     code = f'''
 import os, time
-time.sleep({startup_delay!r})
 from pathlib import Path
 from carr_library.application import LibraryApp, _CatalogPublisher
 from carr_library.ingest import worker as _worker
@@ -56,7 +61,7 @@ def _pause():
     Path({str(marker)!r}).write_text('observed', encoding='utf-8')
     if {exit_after!r}:
         os._exit(7)
-    time.sleep(60)
+    time.sleep({BARRIER_HOLD_SECONDS!r})
 '''
     if boundary == 'before':
         code += '''
@@ -86,8 +91,8 @@ LibraryApp._import_file = _replay
 
     def launch(command, **options):
         command = list(command)
-        # Popen is shared with subprocess.run: Windows cancellation invokes
-        # taskkill here as well. Only instrument the real import bootstrap.
+        # Only instrument the import bootstrap through its owned launcher.
+        # Unrelated subprocess calls retain their existing behavior.
         if '-c' not in command:
             return popen(command, **options)
         index = command.index('-c') + 1
@@ -98,26 +103,7 @@ LibraryApp._import_file = _replay
                           + "\nrunpy.run_module('carr_library.ingest.worker',run_name='__main__')")
         return popen(command, **options)
 
-    monkeypatch.setattr(worker.subprocess, 'Popen', launch)
-
-
-def _observe_termination(monkeypatch, marker, termination):
-    """Reach the real commit barrier before expiring only the parent deadline."""
-    outcomes = []
-    invoke = worker._invoke
-
-    def observe(*args, **kwargs):
-        result = invoke(*args, **kwargs)
-        outcomes.append(result['state'])
-        return result
-
-    monkeypatch.setattr(worker, '_invoke', observe)
-    if termination == 'timeout':
-        monotonic = time.monotonic
-        monkeypatch.setattr(worker, 'time', SimpleNamespace(
-            monotonic=lambda: monotonic() + (100 if marker.is_file() else 0),
-            sleep=time.sleep))
-    return outcomes
+    monkeypatch.setattr(engines, '_start_process', launch)
 
 
 @pytest.mark.parametrize('arguments, expected', [
@@ -127,7 +113,7 @@ def _observe_termination(monkeypatch, marker, termination):
 def test_barrier_leaves_other_processes_unchanged(tmp_path, monkeypatch, arguments, expected):
     marker = tmp_path / 'worker-only'
     _barrier(monkeypatch, marker, boundary='after')
-    result = subprocess.run([sys.executable, *arguments], capture_output=True,
+    result = subprocess.run([sys.executable, '-B', *arguments], capture_output=True,
                             text=True, timeout=5, check=True)
     assert expected in result.stdout + result.stderr
     assert not marker.exists()
@@ -142,20 +128,14 @@ def test_stopped_child_reports_verified_fresh_commit(tmp_path, monkeypatch, kind
     source = _source(tmp_path, kind)
     original = source.read_bytes()
     marker = tmp_path / 'after-commit'
-    startup_delay = 3.5 if (termination, kind) == ('timeout', 'pdf') else 0
-    _barrier(monkeypatch, marker, boundary='after', exit_after=termination == 'crash',
-             startup_delay=startup_delay)
-    outcomes = _observe_termination(monkeypatch, marker, termination)
-    started = time.monotonic()
+    _barrier(monkeypatch, marker, boundary='after', exit_after=termination == 'crash')
     result = worker.run_request(app.root, workspace, source, _metadata((collection,)), Config(),
         cancelled=lambda: termination == 'cancel' and marker.exists(),
-        timeout=30.0)
-    if startup_delay:
-        assert time.monotonic() - started > 3.0  # Actual startup exceeds the old deadline.
+        timeout=PUBLICATION_TIMEOUT if termination == 'timeout' else 15.0)
     assert marker.exists(), result
-    assert outcomes == [{'cancel': 'cancelled', 'crash': 'failed', 'timeout': 'timed_out'}[termination]]
     assert result['state'] == 'complete', result
     assert result['publication_recovered'] is True
+    assert result['worker_state'] == {'cancel': 'cancelled', 'crash': 'failed', 'timeout': 'timed_out'}[termination]
     assert result['verified'] is (kind == 'txt')
     record = worker.load_request(app.root, result['request_id'])
     assert record['state'] == 'complete' and record['result'] == result
@@ -184,18 +164,11 @@ def test_stopped_child_before_commit_never_reports_completion(tmp_path, monkeypa
     workspace = app.create_workspace('Rollback')
     source = _source(tmp_path, kind)
     marker = tmp_path / 'before-commit'
-    startup_delay = 3.5 if (termination, kind) == ('timeout', 'pdf') else 0
-    _barrier(monkeypatch, marker, boundary='before', exit_after=termination == 'crash',
-             startup_delay=startup_delay)
-    outcomes = _observe_termination(monkeypatch, marker, termination)
-    started = time.monotonic()
+    _barrier(monkeypatch, marker, boundary='before', exit_after=termination == 'crash')
     result = worker.run_request(app.root, workspace, source, _metadata(), Config(),
         cancelled=lambda: termination == 'cancel' and marker.exists(),
-        timeout=30.0)
-    if startup_delay:
-        assert time.monotonic() - started > 3.0
+        timeout=PUBLICATION_TIMEOUT if termination == 'timeout' else 15.0)
     assert marker.exists(), result
-    assert outcomes == [{'cancel': 'cancelled', 'crash': 'failed', 'timeout': 'timed_out'}[termination]]
     assert result['state'] == {'cancel': 'cancelled', 'crash': 'failed', 'timeout': 'timed_out'}[termination]
     assert app.browse(workspace) == ()
     with app.read(workspace) as db:
@@ -216,33 +189,40 @@ def test_competing_commit_after_kill_does_not_complete_stopped_request(
     source = _source(tmp_path, kind)
     planned = worker.prepare_request(app.root, workspace, source, _metadata(), Config())
     marker = tmp_path / 'before-commit'
-    real_popen, real_stop = worker.subprocess.Popen, worker._stop
+    real_popen, real_stop = engines._start_process, worker._stop
+    real_reconcile = worker._reconcile_publication
     _barrier(monkeypatch, marker, boundary='before')
-    competing = []
+    competing, stopped = [], []
 
-    def stop_then_publish(process):
+    def observed_stop(process):
         real_stop(process)
-        if marker.exists() and not competing:
-            # The cancelled child has released the writer lock. Complete a
-            # different import before its parent can reconcile the hint.
+        stopped.append(process)
+
+    def publish_before_reconciliation(root, request_id, attempt, **options):
+        if request_id == planned['request_id'] and marker.exists() and not competing:
+            # Interleave a distinct real publication only after native cleanup,
+            # immediately before the stopped request's receipt reconciliation.
+            assert stopped and all(process.poll() is not None for process in stopped)
             competing.append(None)
             with monkeypatch.context() as clean_launch:
-                clean_launch.setattr(worker.subprocess, 'Popen', real_popen)
+                clean_launch.setattr(engines, '_start_process', real_popen)
                 if competitor_kind != 'direct':
                     competing[0] = worker.run_request(app.root, workspace, source,
                         _metadata(), Config(), timeout=15.0)
                 else:
                     competing[0] = app._import_file(workspace, source, config=Config(), **_metadata())
             if competitor_kind == 'forged-sidecar':
-                stopped = worker.load_request(app.root, planned['request_id'])
+                stopped_record = worker.load_request(app.root, planned['request_id'])
                 other = worker.load_request(app.root, competing[0]['request_id'])
                 # A copied completion hint cannot transfer the ownership of a
                 # committed database receipt, even with the current attempt ID.
-                stopped['publication_candidate'] = dict(other['publication_candidate'],
-                                                       attempt=stopped['attempt'])
-                worker._store(app.root, planned['request_id'], stopped)
+                stopped_record['publication_candidate'] = dict(other['publication_candidate'],
+                                                              attempt=stopped_record['attempt'])
+                worker._store(app.root, planned['request_id'], stopped_record)
+        return real_reconcile(root, request_id, attempt, **options)
 
-    monkeypatch.setattr(worker, '_stop', stop_then_publish)
+    monkeypatch.setattr(worker, '_stop', observed_stop)
+    monkeypatch.setattr(worker, '_reconcile_publication', publish_before_reconciliation)
     result = worker.run_request(app.root, workspace, source, _metadata(), Config(),
                                 cancelled=marker.exists, timeout=15.0,
                                 request_id=planned['request_id'])

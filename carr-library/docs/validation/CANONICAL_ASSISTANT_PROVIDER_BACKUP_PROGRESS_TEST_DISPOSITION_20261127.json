@@ -1,0 +1,1211 @@
+{
+  "schema": 1,
+  "kind": "bounded-canonical-test-source-disposition",
+  "canonical_commit": "a44fac04072389caa40e0d6e799b13797712f797",
+  "canonical_tree": "3cc479898b1430b49774fc0226630a667d94d2d2",
+  "current_commit": "9e27ef8649408038b5fc116e6f9bdded71d6371b",
+  "current_tree": "c27551ae208ad75278c441ac9a823295bf6fb5bf",
+  "whole_missing_blob_population": 88,
+  "whole_missing_python_population": 86,
+  "covered_source_paths": 35,
+  "menu_component": "dc30b29d724b0033f968b838142366469e3901b8",
+  "atomic_retry_component": "bcb66742afcff1e5c6d887c32042d90682536972",
+  "source_only": true,
+  "old_test_pass_transfer": false,
+  "case_population_equivalence": false,
+  "open_gaps": [
+    "audio.transcribe is absent from the baseline assistant allowlist/service/CLI/UI; the standalone ASR service is not an equivalent assistant execution test.",
+    "Baseline progress._counts accepts integers beyond canonical 10**15; source-bound validation fix pending root integration."
+  ],
+  "notes": [
+    "Canonical helpers, native scripts and pytest function names are inventory, not actual collected test counts.",
+    "Current unittest-class progress suites keep their real classname through the existing full selectors; no invented classname.py selector.",
+    "Current historical engine settings are retained as inactive original bytes, not active machine registrations or a claim that the alternate typed engine validator ran.",
+    "For speech/ASR/integration and private voice protocols see the separate capacity-agent CANONICAL_SPEECH_ASR_TEST_DISPOSITION_20261127 document; assistant transcription is explicitly outside that32-path inventory."
+  ],
+  "entries": [
+    {
+      "canonical_path": "carr-library/tests/assistant/test_local_planning.py",
+      "canonical_blob_sha": "30b1df87da05c412ea645ba06a3f8ef8aa5317a0",
+      "canonical_test_function_names": [
+        "test_eligible_listing_has_no_implicit_model_selection",
+        "test_noneligible_profile_cannot_open_connection",
+        "test_unavailable_selected_workspace_rejected_before_request",
+        "test_shared_gateway_receives_bounded_response_and_selected_deadline",
+        "test_invalid_cli_modes_have_no_application_side_effects",
+        "test_actual_cli_lists_only_local_profiles_without_contact",
+        "test_invalid_profile_identity_cannot_silently_fall_back_to_guided_mode"
+      ],
+      "disposition": "CURRENT_CONTRACT_COVERAGE",
+      "current_tests": [
+        {
+          "path": "carr-library/tests/assistant/test_local_llm.py",
+          "blob_sha": "e8187a1a11f668f76aaf116c49d20b6cbf36e6f1"
+        },
+        {
+          "path": "carr-library/tests/assistant/test_planning_handlers.py",
+          "blob_sha": "935536a0e49f986dbfea48572a69bad26ad40112"
+        },
+        {
+          "path": "carr-library/tests/assistant/test_planning_runtime.py",
+          "blob_sha": "46d1a7408d9ba9e2b817834cfb2db87bb939ccc9"
+        }
+      ],
+      "current_probes": [],
+      "reason": "Local-only selected profile, bounded request, exact scope/path validation, no implicit submit and stale profile refusal.",
+      "execution_claim": "NONE"
+    },
+    {
+      "canonical_path": "carr-library/tests/assistant/test_local_planning_loopback.py",
+      "canonical_blob_sha": "c2eaabc11dedce8a34022456a857271d1ec18a97",
+      "canonical_test_function_names": [
+        "test_service_proposal_is_validated_scoped_and_never_submitted",
+        "test_model_output_cannot_expand_exact_permissions",
+        "test_tool_path_validation_runs_before_proposal_is_exposed",
+        "test_profile_change_during_response_discards_proposal",
+        "test_cancellation_never_creates_an_approved_job",
+        "test_actual_cli_proposal_then_separate_reviewed_json_run",
+        "test_actual_cli_provider_failure_returns_no_executable_plan"
+      ],
+      "disposition": "CURRENT_CONTRACT_COVERAGE",
+      "current_tests": [
+        {
+          "path": "carr-library/tests/loopback/test_local_planning.py",
+          "blob_sha": "188068d04b2ded11c4c80b402f939d41d9f9c0e8"
+        }
+      ],
+      "current_probes": [],
+      "reason": "Actual loopback HTTP proposal and separate reviewed CLI run; generic offline suite remains network-denied.",
+      "execution_claim": "NONE"
+    },
+    {
+      "canonical_path": "carr-library/tests/assistant/test_providers.py",
+      "canonical_blob_sha": "d43a588338f73609bfb4dc63ab7a306e406e7260",
+      "canonical_test_function_names": [
+        "test_local_only_denies_before_any_vault_or_connection",
+        "test_remote_envelope_rejects_wrong_scope_before_credentials",
+        "test_unknown_cost_rejected_and_budget_retains_uncertain_reservation",
+        "test_actual_loopback_chat_and_separate_account_routing",
+        "test_redirect_never_forwarded_and_error_is_redacted",
+        "test_invalid_remote_endpoint_cannot_save_credentials",
+        "test_untrusted_response_tool_call_and_wrong_content_type_are_rejected",
+        "test_response_bounds_and_pretransmission_cancel",
+        "test_profiles_export_never_contains_secret_references_or_enabled_state",
+        "test_credential_references_cannot_cross_accounts",
+        "test_windows_vault_has_no_plaintext_fallback",
+        "test_actual_local_planner_output_cannot_grant_tool_or_scope_permissions",
+        "test_elevenlabs_templates_are_typed_and_locked_to_official_host",
+        "test_untrusted_provider_response_cannot_echo_a_credential",
+        "test_native_header_encoding_error_does_not_expose_secret",
+        "test_authorized_remote_route_budget_and_unsafe_retry_with_local_mock"
+      ],
+      "disposition": "CURRENT_CONTRACT_COVERAGE",
+      "current_tests": [
+        {
+          "path": "carr-library/tests/e2e/test_provider_gateway.py",
+          "blob_sha": "fa97e9d11f051c20ebea0b0c8fab3145f77ec31d"
+        },
+        {
+          "path": "carr-library/tests/e2e/test_provider_transport_boundaries.py",
+          "blob_sha": "1bb6498f33ef028a11b8063f596b7ef04343ee88"
+        },
+        {
+          "path": "carr-library/tests/e2e/test_provider_transport_contract.py",
+          "blob_sha": "54a84a01318988a1cd4ae5acbe08079473daaa97"
+        },
+        {
+          "path": "carr-library/tests/e2e/test_provider_ledger_lifetime.py",
+          "blob_sha": "5f57b6ddbb1f93255c60944e50beb455735bf5d9"
+        },
+        {
+          "path": "carr-library/tests/e2e/test_provider_credential_echo.py",
+          "blob_sha": "0475fa6ee2f380f42e893db291d8a0f9fcb1fe08"
+        },
+        {
+          "path": "carr-library/tests/e2e/test_provider_profile_import.py",
+          "blob_sha": "b6a5d0201f4e5c2797422d68444d2bbe622566b3"
+        }
+      ],
+      "current_probes": [],
+      "reason": "Current typed profiles, local-only boundary, vault/account binding, reservations, redaction and reflected-credential refusal; current provider schema differs.",
+      "execution_claim": "NONE"
+    },
+    {
+      "canonical_path": "carr-library/tests/assistant/test_supplied_transcription.py",
+      "canonical_blob_sha": "16f1896735602c43760e9a07485bf5168540fb33",
+      "canonical_test_function_names": [
+        "test_real_owned_process_uses_job_dir_and_existing_assistant_checkpoint",
+        "test_worker_exit_zero_is_not_success_without_bound_complete_outputs",
+        "test_empty_transcript_preserves_silence_without_language_retry",
+        "test_changed_bytes_same_size_and_mtime_do_not_resume_wrong_source",
+        "test_partial_publication_resumes_only_exact_saved_artifacts",
+        "test_cancel_after_publication_recovers_without_running_worker_again",
+        "test_changed_partial_export_is_never_overwritten",
+        "test_runtime_and_model_identity_fail_before_launch",
+        "test_mid_file_cancel_terminates_worker_and_keeps_saved_intent",
+        "test_native_preview_does_not_enable_an_unconfigured_engine",
+        "test_typed_plan_cannot_expand_authority_or_runtime_settings",
+        "test_unreviewed_worker_source_cannot_be_prepared",
+        "test_assistant_backup_retains_inert_transcription_checkpoint"
+      ],
+      "disposition": "OPEN_ASSISTANT_TRANSCRIPTION_BRIDGE",
+      "current_tests": [
+        {
+          "path": "carr-library/tests/transcription/test_supplied_worker_bridge.py",
+          "blob_sha": "c2536d290c531bbddaad9766d445f1869f97fbfa"
+        },
+        {
+          "path": "carr-library/tests/test_transcription_service.py",
+          "blob_sha": "c305a702d144515708fae0213ec8475c16bb1d9c"
+        },
+        {
+          "path": "carr-library/tests/storage/test_supplied_transcription_backup.py",
+          "blob_sha": "d709aeb18199c8107c2140148c6d4e282b84d2fb"
+        }
+      ],
+      "current_probes": [],
+      "reason": "Standalone supplied-ASR domain coverage exists, but does not execute audio.transcribe through AssistantService. That typed bridge is a real open capability gap at baseline9e27.",
+      "execution_claim": "NONE"
+    },
+    {
+      "canonical_path": "carr-library/tests/assistant/test_translation_v3.py",
+      "canonical_blob_sha": "b994aafda65f3497878302233e4a9f559aac8622",
+      "canonical_test_function_names": [
+        "test_explicit_advanced_identity_rejects_wrong_authority",
+        "test_local_only_denies_before_vault_or_network",
+        "test_language_inventory_uses_oauth_project_and_direction_flags",
+        "test_actual_service_writes_source_preserving_glossary_derivative",
+        "test_never_accepts_plain_result_when_glossary_or_model_unverified",
+        "test_invalid_glossary_fails_before_any_transfer",
+        "test_approval_binds_exact_glossary",
+        "test_untyped_vault_values_are_never_sent_as_v3_bearer",
+        "test_token_expiry_validation_is_bounded_and_explicit",
+        "test_token_record_iso_expiry_and_endpoint_binding",
+        "test_expiry_reentry_resumes_same_job_without_rebilling",
+        "test_profile_export_contains_neither_token_nor_vault_reference",
+        "test_completed_glossary_receipt_cannot_be_rebound",
+        "test_saved_request_cannot_silently_expand_original_approval",
+        "test_cli_requires_exact_review_then_uses_existing_jobs_and_gateway",
+        "test_cli_rejects_stale_preview_before_job_publication",
+        "test_stale_account_editor_cannot_replace_newer_credential",
+        "test_actual_native_handlers_queue_reviewed_glossary_and_focus_readable_completion",
+        "test_actual_handlers_reject_changed_review_without_call",
+        "test_handler_close_before_queued_request_preserves_paused_job_without_transmission",
+        "test_handler_root_change_before_worker_does_not_send_old_library_text"
+      ],
+      "disposition": "CURRENT_CONTRACT_COVERAGE",
+      "current_tests": [
+        {
+          "path": "carr-library/tests/assistant/test_translation_advanced.py",
+          "blob_sha": "2865908807b09a531f657c68bad90629256a047f"
+        },
+        {
+          "path": "carr-library/tests/e2e/test_google_translation_v3.py",
+          "blob_sha": "41a491f7ec6a096c9347a6ea80e198d6a6cc69b6"
+        },
+        {
+          "path": "carr-library/tests/ui/test_translation_advanced.py",
+          "blob_sha": "c00833c2081fad99289201e2e1f3fa9b1e176c12"
+        },
+        {
+          "path": "carr-library/tests/ui/test_translation_dialog.py",
+          "blob_sha": "11e65f4f9ee6ad3cf18b1aba2bebe68b15764252"
+        }
+      ],
+      "current_probes": [],
+      "reason": "Current Advanced identity/OAuth/glossary/model binding, selected source, saved approval, provider expiry and current native handler lifecycle.",
+      "execution_claim": "NONE"
+    },
+    {
+      "canonical_path": "carr-library/tests/library_assistant/test_library_workflow.py",
+      "canonical_blob_sha": "2ec34aaf153c525aa3bfb7e1d667728a30b749ba",
+      "canonical_test_function_names": [
+        "test_review_is_read_only_and_explicit_approval_is_required",
+        "test_nested_topic_references_are_validated_before_any_mutation",
+        "test_unsupported_goal_and_unknown_arguments_cannot_execute_earlier_steps",
+        "test_invalid_search_is_rejected_before_any_earlier_mutation",
+        "test_source_text_is_data_and_does_not_create_a_tool_instruction",
+        "test_input_escape_is_rejected_during_review",
+        "test_output_escape_private_paths_links_and_existing_outputs_are_rejected",
+        "test_input_hash_is_bound_at_review_and_rechecked_at_execution",
+        "test_search_does_not_cross_scope_or_replace_notebook_handles",
+        "test_pause_and_reopen_resumes_without_repeating_completed_steps",
+        "test_crash_after_tool_commit_before_checkpoint_is_reconciled_without_duplicates",
+        "test_changed_output_is_never_overwritten_after_approval",
+        "test_archived_workspace_and_modified_journal_fail_before_running",
+        "test_completed_checkpoint_has_a_typed_tool_result_not_only_a_valid_checksum",
+        "test_topic_checkpoint_cannot_retarget_a_later_export",
+        "test_invalid_checkpoint_progress_cannot_silently_skip_execution",
+        "test_full_backup_requires_separate_permission_and_recovers_without_overwrite",
+        "test_backup_resume_verifies_saved_reading_state_without_republishing",
+        "test_new_backup_is_verified_before_a_step_can_be_completed",
+        "test_job_lock_rejects_concurrent_runner",
+        "test_export_retains_actual_exact_evidence_and_separate_notes",
+        "test_completed_output_corruption_is_detected_when_resuming",
+        "test_real_process_exit_after_topic_commit_recovers_single_topic",
+        "test_real_process_exit_after_export_link_recovers_only_its_recorded_twin"
+      ],
+      "disposition": "CURRENT_CONTRACT_COVERAGE",
+      "current_tests": [
+        {
+          "path": "carr-library/tests/assistant/test_local_assistant.py",
+          "blob_sha": "90cf074af9d76842765544483f0c580d5848e49f"
+        },
+        {
+          "path": "carr-library/tests/assistant/test_topic_tools.py",
+          "blob_sha": "7e98cd22e43b627f3e562442e76e020f38c50cc1"
+        },
+        {
+          "path": "carr-library/tests/assistant/test_topic_crash_recovery.py",
+          "blob_sha": "d2c868615b14df2d6dcee6e19ddd793030cb0c6d"
+        },
+        {
+          "path": "carr-library/tests/assistant/test_topic_state.py",
+          "blob_sha": "cefec33f947bc89895f747a6d0b730c5f7a43085"
+        },
+        {
+          "path": "carr-library/tests/assistant/test_checkpoint_publication.py",
+          "blob_sha": "21b712a36aff982380c984e3cdd6827064d68f97"
+        },
+        {
+          "path": "carr-library/tests/assistant/test_backup_receipt.py",
+          "blob_sha": "0ef6686668ee7cc9ed4209ed9dc93e42df0b3130"
+        },
+        {
+          "path": "carr-library/tests/assistant/test_canonical_backup.py",
+          "blob_sha": "4825869652275015c0e94b4f2ca29ba4c230efdf"
+        }
+      ],
+      "current_probes": [],
+      "reason": "One current typed service replaces the separate six-tool facade. Prior topic references, deterministic create, exact output recovery, scoped evidence and full-backup receipt validation are covered.",
+      "execution_claim": "NONE"
+    },
+    {
+      "canonical_path": "carr-library/tests/library_assistant/test_library_workflow_ui.py",
+      "canonical_blob_sha": "b29cdb87595b0c5202014df8a50509e70efd78ea",
+      "canonical_test_function_names": [
+        "test_preview_approve_and_results_use_worker_and_keep_notebook",
+        "test_editing_the_goal_invalidates_approval",
+        "test_scope_change_before_execution_prevents_all_mutations",
+        "test_pause_after_first_checkpoint_and_load_saved_plan",
+        "test_close_requests_checkpoint_pause_and_waits_for_worker",
+        "test_scope_changed_during_plan_preview_does_not_authorize_returned_plan",
+        "test_failed_source_recheck_retains_goal_without_claiming_completion",
+        "test_install_hook_adds_one_tools_action_and_preserves_existing_menu"
+      ],
+      "disposition": "CURRENT_CONTRACT_COVERAGE",
+      "current_tests": [
+        {
+          "path": "carr-library/tests/assistant/test_dialog_lifecycle.py",
+          "blob_sha": "680beec49ed29d936930ca42a0b2e80b6ef38cd6"
+        },
+        {
+          "path": "carr-library/tests/assistant/test_planning_handlers.py",
+          "blob_sha": "935536a0e49f986dbfea48572a69bad26ad40112"
+        },
+        {
+          "path": "carr-library/tests/assistant/test_workflow_template_handlers.py",
+          "blob_sha": "c8141167ebbfeb54d51a7f7e2244f34be83f5ac8"
+        }
+      ],
+      "current_probes": [],
+      "reason": "Same current assistant dialog binds preview/run/current root, cancels pending work, retains prior jobs and clears draft authority.",
+      "execution_claim": "NONE"
+    },
+    {
+      "canonical_path": "carr-library/tests/progress/test_progress_contract.py",
+      "canonical_blob_sha": "0323230b0cf633abb25682c5fd6ff6953d8a531d",
+      "canonical_test_function_names": [
+        "test_measured_quarters_never_claim_completion_before_durable_success",
+        "test_unknown_work_stays_indeterminate_without_a_clock_based_percentage",
+        "test_known_empty_operation_reaches_completion_only_when_confirmed",
+        "test_durable_success_requires_an_explicit_boolean_true",
+        "test_incomplete_known_units_cannot_be_reported_as_success",
+        "test_invalid_count_updates_do_not_mutate_the_previous_snapshot",
+        "test_invalid_total_updates_do_not_mutate_the_previous_snapshot",
+        "test_fixed_total_progress_cannot_go_backwards_or_exceed_real_total",
+        "test_changed_total_is_disclosed_instead_of_preserving_a_fictitious_percentage",
+        "test_eta_uses_actual_unit_measurements_and_does_not_count_down_on_poll",
+        "test_pause_resume_excludes_paused_time_from_throughput_estimate",
+        "test_cancellation_request_is_distinct_from_acknowledged_cancellation",
+        "test_success_after_a_late_cancellation_request_is_not_falsely_called_cancelled",
+        "test_terminal_operations_cannot_receive_late_worker_updates",
+        "test_threaded_increments_are_atomic_and_observed_counts_never_regress",
+        "test_subtasks_do_not_fabricate_overall_completion_or_share_counters",
+        "test_history_is_bounded_without_silently_removing_running_operations",
+        "test_snapshots_are_immutable_values_and_do_not_change_after_later_updates",
+        "test_worker_binding_is_scoped_nested_and_isolated_between_threads",
+        "test_progress_description_exposes_actual_state_phase_and_units"
+      ],
+      "disposition": "CURRENT_CONTRACT_COVERAGE",
+      "current_tests": [
+        {
+          "path": "carr-library/tests/ui/test_shared_progress.py",
+          "blob_sha": "57ae94bb50fb5ac9591227768e52fe4159444544"
+        },
+        {
+          "path": "carr-library/tests/ui/test_operation_progress.py",
+          "blob_sha": "c604c6112f5c40a172e1c8622acdfc4412f8bc1e"
+        }
+      ],
+      "current_probes": [],
+      "reason": "Measured units, verified completion, cancellation request versus acknowledgement, immutable concurrent snapshots and task context; current state spelling differs. Numeric upper-bound gap is recorded separately.",
+      "execution_claim": "NONE"
+    },
+    {
+      "canonical_path": "carr-library/tests/progress/test_progress_feedback.py",
+      "canonical_blob_sha": "3f39b279b982cc9b6b2c5c6ef04288256508e32d",
+      "canonical_test_function_names": [
+        "test_actual_pcm_pitch_duration_channels_and_no_clipping",
+        "test_pcm_volume_is_local_to_the_notification_and_mute_is_silent",
+        "test_progress_pitch_rejects_unmeasured_or_out_of_range_percentages",
+        "test_known_progress_is_throttled_and_pitch_rises_from_actual_quarters",
+        "test_indeterminate_work_repeats_a_distinct_busy_cue_at_the_configured_interval",
+        "test_non_success_states_have_distinct_cues_and_never_success_pitch",
+        "test_resume_is_announced_as_resume_after_a_reported_pause",
+        "test_off_mute_zero_volume_background_and_quiet_media_emit_nothing",
+        "test_suppressed_completed_cue_is_not_replayed_when_user_unmutes",
+        "test_explicit_background_and_media_permissions_are_honored",
+        "test_windows_sink_receives_only_in_memory_pcm_and_respects_preexisting_cancel",
+        "test_feedback_returns_before_playback_and_coalesces_to_the_latest_pending_cue",
+        "test_mute_invalidates_the_queued_cue_and_cooperatively_cancels_in_flight_feedback",
+        "test_speech_requires_an_explicit_provider_and_runs_on_the_notification_worker",
+        "test_recording_suspension_cancels_pending_feedback_without_changing_user_preferences",
+        "test_retained_provider_cancel_callback_keeps_its_original_generation"
+      ],
+      "disposition": "CURRENT_CONTRACT_COVERAGE",
+      "current_tests": [
+        {
+          "path": "carr-library/tests/ui/test_shared_progress.py",
+          "blob_sha": "57ae94bb50fb5ac9591227768e52fe4159444544"
+        },
+        {
+          "path": "carr-library/tests/ui/test_operation_progress.py",
+          "blob_sha": "c604c6112f5c40a172e1c8622acdfc4412f8bc1e"
+        }
+      ],
+      "current_probes": [],
+      "reason": "Actual synthetic notification PCM, local volume, distinct cues, current throttling, no suppressed replay and worker cancellation; literal tone sequences are current-family contracts.",
+      "execution_claim": "NONE"
+    },
+    {
+      "canonical_path": "carr-library/tests/progress/test_progress_media_integration.py",
+      "canonical_blob_sha": "0748485c98822961f2a39d9d43d75586c0dfc35d",
+      "canonical_test_function_names": [
+        "test_native_panel_scales_volume_and_localizes_real_registry_pcm",
+        "test_requested_cancellation_is_not_announced_as_completed",
+        "test_stale_voice_selection_cannot_cross_library_root",
+        "test_recording_and_uncertain_devices_remain_quiet_despite_playback_opt_out",
+        "test_unconfirmed_player_close_blocks_recording_until_actual_silence",
+        "test_cancelled_deferred_content_playback_never_starts_after_notification_cleanup",
+        "test_library_switch_cancels_pending_owned_speech_before_registry_cleanup",
+        "test_directly_injected_registry_is_borrowed_after_all_selection_closes",
+        "test_owned_registry_survives_one_panel_close_then_releases_once_after_last_copy",
+        "test_rejected_owned_voice_selection_closes_the_fresh_registry"
+      ],
+      "disposition": "CURRENT_CONTRACT_COVERAGE",
+      "current_tests": [
+        {
+          "path": "carr-library/tests/ui/test_operation_progress.py",
+          "blob_sha": "c604c6112f5c40a172e1c8622acdfc4412f8bc1e"
+        },
+        {
+          "path": "carr-library/tests/ui/test_progress_view.py",
+          "blob_sha": "7050eecdd909b6fad8f8f1304deab3048f773030"
+        },
+        {
+          "path": "carr-library/tests/ui/test_progress_registered_voices.py",
+          "blob_sha": "9a1b875860796c915fe1e4f7facd15c01aa4fdd1"
+        },
+        {
+          "path": "carr-library/tests/ui/test_recording_dialog.py",
+          "blob_sha": "1f90e10c7515aa6a2d53b783c2d36a405b4fc273"
+        }
+      ],
+      "current_probes": [],
+      "reason": "Current private output ownership, quiet-before-media, recording guard, current-root/voice fingerprint and retained close refusal; no canonical registry resource object is adopted.",
+      "execution_claim": "NONE"
+    },
+    {
+      "canonical_path": "carr-library/tests/progress/test_progress_preferences.py",
+      "canonical_blob_sha": "4e813a426280cfe9c863b16239da5dd9b3a6a771",
+      "canonical_test_function_names": [
+        "test_first_run_is_silent_and_read_only_then_preferences_roundtrip",
+        "test_invalid_preference_values_cannot_be_constructed",
+        "test_corrupt_preferences_are_preserved_and_can_never_enable_audio",
+        "test_backup_validation_retains_supported_inert_speech_preference_without_provider_calls",
+        "test_caller_and_file_are_unchanged_after_failed_atomic_replacement",
+        "test_other_window_cannot_be_overwritten_by_stale_preferences",
+        "test_corrupt_preferences_repair_detects_an_intervening_external_repair",
+        "test_hardlinked_target_and_lock_cannot_be_used_for_settings",
+        "test_external_edit_during_flush_survives_the_settings_attempt"
+      ],
+      "disposition": "CURRENT_CONTRACT_COVERAGE",
+      "current_tests": [
+        {
+          "path": "carr-library/tests/ui/test_shared_progress.py",
+          "blob_sha": "57ae94bb50fb5ac9591227768e52fe4159444544"
+        },
+        {
+          "path": "carr-library/tests/ui/test_progress_compatibility.py",
+          "blob_sha": "c6a9145c92d4c0ea48c8e84ed7b7f81a057aac2a"
+        },
+        {
+          "path": "carr-library/tests/ui/test_progress_concurrency.py",
+          "blob_sha": "b6871cef08447daca749912549c16ad53f870e95"
+        }
+      ],
+      "current_probes": [],
+      "reason": "Exact canonical envelope decoder, inactive preference loading, atomic write/CAS, raw-byte preservation and postcommit semantics in current preference API.",
+      "execution_claim": "NONE"
+    },
+    {
+      "canonical_path": "carr-library/tests/progress/test_progress_reporting_failure.py",
+      "canonical_blob_sha": "484760dd05b3833da0ca200f1906a0fe66172261",
+      "canonical_test_function_names": [
+        "test_unavailable_observer_does_not_invent_operation_failure_or_success",
+        "test_successful_terminal_result_is_never_reclassified_by_a_late_observer_error"
+      ],
+      "disposition": "CURRENT_CONTRACT_COVERAGE",
+      "current_tests": [
+        {
+          "path": "carr-library/tests/ui/test_progress_view.py",
+          "blob_sha": "7050eecdd909b6fad8f8f1304deab3048f773030"
+        }
+      ],
+      "current_probes": [],
+      "reason": "Current returned domain outcome survives observer failure; incomplete results never become successful.",
+      "execution_claim": "NONE"
+    },
+    {
+      "canonical_path": "carr-library/tests/storage/probe_backup_v4_producer_models.py",
+      "canonical_blob_sha": "249f7a41c3c9fa1e31f6a91b3fe5acf4b46b5ebf",
+      "canonical_test_function_names": [
+        "test_both_real_editor_and_keymap_formats_roundtrip",
+        "test_resigned_project_cannot_lie_about_source_text",
+        "test_source_producer_snapshot_budget_is_respected",
+        "test_real_typed_audio_projects_and_history_restore"
+      ],
+      "disposition": "CURRENT_CONTRACT_COVERAGE",
+      "current_tests": [
+        {
+          "path": "carr-library/tests/storage/test_backup_productivity_state.py",
+          "blob_sha": "8ef21521aa79a9b725f21d050de9802608f019a6"
+        },
+        {
+          "path": "carr-library/tests/storage/test_backup_unified_audio.py",
+          "blob_sha": "78ba167e65ae6c8a87bfa164aca2826910de7470"
+        },
+        {
+          "path": "carr-library/tests/storage/test_live_reading_backup.py",
+          "blob_sha": "b77a0b17ae19179ce1b1de952db2400c28a0ee0b"
+        },
+        {
+          "path": "carr-library/tests/storage/test_preparation_backup.py",
+          "blob_sha": "8d15d2c307ddefe4f07989974d943db70768cb80"
+        }
+      ],
+      "current_probes": [],
+      "reason": "Current narration/keymap/audio producer models and source-bound derivatives; probe is not itself a current pytest selector.",
+      "execution_claim": "NONE"
+    },
+    {
+      "canonical_path": "carr-library/tests/storage/test_atomic_state_publication.py",
+      "canonical_blob_sha": "79ad42095697deb943b9e0a6f7372a5fff3f036d",
+      "canonical_test_function_names": [
+        "test_atomic_state_update_survives_reader_without_exposing_partial_bytes",
+        "test_permanent_replace_denial_keeps_old_state_and_cleans_own_stage",
+        "test_unrelated_publication_error_is_not_retried",
+        "test_windows_retry_budget_reuses_one_complete_stage"
+      ],
+      "disposition": "ADAPTED_CURRENT_TEST_DELTA",
+      "current_tests": [
+        {
+          "path": "carr-library/tests/storage/test_state_json_reader.py",
+          "blob_sha": "f49f65182a99037232c49b85a30c34512d28b8c7"
+        }
+      ],
+      "current_probes": [],
+      "reason": "Current live state shares coherent reader/native publication; root bcb66742afcff1e5c6d887c32042d90682536972 additionally ports the canonical generic seven retry cases without changing native audio jobs.",
+      "execution_claim": "NONE"
+    },
+    {
+      "canonical_path": "carr-library/tests/storage/test_backup_generated_audio.py",
+      "canonical_blob_sha": "faed937a5258204d285472c1e667bbca6e4cc443",
+      "canonical_test_function_names": [
+        "test_malformed_generated_cache_cannot_be_published",
+        "test_restore_authenticates_before_destination",
+        "test_generated_restore_does_not_launch_providers",
+        "test_complete_byte_budget_includes_generated_audio",
+        "test_final_bytes_detect_same_size_change_with_fixed_timestamps",
+        "test_media_copy_is_bounded_and_cancellable"
+      ],
+      "disposition": "CURRENT_CONTRACT_COVERAGE",
+      "current_tests": [
+        {
+          "path": "carr-library/tests/storage/test_backup_unified_audio.py",
+          "blob_sha": "78ba167e65ae6c8a87bfa164aca2826910de7470"
+        },
+        {
+          "path": "carr-library/tests/audio/test_publication.py",
+          "blob_sha": "132b0c08a8ceedd8d435f50d52e518e095abaa0b"
+        },
+        {
+          "path": "carr-library/tests/storage/test_audio_batch_backup.py",
+          "blob_sha": "e903be9451a88987742408974b255a51e7ef5b51"
+        },
+        {
+          "path": "carr-library/tests/storage/test_playback_queue_backup.py",
+          "blob_sha": "fd6172c18953a6e0a187dab014a060601d30ac1c"
+        },
+        {
+          "path": "carr-library/tests/storage/test_backup_content_revalidation.py",
+          "blob_sha": "9142efbc990c4f806d0a69ec390b1c38e99fe4f1"
+        }
+      ],
+      "current_probes": [],
+      "reason": "Generated current media uses its actual typed producer and current byte/content budgets; generic historical payload is inert archival data, not a current validated output receipt.",
+      "execution_claim": "NONE"
+    },
+    {
+      "canonical_path": "carr-library/tests/storage/test_backup_keyboard_drafts.py",
+      "canonical_blob_sha": "76a095db93f7e20f4f9180b154ca53ba655ad254",
+      "canonical_test_function_names": [
+        "test_common_backup_preserves_profile_bytes_hashes_and_authorized_recovery",
+        "test_restored_draft_never_bypasses_fresh_scope_authorization",
+        "test_conflicting_saved_note_is_preserved_and_recovery_remains_read_only",
+        "test_archived_scope_draft_is_backed_up_without_authorizing_recovery",
+        "test_same_size_sidecar_tamper_rejects_restore_before_publication",
+        "test_foreign_or_missing_evidence_draft_blocks_complete_backup",
+        "test_invalid_personal_state_is_not_omitted_from_completed_backup",
+        "test_keymap_change_under_its_own_lock_is_detected_during_common_snapshot"
+      ],
+      "disposition": "CURRENT_CONTRACT_COVERAGE",
+      "current_tests": [
+        {
+          "path": "carr-library/tests/storage/test_backup_productivity_state.py",
+          "blob_sha": "8ef21521aa79a9b725f21d050de9802608f019a6"
+        },
+        {
+          "path": "carr-library/tests/storage/test_evidence_drafts.py",
+          "blob_sha": "6478be38517786c48e56ab7865a18eacea88b253"
+        },
+        {
+          "path": "carr-library/tests/storage/test_keyboard_preferences.py",
+          "blob_sha": "a2b12f19dc58974ce56d70d8262ac077ba1ce3d0"
+        },
+        {
+          "path": "carr-library/tests/ui/test_evidence_draft_recovery.py",
+          "blob_sha": "8b2fa7f07b7ed26f88ccb552b420625366f71760"
+        }
+      ],
+      "current_probes": [],
+      "reason": "Both current keymap generations and exact unsaved evidence drafts are retained; authorized recovery rechecks source/scope/revision and keeps conflicting notes.",
+      "execution_claim": "NONE"
+    },
+    {
+      "canonical_path": "carr-library/tests/storage/test_backup_pending_common4.py",
+      "canonical_blob_sha": "2d0bd02e29dbc533a9ef4de298f6eaaa508e1675",
+      "canonical_test_function_names": [
+        "test_common4_partial_import_and_reader_state_restore_without_execution",
+        "test_planned_extended_format_keeps_exact_bytes_and_explicit_resume",
+        "test_common4_pending_closure_rejects_damage_before_publication",
+        "test_pending_bytes_count_towards_complete_backup_budget",
+        "test_pending_publication_failure_keeps_restore_incomplete",
+        "test_exact_canonical_pending_shapes_are_read_without_rewriting"
+      ],
+      "disposition": "CURRENT_CONTRACT_COVERAGE",
+      "current_tests": [
+        {
+          "path": "carr-library/tests/storage/test_complete_pending_backup.py",
+          "blob_sha": "dc7d6a9d955e4a5116a3916966bd1ab5bae45359"
+        },
+        {
+          "path": "carr-library/tests/storage/test_backup_pending_integration.py",
+          "blob_sha": "cbaa49d5cb275493f59beeb1c19b589f0474f468"
+        },
+        {
+          "path": "carr-library/tests/storage/test_pending_backup.py",
+          "blob_sha": "db182166ee69f0a126718d1e09fc3db1b93331f0"
+        },
+        {
+          "path": "carr-library/tests/storage/test_pending_backup_ocr.py",
+          "blob_sha": "364056f581845ce3a7eff4c66314a55e0c7927c0"
+        },
+        {
+          "path": "carr-library/tests/storage/test_streamed_source_backup.py",
+          "blob_sha": "bdc4ee9b5a5a88d55a78a9bd96efe98523e21314"
+        }
+      ],
+      "current_probes": [],
+      "reason": "Current pending closure, exact worker/config/input binding and explicit resume; original historical envelopes remain separately archived.",
+      "execution_claim": "NONE"
+    },
+    {
+      "canonical_path": "carr-library/tests/storage/test_backup_primary_producers.py",
+      "canonical_blob_sha": "8e98fce992da579cedf4cdef5b89376b0adb0032",
+      "canonical_test_function_names": [
+        "test_all_primary_producers_roundtrip_without_activation",
+        "test_resigned_tampering_is_rejected_before_destination",
+        "test_external_missing_windows_paths_are_passive_checkpoint_data",
+        "test_unrecognized_private_state_remains_visible_failure",
+        "test_actual_progress_preferences_roundtrip_without_notifications",
+        "test_invalid_progress_settings_cannot_enter_backup"
+      ],
+      "disposition": "CURRENT_CONTRACT_COVERAGE",
+      "current_tests": [
+        {
+          "path": "carr-library/tests/storage/test_backup_assistant_state.py",
+          "blob_sha": "e871a055158a3f7173cf93905dcc90735717203f"
+        },
+        {
+          "path": "carr-library/tests/storage/test_provider_recovery.py",
+          "blob_sha": "278b6381b005c4b307d1fb23e3340f09b90268e5"
+        },
+        {
+          "path": "carr-library/tests/storage/test_backup_unified_audio.py",
+          "blob_sha": "78ba167e65ae6c8a87bfa164aca2826910de7470"
+        },
+        {
+          "path": "carr-library/tests/storage/test_legacy_reader_session_backup.py",
+          "blob_sha": "11112a1b5a811302ff71af5a1db437cac4976cab"
+        },
+        {
+          "path": "carr-library/tests/storage/test_backup_content_revalidation.py",
+          "blob_sha": "9142efbc990c4f806d0a69ec390b1c38e99fe4f1"
+        }
+      ],
+      "current_probes": [],
+      "reason": "Current actual producers, passive provider metadata/history and archival reader state; restored credentials/old execution authority are never activated.",
+      "execution_claim": "NONE"
+    },
+    {
+      "canonical_path": "carr-library/tests/storage/test_backup_translation.py",
+      "canonical_blob_sha": "ed2ca50c88f66182c3d3cfaa98735888405800c2",
+      "canonical_test_function_names": [
+        "test_translation_state_roundtrips_without_credentials_or_gateway",
+        "test_resigned_translation_tampering_is_rejected",
+        "test_legacy_basic_checkpoint_without_glossary_field_still_roundtrips",
+        "test_resigned_advanced_translation_authority_changes_are_rejected"
+      ],
+      "disposition": "CURRENT_CONTRACT_COVERAGE",
+      "current_tests": [
+        {
+          "path": "carr-library/tests/assistant/test_translation.py",
+          "blob_sha": "72d07e19b1bf7311e8c21e76c37a563306a49e86"
+        },
+        {
+          "path": "carr-library/tests/assistant/test_translation_advanced.py",
+          "blob_sha": "2865908807b09a531f657c68bad90629256a047f"
+        },
+        {
+          "path": "carr-library/tests/assistant/test_translation_scopes.py",
+          "blob_sha": "8f539dd55f732d4762dbc7b8c2de6e03febe6f10"
+        }
+      ],
+      "current_probes": [],
+      "reason": "Current typed translation namespace validates source/approval/receipt and is preserved by common backup; old active credentials are not recreated.",
+      "execution_claim": "NONE"
+    },
+    {
+      "canonical_path": "carr-library/tests/storage/test_backup_v4_sidecars.py",
+      "canonical_blob_sha": "2f669e3c61f2b3c271033688416918a897e69b09",
+      "canonical_test_function_names": [
+        "test_v4_preserves_exact_historical_reader_state",
+        "test_exact_v3_reader_shapes_restore_without_rewriting",
+        "test_empty_v3_variants_have_unambiguous_namespaces",
+        "test_unvalidated_jobs_and_settings_fail_instead_of_disappearing",
+        "test_unrelated_private_files_are_not_backup_inputs",
+        "test_missing_producer_validator_refuses_existing_data",
+        "test_sidecar_disk_full_does_not_publish_partial_destination",
+        "test_invalid_manifest_never_reaches_writable_storage",
+        "test_same_size_valid_json_tamper_is_detected",
+        "test_sidecar_change_during_snapshot_prevents_publication",
+        "test_real_process_exit_during_sidecar_publication",
+        "test_invalid_total_budget_is_rejected_without_output",
+        "test_total_budget_includes_every_file_and_manifest",
+        "test_cancelled_operation_never_publishes_destination"
+      ],
+      "disposition": "CURRENT_CONTRACT_COVERAGE",
+      "current_tests": [
+        {
+          "path": "carr-library/tests/storage/test_backup_schema_identity.py",
+          "blob_sha": "3d4627fa6495bb99ad79034d54288c889c3a0283"
+        },
+        {
+          "path": "carr-library/tests/storage/test_backup_v3_compatibility.py",
+          "blob_sha": "4069f29a4e66911ffc28b0642037cea81b22d832"
+        },
+        {
+          "path": "carr-library/tests/storage/test_library_backup_reading_state.py",
+          "blob_sha": "02dfead09e4331e9cd68309afc0c0179ca808f92"
+        },
+        {
+          "path": "carr-library/tests/storage/test_backup_pending_integration.py",
+          "blob_sha": "cbaa49d5cb275493f59beeb1c19b589f0474f468"
+        },
+        {
+          "path": "carr-library/tests/storage/test_backup_content_revalidation.py",
+          "blob_sha": "9142efbc990c4f806d0a69ec390b1c38e99fe4f1"
+        },
+        {
+          "path": "carr-library/tests/storage/test_crash_backup.py",
+          "blob_sha": "1e61da6457677758a5dffd365fb577b58ada96a3"
+        }
+      ],
+      "current_probes": [],
+      "reason": "Exact historical schema dispatch, current typed sidecars, byte limits, cancellation, content identity and incomplete-marker publication boundaries.",
+      "execution_claim": "NONE"
+    },
+    {
+      "canonical_path": "carr-library/tests/storage/test_engine_settings_backup.py",
+      "canonical_blob_sha": "b7ecfa366738b0428912803266249dd343f96776",
+      "canonical_test_function_names": [
+        "test_configured_engines_roundtrip_without_importing_or_running_engines",
+        "test_legacy_generic_helper_settings_keep_exact_bytes_and_defaults",
+        "test_v3_state_shape_can_restore_engine_settings_without_rewriting_backup",
+        "test_invalid_engine_declarations_reject_backup_and_keep_source",
+        "test_semantically_invalid_resigned_restore_preserves_inputs_and_publishes_nothing",
+        "test_settings_collection_and_json_boundaries"
+      ],
+      "disposition": "PASSIVE_FORMAT_POLICY_DIFFERENCE",
+      "current_tests": [
+        {
+          "path": "carr-library/tests/storage/test_backup_pending_integration.py",
+          "blob_sha": "cbaa49d5cb275493f59beeb1c19b589f0474f468"
+        },
+        {
+          "path": "carr-library/tests/storage/test_legacy_state_portability.py",
+          "blob_sha": "79f4a579e64ea25acc84e2e16af5892118a67dfd"
+        },
+        {
+          "path": "carr-library/tests/audio/test_engine_profiles.py",
+          "blob_sha": "778b3d443e441b94d1cb6d035690609facc24e3c"
+        }
+      ],
+      "current_probes": [],
+      "reason": "Historical state/audio/engines.json is preserved as passive original state. Current machine-bound EngineProfileStore is intentionally not restored as active registration; canonical validator-specific cases are not claimed equivalent.",
+      "execution_claim": "NONE"
+    },
+    {
+      "canonical_path": "carr-library/tests/storage/test_engine_settings_dordiai_backup.py",
+      "canonical_blob_sha": "de85053124d9cbaad264629d80f365cdda4cf31c",
+      "canonical_test_function_names": [
+        "test_primary_declaration_roundtrips_without_provider_probe_or_activation",
+        "test_bad_primary_declaration_rejects_backup_without_rewriting_source",
+        "test_pure_provider_validator_is_required_before_accepting_non_null_declaration"
+      ],
+      "disposition": "PASSIVE_FORMAT_POLICY_DIFFERENCE",
+      "current_tests": [
+        {
+          "path": "carr-library/tests/storage/test_backup_pending_integration.py",
+          "blob_sha": "cbaa49d5cb275493f59beeb1c19b589f0474f468"
+        },
+        {
+          "path": "carr-library/tests/storage/test_legacy_state_portability.py",
+          "blob_sha": "79f4a579e64ea25acc84e2e16af5892118a67dfd"
+        },
+        {
+          "path": "carr-library/tests/audio/test_engine_profiles.py",
+          "blob_sha": "778b3d443e441b94d1cb6d035690609facc24e3c"
+        }
+      ],
+      "current_probes": [],
+      "reason": "Legacy dordiai engine declarations remain inert provenance under historical state. Current reviewed manifest registration is explicit and machine-bound; no active provider/weights is imported on restore.",
+      "execution_claim": "NONE"
+    },
+    {
+      "canonical_path": "carr-library/tests/storage/test_progress_preferences_backup.py",
+      "canonical_blob_sha": "d4d344c5c7d121a0aa0e78792cfaf0d2d6720eab",
+      "canonical_test_function_names": [
+        "test_actual_preferences_save_backup_restore_and_reload_exactly"
+      ],
+      "disposition": "CURRENT_CONTRACT_COVERAGE",
+      "current_tests": [
+        {
+          "path": "carr-library/tests/ui/test_progress_compatibility.py",
+          "blob_sha": "c6a9145c92d4c0ea48c8e84ed7b7f81a057aac2a"
+        },
+        {
+          "path": "carr-library/tests/ui/test_operation_progress.py",
+          "blob_sha": "c604c6112f5c40a172e1c8622acdfc4412f8bc1e"
+        },
+        {
+          "path": "carr-library/tests/storage/test_backup_productivity_state.py",
+          "blob_sha": "8ef21521aa79a9b725f21d050de9802608f019a6"
+        },
+        {
+          "path": "carr-library/tests/ui/test_progress_registered_voices.py",
+          "blob_sha": "9a1b875860796c915fe1e4f7facd15c01aa4fdd1"
+        }
+      ],
+      "current_probes": [],
+      "reason": "Exact original canonical preference bytes roundtrip until explicit current save; registered voice metadata cannot activate a missing machine profile.",
+      "execution_claim": "NONE"
+    },
+    {
+      "canonical_path": "carr-library/tests/storage/test_state_backup_portability.py",
+      "canonical_blob_sha": "24500f9a9939048d5672ec1d77c3b84eb9de5a86",
+      "canonical_test_function_names": [
+        "test_portable_manifest_rejects_collisions",
+        "test_portable_manifest_allows_distinct_siblings",
+        "test_snapshot_refuses_unrestorable_portable_names",
+        "test_portable_manifest_rejects_non_windows_names",
+        "test_portable_manifest_keeps_ordinary_unicode_names",
+        "test_snapshot_rejects_nonportable_real_source",
+        "test_portable_snapshot_roundtrip_unicode"
+      ],
+      "disposition": "CURRENT_CONTRACT_COVERAGE",
+      "current_tests": [
+        {
+          "path": "carr-library/tests/storage/test_legacy_state_portability.py",
+          "blob_sha": "79f4a579e64ea25acc84e2e16af5892118a67dfd"
+        },
+        {
+          "path": "carr-library/tests/storage/test_backup_boundary.py",
+          "blob_sha": "896613d3d73ba46cfb3df571dbd0501236f84689"
+        },
+        {
+          "path": "carr-library/tests/storage/test_backup_pending_integration.py",
+          "blob_sha": "cbaa49d5cb275493f59beeb1c19b589f0474f468"
+        }
+      ],
+      "current_probes": [],
+      "reason": "Current common Windows/NFC/alias rules plus historical4096-character/2048-component compatibility; typed producers retain their narrower16-component rule.",
+      "execution_claim": "NONE"
+    },
+    {
+      "canonical_path": "carr-library/tests/storage/test_state_snapshot_identity.py",
+      "canonical_blob_sha": "e8706c5258741aac52a01270b85290beb01ac594",
+      "canonical_test_function_names": [
+        "test_same_size_rewrite_with_unchanged_metadata_invalidates_snapshot"
+      ],
+      "disposition": "CURRENT_CONTRACT_COVERAGE",
+      "current_tests": [
+        {
+          "path": "carr-library/tests/storage/test_backup_content_revalidation.py",
+          "blob_sha": "9142efbc990c4f806d0a69ec390b1c38e99fe4f1"
+        },
+        {
+          "path": "carr-library/tests/storage/test_backup_source_binding_review.py",
+          "blob_sha": "323e03b6dfbdf6ae32712db2d079f086a343b37b"
+        }
+      ],
+      "current_probes": [],
+      "reason": "Real equal-metadata content rewrite and final cancellable byte verification prevent a complete backup from publishing stale copied content.",
+      "execution_claim": "NONE"
+    },
+    {
+      "canonical_path": "carr-library/tests/storage/test_v3_state_backup.py",
+      "canonical_blob_sha": "01d1d3d70345e5719e3c64aed6b01ed103d78d4e",
+      "canonical_test_function_names": [
+        "test_backup_restores_exact_state_sources_and_evidence_without_cache",
+        "test_optional_generated_cache_roundtrips_exactly",
+        "test_corrupt_state_never_publishes_usable_restore",
+        "test_state_manifest_rejects_unsafe_portable_paths",
+        "test_state_manifest_rejects_case_duplicates_and_byte_overflow",
+        "test_backup_rejects_linked_state",
+        "test_dangling_state_root_is_not_silently_omitted",
+        "test_active_state_database_requires_consistent_adapter",
+        "test_snapshot_detects_changes_to_already_copied_tree",
+        "test_cancelled_backup_never_publishes_success_for_empty_state",
+        "test_state_publication_crash_retains_incomplete_restore_marker",
+        "test_legacy_backup_still_restores_without_state",
+        "test_snapshot_rejects_same_metadata_content_change_before_publication",
+        "test_snapshot_revalidation_can_be_cancelled_before_publication",
+        "test_typed_backup_refuses_inaccessible_optional_root",
+        "test_typed_capture_distinguishes_optional_absence_from_disappearance"
+      ],
+      "disposition": "CURRENT_CONTRACT_COVERAGE",
+      "current_tests": [
+        {
+          "path": "carr-library/tests/storage/test_backup_pending_integration.py",
+          "blob_sha": "cbaa49d5cb275493f59beeb1c19b589f0474f468"
+        },
+        {
+          "path": "carr-library/tests/storage/test_backup_v3_compatibility.py",
+          "blob_sha": "4069f29a4e66911ffc28b0642037cea81b22d832"
+        },
+        {
+          "path": "carr-library/tests/storage/test_backup_schema_identity.py",
+          "blob_sha": "3d4627fa6495bb99ad79034d54288c889c3a0283"
+        },
+        {
+          "path": "carr-library/tests/storage/test_backup_content_revalidation.py",
+          "blob_sha": "9142efbc990c4f806d0a69ec390b1c38e99fe4f1"
+        },
+        {
+          "path": "carr-library/tests/storage/test_legacy_transcription_compatibility.py",
+          "blob_sha": "b9cd28eb84eaaeb11aa5cd58440cf48482d7ae17"
+        },
+        {
+          "path": "carr-library/tests/storage/test_historical_asr_cache_policy.py",
+          "blob_sha": "b69e4023b9535ea5a8ae49d68f88f4ab63267777"
+        }
+      ],
+      "current_probes": [],
+      "reason": "Exact historical envelopes, passive state archival, safe optional-root presence, cached-ASR policy, active-writer refusal, content/budget/cancel guards. Schema-specific alternate producer behavior is not silently activated.",
+      "execution_claim": "NONE"
+    },
+    {
+      "canonical_path": "carr-library/tests/ui/native_library_workflow_smoke.py",
+      "canonical_blob_sha": "0d0441392caf72eed0e0bc5a0735b041de685d30",
+      "canonical_test_function_names": [],
+      "disposition": "CURRENT_NATIVE_PROBES",
+      "current_tests": [],
+      "current_probes": [
+        {
+          "path": "carr-library/scripts/windows_topic_tools_smoke.py",
+          "blob_sha": "6482abfd4625a1e48dd5198ee13361dcb5b5eb2f"
+        },
+        {
+          "path": "carr-library/scripts/windows_workflow_templates_smoke.py",
+          "blob_sha": "eca942deb4783ea7ae32dd8e47cda417ad5ebf31"
+        }
+      ],
+      "reason": "Current native assistant/topic/template probes exercise the installed current service and exact module hashes; separate heads and outcomes are retained. No old probe PASS is transferred.",
+      "execution_claim": "NONE"
+    },
+    {
+      "canonical_path": "carr-library/tests/ui/native_progress_smoke.py",
+      "canonical_blob_sha": "ce813fd48b64b9998f561217adcaa38f8fc874a2",
+      "canonical_test_function_names": [],
+      "disposition": "CURRENT_NATIVE_PROBES",
+      "current_tests": [],
+      "current_probes": [
+        {
+          "path": "carr-library/scripts/progress_registered_acceptance.py",
+          "blob_sha": "c81335e63aa844a762d6917c4fe621425ed843d9"
+        },
+        {
+          "path": "carr-library/scripts/windows_progress_registered_smoke.py",
+          "blob_sha": "f6c3fbbe5df9495d4812b69270e7ba40de10d6a0"
+        },
+        {
+          "path": "carr-library/scripts/windows_progress_smoke.py",
+          "blob_sha": "336ac577e0f6adc88d874481de72d26a6d60ec5b"
+        },
+        {
+          "path": "carr-library/scripts/windows_shared_progress_smoke.py",
+          "blob_sha": "7e9cc6ce9acf2d81d0648681845d26d9b28d189d"
+        }
+      ],
+      "reason": "Current shared native progress and registered-progress probes exercise the existing presenter/selected-root controls. NVDA/physical audio/model quality remain separate qualification.",
+      "execution_claim": "NONE"
+    },
+    {
+      "canonical_path": "carr-library/tests/ui/test_platform_modal_lifecycle.py",
+      "canonical_blob_sha": "02f28a69643399c92e2f1200b6a94d3f54b95422",
+      "canonical_test_function_names": [
+        "test_escape_observes_close_before_modal_callback_returns",
+        "test_escape_cannot_pass_for_an_ignored_or_incorrect_close",
+        "test_escape_requires_a_live_visible_modal_window"
+      ],
+      "disposition": "CURRENT_CONTRACT_COVERAGE",
+      "current_tests": [
+        {
+          "path": "carr-library/tests/assistant/test_dialog_lifecycle.py",
+          "blob_sha": "680beec49ed29d936930ca42a0b2e80b6ef38cd6"
+        },
+        {
+          "path": "carr-library/tests/assistant/test_workflow_template_handlers.py",
+          "blob_sha": "c8141167ebbfeb54d51a7f7e2244f34be83f5ac8"
+        },
+        {
+          "path": "carr-library/tests/ui/test_live_reading.py",
+          "blob_sha": "00507fe051bc6fdea0ad2dc11f78c485fe6ce4f3"
+        },
+        {
+          "path": "carr-library/tests/ui/test_save_all.py",
+          "blob_sha": "efef6ba9061570885f2e07967107a6dc14564cd8"
+        }
+      ],
+      "current_probes": [],
+      "reason": "Old helper tests belong to the alternate windows_platform_tools_smoke harness. Current probes return CallLater phases to the actual modal loop and check completion after settlement; no copying of the old nested-pump helper or its PASS.",
+      "execution_claim": "NONE"
+    },
+    {
+      "canonical_path": "carr-library/tests/ui/test_progress_job_results.py",
+      "canonical_blob_sha": "c76784303bdae80c922ab37ade1374d2537250c1",
+      "canonical_test_function_names": [
+        "test_worker_binding_is_real_and_100_waits_for_successful_result_callback",
+        "test_cancel_request_does_not_relabel_a_real_commit_error_as_cancelled",
+        "test_explicit_worker_interruption_is_acknowledged_as_cancelled",
+        "test_success_after_late_request_remains_successful_when_work_really_committed",
+        "test_progress_observer_failure_cannot_turn_a_successful_job_into_business_failure",
+        "test_returned_job_receipt_never_claims_success_for_incomplete_work",
+        "test_typed_assistant_report_preserves_failed_state",
+        "test_callback_failure_never_announces_generic_completion",
+        "test_result_callback_owns_focus_and_detailed_status",
+        "test_completion_summary_preserves_the_callback_focus_target"
+      ],
+      "disposition": "CURRENT_CONTRACT_COVERAGE",
+      "current_tests": [
+        {
+          "path": "carr-library/tests/ui/test_progress_view.py",
+          "blob_sha": "7050eecdd909b6fad8f8f1304deab3048f773030"
+        },
+        {
+          "path": "carr-library/tests/ui/test_operation_progress.py",
+          "blob_sha": "c604c6112f5c40a172e1c8622acdfc4412f8bc1e"
+        }
+      ],
+      "current_probes": [],
+      "reason": "Actual background result callbacks, committed typed results after late cancel, incomplete status, observer failures and preserved focus.",
+      "execution_claim": "NONE"
+    },
+    {
+      "canonical_path": "carr-library/tests/ui/test_progress_media_quiet.py",
+      "canonical_blob_sha": "949dc5a10f98efd137e677d5f9ed0def7be870f4",
+      "canonical_test_function_names": [
+        "test_terminal_notice_is_retained_while_owned_running_speech_drains",
+        "test_new_operation_discards_old_active_and_deferred_notices",
+        "test_quiet_toggle_before_next_timer_discards_a_deferred_final_notice",
+        "test_root_change_discards_pending_final_even_when_new_root_enables_speech",
+        "test_independent_recording_holds_never_unmute_each_other",
+        "test_actual_player_uncertainty_and_capture_ignore_playback_opt_out",
+        "test_unconfirmed_close_retains_each_player_until_its_own_silence"
+      ],
+      "disposition": "CURRENT_CONTRACT_COVERAGE",
+      "current_tests": [
+        {
+          "path": "carr-library/tests/ui/test_shared_progress.py",
+          "blob_sha": "57ae94bb50fb5ac9591227768e52fe4159444544"
+        },
+        {
+          "path": "carr-library/tests/ui/test_operation_progress.py",
+          "blob_sha": "c604c6112f5c40a172e1c8622acdfc4412f8bc1e"
+        },
+        {
+          "path": "carr-library/tests/ui/test_progress_view.py",
+          "blob_sha": "7050eecdd909b6fad8f8f1304deab3048f773030"
+        },
+        {
+          "path": "carr-library/tests/ui/test_recording_dialog.py",
+          "blob_sha": "1f90e10c7515aa6a2d53b783c2d36a405b4fc273"
+        }
+      ],
+      "current_probes": [],
+      "reason": "Current output/device settlement, root-change invalidation, nested independent media holds and stale completion suppression.",
+      "execution_claim": "NONE"
+    },
+    {
+      "canonical_path": "carr-library/tests/ui/test_progress_numeric_limits.py",
+      "canonical_blob_sha": "0de506f1c10ff0f7723c6f951f68b036f5e0245c",
+      "canonical_test_function_names": [
+        "test_extreme_integers_are_validation_errors",
+        "test_extreme_number_in_saved_preferences_is_a_readable_validation_error"
+      ],
+      "disposition": "OPEN_PROGRESS_COUNT_BOUNDARY",
+      "current_tests": [
+        {
+          "path": "carr-library/tests/ui/test_shared_progress.py",
+          "blob_sha": "57ae94bb50fb5ac9591227768e52fe4159444544"
+        },
+        {
+          "path": "carr-library/tests/ui/test_progress_compatibility.py",
+          "blob_sha": "c6a9145c92d4c0ea48c8e84ed7b7f81a057aac2a"
+        }
+      ],
+      "current_probes": [],
+      "reason": "Preference and tone ranges already short-circuit before conversion, but current _counts lacks canonical MAX_UNITS=10**15. This count/ETA overflow boundary was reported to root for a narrow fix.",
+      "execution_claim": "NONE"
+    },
+    {
+      "canonical_path": "carr-library/tests/ui/test_progress_panel_state.py",
+      "canonical_blob_sha": "13a1fd87ed8ed86b836b887b3bb964469ff02fe3",
+      "canonical_test_function_names": [
+        "test_mute_silences_the_session_even_when_preference_storage_fails",
+        "test_failed_unmute_keeps_sound_muted_and_saved_preferences_unchanged"
+      ],
+      "disposition": "CURRENT_CONTRACT_COVERAGE",
+      "current_tests": [
+        {
+          "path": "carr-library/tests/ui/test_progress_view.py",
+          "blob_sha": "7050eecdd909b6fad8f8f1304deab3048f773030"
+        },
+        {
+          "path": "carr-library/tests/ui/test_progress_concurrency.py",
+          "blob_sha": "b6871cef08447daca749912549c16ad53f870e95"
+        }
+      ],
+      "current_probes": [],
+      "reason": "Immediate session mute remains effective after save failure; failed unmute/CAS preserves runtime, caller token and foreign settings.",
+      "execution_claim": "NONE"
+    },
+    {
+      "canonical_path": "carr-library/tests/ui/test_progress_voice_actions.py",
+      "canonical_blob_sha": "1c61da3cf630c270c1c7c4804461acb124c47510",
+      "canonical_test_function_names": [
+        "test_reader_discovery_does_not_activate_progress_and_explicit_choice_uses_current_root",
+        "test_reader_invalid_voice_selection_never_runs_activation",
+        "test_reader_rejected_activation_closes_provider_without_opening_settings",
+        "test_reader_stop_or_modal_cleanup_invalidates_already_deferred_playback",
+        "test_studio_explicit_voice_selection_creates_independent_parent_selection",
+        "test_studio_preview_waits_for_both_controllers_and_close_invalidates_start",
+        "test_quiet_helper_deduplicates_controllers_then_refreshes_transport_before_release",
+        "test_quiet_helper_releases_pending_holds_without_starting",
+        "test_quiet_helper_releases_every_hold_on_callback_failure",
+        "test_quiet_helper_rolls_back_an_earlier_hold_if_later_acquisition_fails",
+        "test_refresh_failure_after_playback_starts_is_only_a_progress_diagnostic",
+        "test_release_failure_after_playback_starts_does_not_abandon_other_holds",
+        "test_hold_acquisition_failure_preserves_original_error_and_releases_every_prior_hold",
+        "test_reader_failed_close_retains_its_pcm_and_still_destroys_dialog",
+        "test_reader_dialog_is_destroyed_even_when_final_cleanup_raises",
+        "test_reader_detached_parent_reporter_cannot_prevent_dialog_destruction",
+        "test_reader_detached_progress_observer_does_not_prevent_actual_resource_cleanup"
+      ],
+      "disposition": "CURRENT_CONTRACT_COVERAGE",
+      "current_tests": [
+        {
+          "path": "carr-library/tests/ui/test_operation_progress.py",
+          "blob_sha": "c604c6112f5c40a172e1c8622acdfc4412f8bc1e"
+        },
+        {
+          "path": "carr-library/tests/ui/test_progress_registered_voices.py",
+          "blob_sha": "9a1b875860796c915fe1e4f7facd15c01aa4fdd1"
+        },
+        {
+          "path": "carr-library/tests/ui/test_live_reading.py",
+          "blob_sha": "00507fe051bc6fdea0ad2dc11f78c485fe6ce4f3"
+        },
+        {
+          "path": "carr-library/tests/ui/test_live_playback_controls.py",
+          "blob_sha": "649c0f921acea26292fbaad2d5660aee3309b747"
+        },
+        {
+          "path": "carr-library/tests/ui/test_playback_queue.py",
+          "blob_sha": "b202ca325371b4b5d29433ff24f68ad7958af750"
+        }
+      ],
+      "current_probes": [],
+      "reason": "Current voice admission and private media request lifetime are tested through current owners; a failed device release retains PCM/owner and rejects playback. The current live reader stays open until cleanup confirms, unlike the alternate closed-dialog resource-retention design.",
+      "execution_claim": "NONE"
+    },
+    {
+      "canonical_path": "carr-library/tests/ui/test_worker_cleanup.py",
+      "canonical_blob_sha": "c049febc50836ec8a827f6d4b3358a8a99aa7672",
+      "canonical_test_function_names": [
+        "test_cleanup_waits_for_active_worker_and_returns_before_it_finishes"
+      ],
+      "disposition": "CURRENT_CONTRACT_COVERAGE",
+      "current_tests": [
+        {
+          "path": "carr-library/tests/ui/test_live_reading.py",
+          "blob_sha": "00507fe051bc6fdea0ad2dc11f78c485fe6ce4f3"
+        },
+        {
+          "path": "carr-library/tests/audio/test_cleanup_wait.py",
+          "blob_sha": "0cc65bef1af033b81c7881daac67aa4ba89e4973"
+        },
+        {
+          "path": "carr-library/tests/ui/test_recording_dialog.py",
+          "blob_sha": "1f90e10c7515aa6a2d53b783c2d36a405b4fc273"
+        }
+      ],
+      "current_probes": [],
+      "reason": "Current real ThreadPoolExecutor test holds synthesis open, confirms Close returns without destruction, then observes session cleanup/player close/worker settlement; no second cleanup helper is introduced.",
+      "execution_claim": "NONE"
+    }
+  ]
+}

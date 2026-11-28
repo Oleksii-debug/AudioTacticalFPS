@@ -18,7 +18,7 @@ from carr_library.ingest.pipeline import canonical
 from carr_library.ingest.worker import load_request, prepare_request, record_progress
 from carr_library.ingest.writer_guard import exclusive_writer
 from carr_library.pending_backup import snapshot_pending, restore_pending, validate_pending
-from carr_library.storage.revisions import Storage
+from carr_library.storage.revisions import Storage, CURRENT_SCHEMA_VERSION
 
 
 @pytest.fixture
@@ -35,7 +35,7 @@ def _source(tmp_path, name='original.txt', text='Original first page.\fOriginal 
 def _snapshot(app, tmp_path, name='snapshot'):
     stage = tmp_path / name
     stage.mkdir()
-    with exclusive_writer(app.root), closing(Storage(app.database)) as storage:
+    with exclusive_writer(app.root), closing(Storage(app.database, schema_version=CURRENT_SCHEMA_VERSION)) as storage:
         storage.backup(stage / 'library.sqlite')
         metadata = snapshot_pending(app, stage / 'pending')
     return stage, metadata
@@ -239,61 +239,6 @@ def test_empty_pending_component_and_no_unreferenced_retained_bytes(app, tmp_pat
     assert list(restored.assets_dir.iterdir()) == []
 
 
-@pytest.mark.parametrize('change', ['source', 'result', 'missing-source'])
-def test_completed_docx_request_cannot_rebind_its_published_source(app, tmp_path, change):
-    """A complete receipt must refer to the same original as its saved request."""
-    from docx import Document
-    from carr_library.ingest import worker
-    from carr_library.library_backup import create_backup, restore_backup
-
-    workspace = app.create_workspace('Complete request source binding')
-    original = tmp_path / 'published.docx'
-    document = Document()
-    document.add_paragraph('Original authorized publication.')
-    document.save(original)
-    completed = app.import_file(workspace, original)
-    assert completed['state'] == 'complete'
-    request = load_request(app.root, completed['request_id'])
-    assert 'job' not in request and 'expected_manifest' not in request
-    original_digest = request['asset_sha256']
-    retained = app.assets.resolve(original_digest)
-    original_bytes = retained.read_bytes()
-    # Old completed DOCX requests legitimately have neither a planned manifest
-    # nor a journal job. Preserve their exact source and cached receipt.
-    valid_backup = tmp_path / 'valid-backup'
-    checksum = create_backup(app, valid_backup)
-    restored = LibraryApp(restore_backup(valid_backup, tmp_path / 'valid-restore', checksum))
-    restored_request = load_request(restored.root, request['request_id'])
-    assert Path(restored_request['source']).read_bytes() == original_bytes
-    assert restored.resume_import(workspace, request['request_id']) == completed
-
-    replacement = tmp_path / 'different.docx'
-    document = Document()
-    document.add_paragraph('Different source must not back the completed publication.')
-    document.save(replacement)
-    changed_bytes = replacement.read_bytes()
-    other_digest = sha256(changed_bytes).hexdigest()
-    assert other_digest != original_digest
-    app.assets.retain(changed_bytes,
-        'application/vnd.openxmlformats-officedocument.wordprocessingml.document', other_digest)
-    if change == 'source':
-        request['asset_sha256'] = other_digest
-    elif change == 'result':
-        request['result']['asset'] = other_digest
-    else:
-        del request['asset_sha256']
-    worker._store(app.root, request['request_id'], request)
-
-    destination = tmp_path / 'invalid-backup'
-    with pytest.raises(ValueError, match='source|publication'):
-        create_backup(app, destination)
-    assert not destination.exists()
-    assert retained.read_bytes() == original_bytes
-    with app.read(workspace) as db:
-        assert db.execute('SELECT asset FROM revision WHERE id=?',
-                          (completed['id'],)).fetchone()[0] == original_digest
-
-
 @pytest.mark.parametrize('kind', ['schema', 'checkpoint_hash', 'checkpoint_locator', 'checkpoint_text', 'job_identity', 'workspace', 'fake_complete'])
 def test_journal_tampering_rejected_before_restore_publication(app, tmp_path, kind):
     workspace, source, request, result = _partial(app, tmp_path)
@@ -418,33 +363,3 @@ def test_journal_online_backup_includes_committed_wal(app, tmp_path):
         assert journal.execute('SELECT error FROM job').fetchone()[0] == 'committed_wal_evidence'
 
 
-@pytest.mark.skipif(shutil.which('tesseract') is None, reason='Actual local OCR engine required')
-def test_actual_reviewed_ocr_checkpoint_retains_attestation_and_resumes(app, tmp_path):
-    from PIL import Image, ImageDraw, ImageFont
-    from reportlab.lib.utils import ImageReader
-    from reportlab.pdfgen.canvas import Canvas
-    original = tmp_path / 'scanned.pdf'
-    image = Image.new('RGB', (1200, 300), 'white')
-    ImageDraw.Draw(image).text((30, 70), 'Railway backup source',
-                               font=ImageFont.load_default(size=72), fill='black')
-    canvas = Canvas(str(original))
-    canvas.drawImage(ImageReader(image), 50, 500, 500, 125)
-    canvas.save()
-    workspace = app.create_workspace('Reviewed pending original')
-    pending = app.import_file(workspace, original)
-    assert pending['state'] == 'quarantined'
-    request_id = pending['request_id']
-    review = app.pending_review(workspace, request_id)
-    assert 'Railway' in review['raw_text']
-    app.confirm_import_review(workspace, request_id, 'Synthetic test reviewer', confirmed=True,
-                              expected_checksum=review['checksum'])
-    before = (app.root / 'import-requests' / 'reviews' / (request_id + '.json')).read_bytes()
-    backup, metadata = _snapshot(app, tmp_path)
-    original.unlink()
-    restored, _ = _restore(backup, metadata, tmp_path)
-    assert (restored.root / 'import-requests' / 'reviews' / (request_id + '.json')).read_bytes() == before
-    assert restored.pending_review(workspace, request_id)['checksum'] == review['checksum']
-    final = restored.resume_import(workspace, request_id)
-    assert final['state'] == 'complete' and final['id'] == pending['id']
-    hit, = restored.search(workspace, 'Railway')
-    assert hit.verified

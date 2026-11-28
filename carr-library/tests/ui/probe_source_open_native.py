@@ -141,11 +141,7 @@ def main():
             later(check_focus, milliseconds=80)
 
         def check_focus():
-            focused = wx.Window.FindFocus()
-            assert focused is panel.status, (
-                'Focus did not return to readable search status. '
-                f'Actual control: {type(focused).__name__}; '
-                f'name: {focused.GetName() if focused is not None else None!r}.')
+            assert wx.Window.FindFocus() is panel.status, 'Focus did not return to readable search status.'
             assert panel.status.GetName() == 'Search status'
             report.update(status='PASS', platform=platform.system(), wx_version=wx.version(),
                 checks=['actual TXT imports', 'native search event', 'exact selected result',

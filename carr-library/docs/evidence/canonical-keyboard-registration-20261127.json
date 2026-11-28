@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "component": "canonical-keyboard-registration-compatibility",
+  "canonical_source": "e5c64a5245583f8f8b404a0f042f6ca438c24d7f",
+  "reviewed_current_source": "e0ff956cafe5105d4b930aad53fe354b73e9fd4a",
+  "execution_status": "NOT_RUN",
+  "product": "carr-library/src/carr_library/ui/keyboard_settings.py",
+  "preserved": [
+    "Explicit optional new-command shortcut conflict fallback retains stable assignments, saved file and declared reset defaults.",
+    "Fallback still refuses unrelated conflicts and restores prior notice on rollback.",
+    "Deferred notices read the current manager state and do not address a closing frame.",
+    "Current complete menu registration and legacy keymap migration remain present."
+  ],
+  "test_module": "tests/ui/test_keyboard_registration_compatibility.py",
+  "exact_function_counter": {
+    "test_optional_late_shortcut_conflict_preserves_stable_default_and_user_file": 1,
+    "test_optional_fallback_does_not_hide_an_unrelated_existing_conflict": 1,
+    "test_late_profile_recovery_does_not_announce_a_stale_startup_warning": 1
+  },
+  "total_cases": 3,
+  "evidence_scope": "Three canonical test bodies retained verbatim, current shared menu doubles and fixtures. This source review is not native key dispatch or manual NVDA qualification."
+}

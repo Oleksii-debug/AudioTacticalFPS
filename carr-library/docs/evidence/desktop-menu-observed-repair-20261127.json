@@ -1,0 +1,50 @@
+{
+  "schema": 1,
+  "kind": "observed-desktop-menu-repair",
+  "status": "SOURCE_REVIEW_RUNTIME_PENDING",
+  "source_base": "f1ee73aa62a28aa26c5ceff81d12611fa70a0ef1",
+  "observed": {
+    "run": 46051953851,
+    "job": 140685185466,
+    "head": "8e63256d4da4a6e12a66714b83a89d6643bb5abf",
+    "source": {
+      "passed": 650,
+      "failed": 2
+    },
+    "installed": {
+      "passed": 650,
+      "failed": 2
+    },
+    "artifact": {
+      "id": 15225277297,
+      "bytes": 490723,
+      "sha256": "29ed4c3825571b8527997e7b95120b4f1c7e30991ffbbb44b981e04a8a94a748"
+    }
+  },
+  "repairs": [
+    {
+      "classification": "product",
+      "path": "src/carr_library/ui/api_connections.py",
+      "problem": "The added Edit menu and existing Settings menu both used Alt+E.",
+      "change": "Change only the Settings top-level mnemonic from S&ettings to Sett&ings (Alt+I). Preserve the visible menu name, handler, API settings controls, persisted preferences and command identities."
+    },
+    {
+      "classification": "stale-exact-label-fixture",
+      "path": "tests/ui/test_desktop_handlers.py",
+      "problem": "Two assertions retained the older reading-copy-only caption after the existing command gained canonical reader-session import.",
+      "change": "Assert the exact current caption Import earlier reading history or reader session... while keeping both reading-history semantic commands and current Tools membership assertions."
+    },
+    {
+      "classification": "retained-regression",
+      "path": "tests/ui/test_desktop_handlers.py",
+      "change": "Keep complete default-shortcut and top-level-mnemonic uniqueness assertions, add exact one Edit and one Settings mnemonic assertions, and retain actual imported source/installed package AST."
+    }
+  ],
+  "test_population": {
+    "module": "tests.ui.test_desktop_handlers",
+    "cases": 66,
+    "added": 0,
+    "removed": 0
+  },
+  "limits": "The observed 650/652 outcome remains a failed gate. This source repair has not yet run. No Windows/native/quality PASS is transferred to this descendant."
+}

@@ -10,8 +10,7 @@ import tempfile
 import time
 
 from .pinned_tessdata import POLICY, stage_pinned_models
-from .ocr_languages import model_ids
-from . import ocr_runtime
+from . import ocr_languages, ocr_runtime
 from .ocr_process import run_ocr
 
 
@@ -36,13 +35,17 @@ def _hash(path, limit=256 * 1024 * 1024, remaining=lambda: None):
 
 
 def _source_hashes():
+    from . import language_manager
+    from ..catalog import streaming_pdf
     root = Path(__file__).parent
     names = ('page_ocr.py', 'orientation.py', 'ocr_orientation_bridge.py',
              'pinned_tessdata.py', 'runtime_identity.py', 'ocr_languages.py',
              'model_catalog.py', 'ocr_model_store.py', 'managed_ocr.py',
              'ocr_model_catalog.py', 'ocr-model-catalog.json', 'ocr_process.py')
     return {**{name: _hash(root / name) for name in names},
-            'ocr_runtime.py': _hash(ocr_runtime.__file__)}
+            'streaming_pdf.py': _hash(streaming_pdf.__file__),
+            'ocr_runtime.py': _hash(ocr_runtime.__file__),
+            'language_manager.py': _hash(language_manager.__file__)}
 
 
 def runtime_identity(config):
@@ -52,7 +55,11 @@ def runtime_identity(config):
     fails closed. Unpinned defaults are fingerprinted, not declared authentic.
     Caller must compare before resume, and after extraction before checkpoint.
     """
-    identity = dict(schema=1, config=asdict(config), source_sha256=_source_hashes(),
+    settings = asdict(config)
+    # The binding is private job configuration; the fingerprint retains its
+    # manifest identity without disclosing a local model installation path.
+    settings.pop('model_pack_path', None)
+    identity = dict(schema=1, config=settings, source_sha256=_source_hashes(),
                     packages={p: metadata.version(p) for p in ('pypdf', 'pypdfium2', 'Pillow')})
     deadline = time.monotonic() + config.timeout
 
@@ -63,11 +70,16 @@ def runtime_identity(config):
         return seconds
 
     try:
-        selected = model_ids(config.languages)
+        ocr_languages.model_ids(config.languages)
+        pack_path = getattr(config, 'model_pack_path', None)
         profile = getattr(config, 'model_profile', 'installed')
         profile_options = {'model_profile': profile} if profile != 'installed' else {}
-        runtime = ocr_runtime.discover_ocr_runtime(config.languages, orientation=config.orientation,
+        runtime = ocr_runtime.discover_ocr_runtime('eng' if pack_path else config.languages,
+                                                  orientation=False if pack_path else config.orientation,
                                                   remaining=remaining, **profile_options)
+        runtime = ocr_runtime.bind_model_pack(runtime, pack_path, getattr(config, 'model_pack_sha256', None),
+                                              languages=config.languages, orientation=config.orientation,
+                                              remaining=remaining)
         if runtime is None:
             identity['ocr'] = {'state': 'missing'}
             return identity
@@ -92,10 +104,12 @@ def runtime_identity(config):
             match = re.search(r'^List of available languages in "([^"\r\n]+)"', report, re.MULTILINE)
             if not match:
                 raise IdentityError('cannot identify local model directory')
-            selected += ('osd',) if config.orientation else ()
+            selected = config.languages.split('+') + (['osd'] if config.orientation else [])
             models = {}
             for lang in selected:
                 remaining()
+                if not ocr_languages.valid_model_code(lang):
+                    raise IdentityError('invalid model name')
                 models[lang] = _hash(Path(match[1]) / (lang + '.traineddata'), remaining=remaining)
         if before != _hash(exe, remaining=remaining):
             raise IdentityError('OCR executable changed during fingerprint')
@@ -107,6 +121,8 @@ def runtime_identity(config):
                            model_sha256=models, policy=config.model_policy)
     if runtime.portable:
         identity['ocr']['portable'] = runtime.fingerprint()
+    if pack_path:
+        identity['ocr']['model_pack'] = runtime.pack.fingerprint()
     if getattr(runtime, 'managed', False):
         identity['ocr']['managed_models'] = runtime.selection.fingerprint()
     return identity

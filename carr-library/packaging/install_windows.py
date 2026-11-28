@@ -92,6 +92,31 @@ def verify(root, *, manifest_bytes=None):
             raise ValueError("unexpected or missing native runtime file")
     elif os.path.lexists(native) or expected_native:
         raise ValueError("unannounced native runtime files")
+    launcher_files = {"ResearchLibrary.exe", "native-launcher-build.json"}
+    included_launcher = manifest.get("bundled_native_launcher", False)
+    if type(included_launcher) is not bool:
+        raise ValueError("invalid native launcher installation flag")
+    if included_launcher:
+        if not manifest.get("bundled_python") or not launcher_files.issubset(files):
+            raise ValueError("native launcher requires bundled Python and complete build evidence")
+    elif launcher_files.intersection(files) or any(os.path.lexists(root / name) for name in launcher_files):
+        raise ValueError("unannounced native launcher files")
+    audio = root / "audio-runtime"
+    included = manifest.get("bundled_audio_runtime", False)
+    expected_audio = {p for p in files if p.startswith("audio-runtime/")}
+    if type(included) is not bool:
+        raise ValueError("invalid audio runtime installation flag")
+    if included:
+        required_audio = {"audio-runtime/ffmpeg.exe", "audio-runtime/ffplay.exe", "audio-runtime/ffprobe.exe",
+                          "audio-runtime/ffmpeg-runtime.json",
+                          "audio-runtime/FFmpeg-LICENSE.txt", "audio-runtime/FFmpeg-README.txt"}
+        if not audio.is_dir() or audio.is_symlink():
+            raise ValueError("missing or redirected audio runtime directory")
+        actual = {p.relative_to(root).as_posix() for p in audio.rglob('*') if p.is_file()}
+        if actual != expected_audio or not required_audio.issubset(actual):
+            raise ValueError("unexpected or missing audio runtime file")
+    elif os.path.lexists(audio) or expected_audio:
+        raise ValueError("unannounced audio runtime files")
 
 
 def main():
@@ -130,7 +155,7 @@ def main():
                    check=True, env=bootstrap_environment, cwd=destination)
     subprocess.run([str(executable), "-I", "-B", "-X", "utf8", "-m", "pip", "--isolated", "--disable-pip-version-check",
                     "install", "--no-index", "--only-binary=:all:", "--require-hashes",
-                    "--no-cache-dir", "--find-links", str(root / "wheelhouse"),
+                    "--no-cache-dir", "--no-compile", "--find-links", str(root / "wheelhouse"),
                     "-r", str(root / "install.lock")], check=True, env=environment)
     subprocess.run([str(executable), "-I", "-B", "-X", "utf8", "-m",
                     "carr_library.native_checks", "--bundle-root", str(root)],
@@ -140,7 +165,8 @@ def main():
     # An incomplete or interrupted install must never be treated as ready.
     # Exclusive creation is the final lifecycle step; never delete an old environment.
     (destination / ".installation-complete").touch(exist_ok=False)
-    print("Installation complete. Open ResearchLibrary.cmd. Research data has not been changed.")
+    entry = "ResearchLibrary.exe" if (root / "ResearchLibrary.exe").is_file() else "ResearchLibrary.cmd"
+    print(f"Installation complete. Open {entry}. Research data has not been changed.")
     return 0
 
 

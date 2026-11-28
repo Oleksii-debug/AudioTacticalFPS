@@ -277,6 +277,41 @@ def test_real_portable_scan_preserves_candidate_boundary(native_bundle, tmp_path
     assert not rejected['raw_text'] and not rejected['blocks']
 
 
+def test_real_self_check_retains_native_windows_script_inventory(native_bundle, monkeypatch):
+    from types import SimpleNamespace
+    from carr_library.extract import ocr_languages, ocr_process
+
+    script = native_bundle / 'tessdata/script/EnglishFixture.traineddata'
+    script.parent.mkdir()
+    shutil.copyfile(native_bundle / 'tessdata/eng.traineddata', script)
+    executable = json.loads((native_bundle / runtime.MANIFEST).read_text())['executable']
+    write_manifest(native_bundle, target=runtime._native_target(), executable=executable)
+    actual_run = ocr_process.run_ocr
+    listings = []
+
+    def native_windows_report(selected, argv, *, remaining):
+        result = actual_run(selected, argv, remaining=remaining)
+        if '--list-langs' in argv:
+            # Execute the real selected engine and change only its path separator,
+            # matching Tesseract's native Windows std::filesystem::path::string.
+            lines = result.stdout.splitlines()
+            assert (b'script/EnglishFixture' in lines or
+                    b'script\\EnglishFixture' in lines)
+            stdout = result.stdout.replace(b'script/EnglishFixture', b'script\\EnglishFixture')
+            listings.append(stdout)
+            return subprocess.CompletedProcess(result.args, result.returncode, stdout, result.stderr)
+        return result
+
+    monkeypatch.setattr(ocr_languages, 'os',
+                        SimpleNamespace(name='nt', path=ocr_languages.os.path))
+    monkeypatch.setattr(ocr_process, 'run_ocr', native_windows_report)
+    result = runtime.check_runtime()
+    assert listings and b'script\\EnglishFixture' in listings[0].splitlines()
+    assert result['status'] == 'PASS' and result['synthetic_recognition'] == 'RESEARCH'
+    assert result['languages'] == ['eng', 'osd', 'script/EnglishFixture']
+    assert result['manifest_sha256'] == sha256((native_bundle / runtime.MANIFEST).read_bytes()).hexdigest()
+
+
 @pytest.mark.parametrize('selection', ['script/EnglishFixture', 'eng+script/EnglishFixture'])
 def test_real_script_path_loading_fingerprint_and_review_boundary(native_bundle, tmp_path, selection):
     # This exercises Tesseract's actual subdirectory loading using renamed
@@ -329,23 +364,27 @@ def test_portable_native_orientation_uses_existing_cli_without_wrapper(native_bu
             'Documents are preserved in their original form.\n'
             'The source provides evidence for each statement.\n'
             'Different authors may use the same expression.')
-    try:
-        font = ImageFont.truetype('DejaVuSans.ttf', 48)
-    except OSError:
-        pytest.skip('DejaVu Sans needed for the fixed orientation acceptance fixture')
-    picture = Image.new('RGB', (1800, 1150), 'white')
+    # Pillow's embedded font has the same reviewed package identity on each
+    # platform; the native OCR gate must not depend on a host-installed font.
+    # Provide enough independent character observations for OSD's unchanged
+    # confidence threshold; a short sample can legitimately stay uncertain.
+    text = '\n'.join([text] * 4)
+    font = ImageFont.load_default(size=42)
+    picture = Image.new('RGB', (2000, 2790), 'white')
     ImageDraw.Draw(picture).multiline_text((60, 60), text, fill='black', spacing=24, font=font)
     pdf = tmp_path / 'rotated.pdf'
     picture.rotate(90, expand=True).save(pdf, resolution=240)
-    result = extract_page(pdf, 1, Config(dpi=240, orientation=True))
+    # This fixture runs baseline OCR, OSD and a second OCR pass under one
+    # bounded deadline. Production's 30-second default remains unchanged.
+    result = extract_page(pdf, 1, Config(dpi=240, timeout=90, orientation=True))
     orientation = result['provenance']['orientation']
     assert orientation['algorithm'] == 'portable-native-osd-v1'
-    assert orientation['status'] == 'ocr_candidate' and orientation['clockwise'] == 90
+    assert orientation['status'] == 'ocr_candidate' and orientation.get('clockwise') == 90, {
+        key: orientation.get(key) for key in ('status', 'clockwise', 'failure_type', 'confidence')}
     assert 'The archive contains' in orientation['raw_text']
     assert result['provenance']['config']['model_policy'] == 'default'
     assert 'wrapper_version' not in orientation
     assert result['status'] == 'review_required'
-
 
 def test_unreadable_directory_rejects_entire_inventory(bundle, monkeypatch):
     hidden = bundle / 'unreadable'
@@ -387,3 +426,23 @@ def test_directory_inventory_checks_budget_between_entries(bundle, monkeypatch):
     with pytest.raises(TimeoutError, match='budget expiry'):
         runtime._inventory(bundle, remaining)
     assert count == 4
+
+
+@pytest.mark.parametrize('error', [
+    subprocess.TimeoutExpired('synthetic-private-path', 1),
+    ValueError('synthetic-private-path is malformed'),
+], ids=['deadline', 'invalid-output'])
+def test_native_orientation_classifies_failure_without_private_exception_text(error):
+    from PIL import Image
+    from carr_library.extract.ocr_orientation_bridge import orientation_candidate
+    from carr_library.extract.page_ocr import Config
+    def fail(*args):
+        raise error
+    def unused(*args):
+        pytest.fail('Failed OSD must not create a rotated OCR result.')
+    result = orientation_candidate(Image.new('RGB', (20, 10)), Config(orientation=True),
+        'synthetic-ocr', lambda: 1, fail, unused, native_cli=True)
+    assert result['status'] == 'orientation_failed_or_timed_out'
+    assert result['failure_type'] == type(error).__name__
+    assert 'raw_text' not in result and 'synthetic-private-path' not in repr(result)
+    assert Config().timeout == 30

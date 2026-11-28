@@ -1,39 +1,42 @@
-"""Actual assistant handlers with widget/scheduler stand-ins; no native or LLM claim."""
+"""Actual native handler logic with controlled scheduling; no wx/LLM qualification."""
 from concurrent.futures import Future
 from dataclasses import replace
 import json
+import sys
 from types import SimpleNamespace
 
 import pytest
 
 from carr_library.application import LibraryApp
-from carr_library.assistant import ProfileStore, ProviderProfile
-from carr_library.assistant.providers import Gateway
+from carr_library.assistant import AssistantService
+from carr_library.providers import ProfileStore, ProviderGateway, ProviderProfile
 from carr_library.ui import assistant_dialog
 
 
 class Widget:
     def __init__(self, parent=None, *args, value='', label='', choices=(), **kwargs):
-        self.value, self.label, self.choices = value, label, list(choices)
+        self.parent, self.value, self.label, self.choices = parent, value, label, list(choices)
         self.enabled, self.selection, self.name = True, -1, ''
-        self.bindings, self.focused = {}, False
+        self.bindings, self.destroyed, self.modal = {}, False, False
     def SetName(self, value): self.name = value
-    def GetName(self): return self.name
     def GetValue(self): return self.value
-    def SetValue(self, value): self.value = value
-    def ChangeValue(self, value): self.value = value
+    def SetValue(self, value):
+        if self.destroyed:
+            raise AssertionError('A late callback touched a destroyed control.')
+        self.value = value
+    ChangeValue = SetValue
     def SetSelection(self, value): self.selection = value
     def GetSelection(self): return self.selection
     def SetLabel(self, value): self.label = value
     def Enable(self, value=True): self.enabled = value
     def Disable(self): self.enabled = False
-    def IsEnabled(self): return self.enabled
-    def SetFocus(self): self.focused = True
+    def SetFocus(self):
+        if self.destroyed:
+            raise AssertionError('A late callback focused a destroyed control.')
     def Bind(self, event, callback, **kwargs): self.bindings[event] = callback
     def SetSizer(self, sizer): pass
-    def Wrap(self, width): pass
-    def EndModal(self, code): self.modal_result = code
-    def IsModal(self): return False
+    def IsModal(self): return self.modal
+    def EndModal(self, code): self.modal = False
     def Hide(self): self.hidden = True
     def Destroy(self): self.destroyed = True
 
@@ -44,8 +47,9 @@ class Sizer:
 
 
 class ControlledExecutor:
-    """Hold work and completion independently to reproduce edited-input races."""
-    def __init__(self, **kwargs): self.pending, self.shutdowns = [], []
+    def __init__(self):
+        self.pending, self.shutdowns = [], []
+        self.in_worker = False
     def submit(self, callback, *args, **kwargs):
         future = Future()
         future.set_running_or_notify_cancel()
@@ -53,205 +57,391 @@ class ControlledExecutor:
         return future
     def complete(self):
         future, callback, args, kwargs = self.pending.pop(0)
+        self.in_worker = True
         try:
             future.set_result(callback(*args, **kwargs))
         except BaseException as exc:
             future.set_exception(exc)
+        finally:
+            self.in_worker = False
     def shutdown(self, **kwargs): self.shutdowns.append(kwargs)
 
 
 @pytest.fixture
 def native_handlers(tmp_path, monkeypatch):
     app = LibraryApp(tmp_path / 'library')
-    profile = ProviderProfile('chosen', 'Chosen profile', 'openai-compatible',
-        'http://127.0.0.1:9/v1', 'synthetic-protocol-model', local=True, enabled=True)
-    store = ProfileStore(app.root / 'state' / 'providers'); store.save(profile)
-    calls, queue = [], []
-    def synthetic_request(self, selected, operation, payload, **kwargs):
-        calls.append((selected, operation, payload, kwargs))
-        return {'text': json.dumps({'summary': 'Synthetic proposal; no actual model',
-            'steps': [{'tool': 'library.create', 'arguments': {'name': 'Reviewed library'}}]})}
-    monkeypatch.setattr(Gateway, 'request', synthetic_request)
-    executor = ControlledExecutor()
-    monkeypatch.setattr(assistant_dialog, 'ThreadPoolExecutor', lambda **kwargs: executor)
-    constants = ('DEFAULT_DIALOG_STYLE','RESIZE_BORDER','VERTICAL','HORIZONTAL','LEFT','TOP',
-        'ALL','EXPAND','TE_MULTILINE','TE_READONLY','EVT_BUTTON','EVT_TEXT','EVT_CHOICE',
-        'EVT_CHECKBOX','EVT_CLOSE','ID_OK','ID_CLOSE')
+    profile = ProviderProfile('chosen-local', 'Chosen local profile', 'openai-compatible',
+        'http://127.0.0.1:9/v1', 'synthetic-model', ('llm',), local=True)
+    store = ProfileStore(app.root / 'api-connections.json')
+    store.save(profile)
+    e = SimpleNamespace(app=app, profile=profile, store=store, calls=[], queue=[], choices=[],
+                        before_response=lambda: None, on_confirmation=lambda: None,
+                        approve=True, executor=ControlledExecutor())
+    e.frame = SimpleNamespace(library=app, active=None)
+    constants = ('DEFAULT_DIALOG_STYLE', 'RESIZE_BORDER', 'VERTICAL', 'HORIZONTAL', 'LEFT', 'TOP',
+        'ALL', 'EXPAND', 'TE_MULTILINE', 'TE_READONLY', 'EVT_BUTTON', 'EVT_TEXT', 'EVT_CHOICE',
+        'EVT_CHECKBOX', 'EVT_CLOSE', 'ID_OK', 'ID_CLOSE', 'ID_YES', 'ID_NO', 'YES_NO',
+        'NO_DEFAULT', 'ICON_QUESTION')
     wx = SimpleNamespace(**{name: index + 1 for index, name in enumerate(constants)})
-    for name in ('Dialog','StaticText','TextCtrl','Button','Choice'):
+    e.wx = wx
+    def drain():
+        while e.queue:
+            callback, args = e.queue.pop(0)
+            callback(*args)
+    e.drain = drain
+    class Dialog(Widget):
+        def ShowModal(self):
+            self.modal = True
+            e.dialog = self
+            e.drain()
+            e.scenario(e)
+            self.modal = False
+            return wx.ID_CLOSE
+        def Destroy(self):
+            super().Destroy()
+            for value in e.controls.values():
+                if isinstance(value, Widget):
+                    value.destroyed = True
+    class Choice(Widget):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            self.selection = 0
+        def ShowModal(self):
+            e.choices.append(self)
+            return wx.ID_OK
+    class Confirmation(Widget):
+        def ShowModal(self):
+            e.on_confirmation()
+            return wx.ID_YES if e.approve else wx.ID_NO
+    wx.Dialog, wx.SingleChoiceDialog, wx.MessageDialog = Dialog, Choice, Confirmation
+    for name in ('StaticText', 'TextCtrl', 'Button', 'Choice'):
         setattr(wx, name, Widget)
     wx.CheckBox = lambda parent, **kwargs: Widget(parent, value=False, **kwargs)
     wx.BoxSizer = Sizer
-    wx.CallAfter = lambda callback, *args: queue.append((callback, args))
-    frame = SimpleNamespace(library=app, active=None)
-    dialog = assistant_dialog.create_assistant_dialog(frame, wx_module=wx)
-    def drain():
-        while queue:
-            callback, args = queue.pop(0); callback(*args)
-    environment = SimpleNamespace(app=app, store=store, profile=profile, frame=frame,
-        dialog=dialog, controls=dialog.assistant_controls, handlers=dialog.assistant_handlers,
-        executor=executor, calls=calls, drain=drain, wx=wx)
-    try:
-        yield environment
-    finally:
-        dialog.assistant_handlers['close']()
+    wx.CallAfter = lambda callback, *args: e.queue.append((callback, args))
+    monkeypatch.setitem(sys.modules, 'wx', wx)
+    monkeypatch.setattr(assistant_dialog, 'ThreadPoolExecutor', lambda **kwargs: e.executor)
+    original_validate = AssistantService.validate
+    def validate_off_ui(self, plan):
+        assert e.executor.in_worker, 'Local runtime/plan validation ran on the event thread.'
+        return original_validate(self, plan)
+    monkeypatch.setattr(AssistantService, 'validate', validate_off_ui)
+    def synthetic_request(self, selected, request, **kwargs):
+        if kwargs['cancelled']():
+            raise InterruptedError('Synthetic request was cancelled before transmission.')
+        assert request.fingerprint(selected) in kwargs['approval'].request_hashes
+        assert kwargs['approval'].max_calls == 1 and kwargs['approval'].budget_micros == 0
+        e.calls.append((selected, request))
+        e.before_response()
+        return json.dumps({'choices': [{'message': {'content': json.dumps({
+            'schema': 'carr-assistant-plan/1', 'summary': 'Synthetic proposal, no model quality claim',
+            'steps': [{'tool': 'library.create', 'arguments': {'name': 'Reviewed library'}}]})}}]}).encode('utf-8')
+    monkeypatch.setattr(ProviderGateway, 'perform', synthetic_request)
+    def ready(dialog, controls):
+        e.controls = controls
+    def show(scenario):
+        e.scenario = scenario
+        assistant_dialog.show_assistant(e.frame, on_ready=ready)
+        return e
+    e.show = show
+    e.press = lambda name: e.controls[name].bindings[wx.EVT_BUTTON](None)
+    e.invalidate = lambda field='instruction': e.controls[field].bindings[
+        wx.EVT_CHOICE if field == 'scope' else wx.EVT_CHECKBOX if field == 'full_backup' else wx.EVT_TEXT](
+            SimpleNamespace(Skip=lambda: None))
+    e.finish = lambda: (e.executor.complete(), e.drain())
+    return e
 
 
-def select_model(environment):
-    environment.controls['planning_source'].SetSelection(1)
-    environment.controls['instruction'].ChangeValue('Please create one named library.')
+def test_guided_preview_is_background_and_never_requests_a_model(native_handlers):
+    def scenario(e):
+        e.press('preview')
+        assert len(e.executor.pending) == 1 and not e.calls
+        assert not e.controls['run'].enabled
+        e.finish()
+        assert e.controls['run'].enabled and not e.calls
+        assert AssistantService(e.app).jobs() == () and e.app.workspaces() == ()
+    native_handlers.show(scenario)
 
 
-def test_default_guided_preview_never_calls_a_model(native_handlers):
-    e = native_handlers
-    assert e.controls['planning_source'].GetSelection() == 0
-    e.handlers['preview']()
-    assert not e.executor.pending and not e.calls
-    assert e.controls['buttons']['run'].IsEnabled()
-    assert e.dialog.assistant_service.jobs() == () and e.app.workspaces() == ()
+def test_model_proposal_requires_separate_preview_and_run(native_handlers):
+    def scenario(e):
+        e.controls['instruction'].ChangeValue('Create one named library.')
+        e.press('model')
+        assert len(e.executor.pending) == 1 and not e.calls
+        assert not any(button.enabled for button in e.controls['folder_buttons'])
+        e.finish()
+        assert len(e.calls) == 1 and not e.controls['run'].enabled
+        assert 'Nothing has run' in e.controls['review'].GetValue()
+        e.press('run')
+        assert not e.executor.pending and AssistantService(e.app).jobs() == ()
+        e.press('preview')
+        e.finish()
+        assert e.controls['run'].enabled and AssistantService(e.app).jobs() == ()
+        e.press('run')
+        assert AssistantService(e.app).jobs() == () and e.app.workspaces() == ()
+        e.finish()
+        assert len(AssistantService(e.app).jobs()) == 1
+        assert [row.name for row in e.app.workspaces()] == ['Reviewed library']
+        assert len(e.calls) == 1
+    native_handlers.show(scenario)
 
 
-def test_model_proposal_is_background_review_then_separate_run(native_handlers):
-    e = native_handlers; select_model(e)
-    e.handlers['preview']()
-    assert len(e.executor.pending) == 1 and not e.calls
-    assert not e.controls['buttons']['run'].IsEnabled()
-    assert e.controls['instruction'].IsEnabled()
-    assert 'Cancel' in e.controls['buttons']['pause'].label
-    e.executor.complete(); e.drain()
-    assert len(e.calls) == 1 and e.controls['buttons']['run'].IsEnabled()
-    assert 'requested model synthetic-protocol-model' in e.controls['review'].GetValue()
-    assert e.dialog.assistant_service.jobs() == () and e.app.workspaces() == ()
-    e.handlers['run']()
-    assert not e.controls['planning_source'].IsEnabled()
-    assert e.app.workspaces() == () and len(e.dialog.assistant_service.jobs()) == 1
-    e.executor.complete(); e.drain()
-    assert [row.name for row in e.app.workspaces()] == ['Reviewed library']
-    assert 'complete: 1 of 1' in e.controls['review'].GetValue()
-    assert len(e.calls) == 1
+@pytest.mark.parametrize('field', ['instruction', 'input', 'output', 'full_backup',
+                                   'budget', 'file_budget', 'deadline', 'scope'])
+def test_changed_inputs_discard_late_response_without_relying_on_events(native_handlers, field):
+    def scenario(e):
+        e.press('model')
+        e.executor.complete()
+        if field == 'scope':
+            e.controls[field].SetSelection(-1)
+        else:
+            e.controls[field].ChangeValue(True if field == 'full_backup' else 'changed')
+        e.drain()
+        assert not e.controls['run'].enabled
+        assert 'discarded' in e.controls['review'].GetValue()
+        assert AssistantService(e.app).jobs() == () and e.app.workspaces() == ()
+    native_handlers.show(scenario)
 
 
-@pytest.mark.parametrize('field', ['instruction', 'input', 'output', 'full_backup', 'planning_source'])
-def test_edited_inputs_discard_late_response_even_without_text_event(native_handlers, field):
-    e = native_handlers; select_model(e); e.handlers['preview']()
-    e.executor.complete()  # Response is valid, but UI completion has not applied yet.
-    if field == 'planning_source':
-        e.controls[field].SetSelection(0)
-    else:
-        e.controls[field].ChangeValue(True if field == 'full_backup' else 'Edited after response')
-    e.drain()
-    assert not e.controls['buttons']['run'].IsEnabled()
-    assert 'discarded' in e.controls['review'].GetValue()
-    assert e.dialog.assistant_service.jobs() == () and e.app.workspaces() == ()
+def test_edit_then_restore_original_still_cancels_the_pending_request(native_handlers):
+    def scenario(e):
+        e.press('model')
+        old = e.controls['instruction'].GetValue()
+        e.controls['instruction'].ChangeValue('Edited')
+        e.invalidate()
+        e.controls['instruction'].ChangeValue(old)
+        e.invalidate()
+        e.finish()
+        assert not e.calls and not e.controls['run'].enabled
+        assert 'cancelled' in e.controls['review'].GetValue()
+    native_handlers.show(scenario)
 
 
-def test_change_then_restore_original_text_still_cancels_pending_proposal(native_handlers):
-    e = native_handlers; select_model(e); e.handlers['preview']()
-    original = e.controls['instruction'].GetValue()
-    e.controls['instruction'].ChangeValue('Changed'); e.handlers['invalidate']()
-    e.controls['instruction'].ChangeValue(original); e.handlers['invalidate']()
-    e.executor.complete(); e.drain()
-    assert not e.calls and not e.controls['buttons']['run'].IsEnabled()
-    assert 'cancelled' in e.controls['review'].GetValue()
+def test_changed_goal_during_native_confirmation_never_reaches_worker(native_handlers):
+    def scenario(e):
+        e.on_confirmation = lambda: e.controls['instruction'].ChangeValue('Changed while the question was open')
+        e.press('model')
+        assert not e.executor.pending and not e.calls
+        assert 'changed before' in e.controls['review'].GetValue()
+    native_handlers.show(scenario)
 
 
-def test_cancel_or_close_cannot_publish_a_late_proposal(native_handlers):
-    e = native_handlers; select_model(e); e.handlers['preview']()
-    e.handlers['cancel'](); e.executor.complete(); e.drain()
-    assert not e.calls and not e.controls['buttons']['run'].IsEnabled()
-    e.handlers['preview'](); e.executor.complete()
-    before = e.controls['review'].GetValue()
-    e.handlers['close'](); e.dialog.Destroy(); e.drain()
-    assert e.controls['review'].GetValue() == before
-    assert e.app.workspaces() == () and e.dialog.assistant_service.jobs() == ()
+def test_saved_profile_change_before_dispatch_never_contacts_stale_model(native_handlers):
+    def scenario(e):
+        e.press('model')
+        e.store.save(replace(e.profile, model='changed-model'))
+        e.finish()
+        assert not e.calls and not e.controls['run'].enabled
+        assert 'profile changed' in e.controls['review'].GetValue()
+    native_handlers.show(scenario)
 
 
-def test_silently_edited_approved_goal_cannot_run(native_handlers):
-    e = native_handlers; select_model(e); e.handlers['preview']()
-    e.executor.complete(); e.drain()
-    e.controls['instruction'].ChangeValue('A new goal without EVT_TEXT')
-    e.handlers['run']()
-    assert not e.executor.pending and not e.controls['buttons']['run'].IsEnabled()
-    assert 'reviewed goal or scope changed' in e.controls['review'].GetValue()
-    assert e.app.workspaces() == () and e.dialog.assistant_service.jobs() == ()
+def test_changed_library_discards_a_completed_proposal(native_handlers, tmp_path):
+    def scenario(e):
+        e.press('model')
+        e.executor.complete()
+        other = LibraryApp(tmp_path / 'other-library')
+        e.frame.library = other
+        e.drain()
+        e.press('run')
+        assert 'discarded' in e.controls['review'].GetValue()
+        assert e.app.workspaces() == other.workspaces() == ()
+        assert not e.controls['run'].enabled
+    native_handlers.show(scenario)
 
 
-def test_changed_profile_cannot_silently_contact_a_new_model(native_handlers):
-    e = native_handlers; select_model(e)
-    e.store.save(replace(e.profile, model='different-model'))
-    e.handlers['preview'](); e.executor.complete(); e.drain()
-    assert not e.calls and not e.controls['buttons']['run'].IsEnabled()
-    assert 'profile changed' in e.controls['review'].GetValue()
-
-
-def test_library_switch_discards_pending_response(native_handlers, tmp_path):
-    e = native_handlers; select_model(e); e.handlers['preview']()
-    e.executor.complete()
-    e.frame.library = LibraryApp(tmp_path / 'other-library')
-    e.drain(); e.handlers['run']()
-    assert not e.controls['buttons']['run'].IsEnabled()
-    assert e.app.workspaces() == () and e.frame.library.workspaces() == ()
+def test_silent_change_of_reviewed_budget_cannot_submit_a_job(native_handlers):
+    def scenario(e):
+        e.controls['instruction'].ChangeValue('Create library "Reviewed library"')
+        e.press('preview')
+        e.finish()
+        assert e.controls['run'].enabled
+        e.controls['budget'].ChangeValue('2048')
+        e.press('run')
+        assert not e.executor.pending and not e.controls['run'].enabled
+        assert 'reviewed goal or scope changed' in e.controls['review'].GetValue()
+        assert AssistantService(e.app).jobs() == () and e.app.workspaces() == ()
+    native_handlers.show(scenario)
 
 
 @pytest.mark.parametrize('cancelled', [False, True])
-def test_narration_voice_discovery_is_background_and_cancelled_before_voice_choice(native_handlers, tmp_path, monkeypatch, cancelled):
-    from carr_library.speech import Voice, VoiceRegistry
-    from carr_library.studio.render import ProductionService
+def test_voice_inventory_stays_off_event_thread_and_cannot_publish_after_cancel(
+        native_handlers, tmp_path, monkeypatch, cancelled):
+    from carr_library import runtime_settings
+    from carr_library.audio.engines import Voice, VoiceRegistry
     e = native_handlers
-    output = tmp_path / 'audio-output'; output.mkdir()
-    e.controls['output'].SetValue(str(output))
-    e.controls['instruction'].SetValue('Produce audio: Explicit synthetic narration.')
-    discoveries, inventories, choices = [], [], []
-    class Provider:
-        name = 'Synthetic inventory only'
-        def voices(self):
-            inventories.append(True)
-            return (Voice('explicit-fixture', 'Fixture', 'fixture', 'uk'),)
-    def existing_voices(owner):
-        discoveries.append(True)
-        owner._voices = VoiceRegistry([Provider()])
-        return owner._voices
-    class ChoiceDialog(Widget):
-        def ShowModal(self):
-            choices.append(True)
-            self.selection = 0
-            return e.wx.ID_OK
-    monkeypatch.setattr(ProductionService, 'voices', property(existing_voices))
-    e.wx.SingleChoiceDialog = ChoiceDialog
-    e.handlers['preview']()
-    assert not discoveries and not choices and len(e.executor.pending) == 1
-    assert not e.controls['buttons']['run'].IsEnabled()
-    if cancelled:
-        e.handlers['cancel']()
-    e.executor.complete()
-    assert inventories == ([] if cancelled else [True])
-    assert choices == []
+    discoveries = []
+    class Engine:
+        id = 'fixture'
+        def voices(self, *, cancelled):
+            discoveries.append(True)
+            return (Voice('fixture:voice', 'Synthetic voice', ('uk',), 'fixture'),)
+    monkeypatch.setattr(runtime_settings, 'configured_voice_registry',
+                        lambda *args, **kwargs: VoiceRegistry([Engine()]))
+    output = tmp_path / 'audio-output'
+    output.mkdir()
+    def scenario(e):
+        e.controls['output'].ChangeValue(str(output))
+        e.controls['instruction'].ChangeValue('Produce audio: Explicit synthetic narration.')
+        e.press('preview')
+        assert not discoveries and not e.choices
+        if cancelled:
+            e.press('pause')
+        e.finish()
+        if not cancelled:
+            assert not e.controls['run'].enabled and len(e.executor.pending) == 1
+            e.finish()
+        assert discoveries == ([] if cancelled else [True])
+        assert bool(e.choices) is (not cancelled)
+        assert e.controls['run'].enabled is (not cancelled)
+        assert AssistantService(e.app).jobs() == ()
+    e.show(scenario)
+
+
+def test_close_discards_queued_model_result_and_remains_idempotent(native_handlers):
+    before = []
+    def scenario(e):
+        e.press('model')
+        e.executor.complete()
+        before.append(e.controls['review'].GetValue())
+        e.press('close')
+        e.press('close')
+    e = native_handlers.show(scenario)
     e.drain()
-    assert discoveries == ([] if cancelled else [True])
-    assert choices == ([] if cancelled else [True])
-    assert e.controls['buttons']['run'].IsEnabled() is not cancelled
-    assert e.dialog.assistant_service.jobs() == ()
+    assert e.controls['review'].value == before[0]
+    assert e.executor.shutdowns == [{'wait': False, 'cancel_futures': True}]
+    assert AssistantService(e.app).jobs() == () and e.app.workspaces() == ()
 
 
-def test_assistant_close_cancels_then_closes_production_after_pending_work(native_handlers, monkeypatch):
-    from carr_library.studio.render import ProductionService
+def test_cancel_after_run_click_before_dispatch_never_submits(native_handlers):
+    def scenario(e):
+        e.controls['instruction'].ChangeValue('Create library "Not submitted"')
+        e.press('preview')
+        e.finish()
+        e.press('run')
+        assert len(e.executor.pending) == 1 and AssistantService(e.app).jobs() == ()
+        e.press('pause')
+        e.finish()
+        assert AssistantService(e.app).jobs() == () and e.app.workspaces() == ()
+        assert 'before submitting' in e.controls['review'].GetValue()
+    native_handlers.show(scenario)
+
+
+@pytest.mark.parametrize('failure', ['update', 'finish_result'])
+def test_committed_service_result_survives_advisory_progress_failure(native_handlers, failure):
     e = native_handlers
-    closed = []
-    original_close = ProductionService.close
-    def close_production(production):
-        closed.append(production)
-        return original_close(production)
-    monkeypatch.setattr(ProductionService, 'close', close_production)
-    select_model(e)
-    e.handlers['preview']()
-    e.handlers['close']()
-    e.handlers['close']()  # Native close and wrapper cleanup remain idempotent.
-    assert len(e.executor.pending) == 2 and not closed
-    assert e.executor.shutdowns == [{'wait': False, 'cancel_futures': False}]
-    before = e.controls['review'].GetValue()
-    e.executor.complete(); e.drain()
-    assert not e.calls and e.controls['review'].GetValue() == before
-    assert e.app.workspaces() == () and e.dialog.assistant_service.jobs() == ()
-    assert not closed  # Cleanup waits behind the actual pending proposal.
-    e.executor.complete(); e.drain()
-    assert len(closed) == 1 and not e.executor.pending
+    notifications, finished, unexpected_failures = [], [], []
+
+    class Observer:
+        def start(self, *args, **kwargs):
+            return SimpleNamespace(token='actual-service-observer-test')
+        def update(self, completed, total, message, **kwargs):
+            notifications.append((completed, total, message))
+            # Exercise the final notification after the real service has
+            # persisted its completed job, not a fake successful return.
+            if failure == 'update' and completed == total:
+                raise RuntimeError('Synthetic final progress observer failure')
+        def finish_result(self, result, **kwargs):
+            finished.append(result)
+            if failure == 'finish_result':
+                raise RuntimeError('Synthetic completion observer failure')
+        def fail(self, error, **kwargs):
+            unexpected_failures.append(error)
+        def cancel(self, *args, **kwargs):
+            unexpected_failures.append('unexpected cancellation')
+        def request_cancel(self):
+            pass
+
+    e.frame.operation_progress = Observer()
+    def scenario(e):
+        e.controls['instruction'].ChangeValue('Create library "Committed despite notification"')
+        e.press('preview')
+        e.finish()
+        assert e.controls['run'].enabled
+        e.press('run')
+        assert AssistantService(e.app).jobs() == () and e.app.workspaces() == ()
+        e.finish()
+        service = AssistantService(e.app)
+        jobs = service.jobs()
+        assert len(jobs) == 1 and jobs[0].status == 'complete'
+        saved = service.store.load(jobs[0].id)
+        assert saved['status'] == 'complete'
+        assert len(saved['steps']) == 1 and saved['steps'][0]['status'] == 'complete'
+        assert [row.name for row in e.app.workspaces()] == ['Committed despite notification']
+        assert notifications[-1] == (1, 1, 'complete')
+        assert len(finished) == 1 and finished[0].status == 'complete'
+        assert not unexpected_failures and not e.executor.pending
+        assert e.controls['review'].GetValue().startswith('complete: 1 of 1')
+        assert e.controls['run'].enabled and e.controls['preview'].enabled
+        assert not e.controls['pause'].enabled
+    e.show(scenario)
+
+@pytest.mark.parametrize('worker_finished', [False, True], ids=['worker-pending', 'ui-callback-pending'])
+def test_saved_job_resume_waits_for_its_current_native_result_callback(native_handlers, tmp_path, worker_finished):
+    """A saved complete summary cannot stand in for the queued resume result."""
+    e = native_handlers
+    inputs, outputs = tmp_path / 'selected-input', tmp_path / 'selected-output'
+    inputs.mkdir()
+    outputs.mkdir()
+    source = inputs / 'railway.txt'
+    source.write_text('Railway transport connected cities.', encoding='utf-8')
+
+    def scenario(e):
+        e.controls['input'].ChangeValue(str(inputs))
+        e.controls['output'].ChangeValue(str(outputs))
+        e.controls['instruction'].ChangeValue(
+            'Create library "Resumed"\nImport "' + str(source) + '"\nSearch "Railway transport"')
+        e.press('preview')
+        e.finish()
+        assert e.controls['run'].enabled
+        e.press('run')
+        e.finish()
+        service = AssistantService(e.app)
+        completed, = service.jobs()
+        completed = service.get(completed.id)
+        assert completed.status == 'complete' and completed.completed == completed.total == 3
+        workspace = completed.results[0]['workspace']
+        imported = tuple(row.edition_id for row in e.app.browse(workspace))
+        assert imported
+        original = source.read_bytes()
+
+        e.press('jobs')
+        assert e.controls['run'].enabled
+        stale_summary = e.controls['review'].GetValue()
+        assert stale_summary.startswith('complete: 3/3.')
+        assert '3 of 3 verified operations' not in stale_summary
+        e.press('run')
+        assert len(e.executor.pending) == 1
+        if worker_finished:
+            e.executor.complete()
+            assert not e.executor.pending and e.queue
+        assert not e.controls['run'].enabled and not e.controls['preview'].enabled
+        assert e.controls['review'].GetValue() == stale_summary
+        # Preview readiness belongs to this current native result callback,
+        # not merely to the completed durable worker.
+        if not worker_finished:
+            e.executor.complete()
+        assert not e.controls['preview'].enabled
+        e.drain()
+        assert e.controls['run'].enabled and e.controls['preview'].enabled
+        assert '3 of 3 verified operations' in e.controls['review'].GetValue()
+        verified = service.get(completed.id)
+        assert verified.status == 'complete' and verified.results == completed.results
+        assert tuple(row.edition_id for row in e.app.browse(workspace)) == imported
+        assert source.read_bytes() == original
+    e.show(scenario)
+
+
+def test_silent_change_of_reviewed_goal_requires_fresh_preview(native_handlers):
+    def scenario(e):
+        e.controls['instruction'].ChangeValue('Create library "Original reviewed goal"')
+        e.press('preview')
+        e.finish()
+        assert e.controls['run'].enabled
+        e.controls['instruction'].ChangeValue('Create library "Unreviewed replacement"')
+        e.press('run')
+        assert not e.executor.pending and not e.controls['run'].enabled
+        assert 'reviewed goal or scope changed' in e.controls['review'].GetValue()
+        assert AssistantService(e.app).jobs() == () and e.app.workspaces() == ()
+    native_handlers.show(scenario)
+

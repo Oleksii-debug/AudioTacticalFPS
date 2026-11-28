@@ -9,7 +9,7 @@ import threading
 
 from ..research.academic_library import AcademicLibrary
 from ..research.export_file import capture_export_destination, write_export, export_completion
-from .export_destination import confirm_export_destination
+from .export_destination import approve_export_destination
 
 
 PAGE_SIZE = 200
@@ -106,6 +106,8 @@ class AcademicController:
         """Return the rendered text and its publication receipt without rereading."""
         if approval is None:
             approval = capture_export_destination(destination, private_root=self.library.root)
+            if not approval.require_absent:
+                raise FileExistsError('Confirm replacement of the existing export before rendering it.')
         content = self.export(identity=identity, format=format, include_notes=include_notes)
         receipt = write_export(destination, content, private_root=self.library.root, approval=approval)
         return content, receipt
@@ -1009,14 +1011,13 @@ def create_academic_dialog(parent, controller, *, executor=None):
                     path = Path(dialog.GetPath())
                 finally:
                     dialog.Destroy()
-                approval = confirm_export_destination(self, path,
-                    private_root=self.controller.library.root, wx_module=wx)
+                approval = approve_export_destination(self, path, private_root=self.controller.library.root)
                 if approval is None:
                     return
-                self.export_to(path, format=format, identity=identity,
-                               include_notes=include_notes, approval=approval)
+                self.export_to(path, format=format, identity=identity, include_notes=include_notes,
+                               approval=approval)
             except Exception as exc:
-                report(self.status, f'Bibliography export: {exc}')
+                report(self.status, f'Bibliography not exported: {exc}')
 
     return AcademicDialog()
 

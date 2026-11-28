@@ -1,0 +1,116 @@
+name: CARR local audio studio
+
+on:
+  pull_request:
+    branches: [carr-library, carr/v3-local-studio-20261126-a4f9]
+    paths:
+      - carr-library/**
+      - .github/workflows/carr-audio.yml
+  push:
+    branches: [carr-library, carr/v3-local-studio-20261126-a4f9, 'carr/v3-acceptance-*', 'carr/audio-native-*']
+    paths:
+      - carr-library/**
+      - .github/workflows/carr-audio.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: carr-audio-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  windows-audio:
+    name: Windows / actual SAPI / FFmpeg / native Studio
+    runs-on: windows-2022
+    timeout-minutes: 40
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: carr-library
+    env:
+      PYTHONUTF8: '1'
+      PYTHONUNBUFFERED: '1'
+      HF_HUB_OFFLINE: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      DO_NOT_TRACK: '1'
+      CARR_LONG_AUDIO_TESTS: '1'
+      CARR_EXPECTED_SOURCE_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+          architecture: x64
+      - name: Install pinned desktop and separately verified test audio runtime
+        run: |
+          New-Item -ItemType Directory -Force audio-ci-results | Out-Null
+          python -m pip install --only-binary=:all: --require-hashes -r packaging/windows-cp311.lock
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m pip install pytest==9.0.2 --only-binary=:all:
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m pip install --no-deps .
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $audioRoot = Join-Path $env:RUNNER_TEMP 'carr-pinned-audio'
+          New-Item -ItemType Directory -Force $audioRoot | Out-Null
+          $pin = python -c "import json; from carr_library.audio.runtime import FFMPEG_ARCHIVE_URL,FFMPEG_ARCHIVE_SHA256,FFMPEG_ARCHIVE_BYTES; print(json.dumps(dict(url=FFMPEG_ARCHIVE_URL,sha256=FFMPEG_ARCHIVE_SHA256,size=FFMPEG_ARCHIVE_BYTES)))" | ConvertFrom-Json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $archive = Join-Path $audioRoot 'ffmpeg-pinned.zip'
+          Invoke-WebRequest -Uri $pin.url -OutFile $archive
+          if ((Get-Item -LiteralPath $archive).Length -ne $pin.size -or (Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash.ToLowerInvariant() -ne $pin.sha256) { throw 'Pinned FFmpeg archive mismatch.' }
+          $audioBin = Join-Path $audioRoot 'audio-runtime'
+          python packaging/prepare_ffmpeg_runtime.py --archive $archive --destination $audioBin --verify-native
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $binary = Join-Path $audioBin 'ffmpeg.exe'
+          "CARR_FFMPEG=$binary" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          $audioBin | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          git rev-parse HEAD
+          & $binary -version
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Verify real offline SAPI output, native controls and OS credential vault
+        run: |
+          python -I scripts/windows_audio_smoke.py 2>&1 | Tee-Object audio-ci-results/native-audio.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Check native player controls or record the unavailable audio device
+        run: |
+          python -I tests/audio/native_playback_probe.py 2>&1 | Tee-Object audio-ci-results/native-playback.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Exercise the installed native effect parameter dialogs
+        timeout-minutes: 3
+        run: |
+          python -I -B scripts/r7_native_gate.py effects --report audio-ci-results/native-effects-proof.json 2>&1 | Tee-Object audio-ci-results/native-effect-controls.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Require the exact installed native clip editing workflow
+        timeout-minutes: 3
+        run: |
+          python -I -B scripts/r7_native_gate.py clips --report audio-ci-results/native-clips-proof.json 2>&1 | Tee-Object audio-ci-results/native-clips.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Require the exact installed native publication metadata workflow
+        timeout-minutes: 3
+        run: |
+          python -I -B scripts/r7_native_gate.py publication --report audio-ci-results/native-publication-proof.json 2>&1 | Tee-Object audio-ci-results/native-publication.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Run provider safety, source integrity and audio recovery regressions
+        run: |
+          python scripts/ci_audio_check.py -vv -rs --durations=20 --tb=short --junitxml=audio-ci-results/audio-source.xml tests/assistant tests/audio tests/reader/test_narration_text.py tests/ui/test_audio_studio.py tests/ui/test_audio_playback_controls.py tests/ui/test_api_connections.py tests/e2e/test_provider_gateway.py tests/e2e/test_provider_transport_boundaries.py tests/e2e/test_provider_transport_contract.py tests/e2e/test_provider_ledger_lifetime.py tests/e2e/test_audio_cli.py tests/ui/test_audio_clips.py tests/ui/test_audio_effect_editing.py tests/ui/test_audio_publication.py tests/ui/test_legacy_studio_import.py tests/ui/test_audio_native_probe_policy.py --import-mode=importlib
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Verify the installed library still works
+        run: |
+          python -I -m carr_library --self-test
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Preserve audio evidence without recordings or runtime payloads
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: carr-audio-${{ github.event.pull_request.head.sha || github.sha }}-${{ github.run_attempt }}
+          path: carr-library/audio-ci-results/
+          if-no-files-found: warn
+          retention-days: 7

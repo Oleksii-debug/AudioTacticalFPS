@@ -9,7 +9,7 @@ import pytest
 from carr_library.application import LibraryApp
 from carr_library.citations.anchors import digest
 from carr_library.reader.reading_desk import ReadingDesk
-from carr_library.storage.revisions import Page, Storage
+from carr_library.storage.revisions import Page, Storage, CURRENT_SCHEMA_VERSION
 
 
 @pytest.fixture
@@ -191,8 +191,8 @@ def test_native_verification_consumes_the_reader_deadline(text_book, monkeypatch
     clock = [100.0]
     original = app.assets.resolve
 
-    def slow_resolution(asset):
-        result = original(asset)
+    def slow_resolution(asset, **options):
+        result = original(asset, **options)
         clock[0] += 2.0
         return result
 
@@ -208,8 +208,8 @@ def test_cancellation_during_original_check_never_returns_a_page(text_book, monk
     desk = ReadingDesk(app, workspace, book['edition'], cancelled=stopped.is_set)
     original = app.assets.resolve
 
-    def cancel_after_resolution(asset):
-        result = original(asset)
+    def cancel_after_resolution(asset, **options):
+        result = original(asset, **options)
         stopped.set()
         return result
 
@@ -286,7 +286,7 @@ def test_noncontiguous_physical_locations_use_reading_order_not_fake_page_number
     app = LibraryApp(tmp_path / 'sparse-library')
     workspace = app.create_workspace('Sparse extracted pages')
     book = app.import_file(workspace, source, title='Sparse source')
-    with closing(Storage(app.database)) as storage:
+    with closing(Storage(app.database, schema_version=CURRENT_SCHEMA_VERSION)) as storage:
         with storage.transaction():
             rows = storage.db.execute(
                 'SELECT raw,physical FROM page WHERE revision=? AND physical IN (5,9) ORDER BY physical',

@@ -1,0 +1,452 @@
+{
+  "schema": 1,
+  "status": "PASS_EXACT_COMPONENT",
+  "source_commit": "565b9a6b21cd0d01e04a601b44e0ba2bbdf636f5",
+  "source_tree": "5bad44c940c00b7754091597e579bb3628edb95f",
+  "run_id": 46016663005,
+  "job_id": 140565410777,
+  "workflow": ".github/workflows/carr-playback-queue.yml",
+  "ref": "carr/playback-queue-r10-lifecycle-fix-20261127",
+  "run_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46016663005",
+  "evidence": "Actual GitHub job log JSON receipts and workflow artifact metadata; no archive-local content extraction claimed.",
+  "artifact": {
+    "id": 15211641814,
+    "name": "carr-playback-queue-565b9a6b21cd0d01e04a601b44e0ba2bbdf636f5-1",
+    "size_in_bytes": 392200,
+    "url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15211641814",
+    "archive_download_url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15211641814/zip",
+    "expired": false,
+    "created_at": "2026-11-27T15:28:06Z",
+    "expires_at": "2026-12-27T15:28:06Z",
+    "updated_at": "2026-11-27T15:28:06Z",
+    "digest": "sha256:391cefcbd586df2663ace0e6e0978968444c99cfc9bf7a1d884227c0f222aa84",
+    "workflow_run": {
+      "id": 46016663005,
+      "repository_id": 1341777614,
+      "head_repository_id": 1341777614,
+      "head_branch": "carr/playback-queue-r10-lifecycle-fix-20261127",
+      "head_sha": "565b9a6b21cd0d01e04a601b44e0ba2bbdf636f5"
+    }
+  },
+  "source_phase": {
+    "schema": 1,
+    "status": "PASS",
+    "mode": "source",
+    "declared_cases": 141,
+    "timeout_seconds": 1200,
+    "oracle_sha256": "7070b70a9d183d673f3ea3924767c5891faad0acb014d61d389524caf7845a36",
+    "source_commit": "565b9a6b21cd0d01e04a601b44e0ba2bbdf636f5",
+    "source_tree": "5bad44c940c00b7754091597e579bb3628edb95f",
+    "wheel_sha256": "3fa422821f04ffbc04e690db02b8b7ef3316ca1d6a957db2f95ee53f1e262c8a",
+    "checkout_manifest_sha256": "5cb9c1a1de8d47489f0f2050a46a067483147b3a60790a7f84d01e1a683b72ab",
+    "tracked_source_files": 1408,
+    "source_only_python": {
+      "bootstrap/semantic_compat/probe.py": "c51758108a418c7bf98ddd459cefdca852777b07cfc95ac669855b1195398ac7",
+      "bootstrap/semantic_compat/test_probe.py": "ae093cae9f00307c09d2ea787dacf7c8c1522184e5480a411c0979023b7b70bb"
+    },
+    "actual_ffmpeg": null,
+    "test_source_sha256": {
+      "tests/audio/test_retained_playlist.py": "57f117d4045fa135f32dbd9c6beeffd464aa41213017fbce22a502b8b3bf6a4d",
+      "tests/audio/test_playlist_session.py": "898072857d68ed16c1af89f8d9bcfdaf0955d9e0d9633837275bd3176d254f7c",
+      "tests/audio/test_playlist_player_boundary.py": "18d868bce5c7a26247560e7a0d39cb2172e9fa8e226988069e4e5fc3ff9a527a",
+      "tests/storage/test_playback_queue_backup.py": "6340c78529a20f8abf68dcf69617246b89f8c1c34f8f18dce4a356992ebe6f62",
+      "tests/ui/test_playback_queue.py": "3bb6436aa9d61e18ade18d0c1ce4269d5fb0e8682a5addc69c3b1b82be413db7",
+      "tests/audio/test_player.py": "69f951735d3d3866ef5d79d96d81ce6f2844445dcec522ff5b8bdc70c152bcd7",
+      "tests/ui/test_save_all_current_drafts.py": "b3fb4a602a956f19d146ee33a5c5496cce7efe04f4d109f510ae511db9436e78",
+      "tests/__init__.py": "bda1d1b86fa69f604fb87c19f27628942b6bd77aa46b605efbc9cb9d4457183d",
+      "tests/storage/__init__.py": "133dac0936d6e430af23a6ea8041d800ff72d4ee8b7e6bae54d16d6d0bff3efb",
+      "tests/audio/playlist_fixture.py": "9be8cccec83cdb66807878c8204bdb70e3ebc96bd616b87445c39bcf642a0dd4",
+      "scripts/windows_playback_queue_smoke.py": "b67840f7c8d6380f555d8684c090234db89e6d2fcaa5c2fdde041e791694590d"
+    },
+    "runner_sha256": {
+      "audio_batch_acceptance.py": "3fcb217a7ed9d535ea9d277191a27504f8e6f452bef235b728036358f9e6e003",
+      "ci_check.py": "a7e90c3a14dc51b78c9af17850a7038bf21513cc5ba41466293cc853cd0e2842",
+      "ci_watchdog.py": "e02be6a6c3406bdf1d9d4c24673363894d03a1ee7948b3b77d6b20fcc2bfc057"
+    },
+    "pytest_exit": 0,
+    "case_counter": {
+      "tests.audio.test_player": {
+        "test_pcm_preflight_pause_resume_seek_stop_and_close": 2,
+        "test_invalid_seek_rejected_before_device_call": 5,
+        "test_truncated_wav_fails_before_playback": 1,
+        "test_native_cleanup_failure_remains_visible_without_losing_handle_owner": 1,
+        "test_invalid_new_source_keeps_existing_controller_state": 1,
+        "test_bounded_playlist_does_not_autoplay_and_advances_only_after_natural_end": 1,
+        "test_playlist_replacement_is_atomic_and_detects_changed_recording": 1,
+        "test_ab_repeat_uses_native_endpoints_and_preserves_pause": 1,
+        "test_invalid_repeat_cannot_change_current_range": 5,
+        "test_sleep_timer_has_priority_over_repeat_and_queue_and_runs_while_paused": 1,
+        "test_segments_preserve_pause_and_invalid_replacement_keeps_current_map": 1,
+        "test_output_selection_survives_playlist_repeat_and_segment_navigation": 1,
+        "test_empty_playlist_replacement_releases_device_without_closing_controller": 1,
+        "test_external_media_context_tracks_actual_owned_process_cleanup": 2,
+        "test_external_media_context_releases_on_observed_child_exit": 2,
+        "test_external_launch_failure_does_not_leave_media_suppressed": 1,
+        "test_failed_cleanup_keeps_media_suppressed_until_owned_child_is_observed_dead": 1,
+        "test_invalid_replacement_keeps_existing_external_media_context": 1
+      },
+      "tests.audio.test_playlist_player_boundary": {
+        "test_existing_wave_player_resumes_exact_queue_member_at_explicit_position": 1,
+        "test_invalid_explicit_queue_cursor_does_not_interrupt_current_valid_playback": 5
+      },
+      "tests.audio.test_playlist_session": {
+        "test_reopen_reads_only_passive_state_until_explicit_review": 1,
+        "test_explicit_play_uses_saved_original_frame_and_default_device": 1,
+        "test_only_actual_native_observed_frames_become_a_saved_cursor": 2,
+        "test_unreported_playhead_never_becomes_a_wall_clock_guess": 3,
+        "test_automatic_next_track_updates_selection_only_from_current_pcm_status": 1,
+        "test_failed_native_cleanup_retains_verified_readers_for_retry": 2,
+        "test_bad_status_does_not_prevent_actual_native_stop_or_reader_release": 1,
+        "test_native_start_failure_keeps_reader_until_failed_cleanup_can_be_retried": 1,
+        "test_admission_cannot_replay_after_queue_selection_changes": 1,
+        "test_changed_retained_bytes_fail_before_any_player_start": 1,
+        "test_cancelled_preparation_closes_all_actual_input_readers": 1,
+        "test_review_result_is_rejected_when_another_window_saved_newer_state": 1,
+        "test_append_captures_current_cursor_before_stopping": 1,
+        "test_reorder_and_remove_preserve_the_selected_recording_and_frame": 1,
+        "test_invalid_manual_selection_preserves_an_existing_valid_draft": 6,
+        "test_save_acknowledgement_retains_newer_edits_as_dirty": 1,
+        "test_unconfirmed_post_commit_receipt_keeps_dirty_state_and_retry_token": 1,
+        "test_pause_resume_requires_an_explicit_active_admission": 1,
+        "test_closed_session_does_not_admit_new_work": 1
+      },
+      "tests.audio.test_retained_playlist": {
+        "test_retained_pcm_is_independent_exact_and_survives_original_changes": 2,
+        "test_loading_saved_queue_is_passive_and_does_not_open_media": 1,
+        "test_invalid_saved_fields_never_gain_playback_authority": 19,
+        "test_malformed_and_duplicate_json_are_rejected": 4,
+        "test_queue_count_and_total_byte_budgets_are_independent": 1,
+        "test_cas_rejects_a_second_window_without_overwriting_current_queue": 1,
+        "test_changed_pcm_with_restored_mtime_is_not_accepted_for_save": 1,
+        "test_hardlinked_input_or_retained_media_is_refused": 2,
+        "test_unknown_state_is_not_hidden_or_deleted_by_recovery": 1,
+        "test_owned_interrupted_stages_are_inert_and_recovered_under_lock": 1,
+        "test_cancelled_capture_preserves_completed_copy_and_originals": 1,
+        "test_pre_cancelled_review_and_retention_do_not_publish": 1,
+        "test_review_timeout_is_explicit_without_guessing_a_success": 1,
+        "test_completed_write_with_failed_directory_flush_keeps_an_unconfirmed_receipt": 1,
+        "test_unknown_or_unreadable_namespace_never_becomes_an_empty_playlist": 1,
+        "test_clear_saved_queue_does_not_erase_completed_retained_originals": 1,
+        "test_empty_queue_roundtrip_needs_no_media_directory": 1
+      },
+      "tests.storage.test_playback_queue_backup": {
+        "test_backup_restore_rebackup_preserves_bytes_and_never_autoplays": 3,
+        "test_active_namespace_refuses_backup_until_the_same_writer_is_idle": 1,
+        "test_invalid_owned_state_is_not_silently_excluded_from_complete_backup": 4,
+        "test_manifest_rehash_does_not_authorize_changed_retained_pcm": 1,
+        "test_completed_copy_cannot_hide_later_source_media_changes": 1,
+        "test_private_interrupted_stages_are_not_restored_as_completed_media": 1,
+        "test_unreadable_optional_namespace_refuses_backup_instead_of_dropping_queue": 1
+      },
+      "tests.ui.test_playback_queue": {
+        "test_initial_window_is_passive_and_review_never_plays": 1,
+        "test_add_then_save_all_captures_real_independent_pcm_and_exact_order": 1,
+        "test_cancelled_capture_does_not_append_late_result_but_preserves_committed_copy": 1,
+        "test_late_play_review_after_library_change_disposes_readers_without_start": 1,
+        "test_delayed_media_action_is_cancelled_before_it_can_start_stale_playback": 1,
+        "test_media_admission_failure_releases_prepared_readers": 1,
+        "test_failed_native_cleanup_keeps_window_and_input_owner_for_retry": 2,
+        "test_save_all_waits_for_publication_and_keeps_newer_draft_dirty": 1,
+        "test_save_commit_is_acknowledged_when_stop_arrives_after_publication": 1,
+        "test_unconfirmed_save_keeps_dirty_retry_token_and_does_not_complete_save_all": 1,
+        "test_dirty_close_uses_actual_save_discard_or_cancel": 3,
+        "test_close_during_save_all_waits_for_the_current_confirmed_save": 1,
+        "test_revoked_host_still_allows_cleanup_and_close_without_discarding_saved_state": 1,
+        "test_manual_selection_and_skip_stop_playback_and_never_autoplay": 1,
+        "test_unreviewed_saved_queue_cannot_be_saved_as_if_its_media_were_checked": 1,
+        "test_stale_delayed_play_admission_is_rejected_and_closed_by_ui_owner": 1,
+        "test_current_trust_admission_refuses_new_review_or_capture_before_mutation": 2,
+        "test_delayed_play_rechecks_current_trust_and_disposes_refused_admission": 1,
+        "test_real_first_thread_start_failure_cannot_leave_an_unowned_stale_action": 1
+      },
+      "tests.ui.test_save_all_current_drafts": {
+        "test_save_all_writes_current_managed_studio_and_reading_copy_without_source_edits": 1,
+        "test_studio_conflict_retains_the_other_writer_and_saves_other_open_drafts": 1,
+        "test_running_studio_job_is_reported_as_pending_without_a_concurrent_save": 1
+      }
+    },
+    "interpreter_sha256": "71755a7c10340765996454940167238632c8f39bfb7a0f5ce49ab4fc6fdbdcc1",
+    "actual_cases": 141,
+    "elapsed_seconds": 32.76600000000002
+  },
+  "installed_phase": {
+    "schema": 1,
+    "status": "PASS",
+    "mode": "installed",
+    "declared_cases": 141,
+    "timeout_seconds": 1200,
+    "oracle_sha256": "7070b70a9d183d673f3ea3924767c5891faad0acb014d61d389524caf7845a36",
+    "source_commit": "565b9a6b21cd0d01e04a601b44e0ba2bbdf636f5",
+    "source_tree": "5bad44c940c00b7754091597e579bb3628edb95f",
+    "wheel_sha256": "3fa422821f04ffbc04e690db02b8b7ef3316ca1d6a957db2f95ee53f1e262c8a",
+    "checkout_manifest_sha256": "5cb9c1a1de8d47489f0f2050a46a067483147b3a60790a7f84d01e1a683b72ab",
+    "tracked_source_files": 1408,
+    "source_only_python": {
+      "bootstrap/semantic_compat/probe.py": "c51758108a418c7bf98ddd459cefdca852777b07cfc95ac669855b1195398ac7",
+      "bootstrap/semantic_compat/test_probe.py": "ae093cae9f00307c09d2ea787dacf7c8c1522184e5480a411c0979023b7b70bb"
+    },
+    "actual_ffmpeg": null,
+    "test_source_sha256": {
+      "tests/audio/test_retained_playlist.py": "57f117d4045fa135f32dbd9c6beeffd464aa41213017fbce22a502b8b3bf6a4d",
+      "tests/audio/test_playlist_session.py": "898072857d68ed16c1af89f8d9bcfdaf0955d9e0d9633837275bd3176d254f7c",
+      "tests/audio/test_playlist_player_boundary.py": "18d868bce5c7a26247560e7a0d39cb2172e9fa8e226988069e4e5fc3ff9a527a",
+      "tests/storage/test_playback_queue_backup.py": "6340c78529a20f8abf68dcf69617246b89f8c1c34f8f18dce4a356992ebe6f62",
+      "tests/ui/test_playback_queue.py": "3bb6436aa9d61e18ade18d0c1ce4269d5fb0e8682a5addc69c3b1b82be413db7",
+      "tests/audio/test_player.py": "69f951735d3d3866ef5d79d96d81ce6f2844445dcec522ff5b8bdc70c152bcd7",
+      "tests/ui/test_save_all_current_drafts.py": "b3fb4a602a956f19d146ee33a5c5496cce7efe04f4d109f510ae511db9436e78",
+      "tests/__init__.py": "bda1d1b86fa69f604fb87c19f27628942b6bd77aa46b605efbc9cb9d4457183d",
+      "tests/storage/__init__.py": "133dac0936d6e430af23a6ea8041d800ff72d4ee8b7e6bae54d16d6d0bff3efb",
+      "tests/audio/playlist_fixture.py": "9be8cccec83cdb66807878c8204bdb70e3ebc96bd616b87445c39bcf642a0dd4",
+      "scripts/windows_playback_queue_smoke.py": "b67840f7c8d6380f555d8684c090234db89e6d2fcaa5c2fdde041e791694590d"
+    },
+    "runner_sha256": {
+      "audio_batch_acceptance.py": "3fcb217a7ed9d535ea9d277191a27504f8e6f452bef235b728036358f9e6e003",
+      "ci_check.py": "a7e90c3a14dc51b78c9af17850a7038bf21513cc5ba41466293cc853cd0e2842",
+      "ci_watchdog.py": "e02be6a6c3406bdf1d9d4c24673363894d03a1ee7948b3b77d6b20fcc2bfc057"
+    },
+    "pytest_exit": 0,
+    "case_counter": {
+      "tests.audio.test_player": {
+        "test_pcm_preflight_pause_resume_seek_stop_and_close": 2,
+        "test_invalid_seek_rejected_before_device_call": 5,
+        "test_truncated_wav_fails_before_playback": 1,
+        "test_native_cleanup_failure_remains_visible_without_losing_handle_owner": 1,
+        "test_invalid_new_source_keeps_existing_controller_state": 1,
+        "test_bounded_playlist_does_not_autoplay_and_advances_only_after_natural_end": 1,
+        "test_playlist_replacement_is_atomic_and_detects_changed_recording": 1,
+        "test_ab_repeat_uses_native_endpoints_and_preserves_pause": 1,
+        "test_invalid_repeat_cannot_change_current_range": 5,
+        "test_sleep_timer_has_priority_over_repeat_and_queue_and_runs_while_paused": 1,
+        "test_segments_preserve_pause_and_invalid_replacement_keeps_current_map": 1,
+        "test_output_selection_survives_playlist_repeat_and_segment_navigation": 1,
+        "test_empty_playlist_replacement_releases_device_without_closing_controller": 1,
+        "test_external_media_context_tracks_actual_owned_process_cleanup": 2,
+        "test_external_media_context_releases_on_observed_child_exit": 2,
+        "test_external_launch_failure_does_not_leave_media_suppressed": 1,
+        "test_failed_cleanup_keeps_media_suppressed_until_owned_child_is_observed_dead": 1,
+        "test_invalid_replacement_keeps_existing_external_media_context": 1
+      },
+      "tests.audio.test_playlist_player_boundary": {
+        "test_existing_wave_player_resumes_exact_queue_member_at_explicit_position": 1,
+        "test_invalid_explicit_queue_cursor_does_not_interrupt_current_valid_playback": 5
+      },
+      "tests.audio.test_playlist_session": {
+        "test_reopen_reads_only_passive_state_until_explicit_review": 1,
+        "test_explicit_play_uses_saved_original_frame_and_default_device": 1,
+        "test_only_actual_native_observed_frames_become_a_saved_cursor": 2,
+        "test_unreported_playhead_never_becomes_a_wall_clock_guess": 3,
+        "test_automatic_next_track_updates_selection_only_from_current_pcm_status": 1,
+        "test_failed_native_cleanup_retains_verified_readers_for_retry": 2,
+        "test_bad_status_does_not_prevent_actual_native_stop_or_reader_release": 1,
+        "test_native_start_failure_keeps_reader_until_failed_cleanup_can_be_retried": 1,
+        "test_admission_cannot_replay_after_queue_selection_changes": 1,
+        "test_changed_retained_bytes_fail_before_any_player_start": 1,
+        "test_cancelled_preparation_closes_all_actual_input_readers": 1,
+        "test_review_result_is_rejected_when_another_window_saved_newer_state": 1,
+        "test_append_captures_current_cursor_before_stopping": 1,
+        "test_reorder_and_remove_preserve_the_selected_recording_and_frame": 1,
+        "test_invalid_manual_selection_preserves_an_existing_valid_draft": 6,
+        "test_save_acknowledgement_retains_newer_edits_as_dirty": 1,
+        "test_unconfirmed_post_commit_receipt_keeps_dirty_state_and_retry_token": 1,
+        "test_pause_resume_requires_an_explicit_active_admission": 1,
+        "test_closed_session_does_not_admit_new_work": 1
+      },
+      "tests.audio.test_retained_playlist": {
+        "test_retained_pcm_is_independent_exact_and_survives_original_changes": 2,
+        "test_loading_saved_queue_is_passive_and_does_not_open_media": 1,
+        "test_invalid_saved_fields_never_gain_playback_authority": 19,
+        "test_malformed_and_duplicate_json_are_rejected": 4,
+        "test_queue_count_and_total_byte_budgets_are_independent": 1,
+        "test_cas_rejects_a_second_window_without_overwriting_current_queue": 1,
+        "test_changed_pcm_with_restored_mtime_is_not_accepted_for_save": 1,
+        "test_hardlinked_input_or_retained_media_is_refused": 2,
+        "test_unknown_state_is_not_hidden_or_deleted_by_recovery": 1,
+        "test_owned_interrupted_stages_are_inert_and_recovered_under_lock": 1,
+        "test_cancelled_capture_preserves_completed_copy_and_originals": 1,
+        "test_pre_cancelled_review_and_retention_do_not_publish": 1,
+        "test_review_timeout_is_explicit_without_guessing_a_success": 1,
+        "test_completed_write_with_failed_directory_flush_keeps_an_unconfirmed_receipt": 1,
+        "test_unknown_or_unreadable_namespace_never_becomes_an_empty_playlist": 1,
+        "test_clear_saved_queue_does_not_erase_completed_retained_originals": 1,
+        "test_empty_queue_roundtrip_needs_no_media_directory": 1
+      },
+      "tests.storage.test_playback_queue_backup": {
+        "test_backup_restore_rebackup_preserves_bytes_and_never_autoplays": 3,
+        "test_active_namespace_refuses_backup_until_the_same_writer_is_idle": 1,
+        "test_invalid_owned_state_is_not_silently_excluded_from_complete_backup": 4,
+        "test_manifest_rehash_does_not_authorize_changed_retained_pcm": 1,
+        "test_completed_copy_cannot_hide_later_source_media_changes": 1,
+        "test_private_interrupted_stages_are_not_restored_as_completed_media": 1,
+        "test_unreadable_optional_namespace_refuses_backup_instead_of_dropping_queue": 1
+      },
+      "tests.ui.test_playback_queue": {
+        "test_initial_window_is_passive_and_review_never_plays": 1,
+        "test_add_then_save_all_captures_real_independent_pcm_and_exact_order": 1,
+        "test_cancelled_capture_does_not_append_late_result_but_preserves_committed_copy": 1,
+        "test_late_play_review_after_library_change_disposes_readers_without_start": 1,
+        "test_delayed_media_action_is_cancelled_before_it_can_start_stale_playback": 1,
+        "test_media_admission_failure_releases_prepared_readers": 1,
+        "test_failed_native_cleanup_keeps_window_and_input_owner_for_retry": 2,
+        "test_save_all_waits_for_publication_and_keeps_newer_draft_dirty": 1,
+        "test_save_commit_is_acknowledged_when_stop_arrives_after_publication": 1,
+        "test_unconfirmed_save_keeps_dirty_retry_token_and_does_not_complete_save_all": 1,
+        "test_dirty_close_uses_actual_save_discard_or_cancel": 3,
+        "test_close_during_save_all_waits_for_the_current_confirmed_save": 1,
+        "test_revoked_host_still_allows_cleanup_and_close_without_discarding_saved_state": 1,
+        "test_manual_selection_and_skip_stop_playback_and_never_autoplay": 1,
+        "test_unreviewed_saved_queue_cannot_be_saved_as_if_its_media_were_checked": 1,
+        "test_stale_delayed_play_admission_is_rejected_and_closed_by_ui_owner": 1,
+        "test_current_trust_admission_refuses_new_review_or_capture_before_mutation": 2,
+        "test_delayed_play_rechecks_current_trust_and_disposes_refused_admission": 1,
+        "test_real_first_thread_start_failure_cannot_leave_an_unowned_stale_action": 1
+      },
+      "tests.ui.test_save_all_current_drafts": {
+        "test_save_all_writes_current_managed_studio_and_reading_copy_without_source_edits": 1,
+        "test_studio_conflict_retains_the_other_writer_and_saves_other_open_drafts": 1,
+        "test_running_studio_job_is_reported_as_pending_without_a_concurrent_save": 1
+      }
+    },
+    "interpreter_sha256": "f10572b00e42894dab68eb283fe432d12a5928ff220887def0e908abf047dac9",
+    "actual_cases": 141,
+    "elapsed_seconds": 31.937999999999988
+  },
+  "native": {
+    "checks": [
+      "actual Windows native controls",
+      "installed retained queue modules",
+      "initial queue opens without media or device",
+      "native queue has a readable accessible name",
+      "native button enabled and visible",
+      "native button event handled",
+      "selected originals retained independently",
+      "retained PCM matches exact selected bytes",
+      "captured queue remains an unsaved passive draft",
+      "native queue displays both retained labels",
+      "native selection event handled",
+      "native selection chooses exact queue member",
+      "native button enabled and visible",
+      "native button event handled",
+      "manual cursor uses exact original frames",
+      "native button enabled and visible",
+      "native button event handled",
+      "Save All waits for actual confirmed queue publication",
+      "Save All preserves order selection and cursor",
+      "native button enabled and visible",
+      "native button event handled",
+      "first native queue closes after owner settles",
+      "reopen restores passive exact frame and selection",
+      "reopen does not admit retained media automatically",
+      "restored queue requires review before Play",
+      "native button enabled and visible",
+      "native button event handled",
+      "explicit review restores selected retained bytes without playback",
+      "native button enabled and visible",
+      "native button event handled",
+      "deferred Play holds all verified input readers",
+      "deferred Play does not open an output device",
+      "native button enabled and visible",
+      "native button event handled",
+      "Stop cancels delayed playback and releases readers",
+      "Stop preserves manually saved cursor",
+      "native button enabled and visible",
+      "native button event handled",
+      "reopened native queue closes after owner settles",
+      "complete backup restores every retained PCM and exact queue",
+      "restored queue remains passive without a device",
+      "restored queue supports verified rebackup",
+      "both selected original files remain byte-identical"
+    ],
+    "cursor_frame": 3000,
+    "installed_mode": true,
+    "isolated": true,
+    "module_origins": {
+      "carr_library.audio.ffmpeg": {
+        "path": "D:\\a\\_temp\\carr-playback-queue-46016663005-1\\installed\\Lib\\site-packages\\carr_library\\audio\\ffmpeg.py",
+        "sha256": "ec4be2ede960fd2ea438c73bb9c8ab841eb27d02ddb7717632cdb712e10e72cb"
+      },
+      "carr_library.audio.jobs": {
+        "path": "D:\\a\\_temp\\carr-playback-queue-46016663005-1\\installed\\Lib\\site-packages\\carr_library\\audio\\jobs.py",
+        "sha256": "684ddb40ca6cc885adfcf1dfc8cd3fd45809a14701a200c67ecff00f4d364b0b"
+      },
+      "carr_library.audio.playback": {
+        "path": "D:\\a\\_temp\\carr-playback-queue-46016663005-1\\installed\\Lib\\site-packages\\carr_library\\audio\\playback.py",
+        "sha256": "b48795a66a1cb1e5444292cacc4b8c7b9f8646f626176883d48b7d04a13f95e3"
+      },
+      "carr_library.audio.player": {
+        "path": "D:\\a\\_temp\\carr-playback-queue-46016663005-1\\installed\\Lib\\site-packages\\carr_library\\audio\\player.py",
+        "sha256": "95f025a1803c183e19db78b1ff37b7a80d07715c19bd0a44277ce0395b640c85"
+      },
+      "carr_library.audio.playlist": {
+        "path": "D:\\a\\_temp\\carr-playback-queue-46016663005-1\\installed\\Lib\\site-packages\\carr_library\\audio\\playlist.py",
+        "sha256": "b627f951458b6344d4d069cb6317a7af89cc6345c893145181eef373ae2fd9ec"
+      },
+      "carr_library.audio.playlist_session": {
+        "path": "D:\\a\\_temp\\carr-playback-queue-46016663005-1\\installed\\Lib\\site-packages\\carr_library\\audio\\playlist_session.py",
+        "sha256": "5f1c08c2b60afa9369c058d30998ea97b35ffb3802e133cbf1bde88a0a1050db"
+      },
+      "carr_library.backup_files": {
+        "path": "D:\\a\\_temp\\carr-playback-queue-46016663005-1\\installed\\Lib\\site-packages\\carr_library\\backup_files.py",
+        "sha256": "bd234637ea06b71136e24c70881edfb2e5eff982aa8502cedd297e69db1665cf"
+      },
+      "carr_library.durable_state": {
+        "path": "D:\\a\\_temp\\carr-playback-queue-46016663005-1\\installed\\Lib\\site-packages\\carr_library\\durable_state.py",
+        "sha256": "4a0c6d8c4b0dc34388d3b47dca9effa1676cb575d358cb830220dea0580c825c"
+      },
+      "carr_library.library_backup": {
+        "path": "D:\\a\\_temp\\carr-playback-queue-46016663005-1\\installed\\Lib\\site-packages\\carr_library\\library_backup.py",
+        "sha256": "c6229c1fdf9e0c58f27d80ba125b8294375f70c37395a3f886c7ca9d273ff07d"
+      },
+      "carr_library.operations.broker": {
+        "path": "D:\\a\\_temp\\carr-playback-queue-46016663005-1\\installed\\Lib\\site-packages\\carr_library\\operations\\broker.py",
+        "sha256": "e99b147191c12f8fe1cf3d1f5fb46afc4aea4d6cc28b6caddfd42161aec2fdfb"
+      },
+      "carr_library.ui.playback_queue": {
+        "path": "D:\\a\\_temp\\carr-playback-queue-46016663005-1\\installed\\Lib\\site-packages\\carr_library\\ui\\playback_queue.py",
+        "sha256": "7ce8ce82be7b112d8a9f138150287ec025d04ae6dc14bb42edaddbbfbb9c09d8"
+      },
+      "carr_library.ui.save_all": {
+        "path": "D:\\a\\_temp\\carr-playback-queue-46016663005-1\\installed\\Lib\\site-packages\\carr_library\\ui\\save_all.py",
+        "sha256": "38ddc5904b6562d3f138cd5399e73d27bbcc106fa80556a83bce4282ebcbe1d0"
+      }
+    },
+    "native_controls": "EXECUTED",
+    "nvda": "NOT_RUN",
+    "original_sha256": [
+      "9fa51d20974fb906619291fd7af2aac42e59bf72cdf6115e49530edb8233397c",
+      "2bbb8b49a42259c0b1831edf80e169a2d595869931948699b7eba046c8503e8d"
+    ],
+    "physical_playback": "NOT_RUN",
+    "queue_state_sha256": "ebee98d99ae3403f87db42c6aac8feadb310f3fde7eaab8c950067491bbba6f8",
+    "restored_state_sha256": "ebee98d99ae3403f87db42c6aac8feadb310f3fde7eaab8c950067491bbba6f8",
+    "retained_sha256": [
+      "9fa51d20974fb906619291fd7af2aac42e59bf72cdf6115e49530edb8233397c",
+      "2bbb8b49a42259c0b1831edf80e169a2d595869931948699b7eba046c8503e8d"
+    ],
+    "sample_rate": 8000,
+    "saved_items": 2,
+    "selected_index": 1,
+    "source_commit": "565b9a6b21cd0d01e04a601b44e0ba2bbdf636f5",
+    "status": "PASS"
+  },
+  "aggregate": {
+    "schema": 1,
+    "status": "PASS",
+    "source_cases": 141,
+    "installed_cases": 141,
+    "native_checks": 43,
+    "oracle_sha256": "7070b70a9d183d673f3ea3924767c5891faad0acb014d61d389524caf7845a36",
+    "nvda": "NOT_RUN",
+    "physical_playback": "NOT_RUN",
+    "source_commit": "565b9a6b21cd0d01e04a601b44e0ba2bbdf636f5",
+    "source_tree": "5bad44c940c00b7754091597e579bb3628edb95f",
+    "wheel_sha256": "3fa422821f04ffbc04e690db02b8b7ef3316ca1d6a957db2f95ee53f1e262c8a",
+    "actual_ffmpeg": null,
+    "native_receipt_sha256": "0cad40de3c05b6b4db73773bbd9fe1e99ac32d6c42d4e404705e4378cbe02d7d"
+  },
+  "scope_limits": [
+    "Results belong only to565b9a6b21cd0d01e04a601b44e0ba2bbdf636f5.",
+    "Physical output-device playback NOT_RUN.",
+    "NVDA NOT_RUN.",
+    "A later integrated root requires its own qualification."
+  ]
+}

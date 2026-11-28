@@ -1,0 +1,164 @@
+{
+  "schema": 1,
+  "status": "PASS",
+  "source_commit": "523aa40f9215569a276f0625d09fcc0fa84bb520",
+  "source_tree": "b6416525dd57ddbcc931f119811e4e73faed68f6",
+  "run_id": 45993629492,
+  "job_id": 140487431158,
+  "source": {
+    "cases": {
+      "tests/reader/test_live_speech.py": 47,
+      "tests/security/test_live_reading_admission.py": 8,
+      "tests/storage/test_live_reading_backup.py": 7,
+      "tests/ui/test_live_reading.py": 26
+    },
+    "failed": 0,
+    "passed": 88,
+    "skipped": 0,
+    "status": "PASS"
+  },
+  "installed": {
+    "actual_windows": true,
+    "cases": {
+      "tests.reader.test_live_speech": 47,
+      "tests.security.test_live_reading_admission": 8,
+      "tests.storage.test_live_reading_backup": 7,
+      "tests.ui.test_live_reading": 26
+    },
+    "failed": 0,
+    "full_platform": "NOT_CLAIMED",
+    "installed_package": true,
+    "isolated": true,
+    "module_origins": {
+      "carr_library.library_backup": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\library_backup.py",
+        "sha256": "e590841d06dc84244bfbe9d31ee1125c31bd2c42b9f0054360d36822c03eca73"
+      },
+      "carr_library.reader.live_speech": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\reader\\live_speech.py",
+        "sha256": "97185236f3e1227ca94a372501c32a0f84d32ff87b2e9e00c7682f9185a6bc15"
+      },
+      "carr_library.ui.builtin_keyboard_commands": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ui\\builtin_keyboard_commands.py",
+        "sha256": "cefc1920c5e91e1c0470f12677f00145965e873cd1f65211402f9c7df1cc99d0"
+      },
+      "carr_library.ui.live_reading": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ui\\live_reading.py",
+        "sha256": "1137bcb2dea5227263eae369ccce7377ac02806c1283a3fa48f3f4b12d782dc1"
+      },
+      "carr_library.ui.narration_editor": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ui\\narration_editor.py",
+        "sha256": "0cba160dce32b05ce27b5596d4ff18aa21b30f0204242f7a58cbf7930ee84470"
+      },
+      "carr_library.ui.reading_desk": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ui\\reading_desk.py",
+        "sha256": "a3d1fe09172bffcbd832a89dda3e7f59da96c6db3659ff6898006a3dcf57efde"
+      }
+    },
+    "nvda": "NOT_RUN",
+    "passed": 88,
+    "sealed_installer": "NOT_RUN",
+    "skipped": 0,
+    "source_commit": "523aa40f9215569a276f0625d09fcc0fa84bb520",
+    "source_tree": "b6416525dd57ddbcc931f119811e4e73faed68f6",
+    "status": "PASS"
+  },
+  "native": {
+    "actual_sapi_pcm": {
+      "frames": 59988,
+      "pcm_sha256": "2666d162e40bad74034e0ac209579bfe1866a2095e4ea3e11276502776421f52",
+      "sample_rate": 24000,
+      "source_sha256": "843dd0e38e88be7772e076d512d855aab5f074dfb395fe0da188f7ab477046f0"
+    },
+    "actual_windows": true,
+    "checks": [
+      "named read-only native source control",
+      "all ten live reading actions are native and named",
+      "native emoji and newline selection identifies exact source",
+      "native Unicode cursor roundtrip 0",
+      "native Unicode cursor roundtrip 7",
+      "native Unicode cursor roundtrip 8",
+      "native Unicode cursor roundtrip 11",
+      "native Unicode cursor roundtrip 38",
+      "native Unicode cursor roundtrip 78",
+      "native reading range includes whole book",
+      "actual installed English SAPI voice enumerated",
+      "voice enumeration requires explicit selection",
+      "unsupported SAPI pitch control stays disabled",
+      "actual native keyboard focus reaches selected voice",
+      "actual SAPI utterance became prepared PCM",
+      "measured PCM and exact spoken source digest",
+      "prepared excerpt highlights exact native source range",
+      "preparing does not start a device or advance cursor",
+      "stop retains only the last completed text cursor",
+      "stop releases private utterance PCM",
+      "book resume is exact source-bound",
+      "speech resource reservation is released",
+      "restored cursor uses exact native character position",
+      "where-am-I is exposed through named native status",
+      "native modal exits only after reader owners settle",
+      "immutable source remains byte-identical after the native workflow"
+    ],
+    "full_platform": "NOT_CLAIMED",
+    "installed_package": true,
+    "isolated": true,
+    "language_quality": "NOT_CLAIMED",
+    "module_origins": {
+      "carr_library.library_backup": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\library_backup.py",
+        "sha256": "e590841d06dc84244bfbe9d31ee1125c31bd2c42b9f0054360d36822c03eca73"
+      },
+      "carr_library.reader.live_speech": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\reader\\live_speech.py",
+        "sha256": "97185236f3e1227ca94a372501c32a0f84d32ff87b2e9e00c7682f9185a6bc15"
+      },
+      "carr_library.ui.builtin_keyboard_commands": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ui\\builtin_keyboard_commands.py",
+        "sha256": "cefc1920c5e91e1c0470f12677f00145965e873cd1f65211402f9c7df1cc99d0"
+      },
+      "carr_library.ui.live_reading": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ui\\live_reading.py",
+        "sha256": "1137bcb2dea5227263eae369ccce7377ac02806c1283a3fa48f3f4b12d782dc1"
+      },
+      "carr_library.ui.narration_editor": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ui\\narration_editor.py",
+        "sha256": "0cba160dce32b05ce27b5596d4ff18aa21b30f0204242f7a58cbf7930ee84470"
+      },
+      "carr_library.ui.reading_desk": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ui\\reading_desk.py",
+        "sha256": "a3d1fe09172bffcbd832a89dda3e7f59da96c6db3659ff6898006a3dcf57efde"
+      }
+    },
+    "native_controls": "EXECUTED",
+    "nvda": "NOT_RUN",
+    "physical_playback": "NOT_RUN",
+    "probe_sha256": "8c4f7ffc8bf7e57f2fa3acca868e38e1563104f3460b1ba3aaf3c111531a9745",
+    "source_commit": "523aa40f9215569a276f0625d09fcc0fa84bb520",
+    "source_tree": "b6416525dd57ddbcc931f119811e4e73faed68f6",
+    "status": "PASS",
+    "word_alignment": "NOT_CLAIMED"
+  },
+  "artifact": {
+    "id": 15196456577,
+    "name": "carr-r7-live-523aa40f9215569a276f0625d09fcc0fa84bb520-1",
+    "size_in_bytes": 10576,
+    "url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15196456577",
+    "archive_download_url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15196456577/zip",
+    "expired": false,
+    "created_at": "2026-11-27T12:16:35Z",
+    "expires_at": "2026-12-04T12:16:34Z",
+    "updated_at": "2026-11-27T12:16:35Z",
+    "digest": "sha256:18d9822fd8409ca288d53446fa011ee2c429c746cb16fb60f77264ab7b4361f4",
+    "workflow_run": {
+      "id": 45993629492,
+      "repository_id": 1341777614,
+      "head_repository_id": 1341777614,
+      "head_branch": "carr/v3-acceptance-d3a-r7-exec-20261127",
+      "head_sha": "523aa40f9215569a276f0625d09fcc0fa84bb520"
+    }
+  },
+  "limitations": [
+    "Physical playback, manual NVDA, word timing and language quality were not run.",
+    "The later independent-playback and preparation changes are not qualified by this predecessor PASS."
+  ]
+}

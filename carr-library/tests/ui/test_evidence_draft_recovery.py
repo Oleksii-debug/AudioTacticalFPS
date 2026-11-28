@@ -46,6 +46,7 @@ def recovery(tmp_path):
     chooser.ShowModal.return_value = 1
     chooser.GetSelection.return_value = 0
     wx = SimpleNamespace(Panel=object, YES=1, ID_OK=1, YES_NO=2, NO_DEFAULT=4, ICON_QUESTION=8,
+                         EVT_TIMER=object(),
                          MessageBox=Mock(return_value=1), SingleChoiceDialog=Mock(return_value=chooser),
                          CallAfter=queued.append)
     env = dict(wx=wx, replace=replace, format_citation=format_citation)
@@ -77,6 +78,7 @@ def recovery(tmp_path):
     panel._recovery_loading = panel._recovery_disposed = panel._recovery_discarded = False
     panel._recovery_error = ''
     panel._recovery_timer = SimpleNamespace(IsRunning=lambda: False, StartOnce=Mock(), Stop=Mock())
+    panel.Unbind = Mock(return_value=True)
     panel._review_recovery_copy = Mock()
     return panel, app, chooser, wx, queued
 
@@ -110,50 +112,6 @@ def test_explicit_recover_restores_editor_only_after_authorization(recovery):
     assert panel.note.focused and 'recovered' in panel.status.GetValue()
     assert app.evidence(panel.workspace, panel.topic)[0].note == 'Saved note'
     assert panel._recovery_owned == draft
-
-
-def test_save_all_waits_for_actual_note_commit_and_retains_newer_edit(recovery):
-    from carr_library.ui.save_all import SaveCoordinator
-    panel, app, _, _, _ = recovery
-    checkpoint(panel, 'First edit to commit')
-    coordinator = SaveCoordinator()
-    coordinator.register('note', 'Research note', dirty=panel._dirty,
-                         save=lambda done: panel.save_note(completed=done))
-    results = []
-    assert coordinator.save_all(results.append)
-    assert coordinator.busy and results == []
-    assert app.evidence(panel.workspace, panel.topic)[0].note == 'Saved note'
-    assert execute(panel, before_completion=lambda: panel.note.SetValue('Newer edit'))
-    assert app.evidence(panel.workspace, panel.topic)[0].note == 'First edit to commit'
-    assert len(results) == 1 and not results[0].complete
-    assert results[0].saved == ('Research note',)
-    assert results[0].remaining == (('Research note', 'newer or unsaved edits are retained'),)
-    assert panel.note.GetValue() == 'Newer edit' and panel._dirty()
-
-
-@pytest.mark.parametrize('blocked', ('busy', 'cancelled', 'changed_view'))
-def test_save_all_never_claims_a_blocked_or_stale_note_was_saved(recovery, blocked):
-    from carr_library.ui.save_all import SaveCoordinator
-    panel, app, _, _, _ = recovery
-    checkpoint(panel, 'Retained private draft')
-    coordinator = SaveCoordinator()
-    coordinator.register('note', 'Research note', dirty=panel._dirty,
-                         save=lambda done: panel.save_note(completed=done))
-    results = []
-    if blocked == 'busy':
-        panel.frame.working = True
-    coordinator.save_all(results.append)
-    if blocked == 'cancelled':
-        panel.frame.cancel_event.set()
-        assert not execute(panel)
-    elif blocked == 'changed_view':
-        assert execute(panel, before_completion=lambda: setattr(panel.frame, 'active', None))
-    assert len(results) == 1 and not results[0].complete
-    assert not coordinator.busy
-    assert results[0].saved == ()
-    assert panel.note.GetValue() == 'Retained private draft'
-    if blocked != 'changed_view':
-        assert app.evidence(panel.workspace, panel.topic)[0].note == 'Saved note'
 
 
 @pytest.mark.parametrize('choice', [1, 2])
@@ -266,6 +224,48 @@ def test_explicit_discard_does_not_recreate_draft_during_destruction(recovery):
     assert panel._recovery_store.get(*draft.key) is None
 
 
+def test_destroy_unbinds_exact_timer_and_queued_callback_cannot_retry_failed_checkpoint(recovery):
+    from carr_library.ingest.writer_guard import exclusive_writer
+    panel, app, _, wx, _ = recovery
+    first = checkpoint(panel, 'Existing durable recovery copy')
+    before = panel._recovery_store.path.read_bytes()
+    panel.note.SetValue('Pending edit before actual writer contention')
+    panel._recovery_edited(SimpleNamespace(Skip=Mock()))
+    queued = panel._flush_recovery
+    panel._recovery_timer.StartOnce.reset_mock()
+    panel.note.GetValue = Mock(side_effect=RuntimeError('Native editor already destroyed'))
+    panel.status.SetValue = Mock(side_effect=RuntimeError('Native status already destroyed'))
+    event = SimpleNamespace(GetEventObject=lambda: panel, Skip=Mock())
+    with exclusive_writer(app.root):
+        panel._recovery_destroy(event)
+    assert panel._recovery_disposed and 'could not be saved' in panel._recovery_error
+    panel.Unbind.assert_called_once_with(wx.EVT_TIMER, handler=queued, source=panel._recovery_timer)
+    panel._recovery_timer.Stop.assert_called_once_with()
+    assert queued() is True
+    panel._recovery_destroy(event)  # Duplicate native disposal cannot retry.
+    assert panel._recovery_store.path.read_bytes() == before
+    assert panel._recovery_store.get(*first.key) == first
+    panel._recovery_timer.StartOnce.assert_not_called()
+    panel.note.GetValue.assert_not_called()
+    panel.status.SetValue.assert_not_called()
+    panel._recovery_timer.Stop.assert_called_once_with()
+
+
+def test_child_destruction_preserves_live_recovery_timer_and_real_checkpoint(recovery):
+    panel, _, _, _, _ = recovery
+    first = checkpoint(panel, 'First durable edit')
+    panel.note.SetValue('Later edit on a still-live panel')
+    panel._recovery_edited(SimpleNamespace(Skip=Mock()))
+    event = SimpleNamespace(GetEventObject=lambda: object(), Skip=Mock())
+    panel._recovery_destroy(event)
+    assert not panel._recovery_disposed
+    panel.Unbind.assert_not_called()
+    panel._recovery_timer.Stop.assert_not_called()
+    assert panel._flush_recovery()
+    assert panel._recovery_store.get(*first.key).text == 'Later edit on a still-live panel'
+    event.Skip.assert_called_once_with()
+
+
 def test_corrupt_recovery_storage_reports_error_and_keeps_editor(recovery):
     panel, _, _, _, _ = recovery
     panel._recovery_store.path.write_bytes(b'broken existing file')
@@ -291,3 +291,47 @@ def test_declined_or_failed_discard_keeps_scope_open(recovery):
     panel._recovery_store.discard = Mock(side_effect=OSError('Disk unavailable'))
     assert not env['_confirm'](frame)
     assert panel.note.GetValue() == 'Keep unless explicitly discarded'
+
+
+def test_save_all_waits_for_actual_note_commit_and_retains_newer_edit(recovery):
+    from carr_library.ui.save_all import SaveCoordinator
+    panel, app, _, _, _ = recovery
+    checkpoint(panel, 'First edit to commit')
+    coordinator = SaveCoordinator()
+    coordinator.register('note', 'Research note', dirty=panel._dirty,
+                         save=lambda done: panel.save_note(completed=done))
+    results = []
+    assert coordinator.save_all(results.append)
+    assert coordinator.busy and results == []
+    assert app.evidence(panel.workspace, panel.topic)[0].note == 'Saved note'
+    assert execute(panel, before_completion=lambda: panel.note.SetValue('Newer edit'))
+    assert app.evidence(panel.workspace, panel.topic)[0].note == 'First edit to commit'
+    assert len(results) == 1 and not results[0].complete
+    assert results[0].saved == ('Research note',)
+    assert results[0].remaining == (('Research note', 'newer or unsaved edits are retained'),)
+    assert panel.note.GetValue() == 'Newer edit' and panel._dirty()
+
+
+@pytest.mark.parametrize('blocked', ('busy', 'cancelled', 'changed_view'))
+def test_save_all_never_claims_a_blocked_or_stale_note_was_saved(recovery, blocked):
+    from carr_library.ui.save_all import SaveCoordinator
+    panel, app, _, _, _ = recovery
+    checkpoint(panel, 'Retained private draft')
+    coordinator = SaveCoordinator()
+    coordinator.register('note', 'Research note', dirty=panel._dirty,
+                         save=lambda done: panel.save_note(completed=done))
+    results = []
+    if blocked == 'busy':
+        panel.frame.working = True
+    coordinator.save_all(results.append)
+    if blocked == 'cancelled':
+        panel.frame.cancel_event.set()
+        assert not execute(panel)
+    elif blocked == 'changed_view':
+        assert execute(panel, before_completion=lambda: setattr(panel.frame, 'active', None))
+    assert len(results) == 1 and not results[0].complete
+    assert not coordinator.busy
+    assert results[0].saved == ()
+    assert panel.note.GetValue() == 'Retained private draft'
+    if blocked != 'changed_view':
+        assert app.evidence(panel.workspace, panel.topic)[0].note == 'Saved note'

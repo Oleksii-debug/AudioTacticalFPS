@@ -109,24 +109,6 @@ def test_pinned_controller_rechecks_library_authorization(controller):
     assert controller.get(row.id) == row
 
 
-def test_academic_controller_captures_destination_before_render(controller, tmp_path, monkeypatch):
-    controller.create(form_values(draft()))
-    target = tmp_path / 'bibliography.txt'
-    target.write_bytes(b'Approved previous export')
-    original = controller.export
-
-    def render(**kwargs):
-        content = original(**kwargs)
-        target.write_bytes(b'Independent work saved while rendering')
-        return content
-
-    monkeypatch.setattr(controller, 'export', render)
-    with pytest.raises(ValueError, match='destination changed'):
-        controller.export_to(target)
-    assert target.read_bytes() == b'Independent work saved while rendering'
-    assert not list(tmp_path.glob('.research-export-*'))
-
-
 def test_import_dialog_selection_is_explicit_and_failed_batch_is_atomic(controller):
     data = json.dumps([
         {'type': 'book', 'title': 'First imported reference'},
@@ -176,25 +158,37 @@ def test_export_uses_existing_destination_guard(controller, tmp_path):
     assert private.read_text() == 'Existing private file'
 
 
-@pytest.mark.parametrize('existing', [False, True])
-def test_bibliography_preserves_newer_destination_during_render(
+@pytest.mark.parametrize('existing', [False, True], ids=['new', 'confirmed-existing'])
+def test_academic_render_cannot_replace_a_file_changed_since_selection(
         controller, tmp_path, monkeypatch, existing):
+    from carr_library.ui.export_destination import approve_export_destination
     target = tmp_path / 'bibliography.txt'
     if existing:
-        target.write_bytes(b'Explicitly selected old bibliography.')
-    render = controller.export
-    newer = b'Independent work saved while bibliography renders.'
+        target.write_bytes(b'Approved old output')
+    approval = approve_export_destination(None, target, private_root=controller.library.root,
+                                          confirm=lambda *_: True)
+    original = controller.export
 
-    def render_and_change(**options):
-        value = render(**options)
-        target.write_bytes(newer)
-        return value
+    def changed_during_render(**kwargs):
+        content = original(**kwargs)
+        target.write_bytes(b'Newer external output')
+        return content
 
-    monkeypatch.setattr(controller, 'export', render_and_change)
+    monkeypatch.setattr(controller, 'export', changed_during_render)
     with pytest.raises(ValueError, match='destination changed'):
+        controller.export_to(target, approval=approval)
+    assert target.read_bytes() == b'Newer external output'
+
+
+def test_academic_existing_destination_requires_consent_before_render(controller, tmp_path, monkeypatch):
+    target = tmp_path / 'bibliography.txt'
+    target.write_bytes(b'Unapproved existing output')
+    render = Mock(side_effect=AssertionError('Must not render an unapproved overwrite'))
+    monkeypatch.setattr(controller, 'export', render)
+    with pytest.raises(FileExistsError, match='Confirm replacement'):
         controller.export_to(target)
-    assert target.read_bytes() == newer
-    assert not list(tmp_path.glob('.research-export-*'))
+    render.assert_not_called()
+    assert target.read_bytes() == b'Unapproved existing output'
 
 
 def test_reference_pages_have_distinct_labels_and_all_active_export(controller):

@@ -1,0 +1,131 @@
+{
+  "schema": 1,
+  "kind": "carr-reading-preparation-acceptance",
+  "new_cases_only": true,
+  "selectors": {
+    "tests/reader/test_reading_preparation.py": {
+      "functions": {
+        "test_contexts_refuse_unsupported_or_implicit_interpretation": 8,
+        "test_explicit_preview_replays_undo_redo_and_fork_without_touching_original": 1,
+        "test_saved_preparation_tampering_is_refused_before_it_can_become_history": 7,
+        "test_preview_cannot_apply_to_stale_reading_or_changed_original": 1,
+        "test_unprepared_legacy_serialization_has_no_new_revision_fields": 2,
+        "test_v5_requires_typed_complete_provenance_and_rejects_executable_context": 1,
+        "test_optional_asset_review_is_required_before_any_worker_execution": 4,
+        "test_modified_runtime_file_is_rejected_before_worker_and_host_fallback": 1,
+        "test_explicit_selected_request_is_isolated_and_never_builds_shell_source": 1,
+        "test_worker_refusal_preserves_both_original_and_reading_revision": 3,
+        "test_cancelled_selection_does_not_open_a_missing_runtime": 1,
+        "test_real_owned_worker_timeout_leaves_source_and_runtime_bytes_unchanged": 1,
+        "test_hunspell_offsets_scoped_overrides_and_one_occurrence_application": 1,
+        "test_pronunciation_override_has_priority_over_automatic_number_proposal": 1,
+        "test_dictionary_language_mismatch_is_refused_before_native_load": 1,
+        "test_invalid_native_inventory_cannot_manufacture_a_reading_edit": 3,
+        "test_unlisted_runtime_file_is_not_silently_imported": 1,
+        "test_optional_worker_does_not_fall_back_to_host_site_packages": 1,
+        "test_worker_origin_outside_selected_optional_pack_is_refused": 1
+      },
+      "cases": 40
+    },
+    "tests/ui/test_narration_preparation.py": {
+      "functions": {
+        "test_empty_optional_selection_disables_work_without_automatic_discovery": 1,
+        "test_unsupported_symbol_language_and_slovak_ordinals_have_named_explanations": 3,
+        "test_preview_snapshots_selected_context_before_controls_can_change": 1,
+        "test_accepted_preparation_is_one_saved_source_bound_revision": 1,
+        "test_revoked_source_guard_cannot_apply_a_prepared_result": 1,
+        "test_cancel_after_success_before_dispatch_does_not_offer_an_applicable_result": 1,
+        "test_closing_waits_for_owned_worker_then_discards_all_results": 1,
+        "test_stale_or_unreviewed_preview_cannot_close_editor_as_success": 1,
+        "test_context_change_invalidates_a_previous_proposal_before_apply": 1,
+        "test_owned_preview_rejects_overlapping_work_and_late_closed_callbacks": 1
+      },
+      "cases": 12
+    },
+    "tests/storage/test_preparation_backup.py": {
+      "functions": {
+        "test_unified_backup_restore_and_rebackup_preserve_exact_preparation_provenance": 1,
+        "test_outer_checksum_cannot_authorize_broken_inner_preparation_history": 3
+      },
+      "cases": 4
+    },
+    "packaging/reading-tools/test_optional_runtime.py": {
+      "functions": {
+        "test_actual_selected_number_libraries_preserve_source_and_generate_reviewable_words": 6,
+        "test_actual_cldr_units_keep_numeric_plural_context": 2,
+        "test_actual_cldr_dates_use_explicit_order_without_guessing": 3,
+        "test_actual_unicode_symbol_name_is_explicit_english_and_keeps_whitespace": 1,
+        "test_actual_worker_preserves_ambiguous_or_invalid_selection": 5,
+        "test_actual_hunspell_c_api_unicode_paths_affixes_and_suggestions": 1,
+        "test_actual_hunspell_ignores_path_tools_and_has_no_native_executable_fallback": 1,
+        "test_actual_native_pack_tampering_is_refused_before_load": 1
+      },
+      "cases": 20
+    }
+  },
+  "helpers": [
+    "tests/reader/preparation_fixture.py"
+  ],
+  "modules": {
+    "carr_library.reader.preparation": "src/carr_library/reader/preparation.py",
+    "carr_library.reader.preparation_worker": "src/carr_library/reader/preparation_worker.py",
+    "carr_library.reader.narration": "src/carr_library/reader/narration.py",
+    "carr_library.ui.narration_preparation": "src/carr_library/ui/narration_preparation.py",
+    "carr_library.ui.narration_editor": "src/carr_library/ui/narration_editor.py",
+    "carr_library.audio.model_manifest": "src/carr_library/audio/model_manifest.py"
+  },
+  "native": {
+    "checks": {
+      "actual_windows": 1,
+      "isolated_probe": 1,
+      "explicit_optional_manifests": 1,
+      "native_selected_readonly_text": 1,
+      "named_language_control": 1,
+      "number_mode_enabled": 1,
+      "irrelevant_unit_disabled": 1,
+      "native_keyboard_focus": 1,
+      "explicit_runtime_enables_preview": 1,
+      "owned_work_disables_apply": 1,
+      "real_number_preview": 1,
+      "preview_source_unchanged": 1,
+      "preview_exact_input_digest": 1,
+      "preview_reviewable_manifest_identity": 1,
+      "only_explicit_apply_returns_change": 1,
+      "number_apply_is_separate_revision": 1,
+      "explicit_dictionary_enables_spellcheck": 1,
+      "actual_hunspell_native_result": 1,
+      "named_occurrence_list": 1,
+      "exact_occurrence_preview": 1,
+      "native_review_before_spelling_apply": 1,
+      "spelling_apply_returns_bound_change": 1,
+      "both_derivatives_keep_original": 1,
+      "typed_v5_durable_roundtrip": 1,
+      "saved_tool_and_dictionary_provenance": 1,
+      "catalog_quotation_source_unchanged": 1,
+      "close_requests_owned_cancellation": 1,
+      "close_waits_without_partial_application": 1,
+      "cancel_keeps_saved_history_exact": 1
+    },
+    "required_status": {
+      "status": "PASS",
+      "platform": "win32",
+      "isolated": true,
+      "real_hunspell": true,
+      "real_num2words": true,
+      "real_babel": true,
+      "public_fixture": true,
+      "native_speaker_quality": "NOT_RUN",
+      "nvda": "NOT_RUN",
+      "languages_135": "NOT_RUN",
+      "physical_speech_playback": "NOT_RUN"
+    },
+    "check_count": 29
+  },
+  "execution_status": "NOT_RUN",
+  "prior_r7_live_cases": 88,
+  "prior_r8_playback_cases": 33,
+  "cases_per_source_or_installed": 76,
+  "optional_selector": "packaging/reading-tools/test_optional_runtime.py",
+  "core_cases_per_source_or_installed": 56,
+  "optional_cases_per_source_or_installed": 20
+}

@@ -1,30 +1,27 @@
-"""Native scoped local assistant and non-secret provider settings."""
+"""One native local assistant, delegating audio to the existing Studio service."""
 from concurrent.futures import ThreadPoolExecutor
-from dataclasses import replace
 import json
 from pathlib import Path
 import threading
-from uuid import uuid4
-
-from ..durable_state import atomic_bytes
 
 
-def create_assistant_dialog(frame, *, wx_module=None):
-    if wx_module is None:
-        import wx as wx_module
-    wx = wx_module
+def show_assistant(frame, *, production=None, interactive=None, parent=None, initial_goal=None, on_ready=None):
+    import wx
     from ..assistant import AssistantService, Scope, HELP, Plan, Step
-    from ..studio.render import ProductionService
-    production = ProductionService(frame.library.root / 'state' / 'studio')
-    service = AssistantService(frame.library, production=production.assistant_callback)
-    dialog = wx.Dialog(frame, title='Local assistant — review and run a bounded plan', size=(900, 850),
+    from ..assistant.production import LocalProduction
+    cancel = threading.Event()
+    dialog = wx.Dialog(frame if parent is None else parent, title='Local assistant — review and run a bounded plan', size=(900, 850),
                        style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
     layout = wx.BoxSizer(wx.VERTICAL)
     executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix='local-assistant')
-    cancel = threading.Event()
-    alive, busy, plan, job_id = True, None, None, None
-    revision, approved_inputs = 0, None
-    library_root = frame.library.root
+    alive, busy, plan, job_id = True, False, None, None
+    busy_kind, revision, approved_inputs = None, 0, None
+    progress = getattr(frame, 'operation_progress', None)
+    progress_token = None
+    bound_library = frame.library
+    bound_root = Path(bound_library.root).absolute()
+    root_info = bound_root.stat()
+    root_identity = root_info.st_dev, root_info.st_ino
     workspaces = frame.library.workspaces()
 
     def field(label, cls=wx.TextCtrl, proportion=0, **kwargs):
@@ -39,12 +36,24 @@ def create_assistant_dialog(frame, *, wx_module=None):
     current = frame.active[0] if frame.active else None
     scope_choice.SetSelection(next((i + 1 for i, row in enumerate(workspaces) if row.id == current), 0))
     input_folder = field('Allowed &input folder (optional; no other folders are readable)')
-    output_folder = field('Chosen &output folder (required for audio, extraction or backup)')
+    output_folder = field('Chosen &output folder (required for audio, transcription, text/topic exports or backup)')
+    from ..runtime_settings import EngineProfileStore
+    try:
+        transcription_profiles = tuple(row for row in EngineProfileStore(bound_root).snapshot().profiles
+            if row.enabled and row.engine == 'supplied-whisper')
+        transcription_notice = ''
+    except (ValueError, OSError) as exc:
+        transcription_profiles = ()
+        transcription_notice = 'Local transcription profiles are unavailable: ' + str(exc)[:500]
+    transcription_choice = field('Local &transcription profile (explicit; no automatic selection)', wx.Choice,
+        choices=['No transcription profile selected'] + [row.name + '; ' + row.id for row in transcription_profiles])
+    transcription_choice.SetSelection(0)
+    if transcription_notice:
+        layout.Add(wx.StaticText(dialog, label=transcription_notice), 0, wx.ALL | wx.EXPAND, 5)
     choose_row = wx.BoxSizer(wx.HORIZONTAL)
     folder_buttons = []
     for label, target in [('Choose input folder', input_folder), ('Choose output folder', output_folder)]:
         button = wx.Button(dialog, label=label)
-        folder_buttons.append(button)
         def choose(event, target=target):
             picker = wx.DirDialog(dialog, 'Choose a local folder')
             try:
@@ -54,36 +63,29 @@ def create_assistant_dialog(frame, *, wx_module=None):
                 picker.Destroy()
         button.Bind(wx.EVT_BUTTON, choose)
         choose_row.Add(button, 0, wx.ALL, 4)
+        folder_buttons.append(button)
     layout.Add(choose_row)
     full_backup = wx.CheckBox(dialog, label='Allow a complete backup of all my libraries for this plan')
+    full_backup.SetName('Allow a complete backup of all libraries for this plan')
     layout.Add(full_backup, 0, wx.ALL, 5)
-    profile_error = ''
-    try:
-        profiles = service.local_planner_profiles()
-    except Exception as exc:
-        profiles, profile_error = (), str(exc)
-    planning_source = field('Planning &source', wx.Choice, choices=[
-        'Guided commands / typed JSON — no model request'] + [
-        f'Local model: {profile.name}; {profile.model}; {profile.endpoint}' for profile in profiles])
-    planning_source.SetSelection(0)
-    planning_notice = wx.StaticText(dialog, label=(
-        'Local model proposals require an explicitly selected enabled loopback chat profile. '
-        'No server or model starts automatically.\n'
-        'Review every proposed operation and scope before Run. Request budget: 120 seconds.\n'
-        'Cancellation may wait up to 30 seconds for a pending network read.') +
-        (('\nProfile configuration: ' + profile_error) if profile_error else
-         ('\nNo eligible model profile. Add and enable one in AI and API connections.' if not profiles else '')))
-    planning_notice.Wrap(850)
-    layout.Add(planning_notice, 0, wx.ALL | wx.EXPAND, 5)
+    budget = field('Per-operation output and audio working-disk budget (MiB)', value='1024')
+    file_budget = field('Maximum files per operation', value='5000')
+    deadline = field('Time budget for each run or resume (seconds)', value='3600')
     instruction = field('&Goal — guided English/Ukrainian commands or typed JSON plan', proportion=1,
-                        style=wx.TE_MULTILINE, value='Покажи бібліотеки')
+                        style=wx.TE_MULTILINE, value='Покажи бібліотеки' if initial_goal is None else initial_goal)
     review = field('Plan &preview and actual results', proportion=1, style=wx.TE_MULTILINE | wx.TE_READONLY,
                    value='LOCAL ONLY. Nothing executes until you review the plan and choose Run.')
     row = wx.BoxSizer(wx.HORIZONTAL)
     buttons = {}
-    for identity, label in [('preview', '&Preview plan'), ('run', '&Run / resume'), ('pause', '&Pause'),
-                             ('jobs', 'Saved &jobs'), ('help', '&Help'), ('close', '&Close')]:
+    for identity, label in [('preview', '&Preview plan'), ('model', 'Propose with local &model'),
+                             ('run', '&Run / resume'), ('pause', '&Pause'),
+                             ('jobs', 'Saved &jobs'), ('templates', '&Templates...'),
+                             ('help', '&Help'), ('close', '&Close')]:
+        if identity == 'jobs':
+            layout.Add(row)
+            row = wx.BoxSizer(wx.HORIZONTAL)
         button = wx.Button(dialog, label=label)
+        button.SetName(label.replace('&', ''))
         buttons[identity] = button
         row.Add(button, 0, wx.ALL, 4)
     layout.Add(row)
@@ -95,214 +97,351 @@ def create_assistant_dialog(frame, *, wx_module=None):
         if alive:
             review.ChangeValue(str(value))
 
+    def library_current():
+        try:
+            info = bound_root.stat()
+            return (frame.library is bound_library and Path(bound_library.root).absolute() == bound_root
+                    and (info.st_dev, info.st_ino) == root_identity
+                    and not getattr(frame, '_closing', False))
+        except (OSError, ValueError, RuntimeError, AttributeError):
+            return False
+
+    def stopped():
+        return cancel.is_set() or not alive or not library_current()
+
+    production = production or LocalProduction(bound_root, cancelled=stopped)
+    options = {'production': production}
+    if interactive is not None:
+        options['interactive'] = interactive
+    service = AssistantService(bound_library, **options)
+
     def input_identity():
         return (scope_choice.GetSelection(), input_folder.GetValue(), output_folder.GetValue(),
-                full_backup.GetValue(), instruction.GetValue(), planning_source.GetSelection(),
-                str(frame.library.root))
+                full_backup.GetValue(), instruction.GetValue(), budget.GetValue(),
+                file_budget.GetValue(), deadline.GetValue(), transcription_choice.GetSelection())
 
     def invalidate(event=None):
-        nonlocal plan, job_id, revision, approved_inputs
+        nonlocal plan, job_id, approved_inputs, revision
         revision += 1
-        approved_inputs = None
-        plan, job_id = None, None
-        if busy in ('proposal', 'voices'):
+        plan, job_id, approved_inputs = None, None, None
+        if busy_kind in ('preview', 'model'):
             cancel.set()
         buttons['run'].Disable()
         if event is not None:
             event.Skip()
 
-    def accept_candidate(candidate, selected_inputs, source_label, *, voice_inventory=None):
-        nonlocal plan, job_id, approved_inputs, busy
+    def change_busy(kind):
+        nonlocal busy, busy_kind
+        busy_kind, busy = kind, kind is not None
+        for key in ('preview', 'model', 'jobs', 'templates'):
+            buttons[key].Enable(not busy)
+        buttons['run'].Enable(not busy and (plan is not None or job_id is not None))
+        buttons['pause'].Enable(busy and kind != 'templates')
+        label = ('Cancel &proposal' if kind == 'model' else
+                 'Cancel &preview' if kind == 'preview' else '&Pause')
+        buttons['pause'].SetLabel(label)
+        buttons['pause'].SetName(label.replace('&', ''))
+        for control in (scope_choice, instruction, input_folder, output_folder, full_backup,
+                        budget, file_budget, deadline, transcription_choice, *folder_buttons):
+            control.Enable(not busy)
+
+    def post(callback):
         try:
-            if selected_inputs != input_identity():
-                raise ValueError('The goal or selected scope changed. Preview the current inputs again.')
-            if any(step.tool == 'audio.produce' and not step.arguments.get('voice_ids') and 'script' not in step.arguments
-                   for step in candidate.steps):
-                if voice_inventory is None:
-                    # Cold private voice discovery can load model metadata.
-                    # Keep it on this dialog's existing worker, with explicit
-                    # cancellation and the same proposal identity checks.
-                    cancel.clear()
-                    busy = 'voices'
-                    for key in ('preview', 'run', 'jobs'):
-                        buttons[key].Disable()
-                    buttons['pause'].SetLabel('Cancel voice &discovery')
-                    buttons['pause'].Enable()
-                    report('Checking configured local voices before the explicit voice choice. Nothing has been submitted.')
-                    def local_voice_inventory():
-                        if cancel.is_set():
-                            raise InterruptedError('Voice inventory cancelled.')
-                        # Resolve the existing canonical lazy registry on this
-                        # worker; no alternate discovery or service lifecycle.
-                        voices = tuple(production.voices.voices())
-                        if cancel.is_set():
-                            raise InterruptedError('Voice inventory cancelled.')
-                        return voices
-                    future = executor.submit(local_voice_inventory)
-                    def discovered(done):
-                        def apply():
-                            nonlocal busy
-                            if not alive:
-                                return
-                            busy = None
-                            buttons['preview'].Enable()
-                            buttons['jobs'].Enable()
-                            buttons['pause'].Disable()
-                            buttons['pause'].SetLabel('&Pause')
-                            try:
-                                if cancel.is_set() or selected_inputs != input_identity():
-                                    raise InterruptedError('Voice discovery cancelled or the reviewed inputs changed. Preview again.')
-                                found = tuple(done.result())
-                            except Exception as exc:
-                                invalidate()
-                                report(str(exc))
-                                return
-                            accept_candidate(candidate, selected_inputs, source_label, voice_inventory=found)
-                        wx.CallAfter(apply)
-                    future.add_done_callback(discovered)
-                    return
-                voices = voice_inventory
-                choice = wx.SingleChoiceDialog(dialog, 'Choose the default local voice for this production.',
-                                                'Production voice', [v.name + '; ' + v.language for v in voices])
-                try:
-                    if choice.ShowModal() != wx.ID_OK:
-                        return
-                    selected = choice.GetSelection()
-                finally:
-                    choice.Destroy()
-                if not 0 <= selected < len(voices):
-                    raise ValueError('Install and choose a local voice before narration.')
-                steps = tuple(Step(s.tool, {**s.arguments, 'voice_ids': [voices[selected].id]})
-                              if s.tool == 'audio.produce' and 'script' not in s.arguments else s for s in candidate.steps)
-                candidate = Plan(candidate.scope, steps, candidate.summary)
-                service.validate(candidate)
-            if selected_inputs != input_identity():
-                raise ValueError('The goal or selected scope changed. Preview the current inputs again.')
-            plan, job_id = candidate, None
-            approved_inputs = selected_inputs
-            report(source_label + '\nLOCAL ONLY — proposal has not executed.\n\n' +
-                   json.dumps(plan.to_dict(), ensure_ascii=False, indent=2) +
-                   '\n\nChoose Run to authorize these operations inside these directories.')
-            buttons['run'].Enable()
-            review.SetFocus()
-        except Exception as exc:
-            invalidate()
-            report(str(exc))
-            review.SetFocus()
+            wx.CallAfter(callback)
+        except RuntimeError:
+            # The retained job/ledger owns durable completion, not a destroyed UI.
+            pass
+
+    def selected_scope():
+        if not library_current():
+            raise ValueError('The library location changed. Reopen the assistant before planning.')
+        index = scope_choice.GetSelection()
+        if not 0 <= index <= len(workspaces):
+            raise ValueError('Choose the library scope.')
+        return Scope(workspaces[index - 1].id if index > 0 else None,
+                     (Path(input_folder.GetValue()),) if input_folder.GetValue().strip() else (),
+                     Path(output_folder.GetValue()) if output_folder.GetValue().strip() else None,
+                     allow_create=index == 0, allow_full_backup=full_backup.GetValue(),
+                     max_bytes=int(budget.GetValue()) * 1024 ** 2,
+                     max_files=int(file_budget.GetValue()),
+                     max_seconds=float(deadline.GetValue()))
+
+    def selected_transcription():
+        index = transcription_choice.GetSelection()
+        if not 0 <= index <= len(transcription_profiles):
+            raise ValueError('Choose a current local transcription profile or the explicit none option.')
+        return transcription_profiles[index - 1] if index else None
+
+    def bind_transcription(profile):
+        # Captured on the event thread, verified on the existing worker. No
+        # profile is inferred from a template, model response or restored job.
+        from ..assistant.transcription_tools import SelectedTranscription
+        service.transcription = (SelectedTranscription(bound_library, profile.id,
+            expected_profile=profile, current=lambda: not stopped()) if profile is not None else None)
 
     def preview(event=None):
-        nonlocal busy
+        nonlocal plan, job_id, approved_inputs
         if busy:
             return
         invalidate()
         try:
-            if frame.library.root != library_root:
-                raise ValueError('The library location changed. Reopen the assistant before planning.')
-            index = scope_choice.GetSelection()
-            if not 0 <= index <= len(workspaces):
-                raise ValueError('Choose the library scope.')
-            scope = Scope(workspaces[index - 1].id if index > 0 else None,
-                          (Path(input_folder.GetValue()),) if input_folder.GetValue().strip() else (),
-                          Path(output_folder.GetValue()) if output_folder.GetValue().strip() else None,
-                          allow_create=index == 0, allow_full_backup=full_backup.GetValue())
+            scope = selected_scope()
+            goal = instruction.GetValue()
+            selected_profile = selected_transcription()
             selected_inputs, selected_revision = input_identity(), revision
-            selected = planning_source.GetSelection()
-            if selected == 0:
-                accept_candidate(service.preview(instruction.GetValue(), scope), selected_inputs,
-                                 'Guided command / typed JSON preview')
-                return
-            if not 1 <= selected <= len(profiles):
-                raise ValueError('Explicitly choose an enabled local model profile.')
-            profile = profiles[selected - 1]
             cancel.clear()
-            busy = 'proposal'
-            for key in ('preview', 'run', 'jobs'):
-                buttons[key].Disable()
-            buttons['pause'].SetLabel('Cancel &proposal')
-            buttons['pause'].Enable()
-            report(f'Requesting a local proposal from {profile.name}; model {profile.model}; '
-                   f'{profile.endpoint}. Nothing has been submitted. Editing the goal or scope cancels this proposal.')
-            future = executor.submit(service.propose_local, instruction.GetValue(), scope,
-                                      profile_id=profile.id, expected_profile=profile, cancelled=cancel.is_set)
+            change_busy('preview')
+            report('Checking the proposed operations and configured local voices. Nothing has run.')
+            def work():
+                if stopped():
+                    raise InterruptedError('Plan preview cancelled.')
+                # Audio plan validation may discover a cold local runtime. Keep
+                # that existing service and voice path off the event thread.
+                bind_transcription(selected_profile)
+                candidate = service.preview(goal, scope)
+                voices = None
+                if any(step.tool == 'audio.produce' and not step.arguments.get('voice_ids')
+                       and 'script' not in step.arguments for step in candidate.steps):
+                    from ..audio.engines import _invoke
+                    voices = tuple(item for item in _invoke(production.voices, cancelled=stopped)
+                                   if item.available)
+                if stopped():
+                    raise InterruptedError('Plan preview cancelled.')
+                return candidate, voices
+            future = executor.submit(work)
         except Exception as exc:
-            busy = None
-            buttons['preview'].Enable()
-            buttons['jobs'].Enable()
-            buttons['pause'].Disable()
-            buttons['pause'].SetLabel('&Pause')
+            change_busy(None)
+            invalidate()
             report(str(exc))
             review.SetFocus()
             return
 
         def finish(done):
             def apply():
-                nonlocal busy
+                nonlocal plan, job_id, approved_inputs
                 if not alive:
                     return
-                busy = None
-                buttons['preview'].Enable()
-                buttons['jobs'].Enable()
-                buttons['pause'].Disable()
-                buttons['pause'].SetLabel('&Pause')
-                if (cancel.is_set() or selected_revision != revision
+                if (stopped() or selected_revision != revision
                         or selected_inputs != input_identity()):
+                    change_busy(None)
                     invalidate()
-                    report('Local proposal cancelled or discarded because its goal or scope changed. '
-                           'Nothing was submitted. Preview the current inputs again.')
-                    review.SetFocus()
+                    report('Preview cancelled or discarded because the goal, scope or library changed. Preview again.')
                     return
                 try:
-                    candidate = done.result()
+                    candidate, voices = done.result()
+                    if voices is not None:
+                        if not voices:
+                            raise ValueError('Install and choose a local voice before narration.')
+                        choice = wx.SingleChoiceDialog(dialog,
+                            'Choose the default local voice for this production.', 'Production voice',
+                            [v.name + '; ' + ', '.join(v.languages) for v in voices])
+                        try:
+                            if choice.ShowModal() != wx.ID_OK:
+                                change_busy(None)
+                                report('Preview cancelled before choosing a voice. Nothing has run.')
+                                return
+                            selected = choice.GetSelection()
+                        finally:
+                            choice.Destroy()
+                        if not 0 <= selected < len(voices):
+                            raise ValueError('Choose an available local voice before narration.')
+                        steps = tuple(Step(step.tool, {**step.arguments, 'voice_ids': [voices[selected].id]})
+                                      if step.tool == 'audio.produce' and not step.arguments.get('voice_ids')
+                                      and 'script' not in step.arguments
+                                      else step for step in candidate.steps)
+                        candidate = Plan(scope, steps, candidate.summary)
+                        def validate_selected():
+                            if stopped():
+                                raise InterruptedError('Selected-voice preview cancelled.')
+                            # Even a custom registry or renewed manifest may
+                            # need I/O here. Keep revalidation on this worker.
+                            service.validate(candidate)
+                            if stopped():
+                                raise InterruptedError('Selected-voice preview cancelled.')
+                            return candidate, None
+                        future = executor.submit(validate_selected)
+                        future.add_done_callback(finish)
+                        return
+                    if (stopped() or selected_revision != revision
+                            or selected_inputs != input_identity()):
+                        raise ValueError('The goal or selected scope changed. Preview the current inputs again.')
+                    plan, job_id = candidate, None
+                    approved_inputs = selected_inputs, selected_revision
+                    change_busy(None)
+                    profile_notice = ('' if selected_profile is None else
+                        'Selected local transcription profile: ' + selected_profile.name + '; '
+                        + selected_profile.id + '; manifest SHA-256 ' + selected_profile.manifest_sha256 + '\n\n')
+                    report('LOCAL ONLY — no remote services or charges.\n\n' + profile_notice +
+                           json.dumps(plan.to_dict(), ensure_ascii=False, indent=2) +
+                           '\n\nChoose Run to authorize these operations inside these directories.')
+                    buttons['run'].Enable()
                 except Exception as exc:
+                    change_busy(None)
                     invalidate()
                     report(str(exc))
-                    review.SetFocus()
+                review.SetFocus()
+            post(apply)
+        future.add_done_callback(finish)
+
+    def propose(event=None):
+        if busy:
+            return
+        from uuid import uuid4
+        from ..assistant.llm import local_plan_request, propose_local_plan
+        from ..providers import BudgetLedger, JobApproval, ProfileStore, ProviderGateway
+        try:
+            scope = selected_scope()
+            goal = instruction.GetValue()
+            selected_profile = selected_transcription()
+            selected_inputs = input_identity()
+            request = local_plan_request(goal)
+            store = ProfileStore(bound_root / 'api-connections.json')
+            profiles = tuple(profile for profile in store.profiles()
+                             if profile.local and profile.provider == 'openai-compatible'
+                             and profile.capabilities == ('llm',))
+            if not profiles:
+                raise ValueError('Add an explicit loopback language-model profile in AI and API connections first. '
+                                 'No model or service is started automatically.')
+            picker = wx.SingleChoiceDialog(dialog,
+                'Choose the local service that may receive this goal. Only a proposal is requested.',
+                'Local model proposal', [profile.name + '; ' + profile.endpoint + '; ' + profile.model
+                                         for profile in profiles])
+            try:
+                if picker.ShowModal() != wx.ID_OK:
                     return
-                accept_candidate(candidate, selected_inputs,
-                                 f'Proposal from local profile {profile.name}; requested model {profile.model}; {profile.endpoint}')
-            wx.CallAfter(apply)
+                index = picker.GetSelection()
+            finally:
+                picker.Destroy()
+            if not 0 <= index < len(profiles):
+                raise ValueError('Choose an available local model profile.')
+            profile = profiles[index]
+            confirmation = wx.MessageDialog(dialog,
+                'Send this goal to ' + profile.endpoint + ' using ' + profile.model + '?\n\n'
+                'Only the goal and fixed planning instructions are sent. No library or source document is attached. '
+                'Returned steps remain unapproved until you preview and run them.',
+                'Request a local proposal', wx.YES_NO | wx.NO_DEFAULT | wx.ICON_QUESTION)
+            try:
+                if confirmation.ShowModal() != wx.ID_YES:
+                    return
+            finally:
+                confirmation.Destroy()
+            if not library_current() or selected_inputs != input_identity():
+                raise ValueError('The goal or selected scope changed before the proposal was sent.')
+            approval = JobApproval(uuid4().hex, profile.fingerprint,
+                (request.fingerprint(profile),), allow_loopback=True)
+            invalidate()
+            selected_revision = revision
+            cancel.clear()
+            change_busy('model')
+            report('Waiting for the selected local model. No assistant operation has been approved.')
+            operation_id = uuid4().hex
+            def work():
+                if stopped():
+                    raise InterruptedError('Local proposal cancelled before contacting the selected service.')
+                bind_transcription(selected_profile)
+                gateway = ProviderGateway(BudgetLedger(bound_root / 'api-operations.sqlite'))
+                return propose_local_plan(service, gateway, profile, goal, scope,
+                    approval=approval, operation_id=operation_id, cancelled=stopped, profile_store=store)
+            future = executor.submit(work)
+        except Exception as exc:
+            change_busy(None)
+            invalidate()
+            report(str(exc))
+            return
+
+        def finish(done):
+            def apply():
+                if not alive:
+                    return
+                change_busy(None)
+                if (stopped() or selected_revision != revision
+                        or selected_inputs != input_identity()):
+                    invalidate()
+                    report('Local proposal cancelled or discarded because the goal, scope or library changed. Nothing was submitted.')
+                    return
+                invalidate()
+                try:
+                    candidate = done.result()
+                    draft = {key: value for key, value in candidate.to_dict().items() if key != 'scope'}
+                    instruction.ChangeValue(json.dumps(draft, ensure_ascii=False, indent=2))
+                    report('Local model proposal received and structurally checked. Nothing has run.\n\n'
+                           + json.dumps(draft, ensure_ascii=False, indent=2)
+                           + '\n\nReview or edit the goal, then choose Preview plan to bind your current permissions. '
+                             'Run remains disabled until that separate preview succeeds.')
+                except Exception as exc:
+                    report(str(exc))
+                review.SetFocus()
+            post(apply)
         future.add_done_callback(finish)
 
     def run(event=None):
-        nonlocal busy, job_id
+        nonlocal busy, job_id, progress_token
         if busy or (plan is None and job_id is None):
             return
         try:
-            if frame.library.root != library_root:
+            if not library_current():
+                invalidate()
                 raise ValueError('The library location changed. Reopen the assistant before running.')
-            if plan is not None and approved_inputs != input_identity():
+            if plan is not None and approved_inputs != (input_identity(), revision):
                 invalidate()
                 raise ValueError('The reviewed goal or scope changed. Preview the current inputs again.')
-            if job_id is None:
-                job_id = service.submit(plan)
-            identity = job_id
-            busy = 'run'
+            selected_plan, selected_identity = plan, job_id
+            selected_profile = selected_transcription()
             cancel.clear()
-            for key in ('preview', 'run', 'jobs'):
-                buttons[key].Disable()
-            buttons['pause'].Enable()
-            for control in (scope_choice, instruction, input_folder, output_folder, full_backup,
-                            planning_source, *folder_buttons):
-                control.Disable()
-            future = executor.submit(service.resume, identity, cancelled=cancel.is_set,
-                                      progress=lambda completed, total, message: wx.CallAfter(report,
-                                          f'{completed}/{total}: {message}'))
+            change_busy('run')
+            token = progress.start('Running reviewed local plan', unit='operations').token if progress is not None else None
+            progress_token = token
+            def advanced(completed, total, message):
+                if progress is not None:
+                    try:
+                        progress.update(completed, total, message, token=token)
+                    except Exception:
+                        pass  # A progress observer cannot change a durable operation.
+                def display():
+                    if alive and frame.library is bound_library and progress_token == token:
+                        report(f'{completed}/{total}: {message}')
+                post(display)
+            def work():
+                nonlocal job_id
+                if stopped():
+                    raise InterruptedError('Assistant stopped before submitting its reviewed plan.')
+                bind_transcription(selected_profile)
+                identity = selected_identity
+                if identity is None:
+                    # submit revalidates the captured plan and may touch local
+                    # runtimes or durable state; it belongs on the worker too.
+                    identity = service.submit(selected_plan)
+                    job_id = identity
+                return service.resume(identity, cancelled=stopped, progress=advanced)
+            future = executor.submit(work)
         except Exception as exc:
-            busy = None
+            change_busy(None)
+            if progress is not None and progress_token is not None:
+                progress.fail(exc, token=progress_token)
             report(str(exc))
             return
         def finish(done):
             def apply():
                 nonlocal busy
-                if not alive:
+                # The shared view still receives the durable checkpoint after
+                # the dialog closes. Only dialog widgets require its liveness.
+                try:
+                    result = done.result()
+                except Exception as exc:
+                    if progress is not None:
+                        if isinstance(exc, InterruptedError):
+                            progress.cancel(str(exc), token=token)
+                        else:
+                            progress.fail(exc, token=token)
+                else:
+                    if progress is not None:
+                        try:
+                            progress.finish_result(result, cancelled=cancel.is_set(), token=token)
+                        except Exception:
+                            pass  # Keep the service result and settle the native controls.
+                if not alive or not library_current() or progress_token != token:
                     return
-                busy = None
-                for key in ('preview', 'run', 'jobs'):
-                    buttons[key].Enable()
-                buttons['pause'].Disable()
-                for control in (scope_choice, instruction, input_folder, output_folder, full_backup,
-                                planning_source, *folder_buttons):
-                    control.Enable()
+                change_busy(None)
                 try:
                     result = done.result()
                     report(f'{result.status}: {result.completed} of {result.total} verified operations.\n' +
@@ -315,29 +454,114 @@ def create_assistant_dialog(frame, *, wx_module=None):
 
     def jobs(event=None):
         nonlocal job_id, plan, approved_inputs
-        rows = service.jobs()
+        if busy:
+            return
+        try:
+            if not library_current():
+                raise ValueError('The library location changed. Reopen the assistant.')
+            rows = service.jobs()
+        except (ValueError, OSError) as exc:
+            job_id, plan = None, None
+            buttons['run'].Disable()
+            report(str(exc)[:1000])
+            review.SetFocus()
+            return
         choice = wx.SingleChoiceDialog(dialog, 'Choose a saved local plan.', 'Assistant jobs',
             [f'{row.id}; {row.status}; {row.completed}/{row.total}' for row in rows])
         try:
             if choice.ShowModal() == wx.ID_OK and 0 <= choice.GetSelection() < len(rows):
                 row = rows[choice.GetSelection()]
-                job_id, plan = row.id, None
-                approved_inputs = None
+                try:
+                    record = service.store.load(row.id)
+                except (ValueError, OSError) as exc:
+                    job_id, plan = None, None
+                    buttons['run'].Disable()
+                    report(row.message + '\n' + str(exc)[:1000])
+                    review.SetFocus()
+                    return
+                if record.get('requires_reapproval') or record.get('data_dir') != str(frame.library.root):
+                    job_id, plan = None, None
+                    instruction.ChangeValue(service.review_instruction(row.id))
+                    report(row.message + '\nOriginal approved scope and steps:\n' +
+                           json.dumps(record['plan'], ensure_ascii=False, indent=2) +
+                           '\n\nThe goal field contains an unapproved copy of the original steps. '
+                           'Choose the current library and input/output folders, edit path arguments '
+                           'if necessary, then choose Preview and Run to approve a new job. '
+                           'The saved job and its original permissions remain unchanged.')
+                    buttons['run'].Disable()
+                    review.SetFocus()
+                    return
+                job_id, plan, approved_inputs = row.id, None, None
                 report(f'{row.status}: {row.completed}/{row.total}. {row.message}\nResume uses the original reviewed scope.')
                 buttons['run'].Enable()
         finally:
             choice.Destroy()
 
+    def templates(event=None):
+        if busy:
+            return
+        from .assistant_templates import create_templates_dialog
+        picker = None
+        try:
+            if not library_current():
+                raise ValueError('The library location changed. Reopen the assistant.')
+            selected_inputs, selected_revision = input_identity(), revision
+            selected_plan = plan if approved_inputs == (selected_inputs, selected_revision) else None
+            selected_job = job_id
+            # Worker-safe owner predicate: it reads no native control values.
+            def owner_current():
+                return alive and library_current() and revision == selected_revision
+            change_busy('templates')
+            picker = create_templates_dialog(dialog, service, executor=executor,
+                is_current=owner_current, current_plan=selected_plan,
+                current_job_id=selected_job, progress=progress)
+            picker.ShowModal()
+            draft = picker.template_result
+            if draft is not None:
+                if not owner_current() or selected_inputs != input_identity():
+                    raise ValueError('The goal or library changed while choosing a workflow. Open it again.')
+                invalidate()
+                # Loading replaces an instruction only. Even a prior dialog's
+                # folders, full-backup permission and budgets must be chosen
+                # anew before a template can become a current approved plan.
+                scope_choice.SetSelection(0)
+                transcription_choice.SetSelection(0)
+                service.transcription = None
+                input_folder.ChangeValue('')
+                output_folder.ChangeValue('')
+                full_backup.SetValue(False)
+                budget.ChangeValue('1024')
+                file_budget.ChangeValue('5000')
+                deadline.ChangeValue('3600')
+                instruction.ChangeValue(draft)
+                report('Saved workflow loaded as an unapproved draft. Nothing has run.\n\n'
+                       'Choose the current library and input/output folders, review the literal '
+                       'paths and steps, then choose Preview plan. Run remains disabled until '
+                       'that separate preview succeeds.')
+                review.SetFocus()
+        except Exception as exc:
+            if alive:
+                invalidate()
+                report(str(exc))
+        finally:
+            if picker is not None:
+                picker.template_handlers['close']()
+                picker.Destroy()
+            if alive:
+                change_busy(None)
+
     def close(event=None):
         nonlocal alive
         if not alive:
             return
-        cancel.set()
-        if busy == 'run' and job_id:
-            service.pause(job_id)
         alive = False
-        from .worker_cleanup import close_after_worker
-        close_after_worker(executor, production)
+        cancel.set()
+        if progress is not None and progress_token is not None:
+            progress.request_cancel()
+        # The worker persists its paused checkpoint after releasing snapshot
+        # locks. A concurrent control write here can be refused by that same
+        # snapshot and must not prevent the native dialog from closing.
+        executor.shutdown(wait=False, cancel_futures=True)
         if dialog.IsModal():
             dialog.EndModal(wx.ID_CLOSE)
         else:
@@ -347,227 +571,40 @@ def create_assistant_dialog(frame, *, wx_module=None):
         from .desktop_app import show_text
         show_text(dialog, 'Local assistant commands', HELP)
 
-    for identity, callback in {'preview': preview, 'run': run, 'pause': lambda e: cancel.set(),
-                               'jobs': jobs, 'help': help_text, 'close': close}.items():
+    for identity, callback in {'preview': preview, 'model': propose, 'run': run, 'pause': lambda e: cancel.set(),
+                               'jobs': jobs, 'templates': templates, 'help': help_text, 'close': close}.items():
         buttons[identity].Bind(wx.EVT_BUTTON, callback)
-    for control in (input_folder, output_folder, instruction):
+    for control in (input_folder, output_folder, instruction, budget, file_budget, deadline):
         control.Bind(wx.EVT_TEXT, invalidate)
     scope_choice.Bind(wx.EVT_CHOICE, invalidate)
-    planning_source.Bind(wx.EVT_CHOICE, invalidate)
+    transcription_choice.Bind(wx.EVT_CHOICE, invalidate)
     full_backup.Bind(wx.EVT_CHECKBOX, invalidate)
     dialog.Bind(wx.EVT_CLOSE, close)
-    dialog.assistant_controls = dict(scope=scope_choice, input=input_folder, output=output_folder,
-        full_backup=full_backup, instruction=instruction, planning_source=planning_source,
-        review=review, buttons=buttons)
-    dialog.assistant_handlers = dict(preview=preview, run=run, invalidate=invalidate,
-                                    close=close, cancel=cancel.set)
-    dialog.assistant_service = service
-    return dialog
-
-
-def show_assistant(frame):
-    dialog = create_assistant_dialog(frame)
     try:
+        if on_ready is not None:
+            wx.CallAfter(on_ready, dialog, {'instruction': instruction, 'review': review,
+                'budget': budget, 'deadline': deadline, 'preview': buttons['preview'],
+                'run': buttons['run'], 'model': buttons['model'], 'close': buttons['close'], 'output': output_folder,
+                'scope': scope_choice, 'input': input_folder, 'full_backup': full_backup,
+                'file_budget': file_budget, 'pause': buttons['pause'], 'jobs': buttons['jobs'],
+                'templates': buttons['templates'], 'transcription_profile': transcription_choice,
+                'folder_buttons': tuple(folder_buttons)})
         dialog.ShowModal()
     finally:
-        dialog.assistant_handlers['close']()
-        dialog.Destroy()
-
-
-def show_provider_settings(frame):
-    import wx
-    from ..assistant import ProfileStore, ProviderProfile, WindowsCredentialVault
-    from ..assistant.profiles import ADAPTERS, google_oauth_token, save_google_token
-    store = ProfileStore(frame.library.root / 'state' / 'providers')
-    vault = WindowsCredentialVault()
-    dialog = wx.Dialog(frame, title='AI and API connections — optional', size=(760, 650),
-                       style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
-    layout = wx.BoxSizer(wx.VERTICAL)
-    layout.Add(wx.StaticText(dialog, label='Local operation is the default. Saving a profile makes no network request.\n'
-        'Remote use requires a separate scoped job authorization and budget.'), 0, wx.ALL, 6)
-    listing = wx.ListBox(dialog)
-    listing.SetName('Provider accounts')
-    layout.Add(listing, 1, wx.EXPAND | wx.ALL, 6)
-    status = wx.TextCtrl(dialog, style=wx.TE_READONLY | wx.TE_MULTILINE)
-    status.SetName('Connection configuration status')
-    layout.Add(status, 0, wx.EXPAND | wx.ALL, 6)
-    rows = ()
-
-    def refresh():
-        nonlocal rows
-        rows = store.list()
-        listing.SetItems([f'{r.name}; {r.adapter}; {"local" if r.local else "remote"}; '
-                          f'{"enabled" if r.enabled else "disabled"}' for r in rows])
-
-    def edit(event=None, *, new=False):
-        index = listing.GetSelection()
-        current = rows[index] if not new and 0 <= index < len(rows) else None
-        form = wx.Dialog(dialog, title='Add connection' if current is None else 'Edit connection', size=(760, 860),
-                         style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
-        box = wx.BoxSizer(wx.VERTICAL)
-        def field(label, value='', password=False):
-            box.Add(wx.StaticText(form, label=label), 0, wx.ALL, 4)
-            control = wx.TextCtrl(form, value=value, style=wx.TE_PASSWORD if password else 0)
-            control.SetName(label)
-            box.Add(control, 0, wx.EXPAND | wx.ALL, 4)
-            return control
-        name = field('Account name', current.name if current else '')
-        box.Add(wx.StaticText(form, label='Adapter'), 0, wx.ALL, 4)
-        adapter = wx.Choice(form, choices=list(ADAPTERS))
-        adapter.SetStringSelection(current.adapter if current else 'openai-compatible')
-        box.Add(adapter, 0, wx.EXPAND | wx.ALL, 4)
-        endpoint = field('Official endpoint or explicitly chosen loopback service', current.endpoint if current else 'http://127.0.0.1:8080/v1')
-        model = field('Model ID', current.model if current else 'local-model')
-        voice = field('Voice ID; blank for language models', current.voice or '' if current else '')
-        capability = field('Capabilities: llm.chat, speech.synthesize, music.compose, sfx.generate, translation.text, translation.languages',
-                           ','.join(current.capabilities) if current else 'llm.chat')
-        secret = field('New credential; API key for Basic v2, OAuth access token for Advanced v3; blank keeps it', password=True)
-        token_expiry = field('Advanced v3 token expiry with UTC offset; for example 2026-11-27T15:30:00Z')
-        local = wx.CheckBox(form, label='This is a local loopback service')
-        local.SetValue(current.local if current else True)
-        enabled = wx.CheckBox(form, label='Enable this profile for explicitly authorized jobs')
-        enabled.SetValue(current.enabled if current else False)
-        def adapter_defaults(event):
-            if adapter.GetStringSelection() == 'google-translation-v2':
-                endpoint.ChangeValue('https://translation.googleapis.com/language/translate/v2')
-                model.ChangeValue('nmt')
-                capability.ChangeValue('translation.text,translation.languages')
-                voice.ChangeValue('')
-                local.SetValue(False)
-            elif adapter.GetStringSelection() == 'google-translation-v3':
-                endpoint.ChangeValue('https://translation.googleapis.com/v3/projects/PROJECT_NUMBER/locations/global')
-                model.ChangeValue('general/nmt')
-                capability.ChangeValue('translation.text,translation.languages')
-                voice.ChangeValue('')
-                local.SetValue(False)
-            token_expiry.Enable(adapter.GetStringSelection() == 'google-translation-v3')
-            event.Skip()
-        adapter.Bind(wx.EVT_CHOICE, adapter_defaults)
-        token_expiry.Enable(adapter.GetStringSelection() == 'google-translation-v3')
-        box.Add(local, 0, wx.ALL, 4)
-        box.Add(enabled, 0, wx.ALL, 4)
-        box.Add(form.CreateButtonSizer(wx.OK | wx.CANCEL), 0, wx.ALL, 5)
-        form.SetSizer(box)
-        try:
-            if form.ShowModal() != wx.ID_OK:
-                return
-            identity = current.id if current else uuid4().hex
-            profile = ProviderProfile(identity, name.GetValue(), adapter.GetStringSelection(), endpoint.GetValue(),
-                model.GetValue(), tuple(x.strip() for x in capability.GetValue().split(',') if x.strip()),
-                current.credential_ref if current else None, local.GetValue(), enabled.GetValue(), voice.GetValue() or None)
-            authority_changed = current and (current.endpoint, current.adapter, current.local) != (profile.endpoint, profile.adapter, profile.local)
-            if authority_changed:
-                profile = replace(profile, credential_ref=None, enabled=False)
-            new_reference = None
-            oauth_saved = bool(secret.GetValue()) and profile.adapter == 'google-translation-v3'
-            if oauth_saved:
-                profile = save_google_token(store, vault, profile, secret.GetValue(), token_expiry.GetValue(), current=current)
-            elif secret.GetValue():
-                new_reference = vault.put(profile.id, secret.GetValue())
-                profile = replace(profile, credential_ref=new_reference)
-            try:
-                if not oauth_saved:
-                    store.save(profile)
-            except Exception:
-                if new_reference:
-                    vault.delete(profile.id, new_reference)
-                raise
-            if current and new_reference and current.credential_ref:
-                vault.delete(current.id, current.credential_ref)
-            secret.ChangeValue('')
-            refresh()
-            status.ChangeValue('Saved. Credentials are held by Windows Credential Manager. No provider was contacted.' +
-                (' OAuth token expiry: ' + token_expiry.GetValue() + '. Re-enter explicitly before expiry; no automatic refresh.' if oauth_saved else ''))
-        except Exception as exc:
-            status.ChangeValue(str(exc))
-        finally:
-            secret.ChangeValue('')
-            form.Destroy()
-        status.SetFocus()
-
-    def remove(event):
-        index = listing.GetSelection()
-        if not 0 <= index < len(rows):
-            return
-        profile = rows[index]
-        if wx.MessageBox('Remove this connection and its stored credential?', 'Remove connection',
-                          wx.YES_NO | wx.NO_DEFAULT, dialog) != wx.YES:
-            return
-        try:
-            store.remove(profile.id, vault=vault)
-            refresh()
-            status.ChangeValue('Connection removed.')
-        except Exception as exc:
-            status.ChangeValue(str(exc))
-
-    def check(event):
-        index = listing.GetSelection()
-        if not 0 <= index < len(rows):
-            return
-        try:
-            profile = store.get(rows[index].id)
-            expiry_notice = ''
-            if profile.credential_ref:
-                record = vault.get(profile.id, profile.credential_ref)
-                if profile.adapter == 'google-translation-v3':
-                    from datetime import datetime, timezone
-                    _, expiry = google_oauth_token(record, profile.endpoint)
-                    expiry_notice = ' OAuth expiry: ' + datetime.fromtimestamp(expiry, timezone.utc).isoformat() + '. No automatic refresh.'
-                del record
-            status.ChangeValue('Local profile and credential configuration is valid. API connectivity, pricing and access were not tested.' + expiry_notice)
-        except Exception as exc:
-            status.ChangeValue(str(exc))
-        status.SetFocus()
-
-    def exchange(event, *, importing=False):
-        picker = wx.FileDialog(dialog, 'Import non-secret profiles' if importing else 'Export non-secret profiles',
-            defaultFile='provider-profiles.json', wildcard='JSON (*.json)|*.json',
-            style=(wx.FD_OPEN | wx.FD_FILE_MUST_EXIST) if importing else (wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT))
-        try:
-            if picker.ShowModal() != wx.ID_OK:
-                return
-            path = Path(picker.GetPath())
-            if importing:
-                if path.stat().st_size > 1024 * 1024:
-                    raise ValueError('Profile file exceeds the import budget.')
-                store.import_json(path.read_text(encoding='utf-8'))
-                refresh()
-                status.ChangeValue('Profiles imported disabled. Reconnect each account to its credential.')
-            else:
-                atomic_bytes(path, store.export_json().encode('utf-8'), replace=path.exists())
-                status.ChangeValue('Exported non-secret profiles. No API keys or vault references are included.')
-        except Exception as exc:
-            status.ChangeValue(str(exc))
-        finally:
-            picker.Destroy()
-
-    row = wx.BoxSizer(wx.HORIZONTAL)
-    for label, handler in [('&Add', lambda e: edit(e, new=True)), ('&Edit', edit), ('&Remove', remove),
-        ('&Check local configuration', check), ('&Import', lambda e: exchange(e, importing=True)), ('E&xport', exchange)]:
-        button = wx.Button(dialog, label=label)
-        button.Bind(wx.EVT_BUTTON, handler)
-        row.Add(button, 0, wx.ALL, 3)
-    layout.Add(row)
-    layout.Add(dialog.CreateButtonSizer(wx.CLOSE), 0, wx.ALL, 5)
-    dialog.SetEscapeId(wx.ID_CLOSE)
-    dialog.Bind(wx.EVT_BUTTON, lambda event: dialog.EndModal(wx.ID_CLOSE), id=wx.ID_CLOSE)
-    dialog.SetSizer(layout)
-    refresh()
-    try:
-        dialog.ShowModal()
-    finally:
+        if alive:
+            close()
         dialog.Destroy()
 
 
 def install_assistant_actions(frame):
+    """Add one action; existing API settings remain in their current host."""
     import wx
-    from .command_registry import CommandSpec
-    from .keyboard_settings import register_menu_command
-    menu = wx.Menu()
-    for identity, title, shortcut, handler in [
-            ('assistant.local', 'Local assistant...', 'Ctrl+Alt+J', lambda e: show_assistant(frame)),
-            ('assistant.providers', 'AI and API connections...', '', lambda e: show_provider_settings(frame))]:
-        item = menu.Append(wx.ID_ANY, title)
-        frame.Bind(wx.EVT_MENU, handler, item)
-        register_menu_command(frame, CommandSpec(identity, title, 'main', shortcut), item)
-    frame.menu_bar.Append(menu, '&Tools')
+    menu_bar = frame.GetMenuBar()
+    index = menu_bar.FindMenu('Tools')
+    if index == wx.NOT_FOUND:
+        menu = wx.Menu()
+        menu_bar.Append(menu, '&Tools')
+    else:
+        menu = menu_bar.GetMenu(index)
+    item = menu.Append(wx.ID_ANY, 'Local assistant...\tCtrl+Alt+J')
+    frame.Bind(wx.EVT_MENU, lambda event: show_assistant(frame), item)

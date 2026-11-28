@@ -1,0 +1,242 @@
+{
+  "schema": 1,
+  "status": "SOURCE_REPAIRED_RUNTIME_NOT_RUN",
+  "base_commit": "9cd60ad11dc1301a8b307db9e362dd9f1452806e",
+  "base_tree": "30b0d18cf316c5d58fdca4acbc66f31f45f64a84",
+  "old_legacy_blob": "6fcc92532d0bdee909ac29c59c47c346fa84b7da",
+  "observed_native": {
+    "commit": "1b13c06cf17383014a5bb787ad792d63ee978fa7",
+    "run": 46046112267,
+    "job": 140665695266,
+    "portable_source_cases": 221,
+    "portable_installed_cases": 221,
+    "native_source": {
+      "passed": 3,
+      "failed": 1
+    },
+    "native_installed": "NOT_RUN",
+    "publisher_census": {
+      "total": 70,
+      "passed": 68,
+      "failed": 2
+    }
+  },
+  "independent_artifact_read": {
+    "commit": "40f791bc77691d942eabe49ee1d24fdb119ef1c6",
+    "run": 46050385396,
+    "job": 140679934469,
+    "artifact": 15223334464,
+    "bytes": 2495954,
+    "sha256": "ff3325a9652c3a96e733c34482e12d9e69b7512feb5598d12d161a1abe6a04d1"
+  },
+  "source_bound_forensics": {
+    "source_commit": "6b3125c33efe03566419055e31d39a90d9359929",
+    "source_tree": "6c38c3ca86620eed59e0a461e2405d774fa9d313",
+    "run": 46053526155,
+    "job": 140690435657,
+    "artifact": {
+      "id": 15224489353,
+      "bytes": 6598,
+      "sha256": "9be94ddcacea231351d79487c5d42f021ccf8199faef17d89de6bd77215c7d71"
+    },
+    "publisher": {
+      "bytes": 2003456,
+      "sha256": "6dc822569e777d9a3ecd5ffcbc22b55600af87e6c5d9810a64e8566cf5a4af9f",
+      "url": "https://github.com/ip7z/7zip/releases/download/26.06/7z2606-x64.msi",
+      "version": "26.06"
+    },
+    "source_sha256": {
+      "src/carr_library/conversion/legacy.py": "f2bbe7058f6c267d00930d3910b01067a4e7ae12454f72313b6d1b59384ff826",
+      "src/carr_library/conversion/models.py": "731955037700041573bea0b428dffee6ff02c6587389c6a184828a914a0959ca",
+      "src/carr_library/extract/document_formats_text.py": "0e81fa6b2c22e8ff1745fc474484cf879fdf6b1c3fcd69d804f1bf78d1e78d7f"
+    },
+    "lxml": {
+      "libxml": [
+        2,
+        14,
+        6
+      ],
+      "version": [
+        6,
+        1,
+        3,
+        0
+      ],
+      "wheel_sha256": "527195c188d7d0af748cd48d220ab8cdc5cb99be3d49ac4d9be7324d8abf9bc0"
+    },
+    "findings": [
+      {
+        "member": "cmdline/switches/index.htm",
+        "bytes": 7746,
+        "sha256": "38308f9d9bbdf73d55b19facdd13f4fe97e30a89141aa08aabe9c7ae0de064e8",
+        "status": "REFUSED",
+        "reason": "CHM HTML recovery changed the ordered visible text.",
+        "ordered_tokens": {
+          "after_count": 555,
+          "after_window": [
+            "Command",
+            "Line",
+            "Switches",
+            "Syntax",
+            "<switch>::=",
+            "-<switch_characters>[<option>]",
+            "On",
+            "the",
+            "command",
+            "line,",
+            "a",
+            "switch",
+            "consists"
+          ],
+          "before_count": 555,
+          "before_window": [
+            "Command",
+            "Line",
+            "Switches",
+            "Syntax",
+            "<switch;>::=",
+            "-<switch_characters>[<option>]",
+            "On",
+            "the",
+            "command",
+            "line,",
+            "a",
+            "switch",
+            "consists"
+          ],
+          "first_difference": 4
+        },
+        "raw_syntax": "&ltswitch>::= -&lt;switch_characters>[&lt;option>]",
+        "serialized_syntax": "&lt;switch&gt;::= -&lt;switch_characters&gt;[&lt;option&gt;]",
+        "interpretation": "The current stdlib-based inert reader appends a semicolon to the entity callback name ltswitch before unescape, introducing a literal semicolon. libxml serialization preserves the HTML entity prefix interpretation. The current ordered-word guard correctly refuses their disagreement."
+      },
+      {
+        "member": "fm/plugins/7-zip/add.htm",
+        "bytes": 16035,
+        "sha256": "b6bff175f02f13a83cd585b3b959afa634b85bec8a082d6331ac3663cce41fb0",
+        "status": "REFUSED",
+        "reason": "HTML element nesting is malformed.",
+        "ordered_tokens": {
+          "after_count": 1076,
+          "after_window": [
+            "will",
+            "be",
+            "used",
+            "for",
+            "decompression."
+          ],
+          "before_count": 1827,
+          "before_window": [
+            "will",
+            "be",
+            "used",
+            "for",
+            "decompression.",
+            "Split",
+            "to",
+            "volumes",
+            "{Size}[b",
+            "|",
+            "k",
+            "|",
+            "m",
+            "|"
+          ],
+          "first_difference": 1076
+        },
+        "strict_failure_position": [
+          178,
+          2
+        ],
+        "strict_open_elements": [
+          "html",
+          "body",
+          "dl"
+        ],
+        "definition_tag_trace": [
+          {
+            "line": 162,
+            "tags": [
+              "</dd>"
+            ]
+          },
+          {
+            "line": 164,
+            "tags": [
+              "<dt>",
+              "</dt>"
+            ]
+          },
+          {
+            "line": 165,
+            "tags": [
+              "<dd>"
+            ]
+          },
+          {
+            "line": 166,
+            "tags": [
+              "<dd>"
+            ]
+          },
+          {
+            "line": 176,
+            "tags": [
+              "</dd>"
+            ]
+          },
+          {
+            "line": 178,
+            "tags": [
+              "</dd>",
+              "<dt>",
+              "</dt>"
+            ]
+          },
+          {
+            "line": 179,
+            "tags": [
+              "<dd>"
+            ]
+          }
+        ],
+        "interpretation": "Recovered serialization has consecutive dd openings at lines165/166 and closures176/178. The existing inert reader applies optional same-tag closure, so the second serialized close at178 is unmatched. The failure is the final strict parse, not a prepass orphan-dd refusal."
+      }
+    ]
+  },
+  "changes": [
+    "Inside known-declared-legacy-CHM ParagraphEnds only, read the exact source named-reference lexeme including real semicolon presence. Do not invent a semicolon in HTMLParser's callback. Materialize unterminated reference text as numeric references in the reading copy.",
+    "Before libxml recovery, explicitly close only a direct repeated DD that the existing strict reader already implicitly closes. Do not add DD to the orphan-end allowlist or tolerate malformed final nesting.",
+    "Keep the same in-memory no-network HTML recovery, deny resolver, source/character/node/depth/output/deadline bounds, final unchanged strict parser and count plus complete ordered-visible-word SHA comparison."
+  ],
+  "regression_counter": {
+    "test_exact_publisher_unterminated_entity_keeps_its_html_prefix_meaning": 2,
+    "test_legacy_named_reference_preserves_exact_source_terminator": 5,
+    "test_observed_repeated_description_start_materializes_existing_implicit_close": 2,
+    "test_named_reference_and_description_repairs_do_not_rewrite_attributes_or_expose_suppression": 1,
+    "test_new_legacy_repairs_do_not_admit_orphan_description_ends_or_ambiguous_attributes": 2,
+    "test_legacy_named_reference_keeps_full_word_digest_not_only_token_count": 1,
+    "test_unterminated_named_reference_expansion_keeps_existing_output_bound": 1
+  },
+  "new_cases": 14,
+  "total_recovery_cases": 48,
+  "portable_cases": 235,
+  "linux_two_module_cases": 148,
+  "native_chm_cases": 4,
+  "preserved_qualification": [
+    ".azw",
+    ".azw3",
+    ".djvu",
+    ".lit",
+    ".mobi",
+    ".prc",
+    ".tcr"
+  ],
+  "chm_qualified": false,
+  "limits": [
+    "No Python compilation or runtime execution occurred during authoring.",
+    "The prior failed Windows qualification remains FAIL.",
+    "The actual two public members and complete70-member Windows census must execute against the repaired candidate before CHM qualification.",
+    "General HTML parsing and document source bytes remain unchanged."
+  ]
+}

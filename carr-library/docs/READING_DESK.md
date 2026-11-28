@@ -61,24 +61,25 @@ passages. Import validates every referenced source before making one atomic merg
 It preserves existing resume positions and rejects conflicting bookmark identities.
 Importing the same file again does not duplicate its bookmarks.
 
-Full-library backups now include this sidecar automatically when it exists.
-Backup format 3 records its exact size and SHA256 alongside the database and
-registered originals. The library writer lock covers both snapshots, and backup
-and restore validate every saved place against the copied source identities.
-Bookmark names, IDs, timestamps and resume locations are preserved exactly.
-
-An archived library or an older sealed revision keeps its original reading
-state. Restoring the backup does not reactivate it or move its bookmarks to a
-new revision: the reader reports an unavailable or stale location until you
-explicitly restore the library or start the current revision afresh. Older
-backup formats 1 and 2 remain restorable; they contain no reading sidecar, so use
-the separate per-library export when recovering reading state from those backups.
+**Library, Back up all libraries** includes the complete reading-state sidecar
+along with the source database and retained originals. It also preserves saved
+reading copies, their recovery drafts, keyboard preferences and OCR-language
+presets when present. The library writer lock covers the database and sidecar
+snapshots. Backup and restore validate each saved place against its exact source
+identities, preserving names, IDs, timestamps and resume locations.
 
 Restore always creates a new data folder after validation. Keep the reported
-manifest SHA256 separately from the backup. Arbitrary sidecars, credentials,
-audio projects and pending import journals are outside this backup format.
-A different library cannot accept a per-library reading export. No cloud account
-or network retrieval is involved.
+manifest SHA256 separately from the backup. Version 1/2 backups and both earlier
+version-3 layouts remain readable; a backup cannot recreate bookmarks or settings
+that were never saved in it. See [complete backups](COMPLETE_BACKUP.md) for the
+supported contents and limits.
+
+An archived library or older sealed revision keeps its original reading state.
+Restoration does not reactivate it or move bookmarks to a newer revision: the
+reader reports an unavailable or stale location until you explicitly restore
+the library or start the current revision afresh. A different library cannot
+accept an individual reading-state export. No cloud account or network retrieval
+is involved.
 
 ## Implementation and primary references
 

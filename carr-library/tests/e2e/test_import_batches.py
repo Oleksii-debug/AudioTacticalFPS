@@ -162,8 +162,8 @@ def test_expected_manifest_compares_the_same_snapshot_that_is_retained(app, tmp_
     frozen = snapshot(original.parent, original.name)
     workspace = app.create_workspace('One source snapshot')
     guarded_snapshot = batch_scan.planned_snapshot
-    def read_then_change(path):
-        selected = guarded_snapshot(path)
+    def read_then_change(path, **options):
+        selected = guarded_snapshot(path, **options)
         original.write_bytes(b'Replaced immediately after the intake read.')
         return selected
     with monkeypatch.context() as patch:

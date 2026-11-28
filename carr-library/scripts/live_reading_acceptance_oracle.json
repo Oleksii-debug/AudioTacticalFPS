@@ -1,0 +1,113 @@
+{
+  "source_commit": "067f75066fb3dbd09e4bb601c8e6dc77befdd965",
+  "expected_test_cases": 88,
+  "test_functions": {
+    "tests/reader/test_live_speech.py": {
+      "test_reading_units_are_exact_unmodified_source_slices": 9,
+      "test_empty_or_untyped_selections_do_not_start_reading": 6,
+      "test_utterance_continuation_reaches_every_non_whitespace_character": 4,
+      "test_one_measured_utterance_then_explicit_completed_playback_advances": 1,
+      "test_stop_without_observed_completion_repeats_utterance_instead_of_skipping": 1,
+      "test_cancellation_retains_no_partial_audio_or_resource_reservation": 1,
+      "test_changed_voice_identity_cannot_continue_an_existing_session": 1,
+      "test_voice_that_changes_during_render_never_becomes_a_playable_result": 1,
+      "test_revoked_source_does_not_synthesize_or_save_another_position": 1,
+      "test_missing_voice_control_is_rejected_without_silent_fallback": 3,
+      "test_exact_source_position_is_kept_separate_from_an_independent_copy": 1,
+      "test_invalid_saved_positions_are_never_silently_reset": 7,
+      "test_invalid_source_binding_never_replaces_a_good_resume": 1,
+      "test_inaccessible_saved_position_is_never_empty_or_replaced": 2,
+      "test_a_long_book_replaces_one_resume_row_instead_of_accumulating_pages": 1,
+      "test_full_source_revalidation_prevents_speaking_changed_source": 2,
+      "test_inflight_cancellation_must_settle_before_audio_directory_is_removed": 1,
+      "test_playback_digest_is_required_even_when_metadata_is_presented_as_current": 1,
+      "test_playback_source_is_rechecked_before_and_after_payload_verification": 2,
+      "test_retained_payload_lease_prevents_false_completion_after_a_write": 1
+    },
+    "tests/ui/test_live_reading.py": {
+      "test_every_native_boundary_roundtrips_emoji_combining_text_and_line_endings": 6,
+      "test_selected_visible_text_cannot_borrow_offsets_from_different_source": 1,
+      "test_invalid_input_is_rejected_before_native_or_worker_owners_are_created": 10,
+      "test_close_waits_for_real_synthesis_worker_before_destroying_utterance": 1,
+      "test_stop_refusal_preserves_pcm_until_actual_owner_release": 1,
+      "test_completed_playback_stops_its_owner_before_advancing_and_saving_cursor": 1,
+      "test_failed_pause_does_not_lose_active_playback_completion_observer": 1,
+      "test_resume_revalidates_source_on_each_side_of_saved_state_read": 2,
+      "test_guard_failure_before_show_releases_every_created_native_owner": 1,
+      "test_replaced_valid_pcm_is_rejected_before_any_player_receives_it": 1,
+      "test_verified_pcm_stays_owned_through_delayed_media_handoff": 1
+    },
+    "tests/storage/test_live_reading_backup.py": {
+      "test_live_reading_checkpoint_roundtrips_source_page_and_exact_text_cursor": 1,
+      "test_outer_backup_rejects_typed_but_foreign_live_reading_source_binding": 5,
+      "test_new_revision_does_not_retarget_a_restored_historical_cursor": 1
+    },
+    "tests/security/test_live_reading_admission.py": {
+      "test_expired_fresh_speech_is_refused_before_pcm_or_saved_cursor_mutation": 1,
+      "test_one_book_request_keeps_admission_across_utterances_and_pages": 1,
+      "test_new_explicit_request_does_not_inherit_a_finished_admission": 1,
+      "test_shared_operation_cannot_replace_its_explicit_controller": 1,
+      "test_captured_context_owner_cannot_be_changed_between_utterances": 1,
+      "test_closed_shared_operation_cannot_synthesize_again": 1,
+      "test_host_authority_cannot_be_replaced_before_native_controls_are_created": 1,
+      "test_owning_source_guard_runs_before_entitlement_admission": 1
+    }
+  },
+  "native": {
+    "expected_checks": 26,
+    "required_static_labels": [
+      "named read-only native source control",
+      "all ten live reading actions are native and named",
+      "native emoji and newline selection identifies exact source",
+      "native reading range includes whole book",
+      "actual installed English SAPI voice enumerated",
+      "voice enumeration requires explicit selection",
+      "unsupported SAPI pitch control stays disabled",
+      "actual native keyboard focus reaches selected voice",
+      "actual SAPI utterance became prepared PCM",
+      "measured PCM and exact spoken source digest",
+      "prepared excerpt highlights exact native source range",
+      "preparing does not start a device or advance cursor",
+      "stop retains only the last completed text cursor",
+      "stop releases private utterance PCM",
+      "book resume is exact source-bound",
+      "speech resource reservation is released",
+      "restored cursor uses exact native character position",
+      "where-am-I is exposed through named native status",
+      "native modal exits only after reader owners settle",
+      "immutable source remains byte-identical after the native workflow"
+    ],
+    "unicode_label_prefix": "native Unicode cursor roundtrip ",
+    "unicode_offsets_if_source_preserves_CRLF": [
+      0,
+      7,
+      8,
+      11,
+      38,
+      78
+    ],
+    "status": "PASS",
+    "native_controls": "EXECUTED",
+    "physical_playback": "NOT_RUN",
+    "nvda": "NOT_RUN",
+    "word_alignment": "NOT_CLAIMED",
+    "language_quality": "NOT_CLAIMED",
+    "positive_metric_keys": [
+      "actual_sapi_pcm.frames",
+      "actual_sapi_pcm.sample_rate"
+    ],
+    "digest_keys": [
+      "actual_sapi_pcm.pcm_sha256",
+      "actual_sapi_pcm.source_sha256"
+    ],
+    "module_origin_fields_in_probe": false,
+    "require_installed_modules": [
+      "carr_library.reader.live_speech",
+      "carr_library.ui.live_reading",
+      "carr_library.ui.reading_desk",
+      "carr_library.ui.narration_editor",
+      "carr_library.library_backup",
+      "carr_library.ui.builtin_keyboard_commands"
+    ]
+  }
+}

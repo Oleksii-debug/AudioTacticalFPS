@@ -1,0 +1,409 @@
+{
+  "schema": "carr.office-runtime-bytecode-repair.v1",
+  "status": "SOURCE_REVIEW_PENDING_RUNTIME_NOT_RUN",
+  "date": "2026-11-27",
+  "parent_commit": "efbec222fe6e6399adf0447268e973b7a315228d",
+  "observed_failure": {
+    "commit": "98af749764d0e6f124b6619cac372d621428c733",
+    "run_id": 46058592456,
+    "job_id": 140707055688,
+    "result": "FAIL",
+    "reason": "Selected runtime bytes changed during native qualification.",
+    "artifact": {
+      "id": 15226974627,
+      "bytes": 5712566,
+      "sha256": "323394b137e777e8ad6569ffcd3e6aa49723918c1874be72c0c6443aeaaceba9"
+    },
+    "evidence_source": "Bounded diagnostic from the actual GitHub Actions job log. This repair document does not claim a separate independent ZIP read of this diagnostic artifact.",
+    "runtime_delta": {
+      "added": [
+        {
+          "after": {
+            "bytes": 8455,
+            "sha256": "a3d8e7fb9fb2f6759685fc1eb4058a08d459c2127b531fb23f88b91e45bba2f3"
+          },
+          "before": null,
+          "path": "program/__pycache__/pythonloader.cpython-312.pyc"
+        },
+        {
+          "after": {
+            "bytes": 21242,
+            "sha256": "d8e1658325ff86ef249ec1384decc638b7c61c114ade3b75f7123f8904e40192"
+          },
+          "before": null,
+          "path": "program/__pycache__/uno.cpython-312.pyc"
+        },
+        {
+          "after": {
+            "bytes": 15157,
+            "sha256": "91731a723b987dfd8625f0fec9604c9e6995ed9b77018fc3fa2ee75dd1925bf7"
+          },
+          "before": null,
+          "path": "program/__pycache__/unohelper.cpython-312.pyc"
+        },
+        {
+          "after": {
+            "bytes": 4776,
+            "sha256": "21af2f9f19e9984f8bc127c2bcbf6a91a4c224c2692177762ebd6e59042fce4c"
+          },
+          "before": null,
+          "path": "program/python-core-3.12.16/lib/__pycache__/__future__.cpython-312.pyc"
+        },
+        {
+          "after": {
+            "bytes": 30422,
+            "sha256": "5b8e90381a2269752e8f36e89f66053d1af9db4a97bcd628e9bd246966462a6f"
+          },
+          "before": null,
+          "path": "program/python-core-3.12.16/lib/__pycache__/contextlib.cpython-312.pyc"
+        },
+        {
+          "after": {
+            "bytes": 7471,
+            "sha256": "d2101030d8e12af17139ecda2fd2bbc7b735981c88c7288a6de6ad340955836a"
+          },
+          "before": null,
+          "path": "program/python-core-3.12.16/lib/__pycache__/copyreg.cpython-312.pyc"
+        },
+        {
+          "after": {
+            "bytes": 80416,
+            "sha256": "c94fa564f0e8fe33674fa621697917c323dea963db4c075139cf292af511dc29"
+          },
+          "before": null,
+          "path": "program/python-core-3.12.16/lib/__pycache__/enum.cpython-312.pyc"
+        },
+        {
+          "after": {
+            "bytes": 40414,
+            "sha256": "f5969a8b9793e0af99643155f21d33296ee344e8ceb6b1f3443307125b70647c"
+          },
+          "before": null,
+          "path": "program/python-core-3.12.16/lib/__pycache__/functools.cpython-312.pyc"
+        },
+        {
+          "after": {
+            "bytes": 1113,
+            "sha256": "4f4480d74e474ef93124961285a311b7f7fa6987c3ac98f7ec690be9b8447c06"
+          },
+          "before": null,
+          "path": "program/python-core-3.12.16/lib/__pycache__/keyword.cpython-312.pyc"
+        },
+        {
+          "after": {
+            "bytes": 6621,
+            "sha256": "2448f680b47ace80f8ee72671fec6dcc267ffdc64d1ec32958801ba3b14cec1a"
+          },
+          "before": null,
+          "path": "program/python-core-3.12.16/lib/__pycache__/linecache.cpython-312.pyc"
+        },
+        {
+          "after": {
+            "bytes": 17424,
+            "sha256": "2aa5271f4e930f813c1568b70e6c6597144199d036aec56be2fb16871ad2f38f"
+          },
+          "before": null,
+          "path": "program/python-core-3.12.16/lib/__pycache__/operator.cpython-312.pyc"
+        },
+        {
+          "after": {
+            "bytes": 10298,
+            "sha256": "de4d7c8345b0c99d09ee19dd16baf7e027e506f810e0e7111fc2f5654b43f24d"
+          },
+          "before": null,
+          "path": "program/python-core-3.12.16/lib/__pycache__/reprlib.cpython-312.pyc"
+        },
+        {
+          "after": {
+            "bytes": 26175,
+            "sha256": "0d63c42d9e3a9abec186fd75fcc8cfcc2625517413e0b3a712ec1d2d558e9048"
+          },
+          "before": null,
+          "path": "program/python-core-3.12.16/lib/__pycache__/selectors.cpython-312.pyc"
+        },
+        {
+          "after": {
+            "bytes": 42017,
+            "sha256": "3b0c3cffdfa11de0537e24b9243c7e8941415ffde03c0a48ae45e43d3c1e8690"
+          },
+          "before": null,
+          "path": "program/python-core-3.12.16/lib/__pycache__/socket.cpython-312.pyc"
+        },
+        {
+          "after": {
+            "bytes": 18352,
+            "sha256": "ddc7e7f5aae7bbaf9dc4c84f5b5f8c9eae1b6c9634f0ac7037ef4210062ca05d"
+          },
+          "before": null,
+          "path": "program/python-core-3.12.16/lib/__pycache__/textwrap.cpython-312.pyc"
+        },
+        {
+          "after": {
+            "bytes": 3641,
+            "sha256": "7ca8b7d034ac02198d5092836f44c0dfdd20da39f542f0b54832654f5e3af0ba"
+          },
+          "before": null,
+          "path": "program/python-core-3.12.16/lib/__pycache__/token.cpython-312.pyc"
+        },
+        {
+          "after": {
+            "bytes": 25448,
+            "sha256": "10fb1c601f0e675dd34863f0f49de2cce526daee6b86d61fff1d141cbf505068"
+          },
+          "before": null,
+          "path": "program/python-core-3.12.16/lib/__pycache__/tokenize.cpython-312.pyc"
+        },
+        {
+          "after": {
+            "bytes": 51539,
+            "sha256": "ae1b398b44b0d60458f0ee95c1451d965366688fe001c0878d0d2b2e3e8b4d12"
+          },
+          "before": null,
+          "path": "program/python-core-3.12.16/lib/__pycache__/traceback.cpython-312.pyc"
+        },
+        {
+          "after": {
+            "bytes": 15017,
+            "sha256": "6817ff5ce870441cc382111dcc1387b4abf48df19a26966287572520ce0ca97b"
+          },
+          "before": null,
+          "path": "program/python-core-3.12.16/lib/__pycache__/types.cpython-312.pyc"
+        },
+        {
+          "after": {
+            "bytes": 23899,
+            "sha256": "adca0458a6d143a435a59e735c13f17e6859cad7882c55e8d178c4f7703b191b"
+          },
+          "before": null,
+          "path": "program/python-core-3.12.16/lib/__pycache__/warnings.cpython-312.pyc"
+        },
+        {
+          "after": {
+            "bytes": 73009,
+            "sha256": "7001aa32bec4996753dfc6c766f755a730717e67ad7ac96a12475fa0e0db5a37"
+          },
+          "before": null,
+          "path": "program/python-core-3.12.16/lib/collections/__pycache__/__init__.cpython-312.pyc"
+        },
+        {
+          "after": {
+            "bytes": 321,
+            "sha256": "87491cb767aa1060510c31508557aa022b91072885d4826b8de90b11ebee5e74"
+          },
+          "before": null,
+          "path": "program/python-core-3.12.16/lib/collections/__pycache__/abc.cpython-312.pyc"
+        },
+        {
+          "after": {
+            "bytes": 5847,
+            "sha256": "d515f6e9de1e9b5e4db47551096d08ef697ca9adafb605e1993e2e297889b5b6"
+          },
+          "before": null,
+          "path": "program/python-core-3.12.16/lib/encodings/__pycache__/__init__.cpython-312.pyc"
+        },
+        {
+          "after": {
+            "bytes": 12480,
+            "sha256": "9f0ead2214974b0ec3257adc3ab2ec25d93a348b88fd7e2b94fd9414f041a48e"
+          },
+          "before": null,
+          "path": "program/python-core-3.12.16/lib/encodings/__pycache__/aliases.cpython-312.pyc"
+        },
+        {
+          "after": {
+            "bytes": 3206,
+            "sha256": "e66ae2cbc79ecd19ce48f4a5b2ba97cfb3283480be738c782b61a522e30e3ad6"
+          },
+          "before": null,
+          "path": "program/python-core-3.12.16/lib/encodings/__pycache__/cp1252.cpython-312.pyc"
+        },
+        {
+          "after": {
+            "bytes": 2219,
+            "sha256": "11ce948582314ba68e1f20bcb7d456738e0fa8a50de783246a2e3d0a0fcd7b14"
+          },
+          "before": null,
+          "path": "program/python-core-3.12.16/lib/encodings/__pycache__/utf_8.cpython-312.pyc"
+        },
+        {
+          "after": {
+            "bytes": 18002,
+            "sha256": "cc3aec1ea82b96305886a57e20495b27f47961dfdd5b432fe036739a61d6736a"
+          },
+          "before": null,
+          "path": "program/python-core-3.12.16/lib/re/__pycache__/__init__.cpython-312.pyc"
+        },
+        {
+          "after": {
+            "bytes": 1888,
+            "sha256": "23d572aa547822ab81c907b36e6237948efd78439c3671fb0c949c0d070cac5b"
+          },
+          "before": null,
+          "path": "program/python-core-3.12.16/lib/re/__pycache__/_casefix.cpython-312.pyc"
+        },
+        {
+          "after": {
+            "bytes": 26566,
+            "sha256": "457013d040b1f67c86e299e0b7570d23087f690093a1ad8b448bd50ce7178a68"
+          },
+          "before": null,
+          "path": "program/python-core-3.12.16/lib/re/__pycache__/_compiler.cpython-312.pyc"
+        },
+        {
+          "after": {
+            "bytes": 5375,
+            "sha256": "42b28fc8418a14b4844093c2800b25a8a2049b0ff5cdfdfb8543d3a2664efca4"
+          },
+          "before": null,
+          "path": "program/python-core-3.12.16/lib/re/__pycache__/_constants.cpython-312.pyc"
+        },
+        {
+          "after": {
+            "bytes": 42019,
+            "sha256": "969f4bf99795f595f48f4767af1b7c398cd7893a26cf610ce5f6cd700ed4235f"
+          },
+          "before": null,
+          "path": "program/python-core-3.12.16/lib/re/__pycache__/_parser.cpython-312.pyc"
+        },
+        {
+          "after": {
+            "bytes": 6720,
+            "sha256": "548ada752d19ca24783f4a819fb0ee02822437b8c400a371c9a884733203309f"
+          },
+          "before": null,
+          "path": "share/extensions/dict-en/pythonpath/__pycache__/lightproof_handler_en.cpython-312.pyc"
+        },
+        {
+          "after": {
+            "bytes": 18268,
+            "sha256": "572a5fcc7c94ae02fd7547e05022804d1a24e07702b36561c78557979f5cc675"
+          },
+          "before": null,
+          "path": "share/extensions/dict-en/pythonpath/__pycache__/lightproof_impl_en.cpython-312.pyc"
+        },
+        {
+          "after": {
+            "bytes": 461,
+            "sha256": "06af0cfba6455e1d3c32d3135a97882892e44c3e8247f25619bdcb97ea49b015"
+          },
+          "before": null,
+          "path": "share/extensions/dict-en/pythonpath/__pycache__/lightproof_opts_en.cpython-312.pyc"
+        },
+        {
+          "after": {
+            "bytes": 6729,
+            "sha256": "1b1396ab3c90d97d186e07a01b08d76ab6973e243bb3d9043d1f9a8d24c2e3ef"
+          },
+          "before": null,
+          "path": "share/extensions/dict-hu/pythonpath/__pycache__/lightproof_handler_hu_HU.cpython-312.pyc"
+        },
+        {
+          "after": {
+            "bytes": 14813,
+            "sha256": "290f8285e9aabba5043fe5b70f73c302cf41868368a80484065e6d43967e627b"
+          },
+          "before": null,
+          "path": "share/extensions/dict-hu/pythonpath/__pycache__/lightproof_impl_hu_HU.cpython-312.pyc"
+        },
+        {
+          "after": {
+            "bytes": 545,
+            "sha256": "09f6d32c45053697765a9900debdd782061c9bc88c0e9bb0e4752fac228067a4"
+          },
+          "before": null,
+          "path": "share/extensions/dict-hu/pythonpath/__pycache__/lightproof_opts_hu_HU.cpython-312.pyc"
+        },
+        {
+          "after": {
+            "bytes": 6703,
+            "sha256": "2f39e71aea68f2fab18b21f2c4d4bda29491067e0ff9b1ed3c4303fa253b10ae"
+          },
+          "before": null,
+          "path": "share/extensions/dict-pt-BR/pythonpath/__pycache__/lightproof_handler_pt_BR.cpython-312.pyc"
+        },
+        {
+          "after": {
+            "bytes": 659,
+            "sha256": "54147788590b0c693e25a2ba298fc5fae17ffd6fcaf820b4d6eeed23f47fefc2"
+          },
+          "before": null,
+          "path": "share/extensions/dict-pt-BR/pythonpath/__pycache__/lightproof_opts_pt_BR.cpython-312.pyc"
+        },
+        {
+          "after": {
+            "bytes": 6729,
+            "sha256": "8d8e5dcbcacf84b2390b0776d845c30509828a1dedcdc1b91bd4d09b641119bd"
+          },
+          "before": null,
+          "path": "share/extensions/dict-ru/pythonpath/__pycache__/lightproof_handler_ru_RU.cpython-312.pyc"
+        },
+        {
+          "after": {
+            "bytes": 10925,
+            "sha256": "7f2f085726f5516624416c857bd1022ebeaad2665802c04ce8a1505b266403d6"
+          },
+          "before": null,
+          "path": "share/extensions/dict-ru/pythonpath/__pycache__/lightproof_impl_ru_RU.cpython-312.pyc"
+        },
+        {
+          "after": {
+            "bytes": 463,
+            "sha256": "f9cb911f07efdb8381a50dfea25596236de2e63508cba0c3f26a6b541ef8da69"
+          },
+          "before": null,
+          "path": "share/extensions/dict-ru/pythonpath/__pycache__/lightproof_opts_ru_RU.cpython-312.pyc"
+        }
+      ],
+      "added_count": 42,
+      "after_files": 19529,
+      "after_inventory_sha256": "2069083844a775d789ea237b46a73e63d1a026bccf393bc7d4a1d53ceeeb7c35",
+      "before_files": 19487,
+      "changed": [],
+      "changed_count": 0,
+      "diagnostic_rows_per_kind_limit": 64,
+      "removed": [],
+      "removed_count": 0
+    }
+  },
+  "diagnosis": "The selected LibreOffice 26.2.7 embedded Python 3.12 created 42 .pyc cache files. No original runtime file was removed or changed. The complete runtime inventory refusal is retained.",
+  "repair": [
+    "The existing office native-child environment allowlist supplies a fixed PYTHONDONTWRITEBYTECODE=1 after stripping unselected environment configuration.",
+    "The public synthetic legacy-fixture export subprocess receives the same fixed flag so qualification fixture creation also leaves the selected runtime unchanged.",
+    "The existing environment-boundary regression poisons the inherited flag and additional Python path variables, then requires the fixed flag and refusal of foreign Python configuration."
+  ],
+  "preserved": [
+    "Exact selected runtime and held component identities",
+    "Whole-runtime before/after file inventory comparison, including any added .pyc files",
+    "Owned process-family settlement and private stage/profile cleanup",
+    "Inactive-content and macro-disabled profile",
+    "All seven native Office cases in both source and installed modes",
+    "All existing portable test identities and counts"
+  ],
+  "primary_sources": [
+    {
+      "url": "https://github.com/LibreOffice/core/blob/libreoffice-26.2.7.2/pyuno/source/loader/pyuno_loader.cxx",
+      "git_blob": "b3a16ce2b42234c6104503d658002f3d2b761d8c",
+      "finding": "pythonInit uses PyConfig_InitPythonConfig and Py_InitializeFromConfig without disabling environment configuration; it does not force write_bytecode=1."
+    },
+    {
+      "url": "https://docs.python.org/3.12/c-api/init_config.html",
+      "finding": "Python configuration uses environment variables by default and PYTHONDONTWRITEBYTECODE sets write_bytecode=0."
+    },
+    {
+      "url": "https://docs.python.org/3.12/using/cmdline.html#envvar-PYTHONDONTWRITEBYTECODE",
+      "finding": "A nonempty value disables writing .pyc on imports."
+    }
+  ],
+  "qualification": {
+    "required_source_native_cases": 7,
+    "required_installed_native_cases": 7,
+    "status": "NOT_RUN",
+    "portable_regression": "tests/conversion/test_office_selection.py::test_native_launch_keeps_existing_owner_and_scrubs_unselected_configuration",
+    "test_identity_change": false,
+    "main_workflow_changed": false
+  },
+  "limitations": [
+    "The previous seven source and seven installed functional conversions do not make the failed whole-runtime integrity gate pass.",
+    "The environment fix must still pass fresh native execution and the unchanged complete runtime inventory comparison."
+  ]
+}

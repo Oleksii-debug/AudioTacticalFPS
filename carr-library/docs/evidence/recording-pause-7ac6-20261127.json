@@ -1,0 +1,21 @@
+{
+  "schema": "resonance-native-recording-pause-acceptance/1",
+  "status": "PASS",
+  "source_commit": "7ac6cec1e08bf544a50f17ebe4afdf0c13a1f440",
+  "source_tree": "85d8ed4187db79656192580012c74515b014717a",
+  "run_id": 45960506050,
+  "job_id": 140376949230,
+  "artifact_id": 15180398342,
+  "artifact_sha256": "ba9f4f2624c32192d0b580796f8a6e35bed0980349c206c2b9885813929c0d2b",
+  "strict_source_cases": 115,
+  "source_failed": 0,
+  "source_skipped": 0,
+  "native_named_checks": 50,
+  "actual_ffmpeg_synthetic_capture": true,
+  "actual_native_keys": true,
+  "physical_microphone": "NOT_RUN",
+  "physical_monitor_output": "NOT_RUN",
+  "audio_listening": "NOT_RUN",
+  "nvda": "NOT_RUN",
+  "scope": "Bounded device-closing pause/resume over the current owned FFmpeg process and PCM monitor; synthetic input and real installed Windows keyboard controls. This is component evidence, not full V3 release qualification."
+}

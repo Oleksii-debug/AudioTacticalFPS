@@ -8,6 +8,8 @@ import stat
 import tempfile
 import time
 
+from .file_publication import publish_directory_no_replace
+
 MAX_JSON_BYTES = 32 * 1024 * 1024
 
 
@@ -68,15 +70,11 @@ def _unique(pairs):
 
 
 def read_json(path):
-    path = local_path(path, exists=True)
-    if regular(path).st_size > MAX_JSON_BYTES:
-        raise ValueError('State exceeds its configured JSON budget.')
-    with path.open('rb') as stream:
-        raw = stream.read(MAX_JSON_BYTES + 1)
-    if len(raw) > MAX_JSON_BYTES:
-        raise ValueError('State grew beyond its JSON budget.')
-    return json.loads(raw.decode('utf-8'), object_pairs_hook=_unique,
-                      parse_constant=lambda _: (_ for _ in ()).throw(ValueError('Non-finite state number.')))
+    # Keep this public API and its 32 MiB budget while sharing the reviewed
+    # coherent-snapshot reader used by other live application state.
+    from .audio import jobs
+    local_path(path, exists=True)
+    return jobs.read_json(Path(path), limit=MAX_JSON_BYTES)
 
 
 def sync_directory(path):
@@ -97,16 +95,21 @@ def _replace_state(temporary, path):
     denial or an unrelated filesystem error still fails without truncating the
     old state. In particular, never fall back to unlinking the destination.
     """
+    # Keep the current checked native publisher, including its durable-commit
+    # handling. Retry only a publication that has not completed.
+    from .audio import jobs
+
     delays = iter((0.01, 0.02, 0.04, 0.08, 0.16, 0.32))
     while True:
         try:
-            os.replace(temporary, path)
+            jobs._replace_state_file(temporary, path)
             return
         except PermissionError as exc:
             delay = next(delays, None)
             if getattr(exc, 'winerror', None) not in (5, 32, 33) or delay is None:
                 raise
             time.sleep(delay)
+
 
 
 def atomic_bytes(path, raw, *, replace=False):
@@ -127,9 +130,9 @@ def atomic_bytes(path, raw, *, replace=False):
         if replace:
             _replace_state(temporary, path)
         else:
-            # link is the portable same-filesystem no-replace publication primitive.
-            os.link(temporary, path)
-            temporary.unlink()
+            # The shared exclusive rename also accepts a staged regular file.
+            # A crash cannot leave a second hardlink to the committed state.
+            publish_directory_no_replace(temporary, path)
         sync_directory(path.parent)
     finally:
         temporary.unlink(missing_ok=True)

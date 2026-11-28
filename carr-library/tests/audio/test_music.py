@@ -1,352 +1,238 @@
-"""Actual local composition, MIDI interchange and model installation gates."""
 from array import array
-from dataclasses import replace
 import hashlib
 import json
-import math
 from pathlib import Path
-import shutil
+import struct
 import sys
 import wave
 
 import pytest
 
-from carr_library.audio import (AudioCancelled, AudioRuntime, AudioUnavailable,
-                               LocalModelConfig, MusicSpec)
-from carr_library.audio.music import MUSICGEN_REVISION, validate_model
+from carr_library.audio.engines import EngineUnavailable
+from carr_library.audio.runtime import resolve_ffmpeg
+from carr_library.audio.music import (_wave_frames, generate_music, music_capabilities,
+                                      render_music)
 
 
-HAS_FFMPEG = bool(shutil.which('ffmpeg') and shutil.which('ffprobe'))
-requires_ffmpeg = pytest.mark.skipif(not HAS_FFMPEG, reason='Actual local FFmpeg and ffprobe are required.')
+@pytest.fixture
+def ffmpeg():
+    executable = resolve_ffmpeg()
+    if not executable:
+        pytest.skip('Actual local music tests require FFmpeg.')
+    return Path(executable).resolve()
 
 
-def pcm(path):
-    with wave.open(str(path), 'rb') as stream:
-        assert stream.getsampwidth() == 2
-        values = array('h')
-        values.frombytes(stream.readframes(stream.getnframes()))
+def digest(path):
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def test_actual_procedural_score_is_exact_reproducible_audio_with_midi(tmp_path, ffmpeg):
+    settings = dict(duration=3.25, mood='suspense', tempo=91, seed=62, ffmpeg=ffmpeg)
+    first = render_music(tmp_path/'first.wav', **settings)
+    second = render_music(tmp_path/'second.wav', **settings)
+    assert first['frames'] == 156000
+    assert digest(first['path']) == digest(second['path'])
+    assert first['midi'].read_bytes() == second['midi'].read_bytes()
+    midi = first['midi'].read_bytes()
+    assert midi[:14] == b'MThd' + struct.pack('>IHHH', 6, 0, 1, 480)
+    assert struct.unpack('>I', midi[18:22])[0] == len(midi)-22
+    assert midi.endswith(b'\xff\x2f\x00')
+    assert b'\xff\x51\x03' + round(60_000_000 / 91).to_bytes(3, 'big') in midi
+    assert b'\xc0\x04' in midi and b'\xc1\x58' in midi  # current two-channel instrument choices
+    assert b'\x90' in midi and b'\x80' in midi
+    with wave.open(str(first['path']), 'rb') as audio:
+        assert audio.getnchannels() == 1 and audio.getsampwidth() == 2
+        assert audio.getframerate() == 48000 and audio.getnframes() == 156000
+        samples = array('h', audio.readframes(audio.getnframes()))
         if sys.byteorder != 'little':
-            values.byteswap()
-        return values, stream.getframerate(), stream.getnchannels()
+            samples.byteswap()
+        assert 50 < max(abs(sample) for sample in samples) < 16000
+    provenance = json.loads(first['manifest'].read_text())
+    assert provenance['engine'] == 'procedural'
+    assert 'not neural' not in provenance['kind']  # the actual kind is already explicit
+    assert provenance['kind'] == 'procedural original notes / FFmpeg sine synthesis'
+    assert provenance['sha256'] == digest(first['path'])
 
 
-@requires_ffmpeg
-def test_real_local_instrumental_is_non_silent_reproducible_and_seeded(tmp_path):
-    runtime = AudioRuntime(tmp_path)
-    spec = MusicSpec(duration=4, mood='suspense', tempo=100, seed=42)
-    first = runtime.render_music(spec, 'first.wav')
-    second = runtime.render_music(spec, 'second.wav')
-    changed = runtime.render_music(replace(spec, seed=43), 'changed.wav')
-    assert first.sha256 == second.sha256 and changed.sha256 != first.sha256
-    values, rate, channels = pcm(first.path)
-    assert (rate, channels, len(values)) == (24000, 2, 4 * 24000 * 2)
-    assert max(map(abs, values)) > 3000
-    assert max(map(abs, values)) < 30000
-    assert values[0] == values[1] == 0
-    assert max(map(abs, values[-100:])) < 30  # measured fade to silence
-    assert runtime.measure(first.path).integrated_lufs is not None
+def test_actual_changed_seed_changes_composition(tmp_path, ffmpeg):
+    first = generate_music(tmp_path/'first.wav', duration=4, seed=1, ffmpeg=ffmpeg)
+    second = generate_music(tmp_path/'second.wav', duration=4, seed=2, ffmpeg=ffmpeg)
+    assert digest(first) != digest(second)
 
 
-@requires_ffmpeg
-@pytest.mark.parametrize('mood', ['calm', 'suspense', 'hopeful', 'sad', 'energetic'])
-def test_all_documented_local_music_moods_render_actual_pcm(tmp_path, mood):
-    runtime = AudioRuntime(tmp_path)
-    result = runtime.render_music(MusicSpec(duration=1, mood=mood, key='F#', seed=7), 'music.wav')
-    values, _, _ = pcm(result.path)
-    assert result.frames == 24000
-    assert math.sqrt(sum(value * value for value in values) / len(values)) > 500
+def test_actual_cancel_resume_reuses_verified_chunk_and_recovers_corruption(tmp_path, ffmpeg):
+    target = tmp_path/'resumable.wav'
+    cancelled = False
+    def progress(message):
+        nonlocal cancelled
+        cancelled = True
+    options = dict(duration=20, sample_rate=8000, tempo=120, seed=13, ffmpeg=ffmpeg)
+    with pytest.raises(InterruptedError):
+        render_music(target, **options, cancelled=lambda: cancelled, on_status=progress)
+    assert not target.exists()
+    state = tmp_path/'resumable.music-work'/'state.json'
+    value = json.loads(state.read_text())
+    assert len(value['chunks']) == 1
+    original = (state.parent/'part-00000000.wav').read_bytes()
+    finished = render_music(target, **options)
+    assert finished['provenance']['reused_chunks'] == 1
+    assert (state.parent/'part-00000000.wav').read_bytes() == original
+    # Simulate a lost final publication followed by a corrupt accepted chunk.
+    target.unlink()
+    target.with_suffix('.mid').unlink()
+    target.with_suffix('.music.json').unlink()
+    (state.parent/'part-00000000.wav').write_bytes(b'corrupted checkpoint')
+    repaired = render_music(target, **options)
+    assert repaired['provenance']['reused_chunks'] == 2
+    assert (state.parent/'part-00000000.wav').read_bytes() == original
 
 
-@requires_ffmpeg
-@pytest.mark.parametrize('name', ['door', 'click', 'chime', 'noise'])
-def test_procedural_sound_cues_produce_real_pcm_and_exact_duration(tmp_path, name):
-    runtime = AudioRuntime(tmp_path)
-    result = runtime.render_sound(name, name + '.wav', duration=.75, seed=123)
-    values, _, _ = pcm(result.path)
-    assert result.frames == 18000
-    assert max(map(abs, values)) > 500
-    assert max(map(abs, values)) < 30000
+def test_actual_more_than_ten_minutes_has_no_total_duration_ceiling(tmp_path, ffmpeg):
+    result = render_music(tmp_path/'extended.wav', duration=601.125, sample_rate=8000,
+                          mood='calm', tempo=30, seed=91, ffmpeg=ffmpeg)
+    assert result['frames'] == 4_809_000
+    assert _wave_frames(result['path'])['frames'] == 4_809_000
+    assert result['provenance']['chunks'] == 19
+    assert 'neural' not in result['provenance']['kind']
 
 
-@requires_ffmpeg
-def test_midi_export_contains_tempo_instruments_notes_and_exact_end(tmp_path):
-    runtime = AudioRuntime(tmp_path)
-    spec = MusicSpec(duration=4, tempo=120, seed=10)
-    path = runtime.export_midi(spec, 'композиція.mid')
-    data = path.read_bytes()
-    assert data.startswith(b'MThd\x00\x00\x00\x06\x00\x00\x00\x01\x01\xe0MTrk')
-    assert int.from_bytes(data[18:22], 'big') == len(data) - 22
-    assert b'\xff\x51\x03\x07\xa1\x20' in data  # 120 BPM
-    assert b'\xc0\x0b' in data and b'\xc1\x20' in data
-    assert b'\x90' in data and b'\x80' in data and data.endswith(b'\xff\x2f\x00')
+def test_actual_output_and_companions_cannot_be_overwritten(tmp_path, ffmpeg):
+    target = generate_music(tmp_path/'once.wav', duration=.5, ffmpeg=ffmpeg)
+    previous = target.read_bytes()
     with pytest.raises(FileExistsError):
-        runtime.export_midi(spec, path)
+        generate_music(target, duration=.5, ffmpeg=ffmpeg)
+    assert target.read_bytes() == previous
+    (tmp_path/'other.mid').write_bytes(b'owned by another project')
+    with pytest.raises(FileExistsError):
+        generate_music(tmp_path/'other.wav', duration=.5, ffmpeg=ffmpeg)
+    assert (tmp_path/'other.mid').read_bytes() == b'owned by another project'
+    assert not (tmp_path/'other.wav').exists()
 
 
-@requires_ffmpeg
-def test_music_cancel_never_publishes_and_unknown_sounds_never_execute(tmp_path):
-    runtime = AudioRuntime(tmp_path)
-    with pytest.raises(AudioCancelled):
-        runtime.render_music(MusicSpec(duration=2), 'never.wav', cancelled=lambda: True)
-    with pytest.raises(ValueError, match='Supported'):
-        runtime.render_sound('amovie=http://private', 'never.wav')
-    with pytest.raises(AudioCancelled):
-        runtime.export_midi(MusicSpec(duration=20), 'never.mid', cancelled=lambda: True)
-    assert not list(tmp_path.iterdir())
+def test_actual_resume_recovers_already_published_identical_companions(tmp_path, ffmpeg):
+    target = generate_music(tmp_path/'recovered.wav', duration=1, ffmpeg=ffmpeg)
+    expected = digest(target)
+    midi = target.with_suffix('.mid').read_bytes()
+    metadata = target.with_suffix('.music.json').read_bytes()
+    target.unlink()  # a completed companion publication with missing final WAV
+    result = render_music(target, duration=1, ffmpeg=ffmpeg)
+    assert digest(result['path']) == expected
+    assert result['provenance']['reused_chunks'] == 1
+    assert target.with_suffix('.mid').read_bytes() == midi
+    assert target.with_suffix('.music.json').read_bytes() == metadata
 
 
-@requires_ffmpeg
-@pytest.mark.parametrize('engine', ['midi', 'musicgen', 'ace-step'])
-def test_optional_music_engines_never_download_or_silently_fall_back(tmp_path, engine):
-    runtime = AudioRuntime(tmp_path)
-    with pytest.raises(AudioUnavailable):
-        runtime.render_music(MusicSpec(duration=2, engine=engine), 'never.wav')
-    assert not (tmp_path / 'never.wav').exists()
-    assert not next(item for item in runtime.music_capabilities() if item['engine'] == engine)['available']
+def test_changed_checkpoint_settings_need_new_destination(tmp_path, ffmpeg):
+    def stop(message):
+        raise InterruptedError('synthetic interruption')
+    with pytest.raises(InterruptedError):
+        render_music(tmp_path/'cue.wav', duration=1, ffmpeg=ffmpeg, on_status=stop)
+    with pytest.raises(ValueError, match='another score'):
+        render_music(tmp_path/'cue.wav', duration=1, seed=2, ffmpeg=ffmpeg)
 
 
-def model_fixture(tmp_path):
-    root = tmp_path / 'weights'
-    root.mkdir()
-    # Synthetic manifest-validation fixtures only: never inference weights.
-    files = {'state_dict.bin': b'synthetic state', 'compression_state_dict.bin': b'synthetic compression'}
-    for name, value in files.items():
-        (root / name).write_bytes(value)
-    data = {'schema': 1, 'engine': 'musicgen', 'code_revision': MUSICGEN_REVISION,
-            'weights_license': 'CC-BY-NC-4.0', 'noncommercial_only': True,
-            'output_rights_notice': 'Synthetic manifest fixture; no actual model or rights assertion.',
-            'files': {name: hashlib.sha256(value).hexdigest() for name, value in files.items()}}
-    manifest = tmp_path / 'reviewed-manifest.json'
-    manifest.write_text(json.dumps(data), encoding='utf-8')
-    return LocalModelConfig('musicgen', Path(sys.executable).resolve(), root, manifest), data
-
-
-def test_model_manifest_uses_exact_complete_file_hashes(tmp_path):
-    config, data = model_fixture(tmp_path)
-    assert validate_model(config)['engine'] == 'musicgen'
-    (config.directory / 'state_dict.bin').write_bytes(b'changed model')
-    with pytest.raises(ValueError, match='SHA256'):
-        validate_model(config)
-
-
-def test_model_inventory_rejects_additional_unreviewed_assets(tmp_path):
-    config, data = model_fixture(tmp_path)
-    (config.directory / 'unreviewed.py').write_text('raise SystemExit(9)', encoding='utf-8')
-    with pytest.raises(ValueError, match='inventory'):
-        validate_model(config)
-
-
-def test_musicgen_noncommercial_profile_is_enforced(tmp_path):
-    config, data = model_fixture(tmp_path)
-    with pytest.raises(ValueError, match='noncommercial'):
-        validate_model(replace(config, private_noncommercial=False))
-    data['weights_license'] = 'unreviewed'
-    config.manifest.write_text(json.dumps(data), encoding='utf-8')
-    with pytest.raises(ValueError, match='noncommercial'):
-        validate_model(config)
-
-
-def test_model_revision_and_output_rights_are_required(tmp_path):
-    config, data = model_fixture(tmp_path)
-    data['code_revision'] = 'latest'
-    config.manifest.write_text(json.dumps(data), encoding='utf-8')
-    with pytest.raises(ValueError, match='revision'):
-        validate_model(config)
-    data['code_revision'] = MUSICGEN_REVISION
-    data.pop('output_rights_notice')
-    config.manifest.write_text(json.dumps(data), encoding='utf-8')
-    with pytest.raises(ValueError, match='rights'):
-        validate_model(config)
-
-
-def test_neural_chunk_budget_is_distinct_from_project_duration():
-    # A long project is legal. Runtime neural chunks have explicit independent
-    # engine/resource budgets and are scheduled by the persistent director.
-    assert MusicSpec(duration=10 * 3600, engine='musicgen').duration == 36000
+@pytest.mark.parametrize('parameter,value', [('duration',float('nan')), ('duration',0),
+    ('tempo',0), ('gain',-1), ('seed',True), ('sample_rate',12345), ('mood','sine;amovie=https://invalid.test')])
+def test_untrusted_scene_settings_cannot_become_filters(tmp_path, ffmpeg, parameter, value):
+    settings = dict(duration=1, ffmpeg=ffmpeg)
+    settings[parameter] = value
     with pytest.raises(ValueError):
-        MusicSpec(duration=float('inf'))
-    with pytest.raises(ValueError):
-        MusicSpec(duration=1, tempo='120;http://private')
+        render_music(tmp_path/'invalid.wav', **settings)
+    assert not (tmp_path/'invalid.wav').exists()
 
 
-def test_model_verification_is_cancellable(tmp_path):
-    config, data = model_fixture(tmp_path)
-    with pytest.raises(AudioCancelled):
-        validate_model(config, cancelled=lambda: True)
+def test_models_and_disk_budgets_fail_before_generation(tmp_path, ffmpeg):
+    with pytest.raises(EngineUnavailable, match='manifest'):
+        render_music(tmp_path/'neural.wav', duration=1, engine='musicgen', ffmpeg=ffmpeg)
+    with pytest.raises(EngineUnavailable, match='manifest'):
+        render_music(tmp_path/'ace.wav', duration=1, engine='ace-step', ffmpeg=ffmpeg)
+    with pytest.raises(ValueError, match='disk budget'):
+        render_music(tmp_path/'large.wav', duration=100, ffmpeg=ffmpeg, max_output_bytes=10)
+    assert not list(tmp_path.glob('*.wav'))
+    capability = next(x for x in music_capabilities() if x['engine'] == 'musicgen')
+    assert capability['implemented'] is True
+    assert 'must be verified' in capability['acceptance']
 
 
-@requires_ffmpeg
-def test_configured_model_assets_are_not_claimed_as_verified_inference(tmp_path):
-    config, data = model_fixture(tmp_path)
-    runtime = AudioRuntime(tmp_path)
-    runtime.configure_music_model(config)
-    state = next(row for row in runtime.music_capabilities() if row['engine'] == 'musicgen')
-    assert state['configured'] and state['assets_verified']
-    assert state['runtime_probed'] is False
-    assert state['runtime_code_verified'] is False
-    assert state['inference_tested'] is False
-    assert state['available'] is False
-    with pytest.raises(AudioUnavailable, match='runtime_code_files'):
-        runtime.probe_music_model('musicgen')
-    with pytest.raises(AudioUnavailable, match='runtime_code_files'):
-        runtime.render_music(MusicSpec(duration=1, engine='musicgen'), 'never.wav')
-    assert not (tmp_path / 'never.wav').exists()
+def test_rf64_parser_validates_large_frame_count_without_reading_audio(tmp_path):
+    # Sparse PCM fixture, not a claim of generated multi-hour neural music.
+    frames = 2_200_000_000
+    data_bytes = frames * 2
+    path = tmp_path/'sparse-rf64.wav'
+    with path.open('wb') as stream:
+        stream.write(b'RF64\xff\xff\xff\xffWAVE')
+        stream.write(b'ds64' + struct.pack('<IQQQI',28,data_bytes+72,data_bytes,frames,0))
+        stream.write(b'fmt ' + struct.pack('<IHHIIHH',16,1,1,48000,96000,2,16))
+        stream.write(b'data\xff\xff\xff\xff')
+        stream.seek(data_bytes-1,1)
+        stream.write(b'\x00')
+    assert _wave_frames(path)['frames'] == frames
+    with path.open('r+b') as stream:
+        stream.truncate(100)
+    with pytest.raises(ValueError, match='truncated'):
+        _wave_frames(path)
 
 
-def test_changed_reviewed_manifest_requires_explicit_reconfiguration(tmp_path):
-    from types import SimpleNamespace
-    from carr_library.audio.music import configure_model, probe_model
-
-    config, data = model_fixture(tmp_path)
-    runtime = SimpleNamespace(music_models={}, music_model_status={})
-    configure_model(runtime, config)
-    status = runtime.music_model_status['musicgen']
-    # Simulate previously recorded evidence; no real inference is asserted.
-    status.update(runtime_probed=True, runtime_code_verified=True, inference_tested=True)
-    changed = b'new synthetic checkpoint'
-    (config.directory / 'state_dict.bin').write_bytes(changed)
-    data['files']['state_dict.bin'] = hashlib.sha256(changed).hexdigest()
-    config.manifest.write_text(json.dumps(data), encoding='utf-8')
-    assert validate_model(config)['files'] == data['files']
-    with pytest.raises(ValueError, match='manifest changed'):
-        probe_model(runtime, 'musicgen')
-    assert not any(status.values())
-    configure_model(runtime, config)
-    assert runtime.music_model_status['musicgen']['assets_verified']
-    assert not runtime.music_model_status['musicgen']['inference_tested']
+def test_actual_graph_file_handles_unicode_and_spaces_without_leaving_temporary_input(tmp_path, ffmpeg):
+    folder = tmp_path / 'Музична сцена with spaces'
+    folder.mkdir()
+    output = folder / 'Готова музика.wav'
+    result = render_music(output, duration=1.25, mood='calm', tempo=90, seed=62, ffmpeg=ffmpeg)
+    assert result['frames'] == 60000
+    with wave.open(str(output), 'rb') as audio:
+        assert audio.getnframes() == 60000 and audio.getframerate() == 48000
+    assert not list(folder.rglob('*.filters'))
 
 
-def test_failed_reprobe_invalidates_previous_music_inference_evidence(tmp_path):
-    from types import SimpleNamespace
-    from carr_library.audio.music import configure_model, probe_model
-
-    config, _ = model_fixture(tmp_path)
-    runtime = SimpleNamespace(music_models={}, music_model_status={})
-    configure_model(runtime, config)
-    status = runtime.music_model_status['musicgen']
-    status.update(runtime_probed=True, runtime_code_verified=True, inference_tested=True)
-    # Asset identity is unchanged, but the code inventory cannot be verified.
-    with pytest.raises(AudioUnavailable, match='runtime_code_files'):
-        probe_model(runtime, 'musicgen')
-    assert status['assets_verified']
-    assert not status['runtime_probed']
-    assert not status['runtime_code_verified']
-    assert not status['inference_tested']
-    (config.directory / 'state_dict.bin').write_bytes(b'corrupt')
-    with pytest.raises(ValueError, match='SHA256'):
-        probe_model(runtime, 'musicgen')
-    assert not any(status.values())
-
-
-@pytest.mark.parametrize('python_only', [False, True])
-def test_music_inventory_rejects_unreadable_subtree(tmp_path, monkeypatch, python_only):
-    from carr_library.audio import music
+def test_music_stage_budget_refuses_hidden_unreadable_generated_files(tmp_path, monkeypatch):
+    from carr_library.audio import model_manifest, music
 
     hidden = tmp_path / 'unreadable'
     hidden.mkdir()
-    (hidden / 'unlisted.py').write_text('pass', encoding='utf-8')
-    original = music.os.scandir
-
+    (hidden / 'unlisted.bin').write_bytes(b'synthetic output')
+    scan = model_manifest.os.scandir
     def denied(path):
         if Path(path) == hidden:
-            raise PermissionError('synthetic enumeration failure')
-        return original(path)
+            raise PermissionError('synthetic-private-stage-detail')
+        return scan(path)
+    monkeypatch.setattr(model_manifest.os, 'scandir', denied)
+    with pytest.raises(model_manifest.ModelManifestError, match='inventory is unreadable or incomplete'):
+        music._stage_budget(tmp_path, lambda: False)
 
-    monkeypatch.setattr(music.os, 'scandir', denied)
-    with pytest.raises(ValueError, match='inventory is unreadable'):
-        music._inventory(tmp_path, cancelled=lambda: False, python_only=python_only)
+
+def test_music_cache_refuses_unreadable_code_before_starting_worker(tmp_path, monkeypatch):
+    from types import SimpleNamespace
+    from carr_library.audio import model_manifest, music
+
+    cache = tmp_path / 'hf-cache'
+    hidden = cache / 'unreadable'
+    hidden.mkdir(parents=True)
+    (hidden / 'unlisted.PY').write_bytes(b'# synthetic code')
+    scan = model_manifest.os.scandir
+    def denied(path):
+        if Path(path) == hidden:
+            raise PermissionError('synthetic-private-cache-detail')
+        return scan(path)
+    monkeypatch.setattr(model_manifest.os, 'scandir', denied)
+    monkeypatch.setattr(music, '_run', lambda *args, **kwargs: pytest.fail('Unverified cache cannot start a worker.'))
+    profile = SimpleNamespace(root=tmp_path, files=(),
+        settings={'source_revision': music.MUSICGEN_SOURCE, 'python': 'selected-python'},
+        asset=lambda name: Path(sys.executable))
+    with pytest.raises(model_manifest.ModelManifestError, match='inventory is unreadable or incomplete'):
+        music._render_musicgen_chunk(tmp_path / 'never.wav', frame_count=8000,
+            sample_rate=8000, mood='calm', tempo=90, seed=1, gain=.5,
+            ffmpeg='never-started', manifest=profile, previous=None, cancelled=lambda: False)
+    assert not (tmp_path / 'never.wav').exists()
 
 
-@pytest.mark.parametrize('python_only', [False, True])
-def test_music_inventory_bounds_all_entries_and_checks_cancellation(tmp_path, monkeypatch, python_only):
+def test_music_stage_cancellation_remains_boolean_during_inventory(tmp_path):
     from carr_library.audio import music
 
-    for index in range(4):
-        (tmp_path / f'empty-{index}').mkdir()
-    monkeypatch.setattr(music, '_MAX_INVENTORY_ENTRIES', 3)
-    with pytest.raises(ValueError, match='entry limit'):
-        music._inventory(tmp_path, cancelled=lambda: False, python_only=python_only)
-    monkeypatch.setattr(music, '_MAX_INVENTORY_ENTRIES', 100)
+    (tmp_path / 'generated.wav').write_bytes(b'synthetic')
     calls = 0
-
     def cancelled():
         nonlocal calls
         calls += 1
-        return calls == 3
-
-    with pytest.raises(AudioCancelled):
-        music._inventory(tmp_path, cancelled=cancelled, python_only=python_only)
-    assert calls == 3
-
-
-def test_unreadable_model_subtree_invalidates_configured_music_evidence(tmp_path, monkeypatch):
-    from types import SimpleNamespace
-    from carr_library.audio import music
-
-    config, _ = model_fixture(tmp_path)
-    runtime = SimpleNamespace(music_models={}, music_model_status={})
-    music.configure_model(runtime, config)
-    status = runtime.music_model_status['musicgen']
-    status.update(runtime_probed=True, runtime_code_verified=True, inference_tested=True)
-    hidden = config.directory / 'unreadable'
-    hidden.mkdir()
-    (hidden / 'unlisted.bin').write_bytes(b'synthetic')
-    original = music.os.scandir
-
-    def denied(path):
-        if Path(path) == hidden:
-            raise PermissionError('synthetic enumeration failure')
-        return original(path)
-
-    monkeypatch.setattr(music.os, 'scandir', denied)
-    with pytest.raises(ValueError, match='inventory is unreadable'):
-        music.probe_model(runtime, 'musicgen')
-    assert not any(status.values())
-
-
-def test_unreadable_runtime_subtree_invalidates_music_inference(tmp_path, monkeypatch):
-    from types import SimpleNamespace
-    from carr_library.audio import music
-
-    config, data = model_fixture(tmp_path)
-    package = tmp_path / 'audiocraft'
-    package.mkdir()
-    source = package / '__init__.py'
-    source.write_bytes(b'# synthetic source')
-    records = {source.name: hashlib.sha256(source.read_bytes()).hexdigest()}
-    data['runtime_code_files'] = records
-    config.manifest.write_text(json.dumps(data), encoding='utf-8')
-    monkeypatch.setitem(music._REVIEWED_ENTRYPOINTS, 'musicgen', records)
-    monkeypatch.setattr(music, 'run_process', lambda *args, **kwargs:
-                        SimpleNamespace(stdout=json.dumps({'origin': str(source)})))
-    runtime = SimpleNamespace(music_models={}, music_model_status={}, budget=None)
-    music.configure_model(runtime, config)
-    assert music.probe_model(runtime, 'musicgen')['runtime_code_verified']
-    status = runtime.music_model_status['musicgen']
-    status['inference_tested'] = True  # synthetic evidence only
-    hidden = package / 'unreadable'
-    hidden.mkdir()
-    (hidden / 'unlisted.py').write_bytes(b'# synthetic')
-    original = music.os.scandir
-
-    def denied(path):
-        if Path(path) == hidden:
-            raise PermissionError('synthetic enumeration failure')
-        return original(path)
-
-    monkeypatch.setattr(music.os, 'scandir', denied)
-    with pytest.raises(ValueError, match='inventory is unreadable'):
-        music.probe_model(runtime, 'musicgen')
-    assert status['assets_verified']
-    assert not any(status[key] for key in ('runtime_probed', 'runtime_code_verified', 'inference_tested'))
-
-
-def test_runtime_inventory_counts_non_python_and_detects_case_variant(tmp_path, monkeypatch):
-    from carr_library.audio import music
-
-    (tmp_path / 'unreviewed.PY').write_bytes(b'# synthetic')
-    (tmp_path / 'metadata.txt').write_bytes(b'synthetic')
-    assert music._inventory(tmp_path, cancelled=lambda: False, python_only=True) == {'unreviewed.PY'}
-    monkeypatch.setattr(music, '_MAX_INVENTORY_ENTRIES', 1)
-    with pytest.raises(ValueError, match='entry limit'):
-        music._inventory(tmp_path, cancelled=lambda: False, python_only=True)
+        return calls == 2
+    assert music._stage_budget(tmp_path, cancelled) is True
+    assert calls == 2

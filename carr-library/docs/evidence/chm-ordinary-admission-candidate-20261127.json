@@ -1,0 +1,48 @@
+{
+  "schema": 1,
+  "status": "SOURCE_REVIEW_PENDING_NATIVE_NOT_RUN",
+  "base": "f85fac806629cf76e23e5575c044cc72c777cef7",
+  "preview": {
+    "source_commit": "19b3354108867758710968d95d39953151cc849e",
+    "run_id": 46056591289,
+    "portable_each": 235,
+    "native_each": 4,
+    "proof": "chm-native-preview-independent-read-20261127.json",
+    "independent_reader_run": 46057254784
+  },
+  "candidate": {
+    "ordinary_service_admission": true,
+    "legacy_preview": false,
+    "portable_cases_each_mode": 236,
+    "native_cases_each_mode": 4,
+    "linux_source_cases": 149,
+    "new_portable_cases": 1,
+    "chm_module_cases": 48,
+    "legacy_module_cases": 101,
+    "counter_rename": {
+      "from": "test_qualified_calibre_formats_still_require_explicit_selection_and_leave_chm_unqualified",
+      "to": "test_qualified_calibre_formats_still_require_explicit_selection_and_do_not_select_chm",
+      "cases": 6
+    },
+    "unchanged_unqualified_guards": "All8 forced-unqualified capability cases and the explicit service preview refusal remain unchanged.",
+    "added_case": "test_qualified_chm_requires_explicit_selection_and_does_not_select_other_families",
+    "native_census": "The existing fixed public-help fixture now requires the same bounded native70-member census on success as well as diagnostic failure; every member must be read and pass current inert normalization/strict extraction, and exact declared=checked=70 with zero failures is mandatory.",
+    "census_deadline_seconds": 45,
+    "runtime_scope": "7-Zip26.06 Windows x64 official MSI and its complete selected inventory, fixed synthetic ITSF3 and public compressed help; no arbitrary book/layout/script/ActiveX/network qualification.",
+    "native_test_names": [
+      "test_real_chm_static_toc_order_does_not_execute_or_read_active_content",
+      "test_real_chm_public_publisher_help_exercises_compressed_container",
+      "test_real_chm_output_budget_keeps_original_and_empty_destination",
+      "test_real_chm_unsafe_member_inventory_is_refused_before_extracting_html"
+    ]
+  },
+  "product_unchanged": [
+    "Explicit absolute selected executable and full component inventory",
+    "Immutable held native code readers and final identity checks",
+    "Owned conversion worker/resource/admission/cancellation",
+    "All archive/path/source/output/HTML bounds and full visible-word equality",
+    "No browser/help-viewer/active-content execution",
+    "Original bytes and report-last no-replace publication"
+  ],
+  "runtime_result": "NOT_RUN"
+}

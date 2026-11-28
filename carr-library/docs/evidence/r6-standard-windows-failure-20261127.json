@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "status": "FAIL",
+  "source_commit": "d9db9f676bd7b0d282a2c6e2512b20f02b603b65",
+  "run_id": 45986888577,
+  "job_id": 140464707433,
+  "run_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/45986888577",
+  "failed_phase": "Compiler version preflight before native standard installation",
+  "observed_error": "The explicit compiler must be unchanged Inno Setup 6.4+.",
+  "sealed_bundle_preparation": "PASS",
+  "standard_install_repair_uninstall": "NOT_RUN",
+  "distinct_A_to_B": "NOT_RUN",
+  "artifact": {
+    "id": 15193764817,
+    "size_bytes": 16002,
+    "sha256": "f8f047d89333212f8a9b8dce8acda984351f00ac3487d317ceb8c4a3db421ba1"
+  },
+  "successor_fix": "Require actual compiler/preprocessor 6.4+ using a fixed output-disabled script and retained engine/executable digests; no download, PATH fallback or reduced minimum."
+}

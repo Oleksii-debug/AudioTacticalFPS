@@ -12,7 +12,7 @@ from tempfile import TemporaryDirectory
 import threading
 from types import SimpleNamespace
 import unittest
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 from carr_library.application import LibraryApp
 from carr_library.ui import catalog_insights_actions as ui
@@ -111,11 +111,6 @@ class Dialogs:
             self.during['destination']()
         return self.path
 
-    def approve_export(self, parent, path, *, private_root):
-        self._main()
-        from carr_library.research.export_file import capture_export_destination
-        return capture_export_destination(path, private_root=private_root)
-
     def show(self, parent, title, value):
         self._main()
         self.shown.append((title, value))
@@ -125,13 +120,9 @@ class Dialogs:
 
 class CatalogInsightsActionsTests(unittest.TestCase):
     def setUp(self):
-        self.wx = SimpleNamespace(YES_NO=1, NO_DEFAULT=2, ICON_QUESTION=4, YES=8, NO=16)
-        self.wx.MessageBox = Mock(return_value=self.wx.YES)
-        confirm = ui.confirm_export_destination
-        native = patch.object(ui, 'confirm_export_destination',
-            lambda *args, **kwargs: confirm(*args, **kwargs, wx_module=self.wx))
-        native.start()
-        self.addCleanup(native.stop)
+        consent = patch('carr_library.ui.export_destination._confirm_replace', return_value=True)
+        consent.start()
+        self.addCleanup(consent.stop)
         temporary = TemporaryDirectory(prefix='catalog-insights-actions-')
         self.addCleanup(temporary.cleanup)
         self.root = Path(temporary.name)
@@ -478,6 +469,21 @@ class CatalogInsightsActionsTests(unittest.TestCase):
         self.assertFalse(protected.exists())
         self.assertIn('outside the private library', self.frame.messages[-1])
 
+    def test_matrix_keeps_a_destination_changed_before_the_worker(self):
+        self.destination.write_bytes(b'Approved previous matrix')
+        self.frame.before_worker = lambda: self.destination.write_bytes(b'Newer external matrix')
+        actions, _ = self.actions((0, 0))
+        actions.export_matrix()
+        self.assertEqual(self.destination.read_bytes(), b'Newer external matrix')
+        self.assertIn('destination changed', self.frame.messages[-1])
+
+    def test_matrix_new_filename_cannot_clobber_a_file_that_appears_before_worker(self):
+        self.frame.before_worker = lambda: self.destination.write_bytes(b'Competing new matrix')
+        actions, _ = self.actions((0, 0))
+        actions.export_matrix()
+        self.assertEqual(self.destination.read_bytes(), b'Competing new matrix')
+        self.assertIn('destination changed', self.frame.messages[-1])
+
     def test_checked_export_failure_keeps_existing_destination(self):
         self.destination.write_text('Keep existing', encoding='utf-8')
         actions, _ = self.actions((0, 0))
@@ -493,6 +499,23 @@ class CatalogInsightsActionsTests(unittest.TestCase):
         actions.overview()
         self.assertFalse(self.frame.origin.focused)
         self.assertEqual(self.frame.jobs, [])
+
+
+    def test_matrix_saved_receipt_preserves_cleanup_notice_after_late_cancel(self):
+        from carr_library.research.export_file import ExportReceipt
+        writer, receipts = ui.write_export, []
+        def saved(*args, **kwargs):
+            receipt = writer(*args, **kwargs)
+            receipts.append(receipt)
+            return ExportReceipt(receipt.path, 'Saved; temporary cleanup needs attention.')
+        self.frame.after_worker = self.frame.cancel_event.set
+        actions, _ = self.actions((0, 0))
+        with patch.object(ui, 'write_export', saved):
+            actions.export_matrix()
+        self.assertEqual(len(receipts), 1)
+        self.assertTrue(self.destination.is_file())
+        self.assertIn('saved before cancellation', self.frame.messages[-1])
+        self.assertIn('Saved; temporary cleanup needs attention.', self.frame.messages[-1])
 
 
 class MenuRegistrationTests(unittest.TestCase):

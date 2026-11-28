@@ -1,0 +1,114 @@
+{
+  "schema": "carr-source-component-evidence/1",
+  "status": "SOURCE_AUTHORED_NOT_RUN",
+  "authoring_parent": "c31e680b15d2334420f6cf19d5587636e948258b",
+  "authoring_tree": "f5766d63cec62a4723191ac10e22da9f7ddeb7f0",
+  "requirement": "V3-20/T: long-silence quality-control inspection through the existing audio production owner",
+  "scope": "Read-only inspection of one selected existing complete.json and its verified retained PCM/timeline. Findings are review warnings, not render failure or acoustic-quality acceptance.",
+  "api": {
+    "function": "carr_library.audio.production.inspect_completed_silence",
+    "signature": "(manifest_path, *, threshold_dbfs, minimum_seconds, expected_run_key=None, cancelled=lambda: False, on_status=lambda message: None, max_intervals=1000)",
+    "return_schema": "carr-completed-silence-inspection/1",
+    "formatter": "carr_library.audio.production.completed_silence_report_text",
+    "criteria": {
+      "threshold_dbfs": {
+        "minimum": -120,
+        "maximum": 0,
+        "explicit": true
+      },
+      "minimum_seconds": {
+        "exclusive_minimum": 0,
+        "maximum": 86400,
+        "explicit": true
+      },
+      "max_intervals": {
+        "minimum": 1,
+        "maximum": 1000,
+        "default": 1000
+      }
+    },
+    "criterion": "For every frame, every PCM16 channel's absolute integer sample is at or below floor(32768*10**(threshold_dbfs/20)). Minimum frames are the ceiling of the displayed decimal seconds times the actual PCM sample rate.",
+    "frames": "Maximal half-open start-inclusive/end-exclusive intervals. The complete PCM is scanned; capped rows do not truncate total qualifying-span/frame counts.",
+    "report_bindings": [
+      "run_key",
+      "source_sha256",
+      "plan_sha256",
+      "completion_sha256",
+      "master_sha256",
+      "timeline_sha256"
+    ],
+    "errors": "ValueError for invalid criteria/recorded context or unverified completion; existing RuntimeError/_CompletedOutputInvalid and local I/O errors for changed/invalid media; existing jobs.RenderCancelled for explicit cancellation."
+  },
+  "ownership": {
+    "processes": "No engine, decoder, FFmpeg process, model, output device, queue or resource-store creation.",
+    "filesystem": "No completion, plan, cache, original, journal or directory mutation by inspection.",
+    "held_readers": [
+      "complete.json",
+      "master.wav",
+      "timeline.json"
+    ],
+    "hashes": "Initial shared completion verification; complete/timeline raw SHA bindings; complete master raw SHA during header+PCM+trailing-byte streaming; final complete/timeline rehash; retained native change-time/identity checks before return.",
+    "historical_compatibility": "Existing render/replay/publication bodies and serialized schemas/run identities are unchanged. Inspection requires existing source/plan/run bindings and never fabricates or writes a missing historical binding.",
+    "memory": "PCM blocks at most1MiB plus one bounded sample array; retained intervals<=1000. Complete/timeline JSON retain existing16MiB non-hardlinked reader budgets. Context records<=100000, merged/sorted once; report annotations have three aggregate numeric overlap-frame fields, not event lists or source text.",
+    "recorded_context": "Only retained Pause, Line and explicitly music-tagged clip ranges annotate findings. Scene background music is not recorded in the existing timeline and remains explicitly unknown. Overlap does not prove intent or acoustic content.",
+    "handoff": "UI/CLI integration is separately owned. Later report export must retain its own selected-source approval/binding; no export implementation is included in this component."
+  },
+  "files": [
+    {
+      "path": "carr-library/src/carr_library/audio/ffmpeg.py",
+      "old_blob": "3944a816c93482629c53430373f40275ef701833",
+      "candidate_sha256": "e48e9414bdd3c716443a87f2f53db8656a273b97fa0dfb27f326b13aaa0e488e"
+    },
+    {
+      "path": "carr-library/src/carr_library/audio/production.py",
+      "old_blob": "56fa1a804d3749c83a382f0e7bc844f7e4f1b0e2",
+      "candidate_sha256": "39d571d7b8f638d3d986f0ffe8fb4395bc876e70ed6b7fe426b50a6c872a98ed"
+    },
+    {
+      "path": "carr-library/tests/audio/test_production_integrity.py",
+      "old_blob": "7da2c5720fe004f957d755f08ebee7d9cb2c75c7",
+      "candidate_sha256": "f214b921c3a89bf67169a0f3f6cf2d38c0189663663bef513957b607ae020013"
+    }
+  ],
+  "tests": {
+    "path": "carr-library/tests/audio/test_production_integrity.py",
+    "old_blob": "7da2c5720fe004f957d755f08ebee7d9cb2c75c7",
+    "old_cases": 12,
+    "old_bytes_retained_as_exact_prefix": true,
+    "added_cases": 50,
+    "total_cases": 62,
+    "added_function_counter": {
+      "test_silence_scanner_crosses_real_block_boundaries": 2,
+      "test_silence_scanner_applies_all_channel_threshold_and_exact_length": 8,
+      "test_silence_scanner_counts_all_omitted_intervals": 2,
+      "test_silence_inspection_rejects_invalid_explicit_criteria_before_io": 18,
+      "test_completed_silence_inspection_is_source_bound_contextual_and_read_only": 1,
+      "test_completed_silence_rejects_changed_retained_inputs": 3,
+      "test_completed_silence_retains_readers_through_mutation_attempt": 3,
+      "test_completed_silence_cancellation_keeps_completion_and_receipts": 2,
+      "test_completed_silence_requires_expected_run_and_manifest_selection": 2,
+      "test_silence_context_rejects_resealed_out_of_bounds_timeline": 4,
+      "test_silence_inspection_preserves_legacy_completed_replay": 1,
+      "test_silence_report_formatter_rejects_unbounded_or_forged_summary": 4
+    },
+    "coverage": [
+      "Actual PCM crosses the real1MiB block boundary in mono/stereo.",
+      "All-channel signed PCM threshold and exact minimum-frame boundaries, including0dBFS and exact-zero thresholds.",
+      "Interval cap retains complete counts and qualifying frames.",
+      "Nonfinite/bool/out-of-range settings refuse before file admission.",
+      "Actual producer Pause/Line/music-clip context and bounded aggregate report over2400 recorded events; no inference/runtime/cache path.",
+      "Changed retained PCM/timeline/completion refusal and actual Windows sharing/POSIX identity mutation attempts while held.",
+      "Before/during cancellation leaves all retained bytes unchanged.",
+      "Expected-run/manifest selection and resealed malformed timeline refusal.",
+      "Historical completed replay still reuses its bytes; pre-existing journal-refresh behavior is retained.",
+      "Formatter bounds and forged count/annotation/criterion refusal."
+    ],
+    "execution": "NOT_RUN: no local executor. Current protected module requires the selected existing FFmpeg runtime; root will run meaningful source/installed and native qualification on the composed successor."
+  },
+  "limitations": [
+    "No automatic PASS/FAIL judgment of acoustic quality, speech accuracy, voice identity or language support.",
+    "No prediction that a recorded pause or music overlap means silence was intended.",
+    "No new CUE/EDL dialect, ASR quality checker, waveform editor or duplicate framework.",
+    "No refs/PRs/workflows launched; current c31 execution remains unchanged."
+  ]
+}

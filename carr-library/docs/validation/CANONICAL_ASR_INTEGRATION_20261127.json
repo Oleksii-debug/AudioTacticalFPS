@@ -1,0 +1,118 @@
+{
+  "schema": 1,
+  "status": "NOT_RUN",
+  "base": "99405f10d88768534f7d0ff1df3da86cea3f77ce",
+  "owner_provenance": "f8d5f85619b61fb52df24c7eb2f5dd4d1febc18f",
+  "scope": "Selective inert canonical ASR recovery; existing scoped and supplied worker families retained",
+  "library_backup_hunks": [
+    {
+      "path": "carr-library/src/carr_library/library_backup.py",
+      "before": "    retain_state as _retain_historical,\n)",
+      "after": "    retain_state as _retain_historical, manifest_layout as _historical_layout,\n    validate_manifest as _validate_historical_manifest, root_entries as _historical_entries,\n    verify_source as _verify_historical_source,\n)\nfrom .legacy_transcription import (\n    is_state_path as _legacy_asr_path, state_limit as _legacy_asr_limit,\n    state_paths as _legacy_asr_files, validate_state_tree as _validate_legacy_asr,\n    snapshot_guard as _legacy_asr_guard, capture_live as _capture_legacy_asr,\n    check_live as _check_legacy_asr, snapshot_entries as _legacy_asr_entries,\n)"
+    },
+    {
+      "path": "carr-library/src/carr_library/library_backup.py",
+      "before": "_reader_path(value) or _assistant_path(value) or _historical_path(value)",
+      "after": "_reader_path(value) or _assistant_path(value) or _historical_path(value) or _legacy_asr_path(value)"
+    },
+    {
+      "path": "carr-library/src/carr_library/library_backup.py",
+      "before": "             _audio_batch_adapter().state_limit(relative) if _audio_batch_path(relative) else",
+      "after": "             _audio_batch_adapter().state_limit(relative) if _audio_batch_path(relative) else\n             _legacy_asr_limit(relative) if _legacy_asr_path(relative) else"
+    },
+    {
+      "path": "carr-library/src/carr_library/library_backup.py",
+      "before": "minimum = 0 if (_historical_path(relative) or _transcription_allows_empty(relative)",
+      "after": "minimum = 0 if (_historical_path(relative) or _legacy_asr_path(relative) or _transcription_allows_empty(relative)"
+    },
+    {
+      "path": "carr-library/src/carr_library/library_backup.py",
+      "before": "    for path in _historical_files(root, cancelled=cancelled):\n        add(path)",
+      "after": "    for path in _historical_files(root, cancelled=cancelled):\n        add(path)\n    for path in _legacy_asr_files(root, cancelled=cancelled):\n        add(path)"
+    },
+    {
+      "path": "carr-library/src/carr_library/library_backup.py",
+      "before": "    with ExitStack() as stack:\n        if optional_present(root / 'audio-batches'):",
+      "after": "    with ExitStack() as stack:\n        stack.enter_context(_legacy_asr_guard(root))\n        if optional_present(root / 'audio-batches'):"
+    },
+    {
+      "path": "carr-library/src/carr_library/library_backup.py",
+      "before": "                and not _recording_path(relative)):",
+      "after": "                and not _recording_path(relative) and not _legacy_asr_path(relative)):"
+    },
+    {
+      "path": "carr-library/src/carr_library/library_backup.py",
+      "before": "                _validate_historical(app.root, cancelled=cancelled)",
+      "after": "                _validate_historical(app.root, cancelled=cancelled)\n                _validate_legacy_asr(snapshot_storage.db, app.root, cancelled=cancelled)"
+    },
+    {
+      "path": "carr-library/src/carr_library/library_backup.py",
+      "before": "                        for name, identity in inventory.items()]\n",
+      "after": "                        for name, identity in inventory.items()]\n            legacy_asr = _capture_legacy_asr(app.root, stage / SIDECARS, cancelled=cancelled)\n            retained = {row['path']: row for row in sidecars}\n            for row in _legacy_asr_entries(stage / SIDECARS, legacy_asr):\n                previous = retained.setdefault(row['path'], row)\n                if previous != row:\n                    raise RestoreError('Conflicting historical transcription archive.')\n            sidecars = list(retained.values())\n            if (len(sidecars) > max_sidecar_files\n                    or sum(row['size_bytes'] for row in sidecars) > max_sidecar_bytes):\n                raise RestoreError('Historical transcription exceeds the complete-backup budget.')\n            with closing(Storage(snapshot, schema_version=CURRENT_SCHEMA_VERSION)) as snapshot_storage:\n                _validate_legacy_asr(snapshot_storage.db, stage / SIDECARS, cancelled=cancelled)\n"
+    },
+    {
+      "path": "carr-library/src/carr_library/library_backup.py",
+      "before": "            for entry in sidecars:\n                if cancelled():",
+      "after": "            for entry in sidecars:\n                if entry['path'] not in inventory:\n                    continue  # New inert archive is rechecked against its live source below.\n                if cancelled():"
+    },
+    {
+      "path": "carr-library/src/carr_library/library_backup.py",
+      "before": "            managed = pending is not None or any(not _reader_path(entry['path']) for entry in sidecars)",
+      "after": "            _check_legacy_asr(app.root, legacy_asr, cancelled=cancelled)\n            managed = pending is not None or any(not _reader_path(entry['path']) for entry in sidecars)"
+    },
+    {
+      "path": "carr-library/src/carr_library/library_backup.py",
+      "before": "    \"\"\"The two historical v3/v4 families have disjoint exact field shapes.\"\"\"\n    return manifest['version'] in (3, 4) and (\n        'state' in manifest or 'generated_audio_included' in manifest)",
+      "after": "    \"\"\"Select only exact historical envelopes, disjoint from current typed backups.\"\"\"\n    return _historical_layout(manifest) is not None"
+    },
+    {
+      "path": "carr-library/src/carr_library/library_backup.py",
+      "before": "        fields.update(('state', 'generated_audio_included'))\n        if manifest['version'] == 4:\n            fields.add('pending')",
+      "after": "        layout = _historical_layout(manifest)\n        fields.update(('sidecars' if layout == 'root' else 'state', 'generated_audio_included'))\n        if 'pending' in manifest:\n            fields.add('pending')\n        if layout == 'state-reading':\n            fields.add('reading_state')"
+    },
+    {
+      "path": "carr-library/src/carr_library/library_backup.py",
+      "before": "    if 'pending' in manifest:\n        from .pending_backup import validate_pending\n        validate_pending(manifest['pending'])",
+      "after": "    if 'pending' in manifest:\n        if manifest['pending'] is not None or _historical_layout(manifest) != 'state-reading':\n            from .pending_backup import validate_pending\n            validate_pending(manifest['pending'])"
+    },
+    {
+      "path": "carr-library/src/carr_library/library_backup.py",
+      "before": "    if legacy_state:\n        from .backup_legacy_state import validate_state\n        if type(manifest['generated_audio_included']) is not bool:\n            raise RestoreError('invalid legacy application state options')\n        # Retention adds the original manifest as one authenticated sidecar.\n        validate_state(manifest['state'], max_files=max_sidecar_files - 1,\n                       max_bytes=max_sidecar_bytes - size)\n        expected_names = {DATABASE, ORIGINALS, MANIFEST, 'state'}\n        if 'pending' in manifest:\n            expected_names.add(PENDING)\n        if set(p.name for p in directory.iterdir()) != expected_names:\n            raise RestoreError('incomplete legacy application state backup')\n        _plain(directory / 'state', directory=True)\n        return manifest\n",
+      "after": "    if legacy_state:\n        # Retain all original bytes as inert history, including the original\n        # authenticated manifest. Do not activate foreign reader/provider state.\n        _validate_historical_manifest(manifest)\n        _validate_historical_manifest(manifest, max_files=max_sidecar_files - 1,\n                                      max_bytes=max_sidecar_bytes - size)\n        expected_names = {DATABASE, ORIGINALS, MANIFEST}\n        if layout in ('state', 'state-reading'):\n            expected_names.add('state')\n        expected_names.update(item['filename'].split('/')[0] for item in _historical_entries(manifest))\n        if manifest.get('pending') is not None:\n            expected_names.add(PENDING)\n        if {p.name for p in _children(directory, max_sidecar_files + 4)} != expected_names:\n            raise RestoreError('incomplete legacy application state backup')\n        if 'state' in expected_names:\n            _plain(directory / 'state', directory=True)\n        return manifest\n"
+    },
+    {
+      "path": "carr-library/src/carr_library/library_backup.py",
+      "before": "(entry['size_bytes'] == 0 and not _historical_path(entry[field])",
+      "after": "(entry['size_bytes'] == 0 and not _historical_path(entry[field])\n                        and not _legacy_asr_path(entry[field])"
+    },
+    {
+      "path": "carr-library/src/carr_library/library_backup.py",
+      "before": "            _validate_historical(checked_root, cancelled=cancelled)",
+      "after": "            _validate_historical(checked_root, cancelled=cancelled)\n            _validate_legacy_asr(storage.db, checked_root, cancelled=cancelled)"
+    },
+    {
+      "path": "carr-library/src/carr_library/library_backup.py",
+      "before": "            from .backup_legacy_state import verify_state\n            verify_state(source / 'state', None, manifest['state'], cancelled=cancelled)",
+      "after": "            _verify_historical_source(source, manifest, cancelled=cancelled)"
+    },
+    {
+      "path": "carr-library/src/carr_library/library_backup.py",
+      "before": "    if 'pending' in manifest and not copy_files:",
+      "after": "    if manifest.get('pending') is not None and not copy_files:"
+    },
+    {
+      "path": "carr-library/src/carr_library/library_backup.py",
+      "before": "        if 'pending' in manifest:\n            from .pending_backup import restore_pending",
+      "after": "        if manifest.get('pending') is not None:\n            from .pending_backup import restore_pending"
+    }
+  ],
+  "modified_other_paths": [
+    "carr-library/src/carr_library/backup_historical.py",
+    "carr-library/src/carr_library/transcription_backup.py",
+    "carr-library/src/carr_library/backup_legacy_state.py",
+    "carr-library/src/carr_library/transcription_service.py",
+    "carr-library/src/carr_library/ui/transcription_v43_dialog.py",
+    "carr-library/tests/ui/test_transcription_v43_dialog.py",
+    "carr-library/src/carr_library/transcription_cli.py"
+  ]
+}

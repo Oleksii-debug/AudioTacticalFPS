@@ -46,6 +46,8 @@ class DesktopEvidencePanel(EvidencePanel):
             self._recovery_timer.StartOnce(1000)
 
     def _flush_recovery(self, event=None, *, final=False):
+        if getattr(self, '_recovery_disposed', False) and not final:
+            return True
         store = getattr(self, '_recovery_store', None)
         pending = getattr(self, '_recovery_pending', None)
         if store is None or pending is None:
@@ -118,13 +120,16 @@ class DesktopEvidencePanel(EvidencePanel):
         return True
 
     def _recovery_destroy(self, event):
-        if event.GetEventObject() is self:
+        if event.GetEventObject() is self and not self._recovery_disposed:
+            # A posted timer callback can outlive its native owner. Latch first
+            # so it cannot touch children or restart a failed-checkpoint timer.
+            self._recovery_disposed = True
             self._recovery_timer.Stop()
+            self.Unbind(wx.EVT_TIMER, handler=self._flush_recovery, source=self._recovery_timer)
             # No access to already destroyed child controls: EVT_TEXT captured
             # the exact pending note. Preserve it even after scope revocation;
             # recovery still needs fresh authorization before it is displayed.
             self._flush_recovery(final=True)
-            self._recovery_disposed = True
         event.Skip()
 
     def _show(self, row, editable):
@@ -328,26 +333,34 @@ class DesktopEvidencePanel(EvidencePanel):
             lambda error: self._failed(epoch,'Evidence unavailable. Check the library and original source.'))
         return True
 
-    def save_note(self,event=None, *, completed=None):
-        if completed is not None and not callable(completed):
-            raise ValueError('Save completion must be callable.')
-        reported = False
+    def save_note(self, event=None, *, completed=None):
+        """Acknowledge a save only after its transaction and UI baseline finish."""
+        notified = False
+
         def finish(saved, message=''):
-            nonlocal reported
-            if completed is not None and not reported:
+            nonlocal notified
+            if notified:
+                return
+            notified = True
+            if completed is not None:
                 from carr_library.ui.save_all import SaveResult
-                reported = True
                 completed(SaveResult(saved, message))
-        if self.frame.working or getattr(self.frame, '_closing', False):
-            self.frame.report('An operation is already running. Wait or choose Cancel current operation.')
-            finish(False, 'A library operation is running; the note is retained.')
-            return
+
+        if getattr(self.frame, '_closing', False):
+            finish(False, 'The main window is closing; the draft is retained.')
+            return False
+        if self.frame.working:
+            message = 'An operation is already running. Wait or choose Cancel current operation.'
+            self.frame.report(message)
+            finish(False, message)
+            return False
         row = self._selected()
         if row is None or row != self.displayed:
-            self.status.SetValue('Select the evidence whose note you want to save. Your draft is retained.')
+            message = 'Select the evidence whose note you want to save. Your draft is retained.'
+            self.status.SetValue(message)
             self.status.SetFocus()
-            finish(False, 'Select the evidence whose note you want to save.')
-            return
+            finish(False, message)
+            return False
         note = self.note.GetValue()
         self._capture_recovery()
         saving_draft = getattr(self, '_recovery_owned', None)
@@ -358,17 +371,17 @@ class DesktopEvidencePanel(EvidencePanel):
             if self.frame.cancel_event.is_set():
                 raise TimeoutError('Saving note cancelled.')
             with self.transaction() as service:
-                rows,editable = self._live(service)
+                rows, editable = self._live(service)
                 if not editable or row not in rows:
                     raise ValueError('Archived topic or stale evidence.')
                 if self.frame.cancel_event.is_set():
                     raise TimeoutError('Saving note cancelled.')
-                service.edit_note(self.topic,row.evidence_id,note)
-            return replace(row,note=note)
+                service.edit_note(self.topic, row.evidence_id, note)
+            return replace(row, note=note)
 
         def done(saved):
             if not self._current(epoch):
-                finish(False, 'The evidence view changed during saving; review its current note.')
+                finish(False, 'The note was committed, but its view changed. Review the retained draft before closing.')
                 return
             self.rows = tuple(saved if current.evidence_id == saved.evidence_id else current for current in self.rows)
             self.displayed = saved
@@ -389,10 +402,13 @@ class DesktopEvidencePanel(EvidencePanel):
             finish(True)
 
         def failed(error):
-            self._failed(epoch,'Note not saved. Check the library and original source, then retry.')
-            finish(False, str(error))
+            message = 'Note not saved. Check the library and original source, then retry.'
+            try:
+                self._failed(epoch, message)
+            finally:
+                finish(False, message)
 
-        try:
-            self.frame.run_job('Saving research note',save,done,failed)
-        except Exception as error:
-            failed(error)
+        started = self.frame.run_job('Saving research note', save, done, failed)
+        if started is False:
+            finish(False, 'The note save could not start; the draft is retained.')
+        return started is not False

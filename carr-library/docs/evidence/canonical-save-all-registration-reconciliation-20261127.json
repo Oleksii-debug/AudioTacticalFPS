@@ -1,0 +1,53 @@
+{
+  "schema": 1,
+  "status": "SOURCE_RECONCILED_RUNTIME_NOT_RUN",
+  "canonical": {
+    "commit": "e5c64a5245583f8f8b404a0f042f6ca438c24d7f",
+    "tree": "344567db5c0d99f5d6d7ad24c105645ea75b65e8",
+    "controller_blob": "c109f48ccb561b25fc9f348dacc4688f734f2e6b",
+    "test_blob": "849fcdf2b0ad71d63be4a08ea1b044554f988881",
+    "change": "PR183 Save All registration identity, durable completion and first usable live failed focus"
+  },
+  "composition_parent": "0203c8253c2faf4cb155b25b4ca5f244c0787132",
+  "reused_current_behavior": [
+    "after_current completion observers",
+    "defer_close validation and posted alive/current-draft recheck",
+    "forced OS shutdown cannot falsely be vetoed",
+    "all 17 previous current controller tests",
+    "all 38 native labels and current owned modal recovery probe"
+  ],
+  "adopted": [
+    "Failure keys include the exact registration identity; a later document cannot inherit an old completion or erase a separately dirty replacement.",
+    "The final live-draft pass distinguishes cancellation before any confirmed write from a late stop after all durable saves.",
+    "Focus chooses the first still-registered failed participant with a usable focus callback after completion observers run.",
+    "Cancellation with no dirty draft reports no unsaved drafts rather than an empty unsaved list."
+  ],
+  "tests": {
+    "retained_current_controller_cases": 17,
+    "canonical_added_cases": 14,
+    "controller_cases": 31,
+    "save_actions_source_cases": 103,
+    "save_actions_installed_cases": 103,
+    "native_expected_checks": 38,
+    "full_protected_source": 4759,
+    "full_protected_installed": 4627,
+    "new_cases": {
+      "test_late_cancel_after_final_durable_save_is_complete": 1,
+      "test_late_cancel_with_clean_tail_is_complete": 1,
+      "test_cancel_before_saving_clean_drafts_does_not_invent_unsaved_changes": 1,
+      "test_cancel_with_newer_edits_still_reports_unsaved_changes": 1,
+      "test_cancel_after_failed_save_not_misreported_as_complete": 1,
+      "test_failed_old_save_does_not_hide_replacement_draft": 1,
+      "test_failed_old_save_does_not_focus_clean_replacement": 1,
+      "test_queued_replacement_is_reported_separately_and_never_saved_under_old_registration": 1,
+      "test_focus_rechecks_registration_after_completion_notification": 1,
+      "test_live_failed_registration_retains_its_own_focus": 1,
+      "test_focus_chooses_first_usable_live_failed_draft": 3,
+      "test_focus_skips_replaced_registration_and_unavailable_target": 1
+    }
+  },
+  "not_claimed": [
+    "No runtime PASS is transferred from canonical PR183 or the earlier 89-case menu runs.",
+    "No native Windows/NVDA/physical-device execution has run for this combined controller at authoring time."
+  ]
+}

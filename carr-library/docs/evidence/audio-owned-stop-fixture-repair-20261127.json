@@ -1,0 +1,269 @@
+{
+  "schema": "carr.audio-owned-stop-fixture-repair.v1",
+  "status": "OBSERVED_AGGREGATE_FAILURE_WITH_TEST_ONLY_SUCCESSOR_NOT_RUN",
+  "source": {
+    "commit": "e1117945071dcc1df9d1b6f0f0c90576030d7725",
+    "tree": "78e3bd900ff61ade9c1698fc99ef26a4dbcf2a35",
+    "workflow": ".github/workflows/carr-audio.yml",
+    "workflow_blob": "87f5f3aeba9c2d8a6445bf5c002ec828193693a3",
+    "branch": "carr/audio-native-r33-pr-head-d3a-20261127"
+  },
+  "actual": {
+    "run_id": 46070514059,
+    "job_id": 140746075598,
+    "status": "completed",
+    "conclusion": "failure",
+    "failed_step": "Run provider safety, source integrity and audio recovery regressions",
+    "collected": 2266,
+    "passed": 2257,
+    "failed": 2,
+    "skipped": 7,
+    "subtests_passed": 22,
+    "warnings": 4,
+    "elapsed_seconds": 1389.21,
+    "timeout": false,
+    "installed_self_test": "NOT_RUN_AFTER_SOURCE_FAILURE",
+    "decoded_log_sha256": "2227139c54f90ebf6946c232d7de0b6ccb4ce4659e06246d1d56f5836dff4845",
+    "decoded_log_characters": 1420898,
+    "required_cases": [
+      {
+        "name": "tests/audio/test_windows_process.py::test_windows_cancellation_stops_descendant_after_its_helper_exits[run]",
+        "lines": [
+          "tests/audio/test_windows_process.py::test_windows_cancellation_stops_descendant_after_its_helper_exits[run] PASSED [ 91%]"
+        ]
+      },
+      {
+        "name": "tests/audio/test_windows_process.py::test_windows_cancellation_stops_descendant_after_its_helper_exits[dordiai_stream]",
+        "lines": [
+          "tests/audio/test_windows_process.py::test_windows_cancellation_stops_descendant_after_its_helper_exits[dordiai_stream] PASSED [ 91%]"
+        ]
+      },
+      {
+        "name": "tests/audio/test_windows_process.py::test_native_concurrent_unrelated_process_survives_owned_cancellation",
+        "lines": [
+          "tests/audio/test_windows_process.py::test_native_concurrent_unrelated_process_survives_owned_cancellation PASSED [ 92%]"
+        ]
+      },
+      {
+        "name": "tests/audio/test_engines.py::test_actual_installed_windows_sapi_voice",
+        "lines": [
+          "tests/audio/test_engines.py::test_actual_installed_windows_sapi_voice PASSED [ 52%]"
+        ]
+      },
+      {
+        "name": "tests/audio/test_long_streaming_integrity.py::test_exact_multi_hour_streamed_pcm[1]",
+        "lines": [
+          "tests/audio/test_long_streaming_integrity.py::test_exact_multi_hour_streamed_pcm[1] PASSED [ 61%]"
+        ]
+      },
+      {
+        "name": "tests/audio/test_long_streaming_integrity.py::test_exact_multi_hour_streamed_pcm[3]",
+        "lines": [
+          "tests/audio/test_long_streaming_integrity.py::test_exact_multi_hour_streamed_pcm[3] PASSED [ 61%]"
+        ]
+      },
+      {
+        "name": "tests/audio/test_long_streaming_integrity.py::test_exact_multi_hour_streamed_pcm[10]",
+        "lines": [
+          "tests/audio/test_long_streaming_integrity.py::test_exact_multi_hour_streamed_pcm[10] PASSED [ 61%]"
+        ]
+      }
+    ],
+    "skips": [
+      "SKIPPED [1] tests\\audio\\test_cli_signals.py:37: POSIX SIGINT delivery; native Windows cancellation is separately probed.",
+      "SKIPPED [1] tests\\audio\\test_engine_boundaries.py:214: POSIX owned process-group cleanup; Windows uses an owned Job Object.",
+      "SKIPPED [1] tests\\audio\\test_music_adapters.py:60: Actual installed FluidSynth 2.4.4 / reviewed TimGM6mb fixture is unavailable.",
+      "SKIPPED [1] tests\\audio\\test_music_adapters.py:89: Actual installed FluidSynth 2.4.4 / reviewed TimGM6mb fixture is unavailable.",
+      "SKIPPED [1] tests\\audio\\test_playback_platform.py:6: Windows uses its native device gate",
+      "SKIPPED [1] tests\\audio\\test_playback_platform.py:18: Windows reports no audio output device.",
+      "SKIPPED [1] tests\\audio\\test_playback_platform.py:32: Actual ffplay dummy-device probe requires an installed POSIX ffplay."
+    ]
+  },
+  "artifact": {
+    "id": 15234530920,
+    "bytes": 55450,
+    "sha256": "30fd68e663f1be3d8f32e539bda3af6e33b1c717e8655549c491a0beb84cdfd7",
+    "inspection": "Metadata and the complete decoded GitHub job log were read. This component does not claim independent ZIP member inspection."
+  },
+  "native": {
+    "audio_smoke": {
+      "status": "PASS",
+      "checks": 16
+    },
+    "playback_device": {
+      "status": "UNAVAILABLE",
+      "reason": "Actual Windows runner has no audio output device; physical playback is not qualified."
+    },
+    "strict_receipts": [
+      {
+        "kind": "effects",
+        "checks": 151,
+        "observedLabelCount": 151,
+        "exactCounter": true,
+        "exactFields": true,
+        "exactModuleSet": true,
+        "source": "e1117945071dcc1df9d1b6f0f0c90576030d7725",
+        "tree": "78e3bd900ff61ade9c1698fc99ef26a4dbcf2a35",
+        "counter": {
+          "actual Windows wx controls": 1,
+          "effect implementation loaded from installed package": 1,
+          "one modal belongs to the synthetic parent": 12,
+          "named role selector": 5,
+          "one native choice list retains its exact Unicode inventory": 9,
+          "Unicode role selection is retained": 5,
+          "actual enabled native dialog button": 12,
+          "native dialog button dispatch": 12,
+          "named effect selector": 4,
+          "selected typed effect kind": 4,
+          "named parameter dialog": 3,
+          "every numeric control has its name, unit and bounds": 3,
+          "numeric control is editable": 21,
+          "native modal sequence completed": 5,
+          "no effect modal remains after return": 5,
+          "confirmed dialog returns the selected role and typed Effect": 1,
+          "typed parameters match the actual edited controls": 1,
+          "Cancel returns no effect from role": 1,
+          "Cancel returns no effect from effect": 1,
+          "Cancel returns no effect from parameters": 1,
+          "invalid numeric entry is rejected after native confirmation": 1,
+          "named native chain window": 2,
+          "native role and effect-order controls": 2,
+          "preset actions are named and require explicit apply": 2,
+          "effect role receives actual native keyboard focus": 2,
+          "selected Unicode role has two effects": 2,
+          "first effect cannot move above the chain": 2,
+          "native bypass retains the selected step": 2,
+          "native reorder changes position and retains bypass": 2,
+          "editing shows the previously selected numeric value": 2,
+          "native edit keeps bypass and changes only numeric settings": 2,
+          "native add inserts one selected typed effect": 2,
+          "native removal affects only the selected step": 2,
+          "master has a distinct actual native target": 2,
+          "dry wet control is named and enabled only for master": 2,
+          "invalid master mix keeps the actual modal open": 2,
+          "native master chain has actual bypass and order controls": 2,
+          "native chain confirmation settled": 2,
+          "native apply returns a validated script": 1,
+          "accepted typed chain keeps order, settings and bypass": 1,
+          "unselected native role remains unchanged": 1,
+          "native master apply retains typed mix, order and bypass": 1,
+          "native chain retains exact spoken source": 1,
+          "actual bounded preset file roundtrip preserves typed chain": 1,
+          "native cancel discards pending chain result": 1,
+          "native cancel leaves the source draft without edits": 1,
+          "no native callback failed": 1
+        }
+      },
+      {
+        "kind": "clips",
+        "checks": 26,
+        "observedLabelCount": 26,
+        "exactCounter": true,
+        "exactFields": true,
+        "exactModuleSet": true,
+        "source": "e1117945071dcc1df9d1b6f0f0c90576030d7725",
+        "tree": "78e3bd900ff61ade9c1698fc99ef26a4dbcf2a35",
+        "counter": {
+          "edit: named controls in shown owned modal": 1,
+          "invalid duration retains owned modal": 1,
+          "numeric field retains native focus on the next event turn": 1,
+          "native edit": 1,
+          "move: named controls in shown owned modal": 1,
+          "native move": 1,
+          "duration: named controls in shown owned modal": 1,
+          "native duration": 1,
+          "remove: named controls in shown owned modal": 1,
+          "native remove": 1,
+          "preview: named controls in shown owned modal": 1,
+          "native preview": 1,
+          "copy: named controls in shown owned modal": 1,
+          "native copy": 1,
+          "cut: named controls in shown owned modal": 1,
+          "native cut": 1,
+          "paste: named controls in shown owned modal": 1,
+          "native paste": 1,
+          "split: named controls in shown owned modal": 1,
+          "native split": 1,
+          "join: named controls in shown owned modal": 1,
+          "native join": 1,
+          "consolidate: named controls in shown owned modal": 1,
+          "native consolidate": 1,
+          "cancel: named controls in shown owned modal": 1,
+          "native cancel": 1
+        }
+      },
+      {
+        "kind": "publication",
+        "checks": 11,
+        "observedLabelCount": 11,
+        "exactCounter": true,
+        "exactFields": true,
+        "exactModuleSet": true,
+        "source": "e1117945071dcc1df9d1b6f0f0c90576030d7725",
+        "tree": "78e3bd900ff61ade9c1698fc99ef26a4dbcf2a35",
+        "counter": {
+          "epub: named controls in shown owned modal": 2,
+          "invalid language retains modal": 2,
+          "creator field retains native focus on the next event turn": 2,
+          "native OK": 2,
+          "daisy-2.02: named controls in shown owned modal": 1,
+          "publisher required": 1,
+          "native cancel": 1
+        }
+      }
+    ],
+    "comparison": "All three exact label Counters, typed required fields and module-name sets were independently reconciled against unchanged r7_native_oracles.json. Their wrapper receipts bind the actual e111 source/tree; the running gate also checked installed bytes. No source/installed product change is introduced here."
+  },
+  "failure": {
+    "cases": [
+      "tests/audio/test_windows_process.py::test_windows_stop_closes_owned_job_even_after_helper_exit[False]",
+      "tests/audio/test_windows_process.py::test_windows_stop_closes_owned_job_even_after_helper_exit[True]"
+    ],
+    "exception": "AttributeError: 'types.SimpleNamespace' object has no attribute 'handle'",
+    "boundary": "engines._stop delegates Windows cleanup to recording_process._stop_owned; the old test's close-only fake does not implement the current retained native Job Object contract.",
+    "test_blob_before": "351bb15ac939d10838b09d6c0704baa9e4817857",
+    "product_blobs_unchanged": {
+      "src/carr_library/audio/engines.py": "8d6de25b95df92be03b25955244aee6c16602963",
+      "src/carr_library/audio/recording_process.py": "d1f78ee864868f6d12cc9d19b567744ee22f745e"
+    }
+  },
+  "repair": {
+    "paths": [
+      "tests/audio/test_windows_process.py",
+      "docs/evidence/audio-owned-stop-fixture-repair-20261127.json"
+    ],
+    "scope": "Only the existing two-case synthetic fixture is adapted. Both module-local platform seams select the current Windows owner without changing global os state.",
+    "synthetic_contract": [
+      "The exact owned job is terminated, including when its leader had already exited.",
+      "The leader is waited for and its retained handle is closed once.",
+      "Native accounting reports one active descendant before zero; the same job handle remains retained throughout.",
+      "The kernel job handle closes only after active_processes reaches zero, then the owner clears job.handle.",
+      "PID-based tree killing, leader.kill and premature job.close are forbidden."
+    ],
+    "population_unchanged": true,
+    "added_cases": 0,
+    "removed_cases": 0,
+    "full_module_cases": 15,
+    "full_module_counter": {
+      "tests/audio/test_windows_process.py::test_owned_launch_assigns_before_resume_without_changing_native_globals": 1,
+      "tests/audio/test_windows_process.py::test_launch_failure_closes_only_exact_owned_handles": 4,
+      "tests/audio/test_windows_process.py::test_concurrent_launcher_keeps_unrelated_process_outside_owned_proxy": 1,
+      "tests/audio/test_windows_process.py::test_job_uses_kill_on_close_without_breakaway_and_closes_on_configuration_failure": 2,
+      "tests/audio/test_windows_process.py::test_windows_stop_closes_owned_job_even_after_helper_exit": 2,
+      "tests/audio/test_windows_process.py::test_stream_thread_start_failure_stops_actual_worker": 2,
+      "tests/audio/test_windows_process.py::test_windows_cancellation_stops_descendant_after_its_helper_exits": 2,
+      "tests/audio/test_windows_process.py::test_native_concurrent_unrelated_process_survives_owned_cancellation": 1
+    },
+    "product_change": false,
+    "workflow_change": false,
+    "timeout_change": false,
+    "ref_change": false,
+    "successor_runtime": "NOT_RUN",
+    "future_validation": "Rerun the unchanged existing audio workflow against a newly frozen successor; retain this failed run and its 2266-case selection."
+  },
+  "limits": [
+    "Synthetic native API fixture semantics are not actual kernel execution.",
+    "The separate actual Windows descendant cleanup, unrelated-process survival and installed SAPI cases all passed in the observed failed aggregate run; all actual 1/3/10-hour streamed-PCM cases passed.",
+    "No private voice/model quality, physical audio device, manual NVDA, whole-platform or successor PASS claim."
+  ]
+}

@@ -62,25 +62,35 @@ def self_test():
             'native_gui': 'NOT_RUN', 'windows_nvda': 'NOT_RUN'}
 
 
-def main(argv=None):
+from .installation_lease import installed_entrypoint
+
+
+@installed_entrypoint(allow_bootstrap_self_test=True)
+def main(argv=None, *, trust_controller=None):
     arguments = list(sys.argv[1:] if argv is None else argv)
-    if len(arguments) == 3 and arguments[0] == '--carr-sapi-native-worker':
-        from .speech.sapi_native_worker import main as native_main
-        return native_main(arguments[1:])
-    if arguments[:1] == ['translation']:
-        from .assistant.translation_cli import main as translation_main
-        return translation_main(arguments[1:])
-    if arguments and arguments[0] in ('studio', 'assistant'):
-        from .studio.cli import main as studio_main, assistant_main
-        return (studio_main if arguments[0] == 'studio' else assistant_main)(arguments[1:])
-    if arguments[:1] == ['transcription']:
+    if arguments and arguments[0] == '--carr-sapi-native-worker':
+        from .audio.sapi_native_worker import main as sapi_worker_main
+        return sapi_worker_main(arguments[1:])
+    if arguments and arguments[0] == 'import-text':
+        from .streamed_import_cli import main as streamed_import_main
+        return streamed_import_main(arguments[1:], **({'trust_controller': trust_controller} if trust_controller is not None else {}))
+    if arguments and arguments[0] == 'transcribe':
         from .transcription_cli import main as transcription_main
-        return transcription_main(arguments[1:])
-    if arguments[:1] == ['operations']:
+        return transcription_main(arguments[1:], **({'trust_controller': trust_controller} if trust_controller is not None else {}))
+    if arguments and arguments[0] == 'snapshots':
+        from .incremental_cli import main as snapshots_main
+        return snapshots_main(arguments[1:])
+    if arguments and arguments[0] == 'sync':
+        from .sync.cli import main as sync_main
+        return sync_main(arguments[1:])
+    if arguments and arguments[0] == 'operations':
         from .operations_cli import main as operations_main
         return operations_main(arguments[1:])
+    if arguments and arguments[0] == 'assistant':
+        from .assistant.cli import main as assistant_main
+        return assistant_main(arguments[1:], **({'trust_controller': trust_controller} if trust_controller is not None else {}))
     from . import __version__
-    parser = argparse.ArgumentParser(description='Resonance offline research library and audio workspace')
+    parser = argparse.ArgumentParser(description='Resonance — offline libraries, reading and audio')
     parser.add_argument('--version', action='version', version=__version__)
     parser.add_argument('--data-dir', type=Path, help='Private persistent data directory')
     parser.add_argument('--self-test', action='store_true', help='Check an isolated synthetic library and exit')
@@ -126,14 +136,23 @@ def main(argv=None):
     parser.add_argument('--language', help='Exact language code filter for --search')
     parser.add_argument('--edition', help='Exact edition filter for --search')
     parser.add_argument('--limit-per-library', type=int, default=20,
-                        help='Maximum results from each selected library, 1 to 100')
-    args = parser.parse_args(argv)
-    validate_arguments(parser, args)
+                        help='Results per library in legacy search, or per continuation page, 1 to 100')
+    parser.add_argument('--search-page', action='store_true',
+                        help='Return one bounded search page and a continuation cursor for all selected sources')
+    parser.add_argument('--search-cursor',
+                        help='Continue a prior --search-page with exactly the same query, scope and options')
+    from .audio_cli import add_audio_arguments, audio_requested, validate_audio_arguments, run_audio
+    add_audio_arguments(parser)
+    args = parser.parse_args(arguments)
     ocr_operation = (args.list_ocr_models or args.install_ocr_models is not None
                      or args.verify_ocr_models is not None)
-    if ocr_operation and any((args.document_formats, args.lookup_doi is not None, args.list_libraries, args.search is not None, args.self_test,
-                              args.backup, args.restore)):
-        parser.error('Choose one OCR model, library, search, self-test, backup or restore operation.')
+    operations = (args.self_test, bool(args.backup), bool(args.restore), args.document_formats,
+                  args.list_libraries, args.search is not None, args.lookup_doi is not None,
+                  audio_requested(args), ocr_operation)
+    if sum(bool(operation) for operation in operations) > 1:
+        parser.error('Choose one operation: desktop, self-test, backup, restore, document formats, list libraries, search, DOI lookup, audio, or OCR models.')
+    validate_audio_arguments(args, parser)
+    validate_arguments(parser, args)
     if (args.ocr_model or args.ocr_all_models) and not args.install_ocr_models:
         parser.error('--ocr-model and --ocr-all-models require --install-ocr-models.')
     if args.ocr_all_models and args.ocr_model:
@@ -145,8 +164,8 @@ def main(argv=None):
     if args.ocr_profile and not ocr_operation:
         parser.error('--ocr-profile requires an OCR model operation.')
     args.ocr_profile = args.ocr_profile or 'fast'
-    if (args.document_formats or args.list_libraries or args.search is not None or args.lookup_doi is not None) and (args.self_test or args.backup or args.restore):
-        parser.error('Choose one operation: desktop, self-test, backup, restore, document formats, list libraries, search, or DOI lookup.')
+    if (args.search_page or args.search_cursor is not None) and args.search is None:
+        parser.error('--search-page and --search-cursor require --search.')
     if args.search is not None and not args.workspaces:
         parser.error('--search requires at least one --workspace; use --list-libraries to find its ID.')
     if args.workspaces and args.search is None and args.lookup_doi is None:
@@ -159,6 +178,8 @@ def main(argv=None):
             return 0
         from .native_runtime import activate_bundled_runtime
         native_handle = activate_bundled_runtime()
+        if audio_requested(args):
+            return run_audio(args, **({'trust_controller': trust_controller} if trust_controller is not None else {}))
         if ocr_operation:
             from .extract.model_catalog import models, profile_provenance
             from .extract.ocr_model_store import OcrModelStore
@@ -216,7 +237,8 @@ def main(argv=None):
                 ranker = OfflineSemanticRanker(args.model_dir, args.model_manifest)
             except (ImportError, ValueError, RuntimeError, OSError) as exc:
                 model_notice = f'Local semantic model unavailable: {exc}. Literal and thematic keyword search remain available.'
-        app = LibraryApp(args.data_dir, semantic_ranker=ranker)
+        app = LibraryApp(args.data_dir, semantic_ranker=ranker,
+                         **({'trust_controller': trust_controller} if trust_controller is not None else {}))
         app.semantic_notice = ' '.join(filter(None, (location_notice, model_notice)))
         if args.lookup_doi is not None:
             from .acquisition.cli import run
@@ -227,17 +249,27 @@ def main(argv=None):
         if args.search is not None:
             from .search.federated import FederatedSearch
             notices = []
-            session = FederatedSearch(app).search(args.workspaces, args.search,
+            service = FederatedSearch(app)
+            paged = args.search_page or args.search_cursor is not None
+            search = service.search_page if paged else service.search
+            continuation = {'cursor': args.search_cursor} if paged else {}
+            session = search(args.workspaces, args.search,
                 mode=args.search_mode, result_mode=args.result_mode, title=args.title,
                 author=args.author, language=args.language, edition=args.edition,
-                limit_per_library=args.limit_per_library, on_status=notices.append)
+                limit_per_library=args.limit_per_library, on_status=notices.append, **continuation)
+            page_info = ({'next_cursor': session.next_cursor, 'page_number': session.page_number,
+                          'libraries_examined': session.libraries_examined,
+                          'total_libraries': session.total_libraries,
+                          'source_pages_examined': session.source_pages_examined,
+                          'total_source_pages': session.total_source_pages,
+                          'ordering': session.ordering} if paged else {})
             print(json.dumps({'query': session.query, 'mode': session.mode,
                 'limit_per_library': session.limit_per_library,
                 'ordering': 'Selected libraries in selection order; relevance is local to each library.',
                 'notices': [*([app.semantic_notice] if app.semantic_notice else []), *notices],
                 'libraries': [{'id': group.workspace, 'name': group.library_name,
                                'results': [asdict(hit.result) for hit in group.hits]}
-                              for group in session.groups]}, ensure_ascii=False, indent=2))
+                              for group in session.groups], **page_info}, ensure_ascii=False, indent=2))
             return 0
         if args.backup:
             checksum = app.backup(args.backup)
@@ -250,7 +282,8 @@ def main(argv=None):
         from .ui.desktop_app import DesktopFrame
         from .preferences import remember_directory
         desktop = wx.App(False)
-        frame = DesktopFrame(app, remember_data_dir=remember_directory)
+        frame = DesktopFrame(app, remember_data_dir=remember_directory,
+                             **({'trust_controller': trust_controller} if trust_controller is not None else {}))
         frame.Show()
         desktop.MainLoop()
         return 0

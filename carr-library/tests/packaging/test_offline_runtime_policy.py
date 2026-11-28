@@ -115,6 +115,14 @@ def test_ci_child_opts_out_before_fake_runtime_import(tmp_path):
         (tmp_path / name).mkdir()
     runner = tmp_path / 'scripts' / 'ci_check.py'
     shutil.copyfile(ROOT / 'scripts' / 'ci_check.py', runner)
+    shutil.copyfile(ROOT / 'scripts' / 'ci_watchdog.py', runner.with_name('ci_watchdog.py'))
+    # ci_check loads its exact standalone Windows owner before starting pytest.
+    # Copy only that dependency, without importing or staging the application.
+    owner_relative = Path('src/carr_library/audio/windows_process.py')
+    owner = tmp_path / owner_relative
+    owner.parent.mkdir(parents=True)
+    owner_bytes = (ROOT / owner_relative).read_bytes()
+    owner.write_bytes(owner_bytes)
     fake_runtime = tmp_path / 'src' / 'onnxruntime.py'
     fake_runtime.write_text(textwrap.dedent('''
         import os
@@ -140,3 +148,4 @@ def test_ci_child_opts_out_before_fake_runtime_import(tmp_path):
     )
     assert result.returncode == 0, result.stdout + result.stderr
     assert 'junit_passed=1, failed=0, skipped=0, pytest_exit=0' in result.stdout
+    assert owner.read_bytes() == owner_bytes, 'The copied process owner changed during execution.'

@@ -1,0 +1,61 @@
+{
+  "schema": "carr-standard-observed-system-helper-repair/1",
+  "status": "OBSERVED_FAILURE_WITH_PENDING_REPAIR_QUALIFICATION",
+  "observed": {
+    "source_commit": "723698d8afdcebd0e35f9cbcbd10de3e23a75534",
+    "source_tree": "eb725587fd7d5022d8f8aef0538d1ff0fa8dfbaa",
+    "run_id": 46011108359,
+    "job_id": 140546541951,
+    "ordinary_native_install_repair_uninstall": {
+      "status": "PASS",
+      "checks": 6,
+      "self_test": "PASS"
+    },
+    "a_to_b": {
+      "status": "FAIL",
+      "boundary": "WindowsStandardHost.snapshot -> _shortcut_target -> _powershell -> file_info",
+      "exception": "TrustError: Expected an ordinary, unlinked local file.",
+      "before_native_update_cases": true
+    },
+    "artifact": {
+      "id": 15207739417,
+      "bytes": 1171218,
+      "sha256": "2d92321eaccb9d97879b293a121c9a3dcccb2b3672698eb3eabc882f46b093ac"
+    }
+  },
+  "diagnosis": {
+    "observed": "The common private-file validator rejected the fixed OS PowerShell executable selected by GetSystemDirectoryW.",
+    "inference": "Windows servicing hardlinks are a likely cause. The prior failure log did not expose link metadata, so link count is not yet established.",
+    "primary_references": [
+      "https://learn.microsoft.com/en-us/windows/win32/api/sysinfoapi/nf-sysinfoapi-getsystemdirectoryw",
+      "https://learn.microsoft.com/en-us/windows-hardware/manufacture/desktop/determine-the-actual-size-of-the-winsxs-folder?view=windows-11"
+    ]
+  },
+  "repair": {
+    "fixed_authoritative_path": true,
+    "all_ancestors_directory_validated": true,
+    "leaf": "regular, non-symlink, non-reparse, at least one native link",
+    "environment_or_path_selection": false,
+    "private_payload_and_state_file_guard": "UNCHANGED: exactly one link",
+    "existing_owned_launcher": "UNCHANGED",
+    "native_probe": "Records actual fixed-helper device/inode/size/mtime/mode/attributes/link count before native snapshot; final receipt retains this observation.",
+    "qualification_child": "Uses the same authoritative helper instead of SystemRoot environment selection.",
+    "exact_native_receipt_validation": "The standard A-to-B aggregate accepts the additive system_helper field only with its exact shape, strict integer types, normal non-reparse mode and native identity matching a fresh GetSystemDirectoryW-based lookup. The original 15 checks and 50 installed cases remain mandatory.",
+    "independent_source_review": "GO for the separate fixed-system-helper contract and 13 regressions; an exact-schema omission in the initial gate was found and corrected before launching the repaired native run."
+  },
+  "declared_regressions": {
+    "source": 13,
+    "installed": 13,
+    "oracle": "scripts/v3_acceptance_oracles.json: tests.security.test_standard_system_helper",
+    "status": "NOT_RUN"
+  },
+  "remaining_native_acceptance": {
+    "status": "NOT_RUN_ON_REPAIRED_HEAD",
+    "a_to_b_checks": 15,
+    "exact_installed_library_cases": 50,
+    "previous_source": "91332206578b4d8dc779fec08c8d51a67962b0ff",
+    "production_authority": "NOT_CONFIGURED",
+    "physical_device": "NOT_RUN",
+    "nvda": "NOT_RUN"
+  }
+}

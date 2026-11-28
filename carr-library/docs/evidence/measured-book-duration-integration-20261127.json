@@ -1,0 +1,52 @@
+{
+  "schema": 1,
+  "status": "AUTHORED_RUNTIME_NOT_RUN",
+  "base": "48e038ef1993879605ecb83e0dfa17794382a851",
+  "component_parent": "21d2714e2513f50420a542962260c5a7ff5f2bdb",
+  "source_review": "Root bounded source review of checkpoint21d found owned reader/runtime/scratch/broker nesting and typed interval/backup contracts sound. Its concrete receipt-to-copy race finding is addressed here by expected_sha256 in audio.jobs.publish_new and both export callers.",
+  "main_new_tests": {
+    "tests.audio.test_book_duration": 51,
+    "tests.storage.test_book_duration_backup": 8,
+    "tests.e2e.test_book_duration_cli": 9,
+    "tests.ui.test_book_duration": 8,
+    "tests.audio.test_publish_new_digest": 8
+  },
+  "focused_source_cases": 227,
+  "focused_installed_cases": 227,
+  "retained_old_queue_cases": 143,
+  "native_checks": 41,
+  "native_origins": 12,
+  "existing_native_queue_checks_retained": 26,
+  "shared_api": {
+    "path": "src/carr_library/audio/jobs.py",
+    "method": "publish_new",
+    "addition": "optional expected_sha256=None; validate expected digest before staging and incremental copied-byte digest before destination publication; existing default callers unchanged",
+    "callers": [
+      "AudioBatchService.export_file",
+      "book_duration.export",
+      "book_duration.review"
+    ]
+  },
+  "existing_native_script_change": "windows_audio_batches_smoke.py retains all26 checks and recognizes the four additive measured-duration controls in its exact button inventory.",
+  "paths": [
+    "carr-library/src/carr_library/audio/book_duration.py",
+    "carr-library/src/carr_library/audio/batches.py",
+    "carr-library/src/carr_library/audio_batch_backup.py",
+    "carr-library/src/carr_library/ui/audio_batches.py",
+    "carr-library/src/carr_library/audio_batch_cli.py",
+    "carr-library/src/carr_library/audio_cli.py",
+    "carr-library/src/carr_library/audio/jobs.py",
+    "carr-library/tests/audio/test_book_duration.py",
+    "carr-library/tests/storage/test_book_duration_backup.py",
+    "carr-library/tests/e2e/test_book_duration_cli.py",
+    "carr-library/tests/ui/test_book_duration.py",
+    "carr-library/tests/audio/test_publish_new_digest.py",
+    "carr-library/docs/MEASURED_BOOK_DURATION.md",
+    "carr-library/scripts/windows_audio_batches_smoke.py",
+    "carr-library/scripts/windows_book_duration_smoke.py",
+    "carr-library/scripts/book_duration_acceptance.py",
+    ".github/workflows/carr-book-duration.yml",
+    "carr-library/scripts/book_duration_oracles.json"
+  ],
+  "runtime": "NOT_RUN: no executor is available; the frozen Windows gate must supply actual source, installed and native evidence."
+}

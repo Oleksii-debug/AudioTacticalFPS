@@ -1,0 +1,326 @@
+{
+  "schema": "carr-completed-inspection-helper-composition/1",
+  "status": "SOURCE_REVIEWED_REQUIRES_EXACT_SUCCESSOR_RUNTIME",
+  "baseline": {
+    "commit": "c31e680b15d2334420f6cf19d5587636e948258b",
+    "tree": "f5766d63cec62a4723191ac10e22da9f7ddeb7f0"
+  },
+  "authority": {
+    "technical_project": "db8adbdc483a03c262885928c7ed214ca70bbaa7",
+    "acceptance": "45752d31899f91bbdc9c71e4b256ac42975beaac"
+  },
+  "reason": [
+    "Complete the required V3-20 long-silence inspection gap with the existing production,Studio,CLI and publication owners.",
+    "Repair the actual c31 helper-owned directory sharing failure after unchanged process settlement; retain the complete observed failure."
+  ],
+  "components": [
+    {
+      "name": "backend",
+      "commit": "4b596c63b3c66d55d3a2bf9a0bf0c71be02eff67",
+      "tree": "9cb7a2fcc4120b162ece5b0b1bc3df14326d41fc",
+      "changed": [
+        {
+          "path": "carr-library/docs/evidence/completed-audio-silence-inspection-backend-20261128.json",
+          "before": null,
+          "after": "0ce94b0bc6d33f2dc506ca222de7bd794b4646fb"
+        },
+        {
+          "path": "carr-library/src/carr_library/audio/ffmpeg.py",
+          "before": "3944a816c93482629c53430373f40275ef701833",
+          "after": "d076e29af23e845fdeafd750be14f83af5ab79b3"
+        },
+        {
+          "path": "carr-library/src/carr_library/audio/production.py",
+          "before": "56fa1a804d3749c83a382f0e7bc844f7e4f1b0e2",
+          "after": "cb9b916cb1376a9f6a7f5c6e867c52744939e157"
+        },
+        {
+          "path": "carr-library/tests/audio/test_production_integrity.py",
+          "before": "7da2c5720fe004f957d755f08ebee7d9cb2c75c7",
+          "after": "df9a2ae107d686a9cb66ee8d97be00d65c83d44b"
+        }
+      ]
+    },
+    {
+      "name": "cli",
+      "commit": "f8a8d34ad002a65d054eb8641d98fb85cfefab2a",
+      "tree": "375d54e7540e52f23dcfc2e3306a8ee3fbeed8b3",
+      "changed": [
+        {
+          "path": "carr-library/docs/evidence/completed-silence-cli-source-20261128.json",
+          "before": null,
+          "after": "293c9498b40663576c0743f1e2b109b2716be697"
+        },
+        {
+          "path": "carr-library/src/carr_library/audio_cli.py",
+          "before": "111f95d4c92b79f9eff49e6fb37e96dd5547de18",
+          "after": "2a81e2a3ff2b0cca8cd2175ee1112d6bc13dc914"
+        },
+        {
+          "path": "carr-library/tests/e2e/test_audio_cli_resources.py",
+          "before": "b29cc52aa4b1775bd1c67cad1b18240ccc085dc9",
+          "after": "4aee2aa513f4db6771298945be93e8fe51ec680d"
+        }
+      ]
+    },
+    {
+      "name": "studio",
+      "commit": "379727904d52293efdc20deb5692a5aa5c6912bb",
+      "tree": "66c4187f914507f66d21c214045331b6723526eb",
+      "changed": [
+        {
+          "path": "carr-library/docs/AUDIO_STUDIO_V3.md",
+          "before": "9f98aa09130728ccece29e828ec53a18c10779f6",
+          "after": "ce22b630475516858f7e47439ebd0776059a7a79"
+        },
+        {
+          "path": "carr-library/docs/evidence/completed-audio-inspection-studio-source-20261128.json",
+          "before": null,
+          "after": "e6c44c67289f9277a1e1789cb86456378b83968f"
+        },
+        {
+          "path": "carr-library/src/carr_library/ui/audio_studio.py",
+          "before": "c8565790601b2359e94d272fa69593ffe5262b1d",
+          "after": "6abb5c173dfe3ceec79733b571f92fc620ca7568"
+        },
+        {
+          "path": "carr-library/tests/ui/native_audio_silence_inspection_smoke.py",
+          "before": null,
+          "after": "51c40dd9d75d2b5afc8fd7a7020a4ee0ea92bca8"
+        },
+        {
+          "path": "carr-library/tests/ui/test_audio_studio.py",
+          "before": "99f2a4e5ee82926e12c78a9023b8f076915494f6",
+          "after": "e9e2ecc1258e0dc7c508f5e294204c1a5b1f9e8b"
+        }
+      ]
+    },
+    {
+      "name": "helper_cleanup",
+      "commit": "70f12c0c9c2c3c62db570a0207394114bfb99849",
+      "tree": "8d4cd373c73d859b9596521f3e6eacb4102a57aa",
+      "changed": [
+        {
+          "path": "carr-library/docs/evidence/local-voice-owned-directory-cleanup-repair-20261128.json",
+          "before": null,
+          "after": "c8db4b9693cdd45951c0ab53492e6edbabdbd9f5"
+        },
+        {
+          "path": "carr-library/scripts/local_voice_helper_oracles.json",
+          "before": "87d02a8353b5bec0b3a87376cf989013e653e0b6",
+          "after": "0abbf468f44c13b7237c188cdd212cb5e7dfbf20"
+        },
+        {
+          "path": "carr-library/src/carr_library/audio/local_voice_helper.py",
+          "before": "c8ba69fef0c3cadaf10ea6517c7db920ad45156e",
+          "after": "e9e989d6997ee65c4e4ba2b2328b06c604c061dc"
+        },
+        {
+          "path": "carr-library/tests/audio/test_local_voice_helper.py",
+          "before": "43896c8fa9a0b43596da3b056a530e5c52b2f3dd",
+          "after": "72426b335435ab79cc07240cfa683683c8e0b8ae"
+        }
+      ]
+    },
+    {
+      "name": "qualification",
+      "commit": "51fa3797b095545ad6ab79e5a64a2d1b852fa52b",
+      "tree": "f7fa9bfe038ad9edf56b279bab6cc8ba2b72e41a",
+      "changed": [
+        {
+          "path": ".github/workflows/carr-silence-inspection.yml",
+          "before": null,
+          "after": "44d03a19bff33dead624d9e9a2fda6c6bbca1b87"
+        },
+        {
+          "path": ".github/workflows/carr-studio-controls.yml",
+          "before": "2c92922481202d14d031502608962953aada609e",
+          "after": "78c08e1f6c7d23f2a82038b8d4aa515bfbf3346d"
+        },
+        {
+          "path": "carr-library/scripts/request_cleanup_oracle.json",
+          "before": "f3458c056aa444398220a7798ccfa088e3ed6d25",
+          "after": "0b0729eaee7f3a4d638646b8209cc8139d3a9140"
+        },
+        {
+          "path": "carr-library/scripts/silence_inspection_acceptance.py",
+          "before": null,
+          "after": "5d945d40ba582a3fc6e899f273f340af9a108e9b"
+        },
+        {
+          "path": "carr-library/scripts/silence_inspection_oracle.json",
+          "before": null,
+          "after": "2e740ff0e02d6ec18ec48fd798ed73d963c8d9a5"
+        },
+        {
+          "path": "carr-library/scripts/studio_controls_oracle.json",
+          "before": "662ed20fde3696af3860ee0822f246172fa41904",
+          "after": "151b59090834af9ce38312a6de3e09cfba551082"
+        },
+        {
+          "path": "carr-library/scripts/v3_acceptance_oracles.json",
+          "before": "b350bdab38415c42d13c69116dd876747e8f0354",
+          "after": "9db65750aa51b1d7011d535ec00274e1b2d828c5"
+        }
+      ]
+    }
+  ],
+  "app_source": {
+    "existing_blobs": 425,
+    "changed_blobs": 5,
+    "unchanged_blobs": 420,
+    "changes": [
+      {
+        "path": "carr-library/src/carr_library/audio/ffmpeg.py",
+        "before": "3944a816c93482629c53430373f40275ef701833",
+        "after": "d076e29af23e845fdeafd750be14f83af5ab79b3"
+      },
+      {
+        "path": "carr-library/src/carr_library/audio/production.py",
+        "before": "56fa1a804d3749c83a382f0e7bc844f7e4f1b0e2",
+        "after": "cb9b916cb1376a9f6a7f5c6e867c52744939e157"
+      },
+      {
+        "path": "carr-library/src/carr_library/audio_cli.py",
+        "before": "111f95d4c92b79f9eff49e6fb37e96dd5547de18",
+        "after": "2a81e2a3ff2b0cca8cd2175ee1112d6bc13dc914"
+      },
+      {
+        "path": "carr-library/src/carr_library/ui/audio_studio.py",
+        "before": "c8565790601b2359e94d272fa69593ffe5262b1d",
+        "after": "6abb5c173dfe3ceec79733b571f92fc620ca7568"
+      },
+      {
+        "path": "carr-library/src/carr_library/audio/local_voice_helper.py",
+        "before": "c8ba69fef0c3cadaf10ea6517c7db920ad45156e",
+        "after": "e9e989d6997ee65c4e4ba2b2328b06c604c061dc"
+      }
+    ],
+    "new_application_modules": 0
+  },
+  "old_tests": {
+    "all_four_original_files_retained_as_exact_prefix": true,
+    "modules": [
+      {
+        "module": "tests.audio.test_production_integrity",
+        "retained": 12,
+        "added": 50,
+        "current": 62
+      },
+      {
+        "module": "tests.e2e.test_audio_cli_resources",
+        "retained": 9,
+        "added": 21,
+        "current": 30
+      },
+      {
+        "module": "tests.ui.test_audio_studio",
+        "retained": 60,
+        "added": 45,
+        "current": 105
+      },
+      {
+        "module": "tests.audio.test_local_voice_helper",
+        "retained": 67,
+        "added": 10,
+        "current": 77
+      }
+    ],
+    "total_retained": 148,
+    "total_added": 126,
+    "total_current": 274
+  },
+  "qualification": {
+    "source": 5947,
+    "installed": 5619,
+    "focused": 274,
+    "focused_functions": 117,
+    "focused_modules": 4,
+    "retained": 148,
+    "added": 126,
+    "native": 29,
+    "source_modules": 252,
+    "installed_modules": 239,
+    "main_selectors": 451,
+    "current_request_cleanup_cases": 977,
+    "current_studio_controls_cases": 256,
+    "unchanged_studio_native": 39,
+    "current_local_helper_cases": 121,
+    "unchanged_helper_native": 31,
+    "focused_support": [
+      "tests/__init__.py",
+      "scripts/local_voice_contract_fixture.py"
+    ],
+    "fixture_blob": "1134b755b1c54e7c061c6cc328c72c7004231aff",
+    "gate_identities": {
+      "focused": {
+        "blob": "2e740ff0e02d6ec18ec48fd798ed73d963c8d9a5",
+        "sha256": "b838995fdb1fda7be230c0ad54d8a2bd47824991e0696f2c9205bed30e26e85c"
+      },
+      "v3": {
+        "blob": "9db65750aa51b1d7011d535ec00274e1b2d828c5",
+        "sha256": "24f1c6f2e29f944d76362a01a699d70164dbda7e7e3bd775e3379b4c4b0855cf"
+      }
+    },
+    "artifact_contract": "Existing151 main artifact root members unchanged; new focused29 native checks have their own strict raw-evidence gate."
+  },
+  "unchanged_execution_owners": {
+    "main_workflow": "6a826f25a0a4724b5665b3cfbcf34ab97336971d",
+    "strict_runner": "2d04b9b269ae85c24349ae8d4ad9b295737866fb",
+    "process_engine": "8d6de25b95df92be03b25955244aee6c16602963",
+    "windows_job": "2dd7caa0300fe9a9c28583cdc0cdd25867c45c92"
+  },
+  "reviews": {
+    "backend": "root and payload SOURCE_GO_NOT_EXECUTED",
+    "cli": "root and capacity SOURCE_GO_NOT_EXECUTED",
+    "studio_and_native": "root and capacity SOURCE_GO_NOT_EXECUTED",
+    "helper_cleanup": "root and native SOURCE_GO_NOT_EXECUTED",
+    "final_qualification": "root and payload SOURCE_GO_NOT_EXECUTED"
+  },
+  "carried_observed_evidence": [
+    {
+      "path": "carr-library/docs/evidence/windows-concurrency-preflight-c31-observed-20261128.json",
+      "blob": "e9a6ecf01ec7d04227c7e25e709f74071bec3904",
+      "source": "c31"
+    },
+    {
+      "path": "carr-library/docs/evidence/windows-concurrency-preflight-c31-observed-20261128.md",
+      "blob": "03e4b33582ac42a3b6b95f6f5d461450f4536352",
+      "source": "c31"
+    },
+    {
+      "path": "carr-library/docs/evidence/pr209-c31-auxiliary-observed-results-20261128.json",
+      "blob": "6ff7b91296d5a1478bc070a675f5fe1d874cc5f2",
+      "source": "c31"
+    },
+    {
+      "path": "carr-library/docs/evidence/pr209-c31-auxiliary-observed-results-20261128.md",
+      "blob": "953595c49abfc64cf3f639a602ef85157656a14f",
+      "source": "c31"
+    },
+    {
+      "path": "carr-library/docs/evidence/c31-main-observed-failure-20261128.json",
+      "blob": "b76ebe614cd6895b8c66010ea9f6867a6c2967aa",
+      "source": "c31"
+    },
+    {
+      "path": "carr-library/docs/evidence/C31_MAIN_OBSERVED_FAILURE_20261128.md",
+      "blob": "d13aaffe48bb23cd877bc53ccc6f464c7daacd10",
+      "source": "c31"
+    }
+  ],
+  "current_docs": {
+    "matrix_sha256": "38cc0955b6ebf491b867da64f43650c30b25f542a7e1d4b9c9e51b39c81594a1",
+    "readiness_sha256": "0b80a6f31fe6c6c06776c198c341cf95ec2b6318124891f5e371f98513fbafac",
+    "studio_guide_blob": "ce22b630475516858f7e47439ebd0776059a7a79",
+    "requirements": 24
+  },
+  "runtime": "NOT_RUN for this composed successor. Completed c31 source FAIL and earlier exact scoped passes remain historical; no result transfers.",
+  "limits": [
+    "All original source/completion/master/timeline/cache/replay identities remain unchanged by inspection.",
+    "Warnings from explicit amplitude/duration criteria do not establish acoustic correctness, intended silence or listening quality.",
+    "Helper cleanup retries only Windows32/33 under retained ownership, within5 seconds; no process/deadline relaxation or hidden persistent error.",
+    "New focused controls use actual synthetic PCM and native wx events; manualNVDA, native file picker, physical listening and real model/language quality remain separate.",
+    "No private runtime/model/recording/credential is added; no public binary or distribution-rights claim."
+  ]
+}

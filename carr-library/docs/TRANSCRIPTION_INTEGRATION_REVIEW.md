@@ -1,31 +1,74 @@
 # Supplied Whisper Transcribe — integration review
 
-Review date: 2026-11-27. Status: SOURCE_RECEIVED_AND_STATICALLY_REVIEWED; runtime/integration/Windows/NVDA/model-quality acceptance NOT_RUN in this audit. This is a work package under the [current platform specification](UNIVERSAL_SCOPE_V3_FINALIZATION.md), not a separate ASR product.
+Review date: 2026-11-27. Status: PUBLIC_WORKER_PROFILES_SOURCE_INTEGRATED; PRIVATE_V5_CORRECTNESS_CANDIDATE_INDEPENDENTLY_TESTED. Exact composed runtime, Windows/NVDA and model-quality acceptance remain separate. This is a work package under the [current platform specification](UNIVERSAL_SCOPE_V3_FINALIZATION.md), not a separate ASR product.
 
-## Subsequent integration evidence — 2026-11-27
+## Follow-up: supplied V5 correctness candidate
 
-The original review below remains a snapshot of the supplied source. The exact
-37,974-byte worker has since been bound to SHA256
-`1df2a1694b35bdf69dab614f91f1e8dea99716dfb039182ef5b83ca5ccb46ec9`.
-The [primary opt-in adapter](SUPPLIED_TRANSCRIPTION_ADAPTER.md) reuses the existing
-assistant JobStore, scoped plans and bounded audio process runner. It addresses
-ASR-01/02 by using immutable one-file staging and content/settings/runtime-bound
-receipts, ASR-03 through the exact reviewed no-fallback source correction, ASR-04
-through mandatory export verification, and ASR-05/06 through isolated single-file
-workers, serialized admission within one application store and owned-process
-cancellation. Interrupted files restart; generic hard-kill recovery and acoustic
-mid-file checkpoints are not qualified.
+The owner updated the supplied implementation to V5 while the initial V4.3
+review was in progress. The private correction reuses that V5 and its existing
+worker, model resolver and transcript exporter. Original owner files were not
+changed. No supplied worker, personal file, environment or model is included in
+this public repository.
 
-The actual supplied worker protocol has been executed on Linux with a synthetic
-isolated SDK for successful Ukrainian exports and two truthful-failure cases.
-That advances integration/protocol evidence only. ASR-07 real runtime/model and
-cold offline Windows qualification, ASR-08 additional capabilities, native UI,
-complete ASR backup migration and real recognition quality remain open. No private
-worker, source recordings, transcripts, models or dependencies were published.
+| Source identity | SHA256 |
+| --- | --- |
+| Original V4.3 worker, 37,974 bytes | `1df2a1694b35bdf69dab614f91f1e8dea99716dfb039182ef5b83ca5ccb46ec9` |
+| Reviewed V5 worker baseline | `712682aa5b2ed922956e4e20652143f6941899447f6e5417a5fa892b42854fc7` |
+| Corrected private V5 worker | `137c3be36d5bada0c1d5e971f13fdd3d234747fae6dadb5c642e023a3357e7b6` |
+| Corrected private transcript exporter | `fed67d1ea0ffc1a5ef06dc106642363ecb31d4c0e68165de1447cda8af02f945` |
 
-## Source and boundary
+The exact delivered candidate passed **106 tests and 24 subtests, with no
+failures or skips**, including an independent review. Execution used Python
+3.12.14, pytest 9.0.2, synthetic source/model bytes and an injected inference
+boundary. The original V5 failed its supplied silent-rerun aggregate test and
+all eleven newly added correctness regressions. These are source-control-flow
+results, not neural inference, acoustic quality or native accessibility evidence.
 
-The owner-supplied implementation identifies itself as V4.3. The current source includes worker.py (37,974 bytes), accessible_window.ps1 (49,718 bytes), README_UA.txt and download_models_once.py. The readable worker source was inspected. File bytes/immutable source hash and dependency lock must be recorded before code adoption; this review has not created a redistributed source snapshot.
+The correction binds cached results to actual audio/model bytes, normalized
+recognition settings, runtime package versions and wrapper-source hashes. It
+checks these identities during recognition and before publication. V5's refusal
+to adopt unrelated basename TXT files and its explicit language intent are
+preserved. Required exports are verified against the exact bytes rendered by
+the exporter; a later edit to an earlier output cannot become a valid result.
+The result manifest commits last, and completed/cached counters follow that
+commit. Partial failures retain only verified successful records. Silent reruns
+and live-setting changes preserve truthful aggregate text. Pause/stop checks
+occur before the first and each later lazy generator step, during hashing and
+before publication; the existing shared-model reference remains in use.
+
+The independent review found and corrected an intermediate defect where a later
+file could alter an earlier export before the final seal. The final tests cover
+TXT, phrases, words, SRT, VTT, JSON, aggregate corruption and receipt-write
+failure. The private deliverable retains the exact baseline, corrected files,
+patch, portable tests, JUnit evidence and per-file hashes.
+
+The current public adapter now reuses PR140 at
+`ebb5539b763a0733574f7e248be474902ebf723c` for both explicit profiles:
+`receipts-v1` and `whisper-v5-manifest-v1`. The V5 adapter validates
+`result_manifest.json`, wrapper/model/source identities, actual retry settings
+and every requested artifact before admitting them into the existing per-file
+receipt, edit, export and typed-backup lifecycle. Recursive folder intake uses
+the existing bounded scanner. The current desktop, CLI, process supervisor,
+shared progress and recovery services are retained.
+
+This is source integration, not a claim that a different private repair or
+runtime has been qualified. Package-version receipts still explicitly say
+`package_versions_only_not_a_qualified_runtime_pack`. The existing application
+supervisor supplies bounded stop/termination. Exact composed source and installed
+Windows tests remain required; public synthetic workers do not establish real
+neural inference, language quality, timing accuracy or diarization. The current
+bindings and named acceptance cases are in
+[Transcription host integration](TRANSCRIPTION_HOST_INTEGRATION.md).
+
+Exact runtime/model inventory, rights, actual private inference, language quality
+and manual Windows/NVDA acceptance retain their separate evidence requirements.
+
+## Initial V4.3 source review and boundary
+
+The observations below describe the initially supplied snapshot. The current
+adapter integration is described above and in the linked host contract.
+
+The initially supplied implementation identifies itself as V4.3. That source includes worker.py (37,974 bytes), accessible_window.ps1 (49,718 bytes), README_UA.txt and download_models_once.py. The readable worker source was inspected; its immutable identity is now recorded above. A qualified dependency lock is still required before runtime adoption. No redistributed source snapshot is created by this public review.
 
 The source location is retained in the authorized private worker input, not in public Git. Its personal jobs, recordings/transcripts, virtual environment, historical backups/patch clutter and machine-specific paths must not be imported. No root LICENSE, dependency lock or pyproject.toml was observed; establish provenance/rights for the supplied wrapper and every runtime/model before redistribution. Do not invent a license for the owner's code.
 
@@ -43,9 +86,11 @@ The supplied environment metadata records Python3.14.5, faster-whisper1.2.1, CTr
 
 No models directory was observed at the supplied project root. The downloader names tiny/base/small/medium/large-v3-turbo/large-v3 without immutable revisions and hashes. Actual model availability, complete dependencies and cold offline operation remain unverified. Do not copy the virtual environment as a portable runtime or automatically download all models.
 
-## Findings to resolve before qualification
+## Initial V4.3 findings and qualification requirements
 
-Line references identify the inspected worker.py snapshot and may move after changes.
+Line references identify the initial V4.3 worker.py snapshot. The private V5
+source corrections and their limits are recorded above; these historical line
+numbers do not describe the corrected candidate.
 
 | ID / priority | Observed behavior | Required correction and test |
 |---|---|---|

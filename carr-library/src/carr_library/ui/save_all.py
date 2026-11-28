@@ -63,6 +63,7 @@ class SaveCoordinator:
     def __init__(self):
         self.participants = {}
         self.busy = False
+        self._completion_observers = []
 
     def register(self, key, label, *, dirty, save, focus=None):
         if not isinstance(key, str) or not key or not isinstance(label, str) or not label:
@@ -77,6 +78,22 @@ class SaveCoordinator:
                 self.participants.pop(key, None)
         return unregister
 
+    def has_unsaved(self):
+        """Check current drafts without starting a write or approving a job.
+
+        Validation failures propagate so callers keep the window open.
+        """
+        return any(participant.dirty() for participant in tuple(self.participants.values()))
+
+    def after_current(self, completed):
+        """Observe the active save once; do not start or repeat any write."""
+        if not callable(completed):
+            raise ValueError('A save completion handler is required.')
+        if not self.busy:
+            return False
+        self._completion_observers.append(completed)
+        return True
+
     def save_all(self, completed, *, cancelled=lambda: False):
         if not callable(completed) or not callable(cancelled):
             raise ValueError('Save completion and cancellation handlers must be callable.')
@@ -84,7 +101,7 @@ class SaveCoordinator:
             return False
         self.busy = True
         pending = deque(self.participants.items())
-        # Keep failures by registration identity, not just the reusable key.
+        # Failures belong to a registration, not a reusable document key.
         saved, failures = [], {}
         stopped = False
         waiting = False
@@ -105,12 +122,15 @@ class SaveCoordinator:
                     continue
                 if dirty and (key, participant) not in failures:
                     failures[(key, participant)] = (participant.label, 'newer or unsaved edits are retained')
+            observers, self._completion_observers = self._completion_observers, []
             self.busy = False
-            # A late stop cannot undo already confirmed durable writes.
-            # Keep cancellation when work remains or no write was confirmed.
             summary = SaveSummary(tuple(saved), tuple(failures.values()),
                                   stopped and (bool(failures) or not saved))
-            completed(summary)
+            try:
+                completed(summary)
+            finally:
+                for observer in observers:
+                    observer(summary)
             # A late reply belongs to its original registration, not a new
             # document that happens to reuse the same key. Focus only a live
             # failed registration, rechecking after the completion callback.
@@ -189,3 +209,53 @@ class SaveCoordinator:
 
         advance()
         return True
+
+
+
+def defer_close(owner, coordinator, *, close, report, alive, post, event=None):
+    """Keep a user close request pending until an active save really finishes.
+
+    UI adapters supply their existing close action and event dispatcher. A
+    failed save, newly typed draft or destroyed window never triggers shutdown.
+    Forced operating-system shutdown cannot be vetoed by this helper.
+    """
+    if coordinator is None or not coordinator.busy:
+        return False
+    if event is not None:
+        can_veto = getattr(event, 'CanVeto', None)
+        if callable(can_veto) and not can_veto():
+            return False
+        veto = getattr(event, 'Veto', None)
+        if callable(veto):
+            veto()
+    if getattr(owner, '_save_close_pending', False):
+        return True
+    owner._save_close_pending = True
+
+    def finish(summary):
+        owner._save_close_pending = False
+        if not alive():
+            return
+        if not summary.complete:
+            report('The window remains open. ' + summary.message())
+            return
+
+        def retry():
+            if not alive():
+                return
+            try:
+                if coordinator.busy or coordinator.has_unsaved():
+                    report('The window remains open because newer unsaved changes are retained.')
+                    return
+            except Exception as exc:
+                report('The window remains open because saving could not be verified: ' + str(exc))
+                return
+            close()
+
+        post(retry)
+
+    if not coordinator.after_current(finish):
+        owner._save_close_pending = False
+        return False
+    report('Waiting for the current saves before closing. A failure or newer edit keeps this window open.')
+    return True

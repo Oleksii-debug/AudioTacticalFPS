@@ -1,21 +1,36 @@
-"""Native language/profile choice for reviewed scanned-page import."""
+"""Installed-model choices for the application's reviewed scanned-page import."""
 from pathlib import Path
 
 from ..extract.page_ocr import Config
+from ..extract.ocr_languages import model_label, split_languages
+from ..extract.pinned_tessdata import POLICY
 
-# Compatible quick presets for existing Import Center queues and controls.
-# The full installed/managed selector is the authority for custom selections.
-LANGUAGES = (
-    ('English', 'eng'),
-    ('Ukrainian', 'ukr'),
-    ('Slovak', 'slk'),
-    ('English, Ukrainian and Slovak', 'eng+ukr+slk'),
-)
+
+def config_summary(config):
+    profile = 'pinned fast models' if config.model_policy == POLICY else 'installed model profile'
+    if config.model_profile != 'installed':
+        profile = 'managed ' + config.model_profile.title() + ' models'
+        if config.model_policy == POLICY:
+            profile += '; pinned Fast verification'
+    if config.model_pack_path:
+        profile = 'verified offline pack; manifest SHA256 ' + config.model_pack_sha256
+    names = ', '.join(model_label(code) for code in split_languages(config.languages))
+    return names + '; ' + profile + ('; orientation check on' if config.orientation else '')
+
+
+def choose_model_config(parent, initial=None, *, preset_root=None):
+    from .ocr_selection import choose_model_config as choose
+    options = {}
+    if initial is not None:
+        options['initial'] = initial
+    if preset_root is not None:
+        options['preset_root'] = preset_root
+    return choose(parent, **options)
 
 
 def choose_ocr_config(parent, paths):
-    """Return None on cancellation; native text-only imports need no OCR dialog."""
+    """Preserve direct-import API; native text-only imports need no model dialog."""
     if not any(Path(path).suffix.casefold() == '.pdf' for path in paths):
         return Config()
-    from .ocr_selection import choose_model_config
-    return choose_model_config(parent)
+    library = getattr(parent, 'library', None)
+    return choose_model_config(parent, preset_root=getattr(library, 'root', None))

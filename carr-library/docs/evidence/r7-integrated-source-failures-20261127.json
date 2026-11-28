@@ -1,0 +1,77 @@
+{
+  "schema": "carr-observed-acceptance/1",
+  "source_commit": "523aa40f9215569a276f0625d09fcc0fa84bb520",
+  "run_id": 45993629737,
+  "job_id": 140487432393,
+  "status": "FAIL",
+  "required_suites": 327,
+  "passed_suites": 323,
+  "failed_suites": 4,
+  "failed_cases": 8,
+  "preserved_case_inventory": {
+    "tests/e2e/test_import_worker_publication.py": {
+      "test_barrier_leaves_other_processes_unchanged": 2,
+      "test_stopped_child_reports_verified_fresh_commit": 9,
+      "test_stopped_child_before_commit_never_reports_completion": 6,
+      "test_competing_commit_after_kill_does_not_complete_stopped_request": 9,
+      "test_cancelled_replay_cannot_claim_preexisting_publication": 1,
+      "test_replay_preserves_original_receipt_and_sql_replacement_is_rejected": 1,
+      "test_recovery_rechecks_candidate_source_and_authorization": 3,
+      "test_resumed_attempt_cannot_reuse_old_candidate_when_cancelled_before_launch": 1,
+      "test_docx_publication_keeps_existing_logical_record_capacity": 1,
+      "test_recovered_commit_with_pending_extraction_journal_survives_backup": 1
+    },
+    "tests/ingest/test_worker_owned_family.py": {
+      "test_parser_owner_settles_descendant_after_leader_exit": 2,
+      "test_parser_request_handle_is_read_only": 1
+    },
+    "tests/e2e/test_streamed_source_import.py": {
+      "test_explicit_streamed_import_uses_real_worker_receipt_and_independent_quote": 1,
+      "test_whole_original_proof_is_rechecked_after_same_size_late_change": 1,
+      "test_real_worker_cancellation_can_resume_from_owned_bytes_after_source_is_deleted": 1,
+      "test_profile_is_frozen_in_the_supervising_attempt": 1,
+      "test_actual_over_64_mib_source_imports_without_the_legacy_byte_api": 1,
+      "test_pdf_and_streamed_request_allowances_remain_separate": 1,
+      "test_sealed_profile_lookup_preserves_bounded_pdf_and_rejects_bare_large_text": 1
+    },
+    "tests/audio/test_publication_fsync.py": {
+      "test_cancellation_during_final_flush_does_not_publish": 4,
+      "test_late_cancellation_cannot_reverse_actual_move": 4,
+      "test_directory_flush_cancellation_preserves_unpublished_complete_stage": 1,
+      "test_real_pcm_silence_cannot_publish_after_final_flush_cancellation": 1,
+      "test_flush_failure_still_preserves_stage_and_prevents_publication": 1
+    }
+  },
+  "failures": [
+    {
+      "path": "tests/e2e/test_import_worker_publication.py",
+      "passed": 29,
+      "failed": 5,
+      "reason": "WinError32 removing owned request.json after process cleanup"
+    },
+    {
+      "path": "tests/ingest/test_worker_owned_family.py",
+      "passed": 2,
+      "failed": 1,
+      "reason": "WinError32 removing owned request.json after leader-exit family cleanup"
+    },
+    {
+      "path": "tests/e2e/test_streamed_source_import.py",
+      "passed": 6,
+      "failed": 1,
+      "reason": "WinError32 removing request.json after actual cancellation"
+    },
+    {
+      "path": "tests/audio/test_publication_fsync.py",
+      "passed": 10,
+      "failed": 1,
+      "reason": "Speech adapter omitted cancellation callback at final publisher flush"
+    }
+  ],
+  "artifact": {
+    "id": 15201080376,
+    "bytes": 187322,
+    "sha256": "355bdecb7b85419d2b7d96521d9ff8a8a48347f1a023220d15397f643f3ee8b5"
+  },
+  "correction": "The original 55 cases remain mandatory, with three additional cleanup boundary cases. This failure receipt does not claim a subsequent pass."
+}

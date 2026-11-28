@@ -1,0 +1,654 @@
+{
+  "schema": 1,
+  "status": "PASS",
+  "kind": "observed-windows-shared-publication-resource-and-process-boundaries",
+  "source_commit": "7959f6a9fb37b315dec18b4d310b8480d9bb94e5",
+  "source_tree": "eeca186b2b1a13c602aed7b0107c19c04320e20e",
+  "run_id": 46033825970,
+  "job_id": 140624079031,
+  "artifact": {
+    "id": 15217961569,
+    "bytes": 430447,
+    "github_sha256": "3a4bb091d2821d60fd296d4fb2ccae512bb8a3c74cdbd47dc76b33da20a8e350",
+    "independent_zip_download_and_rehash": "NOT_PERFORMED"
+  },
+  "verification": {
+    "source_and_installed_raw_logged_counters": "Both exactly equal the frozen 279-case oracle.",
+    "source_tree_wheel_oracle_and_checkout_manifest": "Equal across both modes.",
+    "native": "All 22 exact labels, six module origins, fixed fields and metrics match the frozen provider-recovery oracle.",
+    "cleanup": "Successful final ephemeral-fixture/runtime cleanup step in the actual job.",
+    "runtime_pack_pins": 56
+  },
+  "covered": {
+    "retained_previous_cases": 259,
+    "canonical_generic_state_publication": 7,
+    "existing_resource_state_publication": 6,
+    "actual_child_ffmpeg_final_diagnostic_boundaries": 7,
+    "headless_disjoint_resource_fixture": "The previously observed single failure is repaired; unrelated device lease remains held."
+  },
+  "source": {
+    "schema": 1,
+    "status": "PASS",
+    "mode": "source",
+    "declared_cases": 279,
+    "timeout_seconds": 1200,
+    "oracle_sha256": "ec4c97d4b7ea3e6d18906e4a4db85acfa6b5be9feee3d93a5ba13ef5176548bd",
+    "source_commit": "7959f6a9fb37b315dec18b4d310b8480d9bb94e5",
+    "source_tree": "eeca186b2b1a13c602aed7b0107c19c04320e20e",
+    "wheel_sha256": "cba99e157ec16a4f41352e0893ee0ffd2f1cb9937a150cd9519582ece997c66b",
+    "checkout_manifest_sha256": "78f679fc14f3988132bc42bafae7125e1156bc3fe0f3360e25733742e2919f3e",
+    "tracked_source_files": 1542,
+    "source_only_python": {
+      "bootstrap/semantic_compat/probe.py": "c51758108a418c7bf98ddd459cefdca852777b07cfc95ac669855b1195398ac7",
+      "bootstrap/semantic_compat/test_probe.py": "ae093cae9f00307c09d2ea787dacf7c8c1522184e5480a411c0979023b7b70bb"
+    },
+    "actual_ffmpeg": {
+      "sha256": "3ab4a9c404504ebff6662d6a48661db952f88ee7fb7d5949a711cad7a763b2cf",
+      "version": "ffmpeg version 9.1-full_build-www.gyan.dev Copyright (c) 2000-2026 the FFmpeg developers",
+      "version_sha256": "900a9c75d78682e23c3f73e9e13d4c9625b24a8f0dfb921a879fc5f9e445bc64"
+    },
+    "test_source_sha256": {
+      "tests/e2e/test_import_worker_publication.py": "8b8f1721b764dcb6b67703b39842f087af86d237f79f74070cc898f0ff8b5abb",
+      "tests/ingest/test_worker_owned_family.py": "7a26b0a287df44380087ee2793ba7c678100ffd571fc9f23cf51201a5e88d382",
+      "tests/e2e/test_streamed_source_import.py": "3308baea93466d3bd4dd9b18366d0ba9f4b7bc1b089c892e7a8e1b99622fcbdb",
+      "tests/audio/test_publication_fsync.py": "314f102c17a8ec5096408e5e921a3f628e76a7ea77f3b18a52662972b0988eab",
+      "tests/ingest/test_request_cleanup.py": "e0e3eb6b85ac0781bdc8a85c0039f88745e59fe9487b0380ae5d7230dbd9de80",
+      "tests/e2e/test_provider_credential_echo.py": "18c3807bb3e4de04bf85b577fe91bc01253b924f9346598c18fc25f7ba88cb39",
+      "tests/e2e/test_provider_profile_import.py": "3823a9a2d6a3c17e04088a9c1b80b22a1150e9592fbc7c1198554fbe8ab700fc",
+      "tests/e2e/test_import_files_cancellation.py": "33c640cc00884062d8dad241e3b42c60cb6a6936174fd1a7d8f65fc48c2680b4",
+      "tests/ingest/test_import_publication_point.py": "e1ca953f2eb5d8883893136574bad3fd7f4a6f1c4700582dc0d1b1553c1250b5",
+      "tests/ui/test_operations_policy.py": "9e3701f3f60274f42c77c8b89b21dac90fdfc377f3eb1d24b1efb934705b05c9",
+      "tests/storage/test_provider_recovery.py": "e6253502b4bfdc42eee4ef08b8992124a8453ecf52cf399a5bb72c0077567f0c",
+      "tests/e2e/test_audio_cli_resources.py": "810bca582e65517fef623a98148690ff8b7d576f5a4e32186aa6a74b91c4f075",
+      "tests/ui/test_progress_compatibility.py": "9a7f6caf48781b79e77835577e66c7220caef5422e08beb8ce8715b516e16d6f",
+      "tests/packaging/test_native_checks_manifest.py": "27d5a6bb40aa7d05b4f3ed62195ef4f60cc23d3065d401efbc6adb0f37813657",
+      "tests/ui/test_progress_concurrency.py": "a03f96aad37bc33b55c01282cd500aa612505ae6f7ca4b9066ce7d3c7e3b0b2b",
+      "tests/storage/test_atomic_state_publication.py": "c29fd49aada78223724128c774f54db7ceb65e527058e7c2acb7537c57a89238",
+      "tests/operations/test_state.py": "834e549a8aaca2b2fad8a2fa393b88ad893cca320cfdfb14c2a01849773c3f53",
+      "tests/audio/test_ffmpeg_process_boundaries.py": "d73da86523f969dd19fd05f786d50efe17ea8542c8560ca04898378e73be9ea7",
+      "tests/__init__.py": "bda1d1b86fa69f604fb87c19f27628942b6bd77aa46b605efbc9cb9d4457183d",
+      "tests/security/__init__.py": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+      "tests/storage/__init__.py": "133dac0936d6e430af23a6ea8041d800ff72d4ee8b7e6bae54d16d6d0bff3efb",
+      "tests/security/conftest.py": "77599b257083e5a79ab901490005c68a8f087971df24143145b48c290e6232e6",
+      "tests/security/test_domain_admission.py": "f8dcae25e2738c16fb6fd0e6a51b772f5153b0118714f4b2f0bd850938242a9c",
+      "tests/ui/test_operation_progress.py": "6f72535a0c87c33e8d185148789b5ec188773bd314d8b1a0e0783389d0cc45dd"
+    },
+    "runner_sha256": {
+      "audio_batch_acceptance.py": "3fcb217a7ed9d535ea9d277191a27504f8e6f452bef235b728036358f9e6e003",
+      "ci_check.py": "a7e90c3a14dc51b78c9af17850a7038bf21513cc5ba41466293cc853cd0e2842",
+      "ci_watchdog.py": "e02be6a6c3406bdf1d9d4c24673363894d03a1ee7948b3b77d6b20fcc2bfc057"
+    },
+    "pytest_exit": 0,
+    "case_counter": {
+      "tests.audio.test_ffmpeg_process_boundaries": {
+        "test_fast_finished_child_cannot_bypass_final_diagnostic_budget": 2,
+        "test_exact_final_diagnostic_budget_still_returns_complete_output": 1,
+        "test_running_child_is_settled_before_diagnostic_overflow_returns": 1,
+        "test_cancel_before_spawn_does_not_start_a_child": 1,
+        "test_bounded_nonzero_child_remains_failure_with_its_diagnostic": 1,
+        "test_launch_failure_closes_only_the_owned_diagnostic_file": 1
+      },
+      "tests.audio.test_publication_fsync": {
+        "test_cancellation_during_final_flush_does_not_publish": 4,
+        "test_late_cancellation_cannot_reverse_actual_move": 4,
+        "test_directory_flush_cancellation_preserves_unpublished_complete_stage": 1,
+        "test_real_pcm_silence_cannot_publish_after_final_flush_cancellation": 1,
+        "test_flush_failure_still_preserves_stage_and_prevents_publication": 1
+      },
+      "tests.e2e.test_audio_cli_resources": {
+        "test_actual_cli_replays_only_verified_output_while_selected_library_is_busy": 2,
+        "test_fresh_cli_waits_on_selected_library_and_cancel_preserves_the_other_lease": 1,
+        "test_failed_cli_renderer_releases_its_admission_after_cleanup_without_releasing_another": 1,
+        "test_cli_preview_and_voice_inventory_do_not_create_resource_policy_or_music_profiles": 2,
+        "test_cli_music_uses_only_selected_library_profile_and_rechecks_its_manifest_after_wait": 2,
+        "test_cli_project_manifest_path_cannot_replace_registered_music_authority": 1
+      },
+      "tests.e2e.test_import_files_cancellation": {
+        "test_cancel_after_committed_text_leaves_next_original_unopened": 1,
+        "test_precancelled_selection_opens_no_source": 1,
+        "test_interrupted_error_is_acknowledged_cancellation_and_stops_selection": 1,
+        "test_cancelled_receipt_stops_even_if_later_callback_is_clear": 1,
+        "test_ordinary_file_error_does_not_cancel_later_valid_source": 1
+      },
+      "tests.e2e.test_import_worker_publication": {
+        "test_barrier_leaves_other_processes_unchanged": 2,
+        "test_stopped_child_reports_verified_fresh_commit": 9,
+        "test_stopped_child_before_commit_never_reports_completion": 6,
+        "test_competing_commit_after_kill_does_not_complete_stopped_request": 9,
+        "test_cancelled_replay_cannot_claim_preexisting_publication": 1,
+        "test_replay_preserves_original_receipt_and_sql_replacement_is_rejected": 1,
+        "test_recovery_rechecks_candidate_source_and_authorization": 3,
+        "test_resumed_attempt_cannot_reuse_old_candidate_when_cancelled_before_launch": 1,
+        "test_docx_publication_keeps_existing_logical_record_capacity": 1,
+        "test_recovered_commit_with_pending_extraction_journal_survives_backup": 1
+      },
+      "tests.e2e.test_provider_credential_echo": {
+        "test_llm_reflection_is_rejected_before_any_completed_receipt": 6,
+        "test_binary_audio_credential_reflection_cannot_complete": 3,
+        "test_translation_reflection_remains_fail_closed": 6,
+        "test_native_task_controller_never_publishes_reflected_credentials": 2,
+        "test_local_requests_without_credentials_remain_available": 2,
+        "test_duplicate_json_cannot_hide_an_escaped_credential": 4,
+        "test_unknown_google_metadata_cannot_escape_as_completed_raw_bytes": 4
+      },
+      "tests.e2e.test_provider_profile_import": {
+        "test_import_retains_settings_without_vault_bindings_or_authority": 6,
+        "test_import_rejects_untrusted_or_unbounded_documents_without_mutation": 13,
+        "test_conflict_refuses_the_complete_batch_without_overwriting_an_account": 1,
+        "test_atomic_publication_failure_preserves_prior_accounts": 1,
+        "test_real_concurrent_imports_use_one_writer_and_never_lose_an_account": 2,
+        "test_empty_export_is_a_noop_without_creating_settings": 1,
+        "test_native_controller_review_is_read_only_and_import_requires_explicit_approval": 1,
+        "test_reviewed_bytes_do_not_change_when_the_external_export_changes_later": 1,
+        "test_import_cannot_follow_a_replaced_library_root": 1,
+        "test_native_review_rejects_a_hard_linked_export": 1,
+        "test_native_review_refuses_invalid_inputs_before_any_import": 2
+      },
+      "tests.e2e.test_streamed_source_import": {
+        "test_explicit_streamed_import_uses_real_worker_receipt_and_independent_quote": 1,
+        "test_whole_original_proof_is_rechecked_after_same_size_late_change": 1,
+        "test_real_worker_cancellation_can_resume_from_owned_bytes_after_source_is_deleted": 1,
+        "test_profile_is_frozen_in_the_supervising_attempt": 1,
+        "test_actual_over_64_mib_source_imports_without_the_legacy_byte_api": 1,
+        "test_pdf_and_streamed_request_allowances_remain_separate": 1,
+        "test_sealed_profile_lookup_preserves_bounded_pdf_and_rejects_bare_large_text": 1
+      },
+      "tests.ingest.test_import_publication_point": {
+        "test_cancel_after_committed_publication_returns_complete_and_keeps_replay_guard": 2
+      },
+      "tests.ingest.test_request_cleanup": {
+        "test_owned_request_waits_for_native_read_handle_release": 1,
+        "test_request_access_error_remains_visible_and_preserves_owned_bytes": 1,
+        "test_constructor_failure_closes_request_before_directory_cleanup": 1
+      },
+      "tests.ingest.test_worker_owned_family": {
+        "test_parser_owner_settles_descendant_after_leader_exit": 2,
+        "test_parser_request_handle_is_read_only": 1
+      },
+      "tests.operations.test_state": {
+        "test_transient_windows_sharing_retries_the_same_flushed_stage": 3,
+        "test_exhausted_sharing_retry_preserves_the_original_and_cleans_only_its_stage": 1,
+        "test_unrelated_publication_error_has_no_retry_or_destination_removal": 1,
+        "test_create_only_policy_never_replaces_existing_or_linked_records": 1
+      },
+      "tests.packaging.test_native_checks_manifest": {
+        "test_current_source_bound_audio_bundle_manifest_is_accepted": 1,
+        "test_legacy_manifest_without_optional_fields_is_accepted": 1,
+        "test_optional_runtime_flags_remain_strict_booleans": 6,
+        "test_source_identities_require_full_lowercase_git_sha": 10,
+        "test_unknown_installation_fields_are_still_rejected": 1,
+        "test_audio_runtime_false_and_source_commit_only_remain_valid": 1
+      },
+      "tests.storage.test_atomic_state_publication": {
+        "test_atomic_state_update_survives_reader_without_exposing_partial_bytes": 1,
+        "test_permanent_replace_denial_keeps_old_state_and_cleans_own_stage": 2,
+        "test_unrelated_publication_error_is_not_retried": 1,
+        "test_windows_retry_budget_reuses_one_complete_stage": 3
+      },
+      "tests.storage.test_provider_recovery": {
+        "test_complete_roundtrip_rebackup_keeps_history_without_restoring_active_authority": 4,
+        "test_changed_live_source_after_capture_refuses_complete_manifest": 2,
+        "test_appearing_previously_absent_source_is_not_silently_omitted": 2,
+        "test_rehashed_untrusted_recovery_data_never_becomes_valid_typed_state": 12,
+        "test_outer_manifest_rehash_cannot_hide_changed_snapshot_identity": 1,
+        "test_unreadable_existing_namespace_fails_instead_of_being_dropped": 3,
+        "test_active_or_orphan_journal_is_visible_refusal": 3,
+        "test_foreign_or_corrupt_live_ledger_never_runs_a_recovery_path": 4,
+        "test_historical_ledger_without_decoded_receipt_column_is_captured_read_only": 1,
+        "test_recovery_resource_limits_refuse_complete_backup": 5,
+        "test_cancelled_capture_never_publishes_a_complete_backup": 1,
+        "test_explicit_recovery_import_and_approved_history_export_use_existing_services": 1
+      },
+      "tests.ui.test_operations_policy": {
+        "test_explicit_native_policy_persists_without_enabling_unlisted_gpu": 1,
+        "test_invalid_gpu_policy_is_rejected_without_persistence": 9
+      },
+      "tests.ui.test_progress_compatibility": {
+        "test_canonical_progress_choices_load_without_rewriting_or_voice_authority": 4,
+        "test_canonical_boundary_values_survive_lossless_current_save": 4,
+        "test_unrecognized_hybrid_and_invalid_canonical_preferences_are_preserved": 19,
+        "test_complete_backup_preserves_exact_canonical_settings_then_explicit_save_uses_current_schema": 2,
+        "test_failed_explicit_migration_preserves_original_canonical_bytes": 1,
+        "test_current_schema_one_and_two_remain_unambiguous": 2
+      },
+      "tests.ui.test_progress_concurrency": {
+        "test_absent_snapshot_is_passive_and_has_a_distinct_absence_token": 1,
+        "test_snapshot_binds_exact_current_or_canonical_bytes_without_rewriting": 2,
+        "test_observed_save_refuses_foreign_state_including_absent_to_created": 4,
+        "test_changed_bytes_after_stage_flush_refuse_publication_even_without_an_observed_token": 2,
+        "test_precommit_failure_retains_old_selection_and_removes_only_owned_stage": 2,
+        "test_postcommit_directory_flush_failure_remains_committed_success": 2,
+        "test_two_actual_writers_cannot_both_publish_from_the_same_observation": 1,
+        "test_presenter_conflict_preserves_its_observation_runtime_and_foreign_settings": 1,
+        "test_readable_invalid_settings_have_an_exact_explicit_repair_token": 1,
+        "test_unreadable_linked_settings_never_gain_a_replacement_token": 1,
+        "test_immediate_mute_survives_a_save_conflict_without_overwriting_the_other_window": 1,
+        "test_reopened_modal_displays_foreign_selection_but_cancel_keeps_runtime_and_old_token": 1,
+        "test_reopened_modal_ok_saves_only_the_newly_reviewed_observation": 1,
+        "test_modal_ok_rejects_a_change_after_the_displayed_observation": 1,
+        "test_invalid_observation_never_mutates_saved_settings": 6
+      }
+    },
+    "interpreter_sha256": "f31d1f722ce1916ff90fdd733445d2e72212e6493a1c626250a11b984a5e469f",
+    "actual_cases": 279,
+    "elapsed_seconds": 136.67200000000003
+  },
+  "installed": {
+    "schema": 1,
+    "status": "PASS",
+    "mode": "installed",
+    "declared_cases": 279,
+    "timeout_seconds": 1200,
+    "oracle_sha256": "ec4c97d4b7ea3e6d18906e4a4db85acfa6b5be9feee3d93a5ba13ef5176548bd",
+    "source_commit": "7959f6a9fb37b315dec18b4d310b8480d9bb94e5",
+    "source_tree": "eeca186b2b1a13c602aed7b0107c19c04320e20e",
+    "wheel_sha256": "cba99e157ec16a4f41352e0893ee0ffd2f1cb9937a150cd9519582ece997c66b",
+    "checkout_manifest_sha256": "78f679fc14f3988132bc42bafae7125e1156bc3fe0f3360e25733742e2919f3e",
+    "tracked_source_files": 1542,
+    "source_only_python": {
+      "bootstrap/semantic_compat/probe.py": "c51758108a418c7bf98ddd459cefdca852777b07cfc95ac669855b1195398ac7",
+      "bootstrap/semantic_compat/test_probe.py": "ae093cae9f00307c09d2ea787dacf7c8c1522184e5480a411c0979023b7b70bb"
+    },
+    "actual_ffmpeg": {
+      "sha256": "3ab4a9c404504ebff6662d6a48661db952f88ee7fb7d5949a711cad7a763b2cf",
+      "version": "ffmpeg version 9.1-full_build-www.gyan.dev Copyright (c) 2000-2026 the FFmpeg developers",
+      "version_sha256": "900a9c75d78682e23c3f73e9e13d4c9625b24a8f0dfb921a879fc5f9e445bc64"
+    },
+    "test_source_sha256": {
+      "tests/e2e/test_import_worker_publication.py": "8b8f1721b764dcb6b67703b39842f087af86d237f79f74070cc898f0ff8b5abb",
+      "tests/ingest/test_worker_owned_family.py": "7a26b0a287df44380087ee2793ba7c678100ffd571fc9f23cf51201a5e88d382",
+      "tests/e2e/test_streamed_source_import.py": "3308baea93466d3bd4dd9b18366d0ba9f4b7bc1b089c892e7a8e1b99622fcbdb",
+      "tests/audio/test_publication_fsync.py": "314f102c17a8ec5096408e5e921a3f628e76a7ea77f3b18a52662972b0988eab",
+      "tests/ingest/test_request_cleanup.py": "e0e3eb6b85ac0781bdc8a85c0039f88745e59fe9487b0380ae5d7230dbd9de80",
+      "tests/e2e/test_provider_credential_echo.py": "18c3807bb3e4de04bf85b577fe91bc01253b924f9346598c18fc25f7ba88cb39",
+      "tests/e2e/test_provider_profile_import.py": "3823a9a2d6a3c17e04088a9c1b80b22a1150e9592fbc7c1198554fbe8ab700fc",
+      "tests/e2e/test_import_files_cancellation.py": "33c640cc00884062d8dad241e3b42c60cb6a6936174fd1a7d8f65fc48c2680b4",
+      "tests/ingest/test_import_publication_point.py": "e1ca953f2eb5d8883893136574bad3fd7f4a6f1c4700582dc0d1b1553c1250b5",
+      "tests/ui/test_operations_policy.py": "9e3701f3f60274f42c77c8b89b21dac90fdfc377f3eb1d24b1efb934705b05c9",
+      "tests/storage/test_provider_recovery.py": "e6253502b4bfdc42eee4ef08b8992124a8453ecf52cf399a5bb72c0077567f0c",
+      "tests/e2e/test_audio_cli_resources.py": "810bca582e65517fef623a98148690ff8b7d576f5a4e32186aa6a74b91c4f075",
+      "tests/ui/test_progress_compatibility.py": "9a7f6caf48781b79e77835577e66c7220caef5422e08beb8ce8715b516e16d6f",
+      "tests/packaging/test_native_checks_manifest.py": "27d5a6bb40aa7d05b4f3ed62195ef4f60cc23d3065d401efbc6adb0f37813657",
+      "tests/ui/test_progress_concurrency.py": "a03f96aad37bc33b55c01282cd500aa612505ae6f7ca4b9066ce7d3c7e3b0b2b",
+      "tests/storage/test_atomic_state_publication.py": "c29fd49aada78223724128c774f54db7ceb65e527058e7c2acb7537c57a89238",
+      "tests/operations/test_state.py": "834e549a8aaca2b2fad8a2fa393b88ad893cca320cfdfb14c2a01849773c3f53",
+      "tests/audio/test_ffmpeg_process_boundaries.py": "d73da86523f969dd19fd05f786d50efe17ea8542c8560ca04898378e73be9ea7",
+      "tests/__init__.py": "bda1d1b86fa69f604fb87c19f27628942b6bd77aa46b605efbc9cb9d4457183d",
+      "tests/security/__init__.py": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+      "tests/storage/__init__.py": "133dac0936d6e430af23a6ea8041d800ff72d4ee8b7e6bae54d16d6d0bff3efb",
+      "tests/security/conftest.py": "77599b257083e5a79ab901490005c68a8f087971df24143145b48c290e6232e6",
+      "tests/security/test_domain_admission.py": "f8dcae25e2738c16fb6fd0e6a51b772f5153b0118714f4b2f0bd850938242a9c",
+      "tests/ui/test_operation_progress.py": "6f72535a0c87c33e8d185148789b5ec188773bd314d8b1a0e0783389d0cc45dd"
+    },
+    "runner_sha256": {
+      "audio_batch_acceptance.py": "3fcb217a7ed9d535ea9d277191a27504f8e6f452bef235b728036358f9e6e003",
+      "ci_check.py": "a7e90c3a14dc51b78c9af17850a7038bf21513cc5ba41466293cc853cd0e2842",
+      "ci_watchdog.py": "e02be6a6c3406bdf1d9d4c24673363894d03a1ee7948b3b77d6b20fcc2bfc057"
+    },
+    "pytest_exit": 0,
+    "case_counter": {
+      "tests.audio.test_ffmpeg_process_boundaries": {
+        "test_fast_finished_child_cannot_bypass_final_diagnostic_budget": 2,
+        "test_exact_final_diagnostic_budget_still_returns_complete_output": 1,
+        "test_running_child_is_settled_before_diagnostic_overflow_returns": 1,
+        "test_cancel_before_spawn_does_not_start_a_child": 1,
+        "test_bounded_nonzero_child_remains_failure_with_its_diagnostic": 1,
+        "test_launch_failure_closes_only_the_owned_diagnostic_file": 1
+      },
+      "tests.audio.test_publication_fsync": {
+        "test_cancellation_during_final_flush_does_not_publish": 4,
+        "test_late_cancellation_cannot_reverse_actual_move": 4,
+        "test_directory_flush_cancellation_preserves_unpublished_complete_stage": 1,
+        "test_real_pcm_silence_cannot_publish_after_final_flush_cancellation": 1,
+        "test_flush_failure_still_preserves_stage_and_prevents_publication": 1
+      },
+      "tests.e2e.test_audio_cli_resources": {
+        "test_actual_cli_replays_only_verified_output_while_selected_library_is_busy": 2,
+        "test_fresh_cli_waits_on_selected_library_and_cancel_preserves_the_other_lease": 1,
+        "test_failed_cli_renderer_releases_its_admission_after_cleanup_without_releasing_another": 1,
+        "test_cli_preview_and_voice_inventory_do_not_create_resource_policy_or_music_profiles": 2,
+        "test_cli_music_uses_only_selected_library_profile_and_rechecks_its_manifest_after_wait": 2,
+        "test_cli_project_manifest_path_cannot_replace_registered_music_authority": 1
+      },
+      "tests.e2e.test_import_files_cancellation": {
+        "test_cancel_after_committed_text_leaves_next_original_unopened": 1,
+        "test_precancelled_selection_opens_no_source": 1,
+        "test_interrupted_error_is_acknowledged_cancellation_and_stops_selection": 1,
+        "test_cancelled_receipt_stops_even_if_later_callback_is_clear": 1,
+        "test_ordinary_file_error_does_not_cancel_later_valid_source": 1
+      },
+      "tests.e2e.test_import_worker_publication": {
+        "test_barrier_leaves_other_processes_unchanged": 2,
+        "test_stopped_child_reports_verified_fresh_commit": 9,
+        "test_stopped_child_before_commit_never_reports_completion": 6,
+        "test_competing_commit_after_kill_does_not_complete_stopped_request": 9,
+        "test_cancelled_replay_cannot_claim_preexisting_publication": 1,
+        "test_replay_preserves_original_receipt_and_sql_replacement_is_rejected": 1,
+        "test_recovery_rechecks_candidate_source_and_authorization": 3,
+        "test_resumed_attempt_cannot_reuse_old_candidate_when_cancelled_before_launch": 1,
+        "test_docx_publication_keeps_existing_logical_record_capacity": 1,
+        "test_recovered_commit_with_pending_extraction_journal_survives_backup": 1
+      },
+      "tests.e2e.test_provider_credential_echo": {
+        "test_llm_reflection_is_rejected_before_any_completed_receipt": 6,
+        "test_binary_audio_credential_reflection_cannot_complete": 3,
+        "test_translation_reflection_remains_fail_closed": 6,
+        "test_native_task_controller_never_publishes_reflected_credentials": 2,
+        "test_local_requests_without_credentials_remain_available": 2,
+        "test_duplicate_json_cannot_hide_an_escaped_credential": 4,
+        "test_unknown_google_metadata_cannot_escape_as_completed_raw_bytes": 4
+      },
+      "tests.e2e.test_provider_profile_import": {
+        "test_import_retains_settings_without_vault_bindings_or_authority": 6,
+        "test_import_rejects_untrusted_or_unbounded_documents_without_mutation": 13,
+        "test_conflict_refuses_the_complete_batch_without_overwriting_an_account": 1,
+        "test_atomic_publication_failure_preserves_prior_accounts": 1,
+        "test_real_concurrent_imports_use_one_writer_and_never_lose_an_account": 2,
+        "test_empty_export_is_a_noop_without_creating_settings": 1,
+        "test_native_controller_review_is_read_only_and_import_requires_explicit_approval": 1,
+        "test_reviewed_bytes_do_not_change_when_the_external_export_changes_later": 1,
+        "test_import_cannot_follow_a_replaced_library_root": 1,
+        "test_native_review_rejects_a_hard_linked_export": 1,
+        "test_native_review_refuses_invalid_inputs_before_any_import": 2
+      },
+      "tests.e2e.test_streamed_source_import": {
+        "test_explicit_streamed_import_uses_real_worker_receipt_and_independent_quote": 1,
+        "test_whole_original_proof_is_rechecked_after_same_size_late_change": 1,
+        "test_real_worker_cancellation_can_resume_from_owned_bytes_after_source_is_deleted": 1,
+        "test_profile_is_frozen_in_the_supervising_attempt": 1,
+        "test_actual_over_64_mib_source_imports_without_the_legacy_byte_api": 1,
+        "test_pdf_and_streamed_request_allowances_remain_separate": 1,
+        "test_sealed_profile_lookup_preserves_bounded_pdf_and_rejects_bare_large_text": 1
+      },
+      "tests.ingest.test_import_publication_point": {
+        "test_cancel_after_committed_publication_returns_complete_and_keeps_replay_guard": 2
+      },
+      "tests.ingest.test_request_cleanup": {
+        "test_owned_request_waits_for_native_read_handle_release": 1,
+        "test_request_access_error_remains_visible_and_preserves_owned_bytes": 1,
+        "test_constructor_failure_closes_request_before_directory_cleanup": 1
+      },
+      "tests.ingest.test_worker_owned_family": {
+        "test_parser_owner_settles_descendant_after_leader_exit": 2,
+        "test_parser_request_handle_is_read_only": 1
+      },
+      "tests.operations.test_state": {
+        "test_transient_windows_sharing_retries_the_same_flushed_stage": 3,
+        "test_exhausted_sharing_retry_preserves_the_original_and_cleans_only_its_stage": 1,
+        "test_unrelated_publication_error_has_no_retry_or_destination_removal": 1,
+        "test_create_only_policy_never_replaces_existing_or_linked_records": 1
+      },
+      "tests.packaging.test_native_checks_manifest": {
+        "test_current_source_bound_audio_bundle_manifest_is_accepted": 1,
+        "test_legacy_manifest_without_optional_fields_is_accepted": 1,
+        "test_optional_runtime_flags_remain_strict_booleans": 6,
+        "test_source_identities_require_full_lowercase_git_sha": 10,
+        "test_unknown_installation_fields_are_still_rejected": 1,
+        "test_audio_runtime_false_and_source_commit_only_remain_valid": 1
+      },
+      "tests.storage.test_atomic_state_publication": {
+        "test_atomic_state_update_survives_reader_without_exposing_partial_bytes": 1,
+        "test_permanent_replace_denial_keeps_old_state_and_cleans_own_stage": 2,
+        "test_unrelated_publication_error_is_not_retried": 1,
+        "test_windows_retry_budget_reuses_one_complete_stage": 3
+      },
+      "tests.storage.test_provider_recovery": {
+        "test_complete_roundtrip_rebackup_keeps_history_without_restoring_active_authority": 4,
+        "test_changed_live_source_after_capture_refuses_complete_manifest": 2,
+        "test_appearing_previously_absent_source_is_not_silently_omitted": 2,
+        "test_rehashed_untrusted_recovery_data_never_becomes_valid_typed_state": 12,
+        "test_outer_manifest_rehash_cannot_hide_changed_snapshot_identity": 1,
+        "test_unreadable_existing_namespace_fails_instead_of_being_dropped": 3,
+        "test_active_or_orphan_journal_is_visible_refusal": 3,
+        "test_foreign_or_corrupt_live_ledger_never_runs_a_recovery_path": 4,
+        "test_historical_ledger_without_decoded_receipt_column_is_captured_read_only": 1,
+        "test_recovery_resource_limits_refuse_complete_backup": 5,
+        "test_cancelled_capture_never_publishes_a_complete_backup": 1,
+        "test_explicit_recovery_import_and_approved_history_export_use_existing_services": 1
+      },
+      "tests.ui.test_operations_policy": {
+        "test_explicit_native_policy_persists_without_enabling_unlisted_gpu": 1,
+        "test_invalid_gpu_policy_is_rejected_without_persistence": 9
+      },
+      "tests.ui.test_progress_compatibility": {
+        "test_canonical_progress_choices_load_without_rewriting_or_voice_authority": 4,
+        "test_canonical_boundary_values_survive_lossless_current_save": 4,
+        "test_unrecognized_hybrid_and_invalid_canonical_preferences_are_preserved": 19,
+        "test_complete_backup_preserves_exact_canonical_settings_then_explicit_save_uses_current_schema": 2,
+        "test_failed_explicit_migration_preserves_original_canonical_bytes": 1,
+        "test_current_schema_one_and_two_remain_unambiguous": 2
+      },
+      "tests.ui.test_progress_concurrency": {
+        "test_absent_snapshot_is_passive_and_has_a_distinct_absence_token": 1,
+        "test_snapshot_binds_exact_current_or_canonical_bytes_without_rewriting": 2,
+        "test_observed_save_refuses_foreign_state_including_absent_to_created": 4,
+        "test_changed_bytes_after_stage_flush_refuse_publication_even_without_an_observed_token": 2,
+        "test_precommit_failure_retains_old_selection_and_removes_only_owned_stage": 2,
+        "test_postcommit_directory_flush_failure_remains_committed_success": 2,
+        "test_two_actual_writers_cannot_both_publish_from_the_same_observation": 1,
+        "test_presenter_conflict_preserves_its_observation_runtime_and_foreign_settings": 1,
+        "test_readable_invalid_settings_have_an_exact_explicit_repair_token": 1,
+        "test_unreadable_linked_settings_never_gain_a_replacement_token": 1,
+        "test_immediate_mute_survives_a_save_conflict_without_overwriting_the_other_window": 1,
+        "test_reopened_modal_displays_foreign_selection_but_cancel_keeps_runtime_and_old_token": 1,
+        "test_reopened_modal_ok_saves_only_the_newly_reviewed_observation": 1,
+        "test_modal_ok_rejects_a_change_after_the_displayed_observation": 1,
+        "test_invalid_observation_never_mutates_saved_settings": 6
+      }
+    },
+    "interpreter_sha256": "01417e989e97ff61619dca6a51cd8e0d8d21b185621b2d56dce1ea524d08bf28",
+    "actual_cases": 279,
+    "elapsed_seconds": 134.437
+  },
+  "native": {
+    "status": "PASS",
+    "actual_windows": true,
+    "isolated": true,
+    "checks": [
+      "actual_complete_backup_retains_provider_record",
+      "actual_complete_backup_verifies",
+      "actual_restore_keeps_profiles_and_ledger_inactive",
+      "actual_recovery_binds_exact_disconnected_settings",
+      "actual_recovery_retains_exact_usage_states",
+      "actual_recovery_contains_no_credential_reference",
+      "native_import_action_named_and_available",
+      "native_recovery_action_named_and_available",
+      "native_import_keyboard_focus",
+      "native_explicit_profile_import_completes",
+      "native_duplicate_import_keeps_existing_accounts",
+      "native_recovery_summary_is_readonly",
+      "native_recovery_history_counts",
+      "native_recovery_import_requires_confirmation",
+      "native_recovered_settings_import_disconnected",
+      "native_recovery_keeps_history_inactive",
+      "native_history_export_preserves_exact_bytes",
+      "native_all_storage_workers_settled",
+      "actual_rebackup_preserves_prior_recovery_record",
+      "actual_original_catalog_is_unchanged",
+      "no_vault_or_provider_request_during_recovery",
+      "native_selected_recovery_record_remains_immutable"
+    ],
+    "metrics": {
+      "disconnected_profiles": 2,
+      "recovered_history_operations": 2,
+      "recovery_records_after_rebackup": 2,
+      "provider_requests": 0,
+      "vault_calls": 0,
+      "explicit_import_confirmations": 4
+    },
+    "module_origins": {
+      "carr_library.providers": {
+        "path": "D:\\a\\_temp\\carr-request-cleanup-46033825970-1\\installed\\Lib\\site-packages\\carr_library\\providers.py",
+        "sha256": "aa4933b4c85ff2d58436d447f0765a852492b27281bb4872d9c35b5f66c47bc5"
+      },
+      "carr_library.provider_recovery": {
+        "path": "D:\\a\\_temp\\carr-request-cleanup-46033825970-1\\installed\\Lib\\site-packages\\carr_library\\provider_recovery.py",
+        "sha256": "d4945ee2a7e974b17a38201d1248cb7e5a861b9780777c57346c8aff3c601dbb"
+      },
+      "carr_library.library_backup": {
+        "path": "D:\\a\\_temp\\carr-request-cleanup-46033825970-1\\installed\\Lib\\site-packages\\carr_library\\library_backup.py",
+        "sha256": "d5c2806d503b1bc431ca58755b253a900391142f7e0f26862309a3eb5b448d3f"
+      },
+      "carr_library.ui.api_connections": {
+        "path": "D:\\a\\_temp\\carr-request-cleanup-46033825970-1\\installed\\Lib\\site-packages\\carr_library\\ui\\api_connections.py",
+        "sha256": "7a69a5fccfd6f969048abe240bbf9ac2d92503f625d34f15f125727931c684e2"
+      },
+      "carr_library.ui.export_destination": {
+        "path": "D:\\a\\_temp\\carr-request-cleanup-46033825970-1\\installed\\Lib\\site-packages\\carr_library\\ui\\export_destination.py",
+        "sha256": "4f209c8495d377ee07246d2263f40a4292edc612b07576de53ed70bbea34a747"
+      },
+      "carr_library.research.export_file": {
+        "path": "D:\\a\\_temp\\carr-request-cleanup-46033825970-1\\installed\\Lib\\site-packages\\carr_library\\research\\export_file.py",
+        "sha256": "8e3c7bbeaea57f43d61496659017cbf9c57378f085e2d249bcbd4e212de912da"
+      }
+    },
+    "native_controls": true,
+    "selection_decisions": "injected explicit synthetic file/confirmation choices",
+    "actual_credential_vault": "NOT_USED",
+    "actual_remote_provider": "NOT_RUN",
+    "nvda": "NOT_RUN",
+    "physical_audio": "NOT_RUN"
+  },
+  "native_gate": {
+    "actual_windows": true,
+    "checks": 22,
+    "full_platform": "NOT_CLAIMED",
+    "installed_package": true,
+    "isolated": true,
+    "kind": "provider-recovery",
+    "module_origins": {
+      "carr_library.library_backup": {
+        "path": "D:\\a\\_temp\\carr-request-cleanup-46033825970-1\\installed\\Lib\\site-packages\\carr_library\\library_backup.py",
+        "sha256": "d5c2806d503b1bc431ca58755b253a900391142f7e0f26862309a3eb5b448d3f"
+      },
+      "carr_library.provider_recovery": {
+        "path": "D:\\a\\_temp\\carr-request-cleanup-46033825970-1\\installed\\Lib\\site-packages\\carr_library\\provider_recovery.py",
+        "sha256": "d4945ee2a7e974b17a38201d1248cb7e5a861b9780777c57346c8aff3c601dbb"
+      },
+      "carr_library.providers": {
+        "path": "D:\\a\\_temp\\carr-request-cleanup-46033825970-1\\installed\\Lib\\site-packages\\carr_library\\providers.py",
+        "sha256": "aa4933b4c85ff2d58436d447f0765a852492b27281bb4872d9c35b5f66c47bc5"
+      },
+      "carr_library.research.export_file": {
+        "path": "D:\\a\\_temp\\carr-request-cleanup-46033825970-1\\installed\\Lib\\site-packages\\carr_library\\research\\export_file.py",
+        "sha256": "8e3c7bbeaea57f43d61496659017cbf9c57378f085e2d249bcbd4e212de912da"
+      },
+      "carr_library.ui.api_connections": {
+        "path": "D:\\a\\_temp\\carr-request-cleanup-46033825970-1\\installed\\Lib\\site-packages\\carr_library\\ui\\api_connections.py",
+        "sha256": "7a69a5fccfd6f969048abe240bbf9ac2d92503f625d34f15f125727931c684e2"
+      },
+      "carr_library.ui.export_destination": {
+        "path": "D:\\a\\_temp\\carr-request-cleanup-46033825970-1\\installed\\Lib\\site-packages\\carr_library\\ui\\export_destination.py",
+        "sha256": "4f209c8495d377ee07246d2263f40a4292edc612b07576de53ed70bbea34a747"
+      }
+    },
+    "native": {
+      "actual_credential_vault": "NOT_USED",
+      "actual_remote_provider": "NOT_RUN",
+      "actual_windows": true,
+      "checks": [
+        "actual_complete_backup_retains_provider_record",
+        "actual_complete_backup_verifies",
+        "actual_restore_keeps_profiles_and_ledger_inactive",
+        "actual_recovery_binds_exact_disconnected_settings",
+        "actual_recovery_retains_exact_usage_states",
+        "actual_recovery_contains_no_credential_reference",
+        "native_import_action_named_and_available",
+        "native_recovery_action_named_and_available",
+        "native_import_keyboard_focus",
+        "native_explicit_profile_import_completes",
+        "native_duplicate_import_keeps_existing_accounts",
+        "native_recovery_summary_is_readonly",
+        "native_recovery_history_counts",
+        "native_recovery_import_requires_confirmation",
+        "native_recovered_settings_import_disconnected",
+        "native_recovery_keeps_history_inactive",
+        "native_history_export_preserves_exact_bytes",
+        "native_all_storage_workers_settled",
+        "actual_rebackup_preserves_prior_recovery_record",
+        "actual_original_catalog_is_unchanged",
+        "no_vault_or_provider_request_during_recovery",
+        "native_selected_recovery_record_remains_immutable"
+      ],
+      "isolated": true,
+      "metrics": {
+        "disconnected_profiles": 2,
+        "explicit_import_confirmations": 4,
+        "provider_requests": 0,
+        "recovered_history_operations": 2,
+        "recovery_records_after_rebackup": 2,
+        "vault_calls": 0
+      },
+      "module_origins": {
+        "carr_library.library_backup": {
+          "path": "D:\\a\\_temp\\carr-request-cleanup-46033825970-1\\installed\\Lib\\site-packages\\carr_library\\library_backup.py",
+          "sha256": "d5c2806d503b1bc431ca58755b253a900391142f7e0f26862309a3eb5b448d3f"
+        },
+        "carr_library.provider_recovery": {
+          "path": "D:\\a\\_temp\\carr-request-cleanup-46033825970-1\\installed\\Lib\\site-packages\\carr_library\\provider_recovery.py",
+          "sha256": "d4945ee2a7e974b17a38201d1248cb7e5a861b9780777c57346c8aff3c601dbb"
+        },
+        "carr_library.providers": {
+          "path": "D:\\a\\_temp\\carr-request-cleanup-46033825970-1\\installed\\Lib\\site-packages\\carr_library\\providers.py",
+          "sha256": "aa4933b4c85ff2d58436d447f0765a852492b27281bb4872d9c35b5f66c47bc5"
+        },
+        "carr_library.research.export_file": {
+          "path": "D:\\a\\_temp\\carr-request-cleanup-46033825970-1\\installed\\Lib\\site-packages\\carr_library\\research\\export_file.py",
+          "sha256": "8e3c7bbeaea57f43d61496659017cbf9c57378f085e2d249bcbd4e212de912da"
+        },
+        "carr_library.ui.api_connections": {
+          "path": "D:\\a\\_temp\\carr-request-cleanup-46033825970-1\\installed\\Lib\\site-packages\\carr_library\\ui\\api_connections.py",
+          "sha256": "7a69a5fccfd6f969048abe240bbf9ac2d92503f625d34f15f125727931c684e2"
+        },
+        "carr_library.ui.export_destination": {
+          "path": "D:\\a\\_temp\\carr-request-cleanup-46033825970-1\\installed\\Lib\\site-packages\\carr_library\\ui\\export_destination.py",
+          "sha256": "4f209c8495d377ee07246d2263f40a4292edc612b07576de53ed70bbea34a747"
+        }
+      },
+      "native_controls": true,
+      "nvda": "NOT_RUN",
+      "physical_audio": "NOT_RUN",
+      "selection_decisions": "injected explicit synthetic file/confirmation choices",
+      "status": "PASS"
+    },
+    "nvda": "NOT_RUN",
+    "physical_audio": "NOT_RUN",
+    "probe_sha256": "9f1bef25296e0643b571a507b2069d9fd07a39ed40dedf4189a2a03d7f0f2974",
+    "schema": 1,
+    "source_commit": "7959f6a9fb37b315dec18b4d310b8480d9bb94e5",
+    "source_tree": "eeca186b2b1a13c602aed7b0107c19c04320e20e",
+    "status": "PASS"
+  },
+  "aggregate": {
+    "schema": 1,
+    "status": "PASS",
+    "source_cases": 279,
+    "installed_cases": 279,
+    "oracle_sha256": "ec4c97d4b7ea3e6d18906e4a4db85acfa6b5be9feee3d93a5ba13ef5176548bd",
+    "qualification_adapter_sha256": "3086353cad8f5fa85e3616aa2ff6e180350091e86b489c0ec0e252441c91d229",
+    "native_gui": "NOT_RUN",
+    "nvda": "NOT_RUN",
+    "source_commit": "7959f6a9fb37b315dec18b4d310b8480d9bb94e5",
+    "source_tree": "eeca186b2b1a13c602aed7b0107c19c04320e20e",
+    "wheel_sha256": "cba99e157ec16a4f41352e0893ee0ffd2f1cb9937a150cd9519582ece997c66b",
+    "actual_ffmpeg": {
+      "sha256": "3ab4a9c404504ebff6662d6a48661db952f88ee7fb7d5949a711cad7a763b2cf",
+      "version": "ffmpeg version 9.1-full_build-www.gyan.dev Copyright (c) 2000-2026 the FFmpeg developers",
+      "version_sha256": "900a9c75d78682e23c3f73e9e13d4c9625b24a8f0dfb921a879fc5f9e445bc64"
+    },
+    "actual_windows_file_handles": "PASS",
+    "previously_failing_cases_retained": 55,
+    "new_boundary_cases": 3,
+    "canonical_provider_cases": 96,
+    "canonical_preserved_cases": 37,
+    "canonical_progress_cases": 59,
+    "headless_admission_cases": 9,
+    "canonical_state_cases": 13,
+    "ffmpeg_process_boundary_cases": 7
+  },
+  "limits": [
+    "This evidence qualifies only 7959f6a9fb37b315dec18b4d310b8480d9bb94e5 and the recorded installed wheel/runtime.",
+    "Later 300/345/354/358-case inventories and later product changes require their own execution.",
+    "No private provider account, external inference, physical audio, NVDA or production-distribution qualification."
+  ]
+}

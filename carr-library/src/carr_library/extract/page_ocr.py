@@ -7,13 +7,14 @@ from pathlib import Path
 import csv
 import importlib.metadata as metadata
 import math
+import re
 import subprocess
 import tempfile
 import time
 
 from .pinned_tessdata import MODELS, POLICY, stage_pinned_models
-from .ocr_runtime import OcrRuntimeError, discover_ocr_runtime
-from .ocr_languages import model_ids
+from .ocr_runtime import OcrRuntimeError, bind_model_pack, discover_ocr_runtime
+from .ocr_languages import model_ids, split_languages
 from .ocr_process import run_ocr
 
 
@@ -74,28 +75,35 @@ class Config:
     max_pixels: int = 20_000_000
     orientation: bool = False
     model_policy: str = 'default'
+    model_pack_path: str | None = None
+    model_pack_sha256: str | None = None
     model_profile: str = 'installed'
 
     def __post_init__(self):
+        from .language_manager import validate_pack_selection
+        validate_pack_selection(self.model_pack_path, self.model_pack_sha256)
+        if self.model_pack_path is not None and self.model_policy != 'default':
+            raise ValueError('A verified offline pack already fixes the model profile; choose the installed-model profile.')
+        if self.model_profile not in ('installed', 'fast', 'best'):
+            raise ValueError('unsupported OCR model profile')
+        if self.model_pack_path is not None and self.model_profile != 'installed':
+            raise ValueError('Choose one verified external pack or managed OCR profile; they cannot be combined.')
+        if self.model_policy == POLICY and self.model_profile == 'best':
+            raise ValueError('the pinned Fast policy cannot use the Best model profile')
         if type(self.orientation) is not bool:
             raise ValueError('orientation must be boolean')
         selected = model_ids(self.languages)
-        if len(self.languages) > 2048 or len(set(selected)) != len(selected):
-            raise ValueError('duplicate or oversized language selection')
         if self.model_policy not in ('default', POLICY):
             raise ValueError('unknown OCR model policy')
-        if self.model_profile not in ('installed', 'fast', 'best'):
-            raise ValueError('unsupported OCR model profile')
-        if self.model_policy == POLICY and self.model_profile == 'best':
-            raise ValueError('the pinned Fast policy cannot use the Best model profile')
         if self.model_policy == POLICY:
             if len(set(selected)) != len(selected) or any(lang not in MODELS for lang in selected):
                 raise ValueError('unsupported pinned OCR language')
+        split_languages(self.languages)
         if not 72 <= self.dpi <= 400 or not 1 <= self.timeout <= 120 or not 1 <= self.max_pixels <= 20_000_000:
             raise ValueError('invalid resource limit')
 
 
-def extract_page(asset, physical_index, config=Config()):
+def extract_page(asset, physical_index, config=Config(), *, cancelled=lambda: False):
     """Return a candidate, never a verified printed label or corrected quote.
 
     Baseline OCR TSV coordinates are pixels in the original rendered image.
@@ -103,13 +111,18 @@ def extract_page(asset, physical_index, config=Config()):
     Parser isolation and durable job checkpoints belong to the ingest runner.
     """
     deadline = time.monotonic() + config.timeout
+    from ..catalog.streaming_pdf import FileAsset, original_stream, snapshot_original
+    original = (asset if isinstance(asset, FileAsset) else
+                snapshot_original(Path(asset).parent, Path(asset).name, cancelled=cancelled))
+    with original_stream(original, cancelled=cancelled) as stream:
+        return _extract_original_page(original, stream, physical_index, config, deadline, cancelled)
+
+
+def _extract_original_page(original, stream, physical_index, config, deadline, cancelled):
     from pypdf import PdfReader
     import pypdfium2 as pdfium
-    with Path(asset).open('rb') as f:
-        data = f.read(64 * 1024 * 1024 + 1)
-    if len(data) > 64 * 1024 * 1024:
-        raise ValueError('source too large')
-    reader = PdfReader(BytesIO(data))
+    from ..catalog.streaming_pdf import pdf_document
+    reader = PdfReader(stream)
     if reader.is_encrypted or not 1 <= len(reader.pages) <= 1000:
         raise ValueError('encrypted or oversized PDF')
     if type(physical_index) is not int or not 1 <= physical_index <= len(reader.pages):
@@ -118,11 +131,11 @@ def extract_page(asset, physical_index, config=Config()):
     native = source.extract_text() or ''
     result = dict(physical_index=physical_index, printed_label=None,
                   printed_label_verified=False, raw_text=native, blocks=[], warnings=[],
-                  provenance=dict(asset_sha256=sha256(data).hexdigest(), native_text=native,
+                  provenance=dict(asset_sha256=original.digest, native_text=native,
                                   native_engine='pypdf', native_version=metadata.version('pypdf'),
                                   rotation=source.rotation, config=vars(config).copy()))
     provenance = result['provenance']
-    with pdfium.PdfDocument(data) as doc:
+    with pdf_document(original, cancelled=cancelled) as doc:
         if len(doc) != len(reader.pages):
             raise ValueError('parser page count disagreement')
         with closing(doc[physical_index - 1]) as page:
@@ -170,14 +183,18 @@ def extract_page(asset, physical_index, config=Config()):
 
                     profile_options = ({'model_profile': config.model_profile}
                                        if config.model_profile != 'installed' else {})
-                    runtime = discover_ocr_runtime(config.languages, orientation=config.orientation,
+                    runtime = discover_ocr_runtime('eng' if config.model_pack_path else config.languages,
+                                                   orientation=False if config.model_pack_path else config.orientation,
                                                    remaining=remaining, **profile_options)
+                    runtime = bind_model_pack(runtime, config.model_pack_path, config.model_pack_sha256,
+                                              languages=config.languages, orientation=config.orientation,
+                                              remaining=remaining)
                     if runtime is None:
                         result['status'] = 'review_required'
                         result['warnings'].append('ocr_engine_missing')
                         return result
                     exe = runtime.executable
-                    if runtime.portable or getattr(runtime, 'managed', False):
+                    if runtime.portable or config.model_pack_path or getattr(runtime, 'managed', False):
                         provenance['ocr_runtime'] = runtime.fingerprint()
 
                     with tempfile.TemporaryDirectory() as tmp:
@@ -212,7 +229,7 @@ def extract_page(asset, physical_index, config=Config()):
                             from .ocr_orientation_bridge import orientation_candidate
                             provenance['orientation'] = orientation_candidate(
                                 image, config, exe, remaining, run, recognize,
-                                native_cli=runtime.portable or getattr(runtime, 'managed', False))
+                                native_cli=runtime.portable or bool(config.model_pack_path) or getattr(runtime, 'managed', False))
                         runtime.assert_unchanged(remaining)
                 except _OcrOutputLimit:
                     result['status'] = 'review_required'

@@ -1,352 +1,523 @@
-"""One local progress contract for library, media and assistant producers.
+"""Shared, measured progress and opt-in notification preferences.
 
-Progress is an observation of work, not a scheduler or a completion journal.
-Unknown work stays indeterminate. Producers report completed units and call
-``succeed(durable=True)`` only after their actual durable operation succeeds.
-Native consumers poll immutable snapshots; worker threads never touch wx.
+Progress describes work; it does not authorize operations or make their result
+durable. A producer calls complete(verified=True) only after its existing
+verification/commit has returned. Unknown totals stay indeterminate. The hub
+keeps a bounded latest snapshot rather than a queue of every worker update.
+It has no wx, audio renderer, network, or speech-engine dependency.
 """
 from contextlib import contextmanager
 from contextvars import ContextVar
-from dataclasses import dataclass, replace
-from enum import Enum
+from dataclasses import asdict, dataclass, replace
+from hashlib import sha256
+import json
 import math
+import os
+import re
+from pathlib import Path
+import stat
+from tempfile import NamedTemporaryFile
 import threading
 import time
 from uuid import uuid4
 
+from .ingest.writer_guard import exclusive_writer
 
-MAX_UNITS = 10 ** 15
-_UNCHANGED = object()
-_CURRENT_PROGRESS = ContextVar('carr_current_progress', default=None)
-
-
-class ProgressError(ValueError):
-    """An invalid state transition or untruthful progress observation."""
-
-
-class ProgressState(str, Enum):
-    RUNNING = 'running'
-    PAUSED = 'paused'
-    CANCELLING = 'cancelling'
-    CANCELLED = 'cancelled'
-    FAILED = 'failed'
-    SUCCEEDED = 'succeeded'
-    UNAVAILABLE = 'unavailable'
+FILENAME = 'progress-preferences.json'
+MAX_BYTES = 16 * 1024
+MAX_UNITS = 10**15
+MODES = ('off', 'beep', 'speech', 'beep_speech')
+STATES = frozenset(('running', 'paused', 'complete', 'failed', 'cancelled'))
+TERMINAL = frozenset(('complete', 'failed', 'cancelled'))
+_CURRENT = ContextVar('carr_current_progress', default=None)
+_UNSET = object()
 
 
-TERMINAL_STATES = frozenset((ProgressState.CANCELLED, ProgressState.FAILED,
-                             ProgressState.SUCCEEDED, ProgressState.UNAVAILABLE))
+def _number(value, minimum, maximum, label):
+    if (type(value) not in (int, float) or not minimum <= value <= maximum
+            or not math.isfinite(value)):
+        raise ValueError(f'{label} must be between {minimum} and {maximum}.')
+    return float(value)
 
 
-def _text(value, name, limit, *, empty=True):
-    if (not isinstance(value, str) or len(value) > limit or (not empty and not value.strip())
-            or any(ord(character) < 32 and character != '\n' for character in value)
-            or '\x7f' in value):
-        raise ProgressError(f'{name} must be bounded plain text.')
+def _text(value, label, *, maximum=500, empty=True):
+    if (not isinstance(value, str) or len(value) > maximum
+            or (not empty and not value.strip())
+            or any(ord(c) < 32 or 127 <= ord(c) <= 159 for c in value)):
+        raise ValueError(f'{label} must be bounded, readable single-line text.')
     return value
 
 
-def _count(value, name):
-    if type(value) is not int or not 0 <= value <= MAX_UNITS:
-        raise ProgressError(f'{name} must be a nonnegative integer no greater than {MAX_UNITS}.')
-    return value
-
-
-def _total(value):
-    return None if value is None else _count(value, 'Total units')
-
-
-def _percent(completed, total):
-    if total is None:
-        return None
-    return min(99, completed * 100 // total) if total else 0
+def display_message(value):
+    """Keep a worker's status readable; never interpret text as a command."""
+    return ' '.join(str(value).split())[:500]
 
 
 @dataclass(frozen=True)
-class ProgressSnapshot:
+class ProgressPreferences:
+    mode: str = 'off'
+    interval_seconds: float = 5.0
+    volume: float = 0.12
+    muted: bool = False
+    quiet: bool = False
+    background: bool = False
+    suppress_during_media: bool = True
+    voice_id: str = ''
+    voice_language: str = ''
+    voice_fingerprint: str = ''
+
+    def __post_init__(self):
+        if self.mode not in MODES:
+            raise ValueError('Choose Off, Beep, Speech, or Beep and Speech.')
+        _number(self.interval_seconds, 0.5, 60, 'Notification interval')
+        _number(self.volume, 0, 1, 'Notification volume')
+        for key in ('muted', 'quiet', 'background', 'suppress_during_media'):
+            if type(getattr(self, key)) is not bool:
+                raise ValueError(f'{key} must be true or false.')
+        _text(self.voice_id, 'Progress voice identity', maximum=2048)
+        if any((self.voice_id, self.voice_language, self.voice_fingerprint)):
+            if (not self.voice_id or self.voice_language not in ('en', 'uk', 'sk')
+                    or not isinstance(self.voice_fingerprint, str)
+                    or not re.fullmatch('[0-9a-f]{64}', self.voice_fingerprint)):
+                raise ValueError('Select one verified local voice and its notification language.')
+        elif type(self.voice_language) is not str or type(self.voice_fingerprint) is not str:
+            raise ValueError('Invalid progress voice selection.')
+
+
+def _unique(pairs):
+    result = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError('Duplicate progress preference field.')
+        result[key] = value
+    return result
+
+
+def decode_preferences(raw):
+    """Validate immutable backup/import bytes without filesystem side effects."""
+    if not isinstance(raw, bytes) or not 0 < len(raw) <= MAX_BYTES:
+        raise ValueError('Progress preferences must be nonempty and at most 16 KiB.')
+    try:
+        data = json.loads(raw.decode('utf-8'), object_pairs_hook=_unique)
+        if type(data) is dict and set(data) == {'version', 'preferences'}:
+            # Canonical pre-convergence settings use a disjoint envelope and
+            # integer percentages. Reading is passive; only an explicit save
+            # rewrites them into the current schema. No voice is inferred.
+            expected = {'mode', 'interval_seconds', 'volume', 'muted',
+                        'allow_background', 'quiet_during_media'}
+            values = data['preferences']
+            if (len(raw) > 8192 or type(data['version']) is not int or data['version'] != 1
+                    or type(values) is not dict or set(values) != expected):
+                raise ValueError('Unsupported canonical progress preferences format.')
+            interval = _number(values['interval_seconds'], 1, 60, 'Canonical notification interval')
+            if type(values['volume']) is not int or not 0 <= values['volume'] <= 100:
+                raise ValueError('Canonical notification volume must be an integer from 0 to 100.')
+            return ProgressPreferences(mode=values['mode'], interval_seconds=interval,
+                volume=values['volume'] / 100, muted=values['muted'],
+                background=values['allow_background'],
+                suppress_during_media=values['quiet_during_media'])
+        if (type(data) is not dict or set(data) != {'version', 'kind', 'preferences'}
+                or type(data['version']) is not int or data['version'] not in (1, 2)
+                or data['kind'] != 'carr-progress'
+                or type(data['preferences']) is not dict
+                or set(data['preferences']) != (set(ProgressPreferences.__dataclass_fields__)
+                    - ({'voice_id', 'voice_language', 'voice_fingerprint'} if data['version'] == 1 else set()))):
+            raise ValueError('Unsupported progress preferences format.')
+        return ProgressPreferences(**data['preferences'])
+    except (UnicodeError, TypeError, RecursionError) as exc:
+        raise ValueError('Invalid progress preferences JSON.') from exc
+
+
+def encode_preferences(preferences):
+    if not isinstance(preferences, ProgressPreferences):
+        raise ValueError('Use validated progress preferences.')
+    raw = (json.dumps({'version': 2, 'kind': 'carr-progress',
+                       'preferences': asdict(preferences)}, sort_keys=True, indent=2) + '\n').encode('utf-8')
+    decode_preferences(raw)
+    return raw
+
+
+def _checked_path(path):
+    path = Path(path).absolute()
+    if str(path).startswith(('//', '\\\\')):
+        raise ValueError('Progress settings require a local directory.')
+    for part in reversed((path, *path.parents)):
+        try:
+            info = part.lstat()
+        except FileNotFoundError:
+            continue
+        if (stat.S_ISLNK(info.st_mode)
+                or getattr(info, 'st_file_attributes', 0) & 0x400):
+            raise ValueError('Progress settings cannot use symbolic links or reparse points.')
+        if part != path and not stat.S_ISDIR(info.st_mode):
+            raise ValueError('Progress settings need a local directory.')
+        if part == path and (not stat.S_ISREG(info.st_mode) or info.st_nlink != 1):
+            raise ValueError('Progress settings must be a regular file without hard links.')
+    return path
+
+
+def _identity(info):
+    return (info.st_dev, info.st_ino, info.st_mode, info.st_nlink,
+            info.st_size, info.st_mtime_ns, info.st_ctime_ns)
+
+
+def _read_preference_bytes(root):
+    path = _checked_path(Path(root) / FILENAME)
+    try:
+        before = path.lstat()
+        descriptor = os.open(path, os.O_RDONLY | getattr(os, 'O_NOFOLLOW', 0)
+                             | getattr(os, 'O_NONBLOCK', 0) | getattr(os, 'O_BINARY', 0))
+    except FileNotFoundError:
+        return None
+    with os.fdopen(descriptor, 'rb') as stream:
+        opened = os.fstat(stream.fileno())
+        if (_identity(before) != _identity(opened) or not stat.S_ISREG(opened.st_mode)
+                or opened.st_nlink != 1 or opened.st_size > MAX_BYTES):
+            raise ValueError('Progress settings changed or exceed the size limit.')
+        raw = stream.read(MAX_BYTES + 1)
+        after = os.fstat(stream.fileno())
+    _checked_path(path)
+    if (_identity(before) != _identity(after) or _identity(before) != _identity(path.lstat())
+            or len(raw) != before.st_size):
+        raise ValueError('Progress settings changed while reading.')
+    return raw
+
+
+def preference_snapshot(root):
+    """Read the exact passive bytes and their optimistic concurrency token."""
+    raw = _read_preference_bytes(root)
+    return raw, None if raw is None else sha256(raw).hexdigest()
+
+
+def load_preferences(root):
+    raw, _ = preference_snapshot(root)
+    return ProgressPreferences() if raw is None else decode_preferences(raw)
+
+
+def save_preferences(root, preferences, *, expected_sha256=_UNSET):
+    raw = encode_preferences(preferences)
+    if (expected_sha256 is not _UNSET and expected_sha256 is not None
+            and (type(expected_sha256) is not str
+                 or re.fullmatch('[0-9a-f]{64}', expected_sha256) is None)):
+        raise ValueError('Saved progress settings could not be observed. Reopen settings before saving.')
+    path = _checked_path(Path(root) / FILENAME)
+    with exclusive_writer(path.parent):
+        _, current = preference_snapshot(path.parent)
+        if expected_sha256 is not _UNSET and current != expected_sha256:
+            raise ValueError('Progress preferences changed in another window. Reopen settings before saving.')
+        temporary = None
+        try:
+            with NamedTemporaryFile(dir=path.parent, prefix='.progress-', suffix='.tmp', delete=False) as stream:
+                temporary = Path(stream.name)
+                stream.write(raw)
+                stream.flush()
+                os.fsync(stream.fileno())  # Writable descriptor, including Windows.
+            if preference_snapshot(path.parent)[1] != current:
+                raise ValueError('Progress preferences changed before saving. Reopen settings before saving.')
+            os.replace(temporary, path)
+            temporary = None  # Publication committed; no later cleanup can target this old name.
+            if hasattr(os, 'O_DIRECTORY'):
+                try:
+                    descriptor = os.open(path.parent, os.O_RDONLY | os.O_DIRECTORY)
+                    try:
+                        os.fsync(descriptor)
+                    finally:
+                        os.close(descriptor)
+                except OSError:
+                    pass  # The atomic preference publication already committed.
+        finally:
+            if temporary is not None:
+                temporary.unlink(missing_ok=True)
+    return preferences
+
+
+@dataclass(frozen=True)
+class ProgressEvent:
     operation_id: str
     title: str
-    state: ProgressState
     phase: str
-    message: str
+    state: str
     completed: int
     total: int | None
     unit: str
-    percent: int | None
-    eta_seconds: float | None
-    revision: int
-    started_at: float
-    updated_at: float
+    message: str
+    sequence: int
+    timestamp: float
     parent_id: str | None = None
+    verified: bool = False
+    transition: str = 'update'
+    eta_seconds: float | None = None
+    total_changed_reason: str = ''
+
+    @property
+    def token(self):
+        """Native callbacks use the same immutable operation identity."""
+        return self.operation_id
+
+    @property
+    def percent(self):
+        if self.state == 'complete' and self.verified:
+            return 100
+        if self.total is None:
+            return None
+        return min(99, self.completed * 100 // self.total) if self.total else 0
 
     @property
     def terminal(self):
-        return self.state in TERMINAL_STATES
+        return self.state in TERMINAL
 
-    def describe(self):
-        state = {
-            ProgressState.RUNNING: 'Running', ProgressState.PAUSED: 'Paused',
-            ProgressState.CANCELLING: 'Cancellation requested; waiting for the operation to stop',
-            ProgressState.CANCELLED: 'Cancelled', ProgressState.FAILED: 'Failed',
-            ProgressState.SUCCEEDED: 'Completed successfully',
-            ProgressState.UNAVAILABLE: 'Progress reporting is unavailable; check the operation result',
-        }[self.state]
-        parts = [f'{self.title}. {state}.']
-        if self.phase:
-            parts.append(f'Phase: {self.phase}.')
-        if self.percent is not None:
-            parts.append(f'{self.percent} percent.')
-        elif not self.terminal:
-            parts.append('Progress is indeterminate; the total is not known.')
+    @property
+    def text(self):
+        parts = [self.title, self.state]
+        parts.append('total unknown' if self.percent is None else f'{self.percent}%')
         if self.total is not None:
-            parts.append(f'{self.completed} of {self.total} {self.unit}.')
-            if self.completed == self.total and not self.terminal:
-                parts.append('Reported units are complete; waiting for durable completion.')
+            parts.append(f'{self.completed} of {self.total} {self.unit}')
         elif self.completed:
-            parts.append(f'{self.completed} {self.unit} completed; total unknown.')
-        if self.eta_seconds is not None:
-            parts.append(f'Estimated remaining time: {math.ceil(self.eta_seconds)} seconds, '
-                         'based on measured progress.')
-        if self.message:
+            parts.append(f'{self.completed} {self.unit} completed')
+        if self.phase:
+            parts.append(self.phase)
+        if self.message and self.message != self.phase:
             parts.append(self.message)
-        return '\n'.join(parts)
+        if self.total_changed_reason:
+            parts.append('Total changed: ' + self.total_changed_reason)
+        if self.eta_seconds is not None:
+            parts.append(f'estimated {math.ceil(self.eta_seconds)} seconds remaining from measured work')
+        return '; '.join(parts) + '.'
+
+
+def _counts(completed, total):
+    if type(completed) is not int or not 0 <= completed <= MAX_UNITS:
+        raise ValueError('Completed work must be a nonnegative integer no greater than 10**15.')
+    if total is not None and (type(total) is not int or not completed <= total <= MAX_UNITS):
+        raise ValueError('Total work must be a nonnegative integer at least as large as '
+                         'completed work and no greater than 10**15.')
 
 
 class ProgressHub:
-    """Thread-safe latest snapshots with bounded completed-task history.
-
-    Child tasks have their own measured progress. They never implicitly change
-    a parent's percentage. A producer may aggregate only genuinely comparable
-    units or a separately measured phase model.
-    """
-    def __init__(self, *, clock=time.monotonic, max_tasks=64):
-        if not callable(clock) or type(max_tasks) is not int or not 1 <= max_tasks <= 256:
-            raise ProgressError('A clock and a task limit between 1 and 256 are required.')
-        self._clock, self._limit = clock, max_tasks
+    """Thread-safe latest events; concurrent operations never share a percent."""
+    def __init__(self, *, clock=time.monotonic, maximum=128):
+        if type(maximum) is not int or not 1 <= maximum <= 4096:
+            raise ValueError('Progress history size must be between 1 and 4096.')
+        self._clock, self._maximum = clock, maximum
         self._lock = threading.RLock()
-        self._tasks = {}
+        self._events, self._rates = {}, {}
+        self._sequence = 0
+        self._media = set()
 
-    def _now(self):
-        value = self._clock()
-        if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value) or value < 0:
-            raise ProgressError('The progress clock must return a finite monotonic time.')
-        return float(value)
-
-    def start(self, title, *, total=None, unit='units', parent_id=None):
-        title, unit = _text(title, 'Operation title', 200, empty=False), _text(unit, 'Unit name', 40, empty=False)
-        total = _total(total)
+    def start(self, title, *, total=None, unit='items', phase='', parent_id=None):
+        _text(title, 'Operation title', empty=False)
+        _text(unit, 'Work unit', maximum=60, empty=False)
+        _text(phase, 'Phase')
+        _counts(0, total)
         with self._lock:
-            if parent_id is not None:
-                if (not isinstance(parent_id, str) or parent_id not in self._tasks
-                        or self._tasks[parent_id]._value.terminal):
-                    raise ProgressError('A child task needs an active parent in this progress hub.')
-            now = self._now()
-            if len(self._tasks) >= self._limit:
-                parents = {task._value.parent_id for task in self._tasks.values()}
-                victim = next((identifier for identifier, task in self._tasks.items()
-                               if task._value.terminal and identifier not in parents), None)
-                if victim is None:
-                    raise ProgressError('The progress task limit is reached; active tasks are retained.')
-                del self._tasks[victim]
-            identifier = uuid4().hex
-            value = ProgressSnapshot(identifier, title, ProgressState.RUNNING, '', '', 0, total, unit,
-                                     _percent(0, total), None, 1, now, now, parent_id)
-            task = ProgressTask(self, value)
-            self._tasks[identifier] = task
-            return task
-
-    def snapshot(self, operation_id=None):
-        with self._lock:
-            if operation_id is not None:
-                task = self._tasks.get(operation_id)
-                return task._value if task is not None else None
-            values = [task._value for task in self._tasks.values()]
-            return next((value for value in reversed(values) if not value.terminal),
-                        values[-1] if values else None)
-
-    def snapshots(self, *, active_only=False):
-        with self._lock:
-            return tuple(task._value for task in self._tasks.values()
-                         if not active_only or not task._value.terminal)
-
-
-class ProgressTask:
-    def __init__(self, hub, value):
-        self._hub, self._value = hub, value
-        self._rate_anchor = value.updated_at, value.completed
-
-    @property
-    def operation_id(self):
-        return self._value.operation_id
-
-    @property
-    def cancellation_requested(self):
-        with self._hub._lock:
-            return self._value.state in (ProgressState.CANCELLING, ProgressState.CANCELLED)
+            if parent_id is not None and parent_id not in self._events:
+                raise ValueError('A progress subtask needs an existing parent operation.')
+            if len(self._events) >= self._maximum:
+                removable = next((key for key, value in self._events.items() if value.terminal
+                                  and not any(e.parent_id == key and not e.terminal for e in self._events.values())), None)
+                if removable is None:
+                    raise ValueError('Too many concurrent progress operations.')
+                self._events.pop(removable)
+                self._rates.pop(removable, None)
+            identity, now = uuid4().hex, self._clock()
+            self._sequence += 1
+            self._events[identity] = ProgressEvent(identity, title, phase, 'running', 0, total,
+                unit, '', self._sequence, now, parent_id=parent_id, transition='start')
+            self._rates[identity] = (now, 0)
+            return ProgressReporter(self, identity)
 
     def snapshot(self):
-        with self._hub._lock:
-            return self._value
+        with self._lock:
+            return tuple(self._events.values())
 
-    def _publish(self, **changes):
-        now = self._hub._now()
-        if now < self._value.updated_at:
-            raise ProgressError('The progress clock moved backwards.')
-        self._value = replace(self._value, revision=self._value.revision + 1, updated_at=now, **changes)
-        return self._value
+    def get(self, operation_id):
+        with self._lock:
+            return self._events[operation_id]
 
-    def update(self, *, completed=None, total=_UNCHANGED, phase=None, message=None):
-        with self._hub._lock:
-            previous = self._value
-            if previous.state != ProgressState.RUNNING:
-                raise ProgressError('Only a running task accepts unit updates.')
-            completed = previous.completed if completed is None else _count(completed, 'Completed units')
-            total = previous.total if total is _UNCHANGED else _total(total)
-            phase = previous.phase if phase is None else _text(phase, 'Phase', 200)
-            message = previous.message if message is None else _text(message, 'Progress message', 1000)
-            if completed < previous.completed:
-                raise ProgressError('Completed units cannot move backwards within an operation.')
-            if total is not None and completed > total:
-                raise ProgressError('Completed units cannot exceed the known total.')
-            changed_total = total != previous.total
-            if changed_total:
-                old = 'unknown' if previous.total is None else str(previous.total)
-                new = 'unknown' if total is None else str(total)
-                explanation = f'Total changed from {old} to {new} {previous.unit}; progress was recalculated.'
-                message = explanation + (' ' + message if message and not message.startswith('Total changed from ') else '')
-                message = message[:1200]
-            if (completed, total, phase, message) == (previous.completed, previous.total, previous.phase, previous.message):
-                return previous
-            now = self._hub._now()
-            if now < previous.updated_at:
-                raise ProgressError('The progress clock moved backwards.')
-            anchor = (now, completed) if changed_total or phase != previous.phase else self._rate_anchor
-            elapsed, advanced = now - anchor[0], completed - anchor[1]
+    def _update(self, operation_id, *, completed=_UNSET, total=_UNSET, phase=_UNSET,
+                message=_UNSET, state=None, verified=False, transition='update',
+                total_changed_reason=''):
+        with self._lock:
+            old = self._events[operation_id]
+            if old.terminal:
+                raise ValueError('A finished operation cannot change; start a new operation.')
+            target = state or old.state
+            if target not in STATES:
+                raise ValueError('Unsupported progress state.')
+            if target == 'complete' and verified is not True:
+                raise ValueError('Completion requires verified durable success.')
+            if old.state == 'paused' and target == 'complete':
+                raise ValueError('Resume an operation before marking it complete.')
+            done = old.completed if completed is _UNSET else completed
+            size = old.total if total is _UNSET else total
+            _counts(done, size)
+            changed = size != old.total
+            _text(total_changed_reason, 'Changed-total explanation')
+            if changed and old.total is not None and not total_changed_reason.strip():
+                raise ValueError('Explain why the known work total changed.')
+            if done < old.completed and not changed:
+                raise ValueError('Completed work cannot decrease for an unchanged total.')
+            next_phase = old.phase if phase is _UNSET else _text(phase, 'Phase')
+            next_message = old.message if message is _UNSET else _text(message, 'Progress message')
+            if target == 'complete' and size is not None and done != size:
+                raise ValueError('All known work units must be accounted for before completion.')
+            now = self._clock()
+            if changed or transition in ('pause', 'resume'):
+                self._rates[operation_id] = (now, done)
+            start_time, start_count = self._rates[operation_id]
             eta = None
-            if total is not None and completed < total and elapsed >= 1.0 and advanced > 0:
-                eta = (total - completed) * elapsed / advanced
-            result = self._publish(completed=completed, total=total, phase=phase, message=message,
-                                   percent=_percent(completed, total), eta_seconds=eta)
-            self._rate_anchor = anchor
-            return result
+            if (target == 'running' and size is not None and done < size
+                    and done > start_count and now - start_time >= 1):
+                eta = (size - done) * (now - start_time) / (done - start_count)
+            self._sequence += 1
+            event = replace(old, state=target, completed=done, total=size,
+                phase=next_phase, message=next_message,
+                verified=target == 'complete' and verified,
+                transition=transition, sequence=self._sequence, timestamp=now,
+                eta_seconds=eta, total_changed_reason=total_changed_reason or old.total_changed_reason)
+            self._events[operation_id] = event
+            return event
 
-    def advance(self, units=1, *, phase=None, message=None):
-        units = _count(units, 'Advanced units')
-        with self._hub._lock:
-            return self.update(completed=self._value.completed + units, phase=phase, message=message)
+    @contextmanager
+    def media_activity(self):
+        """Suppress optional notifications during app recording/live output."""
+        token = object()
+        with self._lock:
+            self._media.add(token)
+        try:
+            yield
+        finally:
+            with self._lock:
+                self._media.discard(token)
+
+    @property
+    def media_active(self):
+        with self._lock:
+            return bool(self._media)
+
+
+class ProgressReporter:
+    def __init__(self, hub, operation_id):
+        self.hub, self.operation_id = hub, operation_id
+
+    @property
+    def event(self):
+        return self.hub.get(self.operation_id)
+
+    def update(self, **values):
+        return self.hub._update(self.operation_id, **values)
+
+    def complete(self, *, verified=False, message=''):
+        return self.update(state='complete', verified=verified, message=display_message(message), transition='complete')
+
+    def fail(self, message=''):
+        return self.update(state='failed', message=display_message(message), transition='failed')
+
+    def cancel(self, message=''):
+        return self.update(state='cancelled', message=display_message(message), transition='cancelled')
 
     def pause(self, message=''):
-        message = _text(message, 'Pause message', 1000)
-        with self._hub._lock:
-            if self._value.state not in (ProgressState.RUNNING, ProgressState.CANCELLING):
-                raise ProgressError('Only running or cancelling work can report a pause.')
-            return self._publish(state=ProgressState.PAUSED, message=message, eta_seconds=None)
+        return self.update(state='paused', message=display_message(message), transition='pause')
 
     def resume(self, message=''):
-        message = _text(message, 'Resume message', 1000)
-        with self._hub._lock:
-            if self._value.state != ProgressState.PAUSED:
-                raise ProgressError('Only a paused task can be resumed.')
-            result = self._publish(state=ProgressState.RUNNING, message=message, eta_seconds=None)
-            self._rate_anchor = result.updated_at, result.completed
-            return result
+        if self.event.state != 'paused':
+            raise ValueError('Only a paused operation can resume.')
+        return self.update(state='running', message=display_message(message), transition='resume')
 
-    def request_cancel(self, message='Cancellation requested.'):
-        message = _text(message, 'Cancellation message', 1000)
-        with self._hub._lock:
-            if self._value.state == ProgressState.CANCELLING:
-                return self._value
-            if self._value.terminal:
-                raise ProgressError('A finished task cannot request cancellation.')
-            return self._publish(state=ProgressState.CANCELLING, message=message, eta_seconds=None)
+    def child(self, title, **values):
+        return self.hub.start(title, parent_id=self.operation_id, **values)
 
-    def cancelled(self, message='Operation cancelled.'):
-        return self._finish(ProgressState.CANCELLED, message)
-
-    def fail(self, message):
-        return self._finish(ProgressState.FAILED, message)
-
-    def unavailable(self, message='Progress reporting stopped; the operation result is reported separately.'):
-        """End a broken observer without falsely changing the work's outcome."""
-        return self._finish(ProgressState.UNAVAILABLE, message)
-
-    def succeed(self, *, durable=True, message=''):
-        if durable is not True:
-            raise ProgressError('Successful completion requires verified durable success.')
-        with self._hub._lock:
-            if self._value.state == ProgressState.PAUSED:
-                raise ProgressError('Resume the task before confirming successful completion.')
-            if self._value.total is not None and self._value.completed != self._value.total:
-                raise ProgressError('Known units are incomplete; progress cannot claim 100 percent.')
-            return self._finish(ProgressState.SUCCEEDED, message)
-
-    def _finish(self, state, message):
-        message = _text(message, 'Completion message', 1000)
-        with self._hub._lock:
-            if self._value.terminal:
-                raise ProgressError('A finished task cannot change its terminal result.')
-            return self._publish(state=state, message=message, eta_seconds=None,
-                                 percent=100 if state == ProgressState.SUCCEEDED else self._value.percent)
+    @contextmanager
+    def bind(self):
+        token = _CURRENT.set(self)
+        try:
+            yield self
+        finally:
+            _CURRENT.reset(token)
 
 
 def current_progress():
-    """Return this worker's explicitly bound reporter, or None for legacy code."""
-    return _CURRENT_PROGRESS.get()
+    return _CURRENT.get()
 
 
-@contextmanager
-def bind_progress(task):
-    if not isinstance(task, ProgressTask):
-        raise ProgressError('Bind a ProgressTask, not a callback or executable instruction.')
-    token = _CURRENT_PROGRESS.set(task)
-    try:
-        yield task
-    finally:
-        _CURRENT_PROGRESS.reset(token)
+def report_progress(*, phase=None, message=None, completed=_UNSET, total=_UNSET,
+                    total_changed_reason=''):
+    """Optional backend hook; unobserved CLI/service calls remain unchanged."""
+    reporter = current_progress()
+    if reporter is not None:
+        values = dict(completed=completed, total=total, total_changed_reason=total_changed_reason)
+        if phase is not None:
+            values['phase'] = display_message(phase)
+        if message is not None:
+            values['message'] = display_message(message)
+        return reporter.update(**values)
+    return None
 
 
-def operation_outcome(result):
-    """Combine actual job/batch receipts without treating partial work as done.
+def batch_progress(reporter, batch):
+    """Adapt the existing durable import-batch counts without interpreting text."""
+    counts = batch.get('counts', {})
+    total = batch.get('total', len(batch.get('rows', ())))
+    completed = sum(counts.get(key, 0) for key in
+                    ('complete', 'duplicate', 'excluded', 'rejected', 'failed', 'quarantined'))
+    reason = 'The saved import selection changed.' if reporter.event.total not in (None, total) else ''
+    return reporter.update(completed=completed, total=total,
+                           phase='Importing and indexing files', total_changed_reason=reason)
 
-    Plain values and rows without status fields remain ordinary successful
-    return values. An explicit unknown status requires attention. Only typed
-    status fields are inspected; user text in search results is never a state.
+
+def finish_result(reporter, result, *, cancelled=False):
+    """Resolve actual nested receipts without hiding failure behind a stop request.
+
+    Plain read/query return values can finish normally. Explicit unknown states
+    require attention. A committed typed success remains successful when a
+    cancellation request arrives after its publication.
     """
-    from .assistant.models import JobReport
-    complete = {'complete', 'completed', 'succeeded', 'success', 'ok', 'passed', 'pass',
-                'ready', 'verified', 'saved', 'exported', 'duplicate', 'excluded'}
-    failure = {'failed', 'error', 'timed_out', 'timeout', 'corrupt', 'invalid'}
-    cancelled = {'cancelled', 'canceled', 'aborted'}
-    rank = {'succeeded': 0, 'paused': 1, 'cancelled': 2, 'failed': 3}
-    outcome, pending, inspected = 'succeeded', [result], 0
+    states, all_counts, pending, inspected = [], {}, [result], 0
     while pending:
-        item = pending.pop()
+        value = pending.pop()
         inspected += 1
         if inspected > 100_000:
-            raise ValueError('Operation result exceeds the progress receipt limit.')
-        if isinstance(item, JobReport):
-            item = {'status': item.status, 'results': item.results}
-        if isinstance(item, (list, tuple)):
-            if len(pending) + len(item) + inspected > 100_000:
-                raise ValueError('Operation result exceeds the progress receipt limit.')
-            pending.extend(item)
+            return reporter.fail('The operation returned too many progress receipts to verify.')
+        if isinstance(value, (tuple, list)):
+            pending.extend(value)
             continue
-        if not isinstance(item, dict):
-            continue
-        for key in ('status', 'state'):
-            state = item.get(key)
-            if state is None:
-                continue
-            if not isinstance(state, str):
-                current = 'paused'
+        if isinstance(value, dict):
+            for key in ('state', 'status'):
+                if key in value and value[key] is not None:
+                    states.append(value[key].casefold() if isinstance(value[key], str) else 'unknown')
+            counts = value.get('counts', {})
+            if not isinstance(counts, dict):
+                states.append('unknown')
             else:
-                state = state.casefold()
-                current = ('failed' if state in failure else 'cancelled' if state in cancelled
-                           else 'succeeded' if state in complete else 'paused')
-            if rank[current] > rank[outcome]:
-                outcome = current
-        for key in ('rows', 'results'):
-            if isinstance(item.get(key), (list, tuple)):
-                pending.append(item[key])
-    return outcome
-
+                for key in ('failed', 'rejected', 'quarantined', 'queued', 'running', 'cancelled'):
+                    if counts.get(key):
+                        all_counts[key] = True
+            for key in ('rows', 'results'):
+                if isinstance(value.get(key), (tuple, list)):
+                    pending.append(value[key])
+        else:
+            state = getattr(value, 'status', '')
+            if state:
+                states.append(state.casefold() if isinstance(state, str) else 'unknown')
+    if (all_counts.get('failed') or all_counts.get('rejected')
+            or any(s in ('failed', 'error', 'rejected', 'timed_out', 'timeout', 'corrupt', 'invalid') for s in states)):
+        return reporter.fail('One or more operations failed; review the result.')
+    if all_counts.get('cancelled') or any(s in ('cancelled', 'canceled', 'aborted') for s in states):
+        return reporter.cancel('The operation was cancelled.')
+    if all_counts.get('quarantined') or any(
+            s in ('quarantined', 'needs_review', 'needs_reapproval', 'review_required', 'attention') for s in states):
+        return reporter.pause('Review is required before this operation can finish.')
+    if all_counts.get('queued') or all_counts.get('running') or any(
+            s in ('paused', 'partial', 'queued', 'running', 'interrupted') for s in states):
+        return reporter.pause('Work remains; resume from the saved checkpoint.')
+    successful = ('complete', 'completed', 'success', 'succeeded', 'ok', 'passed', 'pass',
+                  'ready', 'verified', 'saved', 'exported', 'duplicate', 'excluded')
+    if any(s not in successful for s in states):
+        return reporter.pause('The service did not report a supported verified completion state.')
+    explicit = bool(states) and all(s in successful for s in states)
+    counts = result.get('counts', {}) if isinstance(result, dict) else {}
+    if cancelled and not explicit and not counts:
+        return reporter.cancel('Cancellation was requested; no verified completion was reported.')
+    if reporter.event.total is not None and reporter.event.completed != reporter.event.total:
+        return reporter.pause('The service returned before all measured work was accounted for.')
+    return reporter.complete(verified=True, message='The operation returned its verified result.')

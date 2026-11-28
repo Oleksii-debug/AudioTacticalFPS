@@ -1,0 +1,108 @@
+{
+  "schema": "carr-local-translation-observed-pass/1",
+  "status": "PASS_EXACT_COMPONENT",
+  "source_commit": "43f6908c82982630c85e6b72ebf7b940dfb06b45",
+  "source_tree": "acb92a0e27145178e5c43d438ae447e455afef19",
+  "run_id": 46023226615,
+  "job_id": 140587903077,
+  "workflow": "CARR local and existing translation qualification",
+  "ref": "carr/local-translation-r15-diagnostic-d3a-20261127",
+  "actual_job_conclusion": "success",
+  "observed_gate": {
+    "installed_cases": 306,
+    "native_flows": 8,
+    "source_cases": 306,
+    "source_commit": "43f6908c82982630c85e6b72ebf7b940dfb06b45",
+    "source_tree": "acb92a0e27145178e5c43d438ae447e455afef19",
+    "status": "PASS"
+  },
+  "observed_phase_receipts": [
+    {
+      "phase": "existing-source",
+      "status": "PASS"
+    },
+    {
+      "phase": "existing-installed",
+      "status": "PASS"
+    },
+    {
+      "phase": "local-source",
+      "status": "PASS"
+    },
+    {
+      "phase": "local-installed",
+      "status": "PASS"
+    },
+    {
+      "phase": "existing-selected-advanced",
+      "status": "PASS"
+    },
+    {
+      "phase": "existing-document",
+      "status": "PASS"
+    },
+    {
+      "phase": "existing-chapter",
+      "status": "PASS"
+    },
+    {
+      "phase": "existing-batch",
+      "status": "PASS"
+    },
+    {
+      "phase": "local-selected",
+      "status": "PASS"
+    },
+    {
+      "phase": "local-document",
+      "status": "PASS"
+    },
+    {
+      "phase": "local-chapter",
+      "status": "PASS"
+    },
+    {
+      "phase": "local-batch",
+      "status": "PASS"
+    }
+  ],
+  "qualification": {
+    "source": {
+      "existing_cases": 268,
+      "local_cases": 38,
+      "total": 306,
+      "status": "PASS"
+    },
+    "installed": {
+      "existing_cases": 268,
+      "local_cases": 38,
+      "total": 306,
+      "status": "PASS"
+    },
+    "actual_native_flows": 8,
+    "selected_current_provider": "bounded controlled transport",
+    "local_provider": "actual loopback HTTP fixture; no downloaded model",
+    "actual_google_api": "NOT_RUN",
+    "real_local_weights": "NOT_RUN",
+    "translation_quality": "NOT_QUALIFIED",
+    "nvda": "NOT_RUN",
+    "physical_audio": "NOT_RUN"
+  },
+  "artifact": {
+    "id": 15210489316,
+    "bytes": 6384403,
+    "sha256": "3fc657ad100bc1769c7baf3fec35a170ac159a04490fee5aa1b015846c78435b",
+    "independent_zip_inspection": "PENDING"
+  },
+  "prior_failure": {
+    "run_id": 46012230866,
+    "source_commit": "11449daefabf16ff1b84e8dd1a70097bf59cf601",
+    "existing_source": "262 PASS / 6 FAIL",
+    "existing_installed": "262 PASS / 6 FAIL",
+    "local_source": "38 PASS",
+    "local_installed": "38 PASS",
+    "native_flows": "8 PASS",
+    "repair": "Preserved all cases; fixed two globals in the extracted UI-method test fixture and three diagnostic-string compatibility sites. This successful run includes provider passive recovery."
+  },
+  "evidence_boundary": "The exact job log records all twelve phase receipts and the strict aggregate. The artifact API independently confirms the exact artifact identity; its raw ZIP counters await the existing inert artifact reader. This proof does not qualify later composed source or actual translation models."
+}

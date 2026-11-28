@@ -251,6 +251,18 @@ class ReadingState:
             snapshot_locations(raw)
         return raw
 
+    def snapshot(self):
+        """Compatibility spelling for the exact validated sidecar snapshot."""
+        return self.snapshot_bytes()
+
+    def _read_validated(self):
+        """Return decoded state together with the same exact bytes and identity."""
+        raw, identity = self._snapshot()
+        if raw is None:
+            return {}, {}, None, None
+        positions, bookmarks, _ = _decode_bytes(raw)
+        return positions, bookmarks, identity, raw
+
     def _read(self):
         raw, identity = self._snapshot()
         if raw is None:

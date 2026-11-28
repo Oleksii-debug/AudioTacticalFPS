@@ -3,7 +3,7 @@
 This is process isolation with time/resource limits, not an OS security sandbox.
 The existing ingest journal remains the only extraction/checkpoint pipeline.
 """
-from contextlib import closing, contextmanager, redirect_stdout
+from contextlib import ExitStack, closing, contextmanager, redirect_stdout
 from dataclasses import asdict
 from hashlib import sha256
 import json
@@ -16,7 +16,7 @@ import sqlite3
 import stat
 import subprocess
 import sys
-from tempfile import TemporaryDirectory, TemporaryFile
+from tempfile import TemporaryDirectory, TemporaryFile, gettempdir
 import time
 from uuid import uuid4
 
@@ -53,10 +53,17 @@ def load_request(root, request_id):
             or getattr(info, 'st_file_attributes', 0) & stat.FILE_ATTRIBUTE_REPARSE_POINT):
         raise ValueError('Invalid import request file.')
     record = json.loads(path.read_text(encoding='utf-8'))
-    if (not isinstance(record, dict) or record.get('version') != 1
+    if (not isinstance(record, dict) or type(record.get('version')) is not int or record['version'] not in (1, 2)
             or record.get('request_id') != request_id
             or record.get('data_dir') != str(Path(root).resolve())):
         raise ValueError('Import request identity changed.')
+    if record['version'] == 2:
+        from .streamed_text import profile_from_value
+        profile_from_value(record.get('source_profile'))
+        if 'pdf_max_bytes' in record:
+            raise ValueError('Streamed text cannot acquire a PDF byte allowance.')
+    elif 'source_profile' in record:
+        raise ValueError('Legacy import cannot acquire a streamed source profile.')
     return record
 
 
@@ -95,12 +102,17 @@ def record_progress(root, request_id, **changes):
 
 def _request_identity(record):
     """Stable request identity; progress and publication candidates are not authority."""
-    return {key: record.get(key) for key in (
+    result = {key: record.get(key) for key in (
         'version', 'request_id', 'data_dir', 'workspace', 'source',
         'metadata', 'config', 'expected_manifest')}
+    if 'pdf_max_bytes' in record:
+        result['pdf_max_bytes'] = record['pdf_max_bytes']
+    if record['version'] == 2:
+        result['source_profile'] = record['source_profile']
+    return result
 
 
-def _publication_state(db, record, revision):
+def _publication_state(db, record, revision, *, allow_superseded=False):
     """Inspect this exact sealed revision and registration in the caller's snapshot.
 
     The digest includes original source identity, requested catalog metadata and
@@ -110,17 +122,24 @@ def _publication_state(db, record, revision):
     from ..application import LibraryApp
     from ..catalog.membership import Catalog
 
+    if record.get('job') is not None and record['job'] != revision:
+        raise ValueError('Import publication journal identity changed.')
     workspace, metadata = record['workspace'], record['metadata']
     LibraryApp._authorize(db, workspace)
     row = db.execute('SELECT workspace,edition,asset,config FROM revision WHERE id=?',
                      (revision,)).fetchone()
     if row is None:
         return None
+    if record['version'] == 2:
+        from .streamed_text import profile_from_value
+        if row[3] != canonical(profile_from_value(record['source_profile']).configuration()):
+            raise ValueError('Streamed publication configuration changed.')
     active = db.execute('SELECT revision FROM active WHERE workspace=? AND edition=?',
                         (workspace, metadata['edition_id'])).fetchone()
+    historical = active is not None and active[0] != revision and allow_superseded
     if (tuple(row[:3]) != (workspace, metadata['edition_id'], record.get('asset_sha256'))
             or not db.execute('SELECT 1 FROM sealed WHERE revision=?', (revision,)).fetchone()
-            or active is None or active[0] != revision):
+            or active is None or (active[0] != revision and not historical)):
         raise ValueError('Import publication identity changed.')
     catalog = db.execute(
         'SELECT e.work,e.asset,a.mime,a.size,e.language,e.edition,e.volume,w.title '
@@ -130,24 +149,35 @@ def _publication_state(db, record, revision):
     if catalog is None:
         raise ValueError('Import publication registration is missing.')
     manifest = dict(sha256=catalog[1], mime=catalog[2], size=catalog[3])
+    if manifest['mime'] == 'application/pdf' and record.get('job') != revision:
+        raise ValueError('Import publication journal identity changed.')
     if (tuple(catalog[:2]) != (metadata['work_id'], record.get('asset_sha256'))
-            or tuple(catalog[4:]) != (metadata['language'], metadata['edition'],
-                                      metadata['volume'], metadata['title'])
             or (record.get('expected_manifest') is not None
                 and record['expected_manifest'] != manifest)):
         raise ValueError('Import publication metadata changed.')
-    authors = tuple(r[0] for r in db.execute(
-        'SELECT name FROM catalog_author WHERE workspace=? AND work=? ORDER BY position',
-        (workspace, metadata['work_id'])))
-    if authors != tuple(metadata['authors']):
-        raise ValueError('Import publication authors changed.')
-    scoped = Catalog(db, workspace)
-    for collection in metadata['collections']:
-        scoped._active_collection(collection)
-        if not db.execute('SELECT 1 FROM catalog_membership '
-                          'WHERE workspace=? AND collection=? AND edition=?',
-                          (workspace, collection, metadata['edition_id'])).fetchone():
-            raise ValueError('Import publication membership is missing.')
+    expected_catalog = (metadata['language'], metadata['edition'],
+                        metadata['volume'], metadata['title'])
+    if historical:
+        # Rebuild only the original registration header from this request.
+        # Equality to the immutable canonical SHA below must still prove it;
+        # current metadata is never presented as the historical source's own.
+        catalog = (*catalog[:4], *expected_catalog)
+        authors = tuple(metadata['authors'])
+    else:
+        if tuple(catalog[4:]) != expected_catalog:
+            raise ValueError('Import publication metadata changed.')
+        authors = tuple(r[0] for r in db.execute(
+            'SELECT name FROM catalog_author WHERE workspace=? AND work=? ORDER BY position',
+            (workspace, metadata['work_id'])))
+        if authors != tuple(metadata['authors']):
+            raise ValueError('Import publication authors changed.')
+        scoped = Catalog(db, workspace)
+        for collection in metadata['collections']:
+            scoped._active_collection(collection)
+            if not db.execute('SELECT 1 FROM catalog_membership '
+                              'WHERE workspace=? AND collection=? AND edition=?',
+                              (workspace, collection, metadata['edition_id'])).fetchone():
+                raise ValueError('Import publication membership is missing.')
     source = db.execute('SELECT author,title,volume,edition_label FROM source_metadata '
                         'WHERE workspace=? AND edition=? AND revision=?',
                         (workspace, metadata['edition_id'], revision)).fetchone()
@@ -173,7 +203,8 @@ def _publication_state(db, record, revision):
     return dict(sha256=digest.hexdigest(), completed=completed, manifest=manifest)
 
 
-def record_publication_candidate(root, request_id, db, workspace, revision):
+def record_publication_candidate(root, request_id, db, workspace, revision, *,
+                                 publication_attempt=None, config=None):
     """Bind this attempt inside the existing publication transaction.
 
     The sidecar is only a hint. The immutable database receipt commits with the
@@ -183,11 +214,24 @@ def record_publication_candidate(root, request_id, db, workspace, revision):
     if request_id is None:
         return
     record = load_request(root, request_id)
-    attempt = record.get('attempt')
-    if attempt is None:  # Legacy direct invocations have no supervising attempt.
-        return
-    if (not isinstance(attempt, str) or not re.fullmatch('[0-9a-f]{32}', attempt)
-            or not db.in_transaction or record['workspace'] != workspace):
+    from .publication_identity import PublicationAttempt, validate_configuration
+    if publication_attempt is None and record.get('attempt') is None:
+        return  # An unsupervised direct import creates no attempt receipt.
+    if not isinstance(publication_attempt, PublicationAttempt) or not db.in_transaction:
+        raise ValueError('A frozen supervising publication attempt is required.')
+    expected = publication_attempt.request()
+    attempt = publication_attempt.attempt_id
+    if (record.get('attempt') != attempt or expected['request_id'] != request_id
+            or expected['workspace'] != workspace
+            or any(record.get(key) != expected[key] for key in
+                   ('version', 'request_id', 'data_dir', 'source', 'workspace',
+                    'metadata', 'config', 'expected_manifest'))
+            or record.get('pdf_max_bytes') != expected.get('pdf_max_bytes')
+            or record.get('source_profile') != expected.get('source_profile')
+            or config is None
+            or asdict(config) != asdict(validate_configuration(expected['config']))
+            or expected['pinned_asset'] not in (None, record.get('asset_sha256'))
+            or expected['resume_job'] not in (None, revision)):
         raise ValueError('Import publication attempt changed.')
     state = _publication_state(db, record, revision)
     if state is None:
@@ -198,9 +242,11 @@ def record_publication_candidate(root, request_id, db, workspace, revision):
         attempt=attempt, revision=revision, **state))
 
 
-def _reconcile_publication(root, request_id, attempt):
+def _reconcile_publication(root, request_id, attempt, *, initial=None):
     """Recover only a fresh publication from this stopped child, without replay."""
     record = load_request(root, request_id)
+    if initial is not None and _request_identity(record) != _request_identity(initial):
+        raise ValueError('Import request changed after this worker launch.')
     candidate = record.get('publication_candidate')
     if candidate is None:
         return None
@@ -227,7 +273,7 @@ def _reconcile_publication(root, request_id, attempt):
             return None
         if receipt['sha256'] != candidate['sha256']:
             raise ValueError('Import publication receipt differs from its candidate.')
-        state = _publication_state(db, record, candidate['revision'])
+        state = _publication_state(db, record, candidate['revision'], allow_superseded=True)
         if state is None:  # The child died before its SQLite transaction committed.
             return None
         if state != {key: candidate[key] for key in ('sha256', 'completed', 'manifest')}:
@@ -235,11 +281,15 @@ def _reconcile_publication(root, request_id, attempt):
         identity = Identity(record['workspace'], record['metadata']['edition_id'],
                             state['manifest']['sha256'], candidate['revision'])
         app._retained_source(db, record['workspace'], identity)
-    return dict(state='complete', id=candidate['revision'], workspace=record['workspace'],
+        active = db.execute('SELECT revision FROM active WHERE workspace=? AND edition=?',
+                            (record['workspace'], record['metadata']['edition_id'])).fetchone()
+        current = active is not None and active[0] == candidate['revision']
+    return dict(state='complete' if current else 'superseded',
+                id=candidate['revision'], workspace=record['workspace'],
                 edition=record['metadata']['edition_id'], asset=state['manifest']['sha256'],
                 completed=state['completed'], total=state['completed'], error=None,
-                verified=state['manifest']['mime'] == 'text/plain',
-                publication_recovered=True,
+                verified=current and state['manifest']['mime'] == 'text/plain',
+                publication_recovered=True, recovered_publication=True,
                 message='Import completed before the worker stopped; the committed source was verified.')
 
 
@@ -251,8 +301,8 @@ class RuntimeBoundIngest(Ingest):
         self.review_asset = review_asset
         self.validated_reviews = {}
 
-    def _plan(self, asset, config):
-        count, settings, segments = super()._plan(asset, config)
+    def _plan(self, asset, config, *, cancelled=lambda: False):
+        count, settings, segments = super()._plan(asset, config, cancelled=cancelled)
         if asset.mime == 'application/pdf':
             from ..extract.runtime_identity import runtime_identity
             data = json.loads(settings)
@@ -278,12 +328,15 @@ class RuntimeBoundIngest(Ingest):
         review = self.reviews.get(str(physical))
         if review is None:
             return False
+        from ..catalog.streaming_pdf import FileAsset
+        review_digest = (self.review_asset.digest if isinstance(self.review_asset, FileAsset) else
+                         sha256(self.review_asset).hexdigest() if isinstance(self.review_asset, bytes) else None)
         if (record.get('status') != 'review_required' or not record.get('raw_text', '').strip()
-                or type(physical) is not int or not isinstance(self.review_asset, bytes)
+                or type(physical) is not int or review_digest is None
                 or not isinstance(review, dict)
                 or review.get('physical') != physical
                 or review.get('asset_sha256') != record['provenance'].get('asset_sha256')
-                or review.get('asset_sha256') != sha256(self.review_asset).hexdigest()
+                or review.get('asset_sha256') != review_digest
                 or review.get('raw_sha256') != sha256(record['raw_text'].encode('utf-8')).hexdigest()
                 or review.get('checkpoint_sha256') != sha256(canonical(record).encode('utf-8')).hexdigest()
                 or not isinstance(review.get('reviewer'), str) or not review['reviewer'].strip()):
@@ -380,7 +433,10 @@ def _pending_review(root, workspace, request_id):
                 or not isinstance(record.get('raw_text'), str) or not record['raw_text'].strip()):
             raise ValueError('No intact extracted PDF text is available for review.')
         from .retained_assets import RetainedAssets
-        data = RetainedAssets(Path(root) / 'originals').resolve(job['asset']).read_bytes()
+        from ..catalog.streaming_pdf import FileAsset, snapshot_original
+        path = RetainedAssets(Path(root) / 'originals').resolve(job['asset'])
+        original = snapshot_original(path.parent, path.name)
+        data = original if isinstance(original, FileAsset) else original.data
         renderer, fingerprint = isolated_render_fingerprint(data, row['ordinal'])
         binding = dict(request_id=request_id, workspace=workspace, job=job['id'], edition=job['edition'],
                        asset_sha256=job['asset'], physical=row['ordinal'],
@@ -431,35 +487,89 @@ def confirm_review(root, workspace, request_id, reviewer, *, confirmed, expected
                     checksum=current['checksum'])
 
 
-def _stop(process):
-    if process.poll() is not None:
-        return
-    if os.name == 'nt':
-        try:
-            subprocess.run(['taskkill', '/PID', str(process.pid), '/T', '/F'],
-                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                           timeout=5, creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))
-        except (OSError, subprocess.SubprocessError):
-            process.kill()
-    else:
-        try:
-            os.killpg(process.pid, signal.SIGTERM)
-        except ProcessLookupError:
-            pass
+def _posix_group_quiescent(group):
+    """Confirm no live member remains; Linux zombies cannot retain writers.
+
+    A container's PID 1 may leave an orphan zombie unreaped indefinitely. It
+    owns no descriptors and cannot execute. Only an actual bounded /proc scan
+    of this exact killed group can distinguish that from a live descendant.
+    Other POSIX platforms keep the stronger group-disappearance check.
+    """
     try:
-        process.wait(timeout=1)
-    except subprocess.TimeoutExpired:
-        if os.name == 'nt':
-            process.kill()
-        else:
-            try:
-                os.killpg(process.pid, signal.SIGKILL)
-            except ProcessLookupError:
-                pass
-        process.wait(timeout=2)
+        os.killpg(group, 0)
+    except ProcessLookupError:
+        return True
+    import sys
+    if not sys.platform.startswith('linux'):
+        return False
+    seen = False
+    try:
+        with os.scandir('/proc') as entries:
+            for count, entry in enumerate(entries, 1):
+                if count > 100000:
+                    return False
+                if not entry.name.isdecimal():
+                    continue
+                try:
+                    if os.getpgid(int(entry.name)) != group:
+                        continue
+                    with open('/proc/' + entry.name + '/stat', 'rb') as stream:
+                        raw = stream.read(4097)
+                    if len(raw) > 4096:
+                        return False
+                    fields = raw.rsplit(b')', 1)[1].split()
+                    if len(fields) < 3 or int(fields[2]) != group:
+                        return False
+                    seen = True
+                    if fields[0] not in (b'Z', b'X'):
+                        return False
+                except ProcessLookupError:
+                    continue
+                except FileNotFoundError:
+                    continue
+    except (OSError, IndexError, ValueError):
+        return False
+    if seen:
+        return True
+    # No visible member is not proof under hidepid or a changing process table.
+    try:
+        os.killpg(group, 0)
+    except ProcessLookupError:
+        return True
+    return False
 
 
-def _request_record(root, workspace, source, metadata, config, request_id, expected_manifest=None):
+def _stop(process):
+    """Keep parser streams and admission until the exact native family stops."""
+    from ..audio.recording_process import _stop_owned
+    from ..audio.cleanup import pending_cleanup, wait_for_cleanup
+
+    def settle():
+        if getattr(process, '_carr_ingest_quiescent', False):
+            return True
+        _stop_owned(process)
+        if os.name != 'nt':
+            deadline = time.monotonic() + 2
+            while not _posix_group_quiescent(process.pid):
+                if time.monotonic() >= deadline:
+                    raise RuntimeError('The import process family has not confirmed shutdown.')
+                time.sleep(.02)
+        process._carr_ingest_quiescent = True
+        return True
+
+    try:
+        return settle()
+    except (Exception, KeyboardInterrupt, SystemExit) as exc:
+        error = pending_cleanup(settle,
+            message='Import cleanup is pending; streams and resource admission remain reserved.')
+        wait_for_cleanup(error)
+        if isinstance(exc, (KeyboardInterrupt, SystemExit)):
+            raise
+        return True
+
+
+def _request_record(root, workspace, source, metadata, config, request_id, expected_manifest=None,
+                    pdf_max_bytes=None, source_profile=None):
     metadata = dict(metadata)
     if metadata.get('title') in (None, ''):
         metadata['title'] = Path(source).stem
@@ -468,15 +578,28 @@ def _request_record(root, workspace, source, metadata, config, request_id, expec
     record = dict(version=1, request_id=request_id, data_dir=str(Path(root).resolve()),
                   workspace=workspace, source=str(Path(source).absolute()),
                   metadata=metadata, config=asdict(config), state='pending')
+    profile = None
+    if source_profile is not None:
+        from .streamed_text import profile_from_value
+        profile = profile_from_value(source_profile)
+        if Path(source).suffix.casefold() != '.txt' or pdf_max_bytes is not None:
+            raise ValueError('Streamed text requests require .txt and an independent byte allowance.')
+        record.update(version=2, source_profile=profile.to_dict())
+    from ..catalog.streaming_pdf import MAX_PDF_BYTES, pdf_budget, valid_original_size
+    if pdf_max_bytes is not None:
+        record['pdf_max_bytes'] = pdf_budget(pdf_max_bytes)
     if expected_manifest is not None:
-        from ..catalog.intake import MAX_BYTES
         if (not isinstance(expected_manifest, dict)
                 or set(expected_manifest) != {'sha256', 'mime', 'size'}
                 or not isinstance(expected_manifest['sha256'], str)
                 or not re.fullmatch('[0-9a-f]{64}', expected_manifest['sha256'])
                 or expected_manifest['mime'] not in MIME_SUFFIXES
                 or type(expected_manifest['size']) is not int
-                or not 0 < expected_manifest['size'] <= MAX_BYTES):
+                or (profile is None and not valid_original_size(
+                    expected_manifest['mime'], expected_manifest['size'],
+                    pdf_max_bytes=record.get('pdf_max_bytes', MAX_PDF_BYTES)))
+                or (profile is not None and (expected_manifest['mime'] != 'text/plain'
+                    or not 0 < expected_manifest['size'] <= profile.maximum_bytes))):
             raise ValueError('Invalid planned source manifest.')
         record['expected_manifest'] = dict(expected_manifest)
     # Compare the exact representation persisted by JSON, including sequences.
@@ -484,7 +607,7 @@ def _request_record(root, workspace, source, metadata, config, request_id, expec
 
 
 def prepare_request(root, workspace, source, metadata, config, *, request_id=None,
-                    expected_manifest=None):
+                    expected_manifest=None, pdf_max_bytes=None, source_profile=None):
     """Persist stable import identities without opening or processing the source.
 
     A batch can save its request ID first and safely repeat this preparation
@@ -493,7 +616,7 @@ def prepare_request(root, workspace, source, metadata, config, *, request_id=Non
     request_id = request_id or uuid4().hex
     with request_lock(root, request_id):
         planned = _request_record(root, workspace, source, metadata, config,
-                                  request_id, expected_manifest)
+                                  request_id, expected_manifest, pdf_max_bytes, source_profile)
         try:
             existing = load_request(root, request_id)
         except FileNotFoundError:
@@ -501,287 +624,267 @@ def prepare_request(root, workspace, source, metadata, config, *, request_id=Non
             return planned
         identity = set(planned) - {'state'}
         if (any(existing.get(key) != planned[key] for key in identity)
-                or existing.get('expected_manifest') != planned.get('expected_manifest')):
+                or existing.get('expected_manifest') != planned.get('expected_manifest')
+                or existing.get('pdf_max_bytes') != planned.get('pdf_max_bytes')
+                or existing.get('source_profile') != planned.get('source_profile')):
             raise ValueError('Persisted import request differs from its planned identity.')
         return existing
 
 
 def run_request(root, workspace, source, metadata, config, *, cancelled=lambda: False,
-                timeout=120.0, request_id=None):
+                timeout=120.0, request_id=None, broker=None, pdf_max_bytes=None, source_profile=None):
     """Execute a new or resumed document request without parsing in the caller."""
     new = request_id is None
     request_id = request_id or uuid4().hex
     with request_lock(root, request_id):
         return _run_request(root, workspace, source, metadata, config,
                             cancelled=cancelled, timeout=timeout,
-                            request_id=request_id, new=new)
+                            request_id=request_id, new=new, broker=broker, pdf_max_bytes=pdf_max_bytes,
+                            source_profile=source_profile)
 
 
-
-def _publication_watermark(app, workspace):
-    """Release the read snapshot before starting the native worker."""
-    with app.read(workspace) as db:
-        # Revision rows are append-only in the accepted schema. A scalar is
-        # bounded even after many metadata revisions of the same edition.
-        return db.execute('SELECT coalesce(max(rowid),0) FROM revision').fetchone()[0]
-
-
-def _published_after_stop(app, initial, watermark, *, revision=None):
-    """Independently verify the exact revision after its owned receipt is checked.
-
-    A stopped process may have committed before returning its stdout receipt.
-    Existing/replayed revisions are not proof that this invocation completed.
-    This read never resumes parsing, changes a journal, or approves quotations.
-    It supplements the transaction receipt; fresh row IDs alone do not prove
-    which process attempt committed an otherwise identical source.
-    """
-    from ..catalog.membership import _metadata
-    from ..extract.document_formats import FORMAT_BY_MIME
-
+def _published_after_stop(app, initial, attempt_id):
+    """Compatibility read through the one canonical receipt reconciler."""
     try:
-        request = load_request(app.root, initial['request_id'])
-        identity = ('version', 'request_id', 'data_dir', 'workspace', 'source',
-                    'metadata', 'config', 'expected_manifest')
-        if any(request.get(key) != initial.get(key) for key in identity):
-            return None
-        metadata = request['metadata']
-        digest = request.get('asset_sha256')
-        if (not isinstance(digest, str) or not re.fullmatch('[0-9a-f]{64}', digest)
-                or not isinstance(metadata, dict) or set(metadata) != FIELDS):
-            return None
-        workspace, edition = request['workspace'], metadata['edition_id']
-        with app.read(workspace) as db:
-            rows = db.execute(
-                'SELECT r.id,r.config,a.revision AS active,e.work,c.mime,c.size, '
-                'w.title,e.language,e.edition AS edition_label,e.volume '
-                'FROM revision r JOIN sealed s ON s.revision=r.id '
-                'JOIN catalog_edition e ON e.workspace=r.workspace AND e.id=r.edition AND e.asset=r.asset '
-                'JOIN catalog_work w ON w.workspace=e.workspace AND w.id=e.work '
-                'JOIN catalog_asset c ON c.digest=e.asset '
-                'LEFT JOIN active a ON a.workspace=r.workspace AND a.edition=r.edition '
-                'WHERE r.workspace=? AND r.edition=? AND r.asset=? AND r.rowid>? '
-                'AND (? IS NULL OR r.id=?) LIMIT 2',
-                (workspace, edition, digest, watermark, revision, revision)).fetchall()
-            if len(rows) != 1:
-                return None
-            row = rows[0]
-            if (row['work'] != metadata['work_id'] or row['active'] is None
-                    or row['mime'] not in MIME_SUFFIXES or type(row['size']) is not int
-                    or not 0 < row['size'] <= 64 * 1024 * 1024
-                    or not isinstance(row['config'], str)
-                    or len(row['config'].encode('utf-8')) > 4 * 1024 * 1024):
-                return None
-            settings = json.loads(row['config'])
-            if (not isinstance(settings, dict) or canonical(settings) != row['config']
-                    or sha256(canonical([workspace, edition, digest, row['config']])
-                              .encode('utf-8')).hexdigest() != row['id']):
-                return None
-            mime = row['mime']
-            if mime == 'application/pdf':
-                if (request.get('job') != row['id']
-                        or settings.get('adapter') != 'page_ocr-v1'
-                        or settings.get('kind') != 'physical_page'
-                        or settings.get('config') != request['config']):
-                    return None
-            else:
-                adapter = ('strict-utf8-v1' if mime == 'text/plain' else
-                           'python-docx-ordered-v1' if mime == 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' else
-                           'epub-spine-v1' if mime == 'application/epub+zip' else
-                           'ordered-document-v1')
-                if settings.get('adapter') != adapter or settings.get('kind') != 'logical_segment':
-                    return None
-                if mime in FORMAT_BY_MIME and settings.get('format') != FORMAT_BY_MIME[mime].name:
-                    return None
-                if request.get('job') is not None and request['job'] != row['id']:
-                    return None
-            manifest = dict(sha256=digest, mime=mime, size=row['size'])
-            if request.get('expected_manifest') not in (None, manifest):
-                return None
-            original = app.assets.resolve(digest)
-            if original.suffix != MIME_SUFFIXES[mime] or original.stat().st_size != row['size']:
-                return None
-            title = _metadata(metadata['title']) or Path(request['source']).stem
-            authors = tuple(_metadata(value) for value in metadata['authors'])
-            # Citation display joins authors. Preserve their separate identities
-            # and all catalog fields before accepting a concurrent publication.
-            catalog_authors = tuple(author[0] for author in db.execute(
-                'SELECT name FROM catalog_author WHERE workspace=? AND work=? ORDER BY position',
-                (workspace, metadata['work_id'])))
-            if (row['title'] != title or catalog_authors != authors
-                    or (row['language'], row['edition_label'], row['volume']) != tuple(
-                        _metadata(metadata[field]) for field in ('language', 'edition', 'volume'))):
-                return None
-            source_metadata = db.execute(
-                'SELECT author,title,volume,edition_label FROM source_metadata '
-                'WHERE workspace=? AND edition=? AND revision=?',
-                (workspace, edition, row['id'])).fetchone()
-            expected = ('; '.join(authors) or None, title or 'Unknown title',
-                        _metadata(metadata['volume']), _metadata(metadata['edition']))
-            if source_metadata is None or tuple(source_metadata) != expected:
-                return None
-            for collection in metadata['collections']:
-                if not db.execute(
-                        'SELECT 1 FROM catalog_membership WHERE workspace=? AND edition=? AND collection=?',
-                        (workspace, edition, collection)).fetchone():
-                    return None
-            count, text_bytes, nonempty = 0, 0, False
-            expected_text = (original.read_bytes().decode('utf-8-sig').split('\f')
-                             if mime == 'text/plain' else None)
-            for page in db.execute(
-                    'SELECT p.ordinal,p.physical,p.printed,p.verified,p.raw,p.digest,i.raw AS indexed '
-                    'FROM page p LEFT JOIN indexed i ON i.id=p.id '
-                    'WHERE p.revision=? ORDER BY p.ordinal', (row['id'],)):
-                count += 1
-                raw = page['raw']
-                if not isinstance(raw, str) or '\x00' in raw:
-                    return None
-                encoded = raw.encode('utf-8')
-                text_bytes += len(encoded)
-                if (count > 10000 or text_bytes > 64 * 1024 * 1024
-                        or page['ordinal'] != count
-                        or page['digest'] != sha256(encoded).hexdigest()
-                        or page['printed'] is not None or page['verified'] != 0
-                        or page['physical'] != (count if mime == 'application/pdf' else None)
-                        or (row['active'] == row['id'] and page['indexed'] != raw)):
-                    return None
-                if expected_text is not None and (count > len(expected_text) or raw != expected_text[count - 1]):
-                    return None
-                nonempty = nonempty or bool(raw.strip())
-            if not count or not nonempty or (expected_text is not None and count != len(expected_text)):
-                return None
-            return dict(state='complete' if row['active'] == row['id'] else 'superseded',
-                        workspace=workspace, edition=edition, id=row['id'], asset=digest,
-                        completed=count, total=count, verified=mime == 'text/plain',
-                        recovered_publication=True)
+        return _reconcile_publication(app.root, initial['request_id'], attempt_id,
+                                      initial=initial)
     except (OSError, ValueError, TypeError, KeyError, sqlite3.Error):
-        # An absent, ambiguous or damaged binding grants no completion authority.
         return None
 
 
 def _run_request(root, workspace, source, metadata, config, *, cancelled,
-                 timeout, request_id, new):
+                 timeout, request_id, new, broker=None, pdf_max_bytes=None, source_profile=None):
     if (not callable(cancelled) or type(timeout) not in (int, float)
             or not math.isfinite(timeout) or not 0.1 <= timeout <= 600):
         raise ValueError('Import timeout must be between 0.1 and 600 seconds.')
     if new:
-        record = _request_record(root, workspace, source, metadata, config, request_id)
+        record = _request_record(root, workspace, source, metadata, config, request_id,
+                                 pdf_max_bytes=pdf_max_bytes, source_profile=source_profile)
         _store(root, request_id, record, create=True)
     else:
         record = load_request(root, request_id)
         if record.get('workspace') != workspace:
             raise ValueError('Import request belongs to another library.')
+        if pdf_max_bytes is not None and record.get('pdf_max_bytes') != pdf_max_bytes:
+            raise ValueError('Import PDF byte budget changed; prepare a new request.')
+        if source_profile is not None:
+            from .streamed_text import profile_from_value
+            if record.get('source_profile') != profile_from_value(source_profile).to_dict():
+                raise ValueError('Import source profile changed; prepare a new request.')
         if record.get('state') == 'complete' and isinstance(record.get('result'), dict):
             return dict(record['result'], request_id=request_id, isolated=True)
-    from ..application import LibraryApp
-    app = LibraryApp(root)
-    watermark = _publication_watermark(app, workspace)
-    started = False
+    from ..audio.jobs import checked_directory
+    from ..operations import ResourceBroker, ResourceCancelled, ResourceStateError
+    from ..operations.admission import document_request
+    from .publication_identity import request_identity
+    library = checked_directory(root)
+    request_identity(record)  # Validate before waiting without changing saved identity.
+    # Old launch hints never become authority for a request waiting to restart.
+    # Its stable metadata remains visible in the existing import queue.
+    pending = dict(record, state='pending', publication_candidate=None)
+    # A first queued request has not launched a native attempt. A replay must
+    # invalidate its earlier attempt even if cancellation happens in admission.
+    if 'attempt' in pending:
+        pending['attempt'] = uuid4().hex
+    pending.pop('publication_watermark', None)
+    _store(root, request_id, pending)
+    try:
+        selected = broker or ResourceBroker.for_app(library, cancelled=cancelled)
+        if not isinstance(selected, ResourceBroker):
+            raise TypeError('Use the shared typed local resource coordinator.')
+        if (selected.root != library / 'runtime' / 'resources'
+                or selected.policy_path != library / 'state' / 'operations' / 'resources.json'):
+            raise ResourceStateError('The resource coordinator belongs to another library directory.')
+        from ..catalog.streaming_pdf import MAX_PDF_BYTES, valid_original_size
+        from ..audio.jobs import regular_file
+        profile = None
+        if record['version'] == 2:
+            from .streamed_text import profile_from_value
+            profile = profile_from_value(record['source_profile'])
+        source_path = Path(record['source'])
+        if record.get('asset_sha256'):
+            from .retained_assets import RetainedAssets
+            source_path = RetainedAssets(library / 'originals').resolve(
+                record['asset_sha256'], profile=profile, cancelled=cancelled)
+        source_info = regular_file(source_path)
+        source_mime = 'application/pdf' if source_path.suffix.casefold() == '.pdf' else ''
+        if source_info.st_nlink != 1:
+            raise ValueError('Hard-linked source files are not imported.')
+        if ((profile is None and not valid_original_size(source_mime, source_info.st_size,
+                    pdf_max_bytes=record.get('pdf_max_bytes', MAX_PDF_BYTES)))
+                or (profile is not None and (source_path.suffix.casefold() != '.txt'
+                    or not 0 < source_info.st_size <= profile.maximum_bytes))):
+            raise ValueError('Document original exceeds its declared format byte budget.')
+        from ..catalog.intake import MAX_BYTES
+        pdf_limit = (min(record.get('pdf_max_bytes', MAX_PDF_BYTES),
+                         max(MAX_BYTES, source_info.st_size)) if source_mime == 'application/pdf' else None)
+        request = document_request(library, Path(gettempdir()), selected.limits,
+                                   original_bytes=pdf_limit or source_info.st_size)
+        if profile is not None:
+            from dataclasses import replace
+            # Original, escaped checkpoints, authoritative pages and index scratch.
+            request = replace(request, disk_bytes=max(request.disk_bytes,
+                                profile.maximum_bytes * 10 + 128 * 1024**2))
+        admission = selected.reserve(request, operation_id='document:' + request_id,
+                                     cancelled=cancelled, timeout=60)
+        return _execute_request(root, workspace, record, request_id,
+                                admission=admission, timeout=timeout, pdf_limit=pdf_limit)
+    except ResourceCancelled:
+        result = dict(state='cancelled', message='Import stopped while waiting for shared resources.',
+                      request_id=request_id, isolated=True)
+        record_progress(root, request_id, state='cancelled', result=result)
+        return result
 
-    def worker_started():
-        nonlocal started
-        started = True
 
-    attempt = uuid4().hex
-    record_progress(root, request_id, state='running', attempt=attempt, publication_candidate=None)
-    result = _invoke({'data_dir': str(Path(root).resolve()), 'request_id': request_id,
-                      'timeout': timeout}, timeout=timeout, cancelled=cancelled,
-                     on_started=worker_started)
+def _execute_request(root, workspace, record, request_id, *, admission, timeout, pdf_limit=None):
+    # The resource reservation spans the actual child and its owned cleanup.
+    # Receipt reconciliation can perform another accepted operation and must
+    # not retain the completed child's full-pool compute reservation.
+    from .publication_identity import request_identity
+    expected = request_identity(record)
+    with admission as lease:
+        current = load_request(root, request_id)
+        if request_identity(current) != expected:
+            raise ValueError('The import request changed while waiting for shared resources.')
+        record = current
+        from ..application import LibraryApp
+        from .publication_identity import request_identity
+        app = LibraryApp(root)
+        # This value is fresh for every native launch, including resumed requests.
+        # Only the worker that commits a new revision can persist its receipt.
+        attempt_id = uuid4().hex
+        fingerprint = sha256(request_identity(record).encode('utf-8')).hexdigest()
+        # A new parent attempt clears old hints even when cancelled before launch.
+        record_progress(root, request_id, attempt=attempt_id, publication_candidate=None)
+        started = False
+
+        def worker_started():
+            nonlocal started
+            started = True
+
+        # The launch identity is frozen before the native child reads the sidecar.
+        # Release this authorization snapshot before parsing or OCR begins.
+        with app.read(workspace):
+            pass
+        record_progress(root, request_id, state='running')
+        message = {'data_dir': str(Path(root).resolve()), 'request_id': request_id,
+                   'attempt_id': attempt_id, 'request_sha256': fingerprint,
+                   'source': record['source'], 'timeout': timeout}
+        if pdf_limit is not None:
+            message['pdf_max_bytes'] = pdf_limit
+        result = _invoke(message,
+                         timeout=timeout, cancelled=lease.cancelled,
+                         on_started=worker_started)
     if started and result.get('state') in ('cancelled', 'timed_out', 'failed'):
         try:
-            if _request_identity(load_request(root, request_id)) != _request_identity(record):
-                raise ValueError('Import request changed while its worker was running.')
-            committed = _reconcile_publication(root, request_id, attempt)
-            if committed is not None:
-                # The immutable receipt identifies the committing attempt; keep
-                # the existing format/config/catalog/index checks independently
-                # bound to that exact revision, never another matching row.
-                verified = _published_after_stop(app, record, watermark,
-                                                 revision=committed['id'])
-                if verified is None or verified['state'] != 'complete':
-                    raise ValueError('Import publication could not verify its source binding.')
+            committed = _reconcile_publication(root, request_id, attempt_id, initial=record)
         except (KeyError, TypeError, ValueError, OSError, sqlite3.Error):
             result = dict(state='failed', message=
                           'The stopped import could not verify its publication. Review or resume this request.')
         else:
             if committed is not None:
-                result = dict(committed, recovered_publication=True,
-                              worker_state=result['state'])
+                result = dict(committed, worker_state=result['state'])
     result = dict(result, request_id=request_id, isolated=True)
     record_progress(root, request_id, state=result.get('state', 'failed'), result=result)
     return result
 
 
+@contextmanager
+def _request_directory():
+    """Keep a private request alive until its native file handles release it.
+
+    The owned process family and our streams settle before this outer context.
+    Windows can still report a sharing violation at the first directory cleanup
+    attempt. Retry that exact owned temporary directory for a bounded interval;
+    access, path and other failures remain visible.
+    """
+    directory = TemporaryDirectory(prefix='carr-worker-request-')
+    try:
+        yield directory.name
+    finally:
+        deadline = time.monotonic() + 5
+        while True:
+            try:
+                directory.cleanup()
+                break
+            except OSError as exc:
+                if (os.name != 'nt' or getattr(exc, 'winerror', None) not in (32, 33)
+                        or time.monotonic() >= deadline):
+                    raise
+                time.sleep(min(.02, max(0, deadline - time.monotonic())))
+
+
 def _invoke(message, *, timeout, cancelled=lambda: False, on_started=None):
     """One process supervisor for import and render operations."""
+    from ..audio.engines import _start_process
     payload = canonical(message).encode('utf-8')
     if len(payload) > MAX_REQUEST:
         raise ValueError('Import request is too large.')
+    if cancelled():
+        return {'state': 'cancelled', 'message': 'Import cancelled before native parsing.'}
     result = None
-    process = None
-    try:
-        if cancelled():
-            result = {'state': 'cancelled', 'message': 'Import cancelled before native parsing.'}
-        else:
-            with TemporaryFile() as input_stream, TemporaryFile() as output, TemporaryFile() as errors:
-                input_stream.write(payload)
-                input_stream.seek(0)
-                options = ({'creationflags': getattr(subprocess, 'CREATE_NO_WINDOW', 0)
-                            | getattr(subprocess, 'CREATE_NEW_PROCESS_GROUP', 0)}
-                           if os.name == 'nt' else {'start_new_session': True})
-                # Isolated Python ignores CWD, user-site and inherited PYTHONPATH.
-                # Only paths derived from this trusted application file are added.
-                package_root = Path(__file__).resolve().parents[2]
-                roots = [str(package_root)]
-                if (package_root.parent / 'bootstrap/vendor/cairn_extractors/hasher.py').is_file():
-                    roots.append(str(package_root.parent))
-                bootstrap = ("import sys,runpy; sys.path[:0]=sys.argv[1:]; "
-                             "runpy.run_module('carr_library.ingest.worker',run_name='__main__')")
-                process = subprocess.Popen([sys.executable, '-I', '-B', '-X', 'utf8', '-c', bootstrap, *roots],
-                                           stdin=input_stream, stdout=output, stderr=errors,
-                                           env=dict(os.environ, PYTHONUTF8='1', PYTHONIOENCODING='utf-8'),
-                                           **options)
-                if on_started is not None:
-                    on_started()
-                deadline = time.monotonic() + timeout
-                while process.poll() is None:
-                    if cancelled():
-                        result = {'state': 'cancelled', 'message':
-                                  'Import worker stopped. Resume checks saved checkpoints and publication.'}
-                        break
-                    if time.monotonic() >= deadline:
-                        result = {'state': 'timed_out', 'message':
-                                  'Import time limit reached. Saved checkpoints can be resumed.'}
-                        break
-                    if os.fstat(output.fileno()).st_size > MAX_REPLY or os.fstat(errors.fileno()).st_size > MAX_LOG:
-                        result = {'state': 'failed', 'message': 'Import worker output exceeded its limit.'}
-                        break
-                    time.sleep(0.05)
-                if result is None and (
-                        os.fstat(output.fileno()).st_size > MAX_REPLY
-                        or os.fstat(errors.fileno()).st_size > MAX_LOG):
-                    result = {'state': 'failed', 'message': 'Import worker output exceeded its limit.'}
-                if result is not None:
-                    _stop(process)
-                else:
-                    output.seek(0)
-                    raw = output.read(MAX_REPLY + 1)
-                    if len(raw) > MAX_REPLY:
-                        raise ValueError('Import worker reply exceeded its limit.')
-                    try:
-                        reply = json.loads(raw)
-                    except (UnicodeError, ValueError):
-                        reply = None
-                    if (process.returncode != 0 or not isinstance(reply, dict)
-                            or not isinstance(reply.get('result'), dict)):
-                        message = reply.get('error') if isinstance(reply, dict) else None
-                        result = {'state': 'failed', 'message': message or
-                                  f'Import worker exited unexpectedly ({process.returncode}).'}
-                    else:
-                        result = reply['result']
-    finally:
-        if process is not None and process.poll() is None:
-            _stop(process)
-    return result
+    with ExitStack() as owned:
+        # Reopen the bounded request with actual read-only native rights.
+        # Every stream outlives the owned family, including constructor failure.
+        temporary = owned.enter_context(_request_directory())
+        request_path = Path(temporary) / 'request.json'
+        with request_path.open('xb') as destination:
+            destination.write(payload)
+        input_stream = owned.enter_context(request_path.open('rb'))
+        output = owned.enter_context(TemporaryFile())
+        errors = owned.enter_context(TemporaryFile())
+        # Isolated Python ignores CWD, user-site and inherited PYTHONPATH.
+        # Only paths derived from this trusted application file are added.
+        package_root = Path(__file__).resolve().parents[2]
+        roots = [str(package_root)]
+        if (package_root.parent / 'bootstrap/vendor/cairn_extractors/hasher.py').is_file():
+            roots.append(str(package_root.parent))
+        bootstrap = ("import sys,runpy; sys.path[:0]=sys.argv[1:]; "
+                     "runpy.run_module('carr_library.ingest.worker',run_name='__main__')")
+        process = _start_process(
+            [sys.executable, '-I', '-B', '-X', 'utf8', '-c', bootstrap, *roots],
+            stdin=input_stream, stdout=output, stderr=errors, shell=False,
+            env=dict(os.environ, PYTHONUTF8='1', PYTHONIOENCODING='utf-8'))
+        owned.callback(_stop, process)
+        if on_started is not None:
+            on_started()
+        deadline = time.monotonic() + timeout
+        while process.poll() is None:
+            if cancelled():
+                result = {'state': 'cancelled', 'message':
+                          'Import worker stopped. Resume checks saved checkpoints and publication.'}
+                break
+            if time.monotonic() >= deadline:
+                result = {'state': 'timed_out', 'message':
+                          'Import time limit reached. Saved checkpoints can be resumed.'}
+                break
+            if os.fstat(output.fileno()).st_size > MAX_REPLY or os.fstat(errors.fileno()).st_size > MAX_LOG:
+                result = {'state': 'failed', 'message': 'Import worker output exceeded its limit.'}
+                break
+            time.sleep(0.05)
+        # A completed leader is not proof that its descendants stopped. Settle
+        # the complete native owner before accepting bytes or releasing streams.
+        _stop(process)
+        if result is None and (os.fstat(output.fileno()).st_size > MAX_REPLY
+                               or os.fstat(errors.fileno()).st_size > MAX_LOG):
+            result = {'state': 'failed', 'message': 'Import worker output exceeded its limit.'}
+        if result is None:
+            output.seek(0)
+            raw = output.read(MAX_REPLY + 1)
+            if len(raw) > MAX_REPLY:
+                raise ValueError('Import worker reply exceeded its limit.')
+            try:
+                reply = json.loads(raw)
+            except (UnicodeError, ValueError):
+                reply = None
+            if (process.returncode != 0 or not isinstance(reply, dict)
+                    or not isinstance(reply.get('result'), dict)):
+                failure = reply.get('error') if isinstance(reply, dict) else None
+                result = {'state': 'failed', 'message': failure or
+                          f'Import worker exited unexpectedly ({process.returncode}).'}
+            else:
+                result = reply['result']
+        return result
 
 
 def _resource_limits(timeout):
@@ -803,15 +906,24 @@ def isolated_render_fingerprint(data, physical, *, cancelled=lambda: False):
     """Reuse the citation renderer in the same bounded isolated worker."""
     if not callable(cancelled):
         raise ValueError('A review cancellation callback is required.')
-    if type(data) is not bytes or not 0 < len(data) <= 64 * 1024 * 1024:
+    from ..catalog.streaming_pdf import FileAsset
+    if not isinstance(data, FileAsset) and (type(data) is not bytes or not 0 < len(data) <= 64 * 1024 * 1024):
         raise ValueError('Invalid PDF review bytes.')
     if type(physical) is not int or not 1 <= physical <= 1000:
         raise ValueError('Invalid PDF review page.')
-    with TemporaryDirectory(prefix='carr-review-') as temporary:
-        source = Path(temporary) / 'page-source.pdf'
-        source.write_bytes(data)
-        result = _invoke(dict(action='render', source=str(source), sha256=sha256(data).hexdigest(),
-                              physical=physical, timeout=30), timeout=30, cancelled=cancelled)
+    if isinstance(data, FileAsset):
+        # The parent retains the verified read handle across the owned child.
+        # Windows denies mutation; POSIX revalidates its digest after rendering.
+        with data.open(cancelled=cancelled):
+            result = _invoke(dict(action='render', source=str(data.path), sha256=data.digest,
+                                  source_size=data.size, source_identity=list(data.identity),
+                                  physical=physical, timeout=30), timeout=30, cancelled=cancelled)
+    else:
+        with TemporaryDirectory(prefix='carr-review-') as temporary:
+            source = Path(temporary) / 'page-source.pdf'
+            source.write_bytes(data)
+            result = _invoke(dict(action='render', source=str(source), sha256=sha256(data).hexdigest(),
+                                  physical=physical, timeout=30), timeout=30, cancelled=cancelled)
     if (isinstance(result, dict) and result.get('state') == 'cancelled') or cancelled():
         raise InterruptedError('PDF source verification cancelled.')
     if (not isinstance(result, dict) or set(result) != {'renderer', 'fingerprint'}
@@ -828,9 +940,15 @@ def main():
         if len(raw) > MAX_REQUEST:
             raise ValueError('Import worker request exceeded its limit.')
         message = json.loads(raw)
-        import_keys = {'data_dir', 'request_id', 'timeout'}
+        import_keys = {'data_dir', 'request_id', 'attempt_id', 'request_sha256', 'source', 'timeout'}
+        file_import_keys = import_keys | {'pdf_max_bytes'}
         render_keys = {'action', 'source', 'sha256', 'physical', 'timeout'}
-        if not isinstance(message, dict) or set(message) not in (import_keys, render_keys):
+        file_render_keys = render_keys | {'source_size', 'source_identity'}
+        conversion_keys = {'action', 'source', 'output', 'report', 'sha256', 'source_size',
+                           'budget', 'ocr_config', 'timeout'}
+        conversion_adapter_keys = conversion_keys | {'adapter'}
+        conversion_encoding_keys = conversion_keys | {'text_encoding'}
+        if not isinstance(message, dict) or set(message) not in (import_keys, file_import_keys, render_keys, file_render_keys, conversion_keys, conversion_adapter_keys, conversion_encoding_keys):
             raise ValueError('Invalid import worker request schema.')
         timeout = message['timeout']
         if type(timeout) not in (int, float) or not math.isfinite(timeout) or not 0.1 <= timeout <= 600:
@@ -841,16 +959,31 @@ def main():
             raise PermissionError('Network access is disabled in the import worker.')
         socket.create_connection = socket.getaddrinfo = denied
         socket.socket.connect = socket.socket.connect_ex = denied
-        if set(message) == render_keys:
+        if set(message) in (conversion_keys, conversion_adapter_keys, conversion_encoding_keys):
+            if message['action'] != 'convert':
+                raise ValueError('Invalid document conversion action.')
+            from ..conversion.worker import convert_request
+            with redirect_stdout(sys.stderr):
+                result = convert_request(message)
+            print(canonical({'result': result}))
+            return 0
+        if set(message) in (render_keys, file_render_keys):
             if message['action'] != 'render' or not isinstance(message['source'], str):
                 raise ValueError('Invalid render request.')
             source = Path(message['source'])
-            info = source.lstat()
-            if not stat.S_ISREG(info.st_mode) or not 0 < info.st_size <= 64 * 1024 * 1024:
-                raise ValueError('Invalid PDF review source.')
-            data = source.read_bytes()
-            if sha256(data).hexdigest() != message['sha256']:
-                raise ValueError('PDF review source digest changed.')
+            if set(message) == file_render_keys:
+                from ..catalog.streaming_pdf import FileAsset
+                data = FileAsset.capture(source,
+                    expected_manifest=dict(sha256=message['sha256'], mime='application/pdf',
+                                           size=message['source_size']),
+                    expected_identity=message['source_identity'])
+            else:
+                info = source.lstat()
+                if not stat.S_ISREG(info.st_mode) or not 0 < info.st_size <= 64 * 1024 * 1024:
+                    raise ValueError('Invalid PDF review source.')
+                data = source.read_bytes()
+                if sha256(data).hexdigest() != message['sha256']:
+                    raise ValueError('PDF review source digest changed.')
             from ..citations.pdf_review_attestation import render_fingerprint
             with redirect_stdout(sys.stderr):
                 renderer, fingerprint = render_fingerprint(data, message['physical'])
@@ -862,8 +995,25 @@ def main():
                 or not isinstance(record.get('workspace'), str)
                 or not isinstance(record.get('source'), str)):
             raise ValueError('Invalid persisted import request schema.')
+        from .publication_identity import PublicationAttempt, request_identity
+        identity = request_identity(record)
+        attempt = PublicationAttempt(message['attempt_id'], identity)
+        attempt.request()
+        if (record['source'] != message['source']
+                or record.get('attempt') != message['attempt_id'] or
+                sha256(identity.encode('utf-8')).hexdigest() != message['request_sha256']):
+            raise ValueError('Import request changed before this worker attempt.')
         from ..application import LibraryApp
         from ..extract.page_ocr import Config
+        from ..catalog.streaming_pdf import MAX_PDF_BYTES, pdf_budget
+        pdf_limit = record.get('pdf_max_bytes', MAX_PDF_BYTES)
+        if record['version'] == 2 and 'pdf_max_bytes' in message:
+            raise ValueError('Streamed text cannot use a PDF launch allowance.')
+        if 'pdf_max_bytes' in message:
+            admitted = pdf_budget(message['pdf_max_bytes'])
+            if admitted > pdf_limit:
+                raise ValueError('PDF launch allowance exceeds the immutable request budget.')
+            pdf_limit = admitted
         metadata = dict(record['metadata'])
         if not isinstance(metadata['authors'], list) or not isinstance(metadata['collections'], list):
             raise ValueError('Invalid import metadata sequences.')
@@ -873,11 +1023,14 @@ def main():
             app = LibraryApp(message['data_dir'])
             source = record['source']
             if record.get('asset_sha256'):
-                source = app.assets.resolve(record['asset_sha256'])
+                source = app.assets.resolve(record['asset_sha256'], profile=record.get('source_profile'))
             result = app._import_file(record['workspace'], source, **metadata,
                                       config=Config(**record['config']),
                                       _request_id=record['request_id'], _resume_job=record.get('job'),
-                                      _expected_manifest=record.get('expected_manifest'))
+                                      _expected_manifest=record.get('expected_manifest'),
+                                      _publication_attempt=attempt,
+                                      pdf_max_bytes=pdf_limit if record['version'] == 1 else None,
+                                      _source_profile=record.get('source_profile'))
         print(canonical({'result': result}))
         return 0
     except Exception as exc:

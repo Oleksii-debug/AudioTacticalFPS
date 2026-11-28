@@ -10,18 +10,18 @@ from pathlib import Path
 from queue import Empty, Queue
 import sys
 from tempfile import TemporaryDirectory
-from threading import Event
+from threading import Event, Thread
 from time import monotonic
 import traceback
 
 
-def main():
+def run_native():
     if sys.platform != 'win32':
         raise RuntimeError('This acceptance probe requires actual Windows.')
+    from carr_library.native_runtime import activate_bundled_runtime
+    native_handle = activate_bundled_runtime()
     import wx
-    import carr_library.ui.progress_panel as progress_module
-    import carr_library.progress as progress_contract
-    import carr_library.progress_feedback as feedback_module
+    import carr_library.ui.operation_progress as progress_module
     import carr_library.ui.desktop_app as desktop_module
     from carr_library.application import LibraryApp
 
@@ -60,7 +60,7 @@ def main():
         check('native focus reaches ' + control.GetName(), pump(lambda: wx.Window.FindFocus() == control))
 
     checkout = Path(__file__).resolve().parents[1]
-    for module in (progress_module, progress_contract, feedback_module, desktop_module):
+    for module in (progress_module, desktop_module):
         installed = Path(module.__file__).resolve()
         expected = checkout / 'src' / Path(*module.__name__.split('.')).with_suffix('.py')
         check('installed exact source: ' + module.__name__, not installed.is_relative_to(checkout)
@@ -79,15 +79,19 @@ def main():
             frame.Show()
             frame.Raise()
             check('canonical desktop opens', pump(lambda: frame.active == (workspace, None) and not frame.working))
-            progress = frame.progress_panel
+            progress = frame.operation_progress
+            frame.keyboard_commands.apply_overrides({'progress.query': 'Ctrl+Alt+P'})
             check('named native gauge with bounded range', isinstance(progress.gauge, wx.Gauge)
                   and progress.gauge.GetRange() == 100 and bool(progress.gauge.GetName()))
-            check('progress label has an accessible name', bool(progress.text.GetName()))
+            check('progress label has an accessible name', bool(progress.label.GetName()))
             check('notification defaults to Off', progress.preferences.mode == 'off')
             output = root / 'verified-result.txt'
             completed = []
 
-            def measured(report):
+            def measured():
+                from carr_library.progress import report_progress
+                def report(completed, total, phase):
+                    report_progress(completed=completed, total=total, phase=phase)
                 report(0, 4, 'Processing synthetic units')
                 while monotonic() < deadline:
                     if frame.cancel_event.is_set():
@@ -106,27 +110,27 @@ def main():
                 raise TimeoutError('Probe worker exceeded its bounded deadline')
 
             def done(result):
-                check('100 waits for final publication validation', progress.active_task.snapshot().percent == 99)
+                check('100 follows the service verified publication', progress.event.percent == 100)
                 check('completion callback sees durable output', output.read_text(encoding='utf-8').startswith('Verified'))
                 completed.append(result)
 
-            frame.run_job('Measured operation', measured, done, with_progress=True)
-            check('actual worker reports zero of four', pump(lambda: progress.active_task.snapshot().total == 4
+            frame.run_job('Measured operation', measured, done, progress_total=4, progress_unit='units')
+            check('actual worker reports zero of four', pump(lambda: progress.event.total == 4
                   and progress.gauge.GetValue() == 0) and frame.working)
-            first_task = progress.active_task
+            first_token = progress.event.token
             for count, percent in ((1, 25), (2, 50), (3, 75), (4, 99)):
                 focus(frame.cancel_button)
                 commands.put(count)
                 check(f'measured {count} of four displays {percent} percent', pump(
-                    lambda: progress.active_task.snapshot().completed == count and progress.gauge.GetValue() == percent))
+                    lambda: progress.event.completed == count and progress.gauge.GetValue() == percent))
                 check(f'automatic update {count} preserves focus', wx.Window.FindFocus() == frame.cancel_button)
                 if count == 2:
-                    check('OS injects current-progress shortcut', simulator.Char(ord('Q'), wx.MOD_CONTROL | wx.MOD_SHIFT))
+                    check('OS injects current-progress shortcut', simulator.Char(ord('P'), wx.MOD_CONTROL | wx.MOD_ALT))
                     check('real busy-time query dispatch', pump(lambda: wx.Window.FindFocus() == progress.text
-                          and '50 percent' in progress.text.GetValue()) and frame.working)
+                          and '50%' in progress.text.GetValue()) and frame.working)
             commands.put('finish')
             check('verified operation reaches 100 after callback', pump(lambda: not frame.working)
-                  and progress.active_task.snapshot().state == 'succeeded' and progress.active_task.snapshot().percent == 100
+                  and progress.event.state == 'complete' and progress.event.percent == 100
                   and completed == [{'state': 'complete'}])
 
             started = Event()
@@ -136,19 +140,14 @@ def main():
                     raise TimeoutError('Cancel key was not dispatched')
                 raise InterruptedError('Synthetic worker acknowledged cancellation')
             frame.run_job('Cancellable operation', cancellable)
-            check('indeterminate worker starts', pump(started.is_set) and progress.active_task.snapshot().percent is None)
-            try:
-                first_task.update(completed=4, total=4, phase='Old worker callback')
-            except progress_contract.ProgressError:
-                pass
-            else:
-                raise AssertionError('A completed task accepted a stale worker update')
-            check('stale worker cannot mutate current operation', progress.active_task.snapshot().title == 'Cancellable operation'
-                  and progress.active_task.snapshot().percent is None)
+            check('indeterminate worker starts', pump(started.is_set) and progress.event.percent is None)
+            progress.update(4, 4, 'Old worker callback', token=first_token)
+            check('stale worker cannot mutate current operation', progress.event.title == 'Cancellable operation'
+                  and progress.event.percent is None)
             focus(frame.cancel_button)
             check('OS injects cancel button Space', simulator.Char(wx.WXK_SPACE))
             check('actual cancellation is distinct from success', pump(lambda: not frame.working)
-                  and progress.active_task.snapshot().state == 'cancelled' and progress.active_task.snapshot().percent is None)
+                  and progress.event.state == 'cancelled' and progress.event.percent is None)
 
             committed = Event()
             late_output = root / 'late-cancel-result.txt'
@@ -168,7 +167,7 @@ def main():
             check('late cancellation request arrives', pump(frame.cancel_event.is_set))
             release.set()
             check('committed success remains success after late request', pump(lambda: not frame.working)
-                  and progress.active_task.snapshot().state == 'succeeded' and progress.active_task.snapshot().percent == 100)
+                  and progress.event.state == 'complete' and progress.event.percent == 100)
             check('durable output survives late request', late_output.read_text(encoding='utf-8') == 'Already committed\n')
         finally:
             release.set()
@@ -176,11 +175,39 @@ def main():
                 frame.cancel_event.set()
                 pump(lambda: not frame.working)
                 frame.executor.shutdown(wait=True, cancel_futures=True)
+                frame.operation_progress.close()
                 frame.Destroy()
                 app.Yield()
     print(json.dumps({'status': 'PASS', 'checks': checks, 'actual_native_keys': True,
-        'nvda': 'NOT_RUN', 'audio_listening': 'NOT_RUN'}, ensure_ascii=False, indent=2))
+        'nvda': 'NOT_RUN', 'audio_listening': 'NOT_RUN', 'voice_synthesis': 'NOT_RUN'},
+        ensure_ascii=False, indent=2))
+    return 0
+
+
+def main():
+    from argparse import ArgumentParser
+    parser = ArgumentParser(description=__doc__)
+    parser.add_argument('--native', action='store_true')
+    args = parser.parse_args()
+    if not args.native or sys.platform != 'win32':
+        print(json.dumps({'status': 'NOT_RUN', 'reason': 'An explicit native Windows run is required.',
+                          'nvda': 'NOT_RUN', 'audio_listening': 'NOT_RUN'}))
+        return 77
+    finished = Event()
+    def watchdog():
+        if not finished.wait(120):
+            print(json.dumps({'status': 'FAIL', 'reason': 'Native progress probe exceeded 120 seconds.'}), flush=True)
+            os._exit(1)
+    Thread(target=watchdog, name='progress-probe-watchdog', daemon=True).start()
+    try:
+        return run_native()
+    except BaseException as exc:
+        print(json.dumps({'status': 'FAIL', 'error': type(exc).__name__ + ': ' + str(exc)[:800],
+                          'nvda': 'NOT_RUN', 'audio_listening': 'NOT_RUN'}), flush=True)
+        return 1
+    finally:
+        finished.set()
 
 
 if __name__ == '__main__':
-    main()
+    raise SystemExit(main())

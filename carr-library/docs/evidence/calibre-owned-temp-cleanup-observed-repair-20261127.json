@@ -1,0 +1,106 @@
+{
+  "schema": 1,
+  "recorded_utc": "2026-11-27 15:37:53 UTC",
+  "feature": "Selected unprotected calibre reading adapters",
+  "observed": {
+    "head": "2884d3b08b12e8c393e871c59bac59178a888cbb",
+    "run_id": 46021352572,
+    "job_id": 140581498783,
+    "status": "FAIL",
+    "native_source": {
+      "cases": 9,
+      "passed": 2,
+      "failed": 7,
+      "elapsed_seconds": 198.96
+    },
+    "native_installed": "NOT_RUN",
+    "artifact": {
+      "id": 15210184565,
+      "bytes": 2349359,
+      "sha256": "fdadc6f0bc97c751ba014c1ffad41a38416bf8eb0ce8d38716f06fbb3c749232"
+    },
+    "diagnostic_reproduction": [
+      {
+        "adapter_module": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\conversion\\legacy.py",
+        "adapter_sha256": "98e752ceccc07c8d7b1b08b0edb75354abcddfb9fea2ebfbd27803dd42111e8e",
+        "arguments": [
+          "D:\\a\\_temp\\lc-ae62115a\\optional\\payload\\Calibre Portable\\Calibre\\calibre-debug.exe",
+          "--run-without-debug",
+          "-e",
+          "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\converter-ci-results\\native\\source-tmp\\test_real_calibre_unprotected_5\\reading-output\\.carr-diagnostic-8unqfs67\\calibre_guard.py",
+          "--",
+          "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\converter-ci-results\\native\\source-tmp\\test_real_calibre_unprotected_5\\reading-output\\.carr-diagnostic-8unqfs67\\source.tcr",
+          "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\converter-ci-results\\native\\source-tmp\\test_real_calibre_unprotected_5\\reading-output\\.carr-diagnostic-8unqfs67\\calibre.txt",
+          "D:\\a\\_temp\\lc-ae62115a\\optional\\payload\\Calibre Portable\\Calibre",
+          "33554432"
+        ],
+        "elapsed_seconds": 0.29700000000002547,
+        "executable": "D:\\a\\_temp\\lc-ae62115a\\optional\\payload\\Calibre Portable\\Calibre\\ebook-convert.exe",
+        "family": "calibre",
+        "reproduction_only": true,
+        "returncode": 1,
+        "schema": 1,
+        "source_sha256": "fee9bf6d4e24c566d1035118d33f38c266ceb7c1f0045328737a78fd71e9ce7e",
+        "stderr": "Traceback (most recent call last):\r\n  File \"runpy.py\", line 203, in _run_module_as_main\r\n  File \"runpy.py\", line 88, in _run_code\r\n  File \"site.py\", line 99, in <module>\r\n  File \"site.py\", line 94, in main\r\n  File \"site.py\", line 50, in run_entry_point\r\n  File \"calibre\\debug.py\", line 475, in main\r\n  File \"calibre\\debug.py\", line 404, in run_script\r\n  File \"polyglot\\builtins.py\", line 111, in exec_path\r\n  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\converter-ci-results\\native\\source-tmp\\test_real_calibre_unprotected_5\\reading-output\\.carr-diagnostic-8unqfs67\\calibre_guard.py\", line 89, in <module>\r\n  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\converter-ci-results\\native\\source-tmp\\test_real_calibre_unprotected_5\\reading-output\\.carr-diagnostic-8unqfs67\\calibre_guard.py\", line 80, in main\r\n  File \"calibre\\ebooks\\conversion\\cli.py\", line 497, in main\r\n  File \"calibre\\ebooks\\conversion\\plumber.py\", line 1267, in run\r\n  File \"calibre\\ptempfile.py\", line 246, in PersistentTemporaryDirectory\r\n  File \"calibre\\ptempfile.py\", line 94, in base_dir\r\n  File \"calibre\\utils\\safe_atexit.py\", line 38, in wrapper\r\n  File \"calibre\\utils\\safe_atexit.py\", line 45, in remove_folder_atexit\r\n  File \"calibre\\utils\\safe_atexit.py\", line 99, in _send_command\r\n  File \"calibre\\utils\\safe_atexit.py\", line 87, in ensure_worker\r\n  File \"calibre\\utils\\ipc\\simple_worker.py\", line 191, in start_pipe_worker\r\n  File \"subprocess.py\", line 1039, in __init__\r\n  File \"subprocess.py\", line 1549, in _execute_child\r\n  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\converter-ci-results\\native\\source-tmp\\test_real_calibre_unprotected_5\\reading-output\\.carr-diagnostic-8unqfs67\\calibre_guard.py\", line 42, in audit\r\nPermissionError: Network and additional programs are disabled in this reading conversion.\r\n",
+        "stdout": "Conversion options changed from defaults:\r\n  disable_font_rescaling: True\r\n  newline: 'unix'\r\n  keep_ligatures: True\r\n"
+      },
+      {
+        "error": "Synthetic selected native reproduction returned 1",
+        "error_type": "ConversionError",
+        "family": "calibre",
+        "intermediate_names": [],
+        "reproduction_only": true
+      }
+    ]
+  },
+  "cause": "Actual TCR conversion reaches PersistentTemporaryDirectory. The pinned safe_atexit module tries to launch its generic cleanup worker, and the existing fixed wrapper's no-process audit guard correctly refuses that subprocess.",
+  "repair": {
+    "path": "src/carr_library/conversion/calibre_guard.py",
+    "operation": "Accept only the pinned safe_atexit unlink/rmtree deferred-cleanup registration protocol for absolute descendants of the existing private stage. The enclosing conversion owner already removes that stage after native settlement; no additional cleanup task, subprocess or unbounded registration list is created.",
+    "checks": [
+      "Exact pinned calibre version and expected cleanup protocol constants/callable",
+      "No previously active generic cleanup worker",
+      "Only unlink and rmtree registrations",
+      "Bounded nonempty absolute path; no parent traversal",
+      "Resolved path is a strict descendant of the owned private stage"
+    ],
+    "retained_denials": [
+      "Network",
+      "subprocess/os spawn/exec/system",
+      "run_program and unknown cleanup commands",
+      "outside or invalid cleanup paths",
+      "unselected content paths and linked output",
+      "protected or personalized books"
+    ],
+    "lifecycle": "Existing conversion worker and native ownership/cleanup remain responsible for the stage, including cancellation. No vendor code file is modified.",
+    "tests": {
+      "old_wrapper_cases": 5,
+      "new_wrapper_cases": 6,
+      "wrapper_total": 11,
+      "legacy_boundary_total": 92,
+      "portable_per_mode": 179,
+      "native_calibre_per_mode": 9
+    },
+    "runtime_status": "NOT_RUN at authoring",
+    "format_qualification": "calibre suffixes remain NOT_QUALIFIED"
+  },
+  "evidence": {
+    "completed_job_log_read": true,
+    "artifact_metadata_read": true,
+    "independent_archive_read": false
+  },
+  "primary_sources": [
+    {
+      "url": "https://github.com/kovidgoyal/calibre/blob/v9.19.0/src/calibre/utils/safe_atexit.py",
+      "purpose": "Reviewed exact deferred deletion/program dispatcher and generic cleanup worker lifecycle."
+    },
+    {
+      "url": "https://github.com/kovidgoyal/calibre/blob/v9.19.0/src/calibre/ptempfile.py",
+      "purpose": "Reviewed both base-dir and persistent file/directory registration paths; choosing a worker temp base alone would not remove persistent child cleanup registrations."
+    },
+    {
+      "url": "https://github.com/kovidgoyal/calibre/blob/v9.19.0/src/calibre/ebooks/conversion/plumber.py",
+      "purpose": "Confirmed the actual conversion path creates the persistent private plumber directory."
+    }
+  ]
+}

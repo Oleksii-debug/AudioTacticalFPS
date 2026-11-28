@@ -1,0 +1,184 @@
+{
+  "schema": "carr-resource-regression-gate-alignment/1",
+  "status": "SOURCE_ONLY_REQUIRES_REVIEWED_TEST_COMPONENT",
+  "base_commit": "014b128f13d47a900008f8970de4d0024ff0047d",
+  "base_tree": "b084ad222fcc966c8fd4d9a6b6d8257f1ee5102b",
+  "companion": {
+    "commit": "8932165be1fd1787bbf1cfcde4c16658984ae903",
+    "production_path": "carr-library/src/carr_library/operations/_locks.py",
+    "production_blob": "2c5dfc67a8c8b5162384f1b785fc74eb0b4f48bd",
+    "tests_path": "carr-library/tests/operations/test_resources.py",
+    "tests_blob": "9dd24a64f10f737551fe2742d094d4291b6ebe4a",
+    "qualification": "This gate-only commit must be composed with the reviewed resource repair/tests before execution. The new case bodies are not copied into this component."
+  },
+  "exact_resource_counter": {
+    "before": {
+      "test_unheld_lock_disappearance_during_preflight_can_be_acquired": 2,
+      "test_unheld_lock_does_not_hide_missing_parent_or_validation_error": 1,
+      "test_owned_lock_still_refuses_a_disappeared_path": 1,
+      "test_declared_cpu_memory_capacity_and_release_on_exception": 1,
+      "test_request_above_policy_never_waits_or_starts": 1,
+      "test_exclusive_configured_gpus_and_device_ids": 1,
+      "test_real_free_disk_and_same_volume_commitments": 1,
+      "test_multiple_output_directories_are_admitted_as_one_atomic_request": 1,
+      "test_waiting_cancellation_is_prompt_and_adds_no_reservation": 1,
+      "test_active_timeout_is_stop_signal_never_forced_reclaim": 1,
+      "test_policy_persistence_cannot_invalidate_live_work": 1,
+      "test_one_runtime_coordinator_cannot_bind_two_policies": 1,
+      "test_capacity_freed_after_deadline_does_not_start_late_worker": 1,
+      "test_actual_spawned_process_crash_releases_without_pid_reaping": 1,
+      "test_actual_process_contention_has_no_overlapping_admission": 1,
+      "test_bad_live_metadata_stops_admission_and_unlock_recovers": 1,
+      "test_failed_publication_releases_native_lock": 1,
+      "test_runtime_leases_outside_backup_state_and_truthful_capabilities": 1,
+      "test_paths_do_not_follow_links_and_invalid_requests_are_rejected": 1,
+      "test_native_release_can_remove_the_file_during_unheld_preflight": 2,
+      "test_optional_lock_preflight_still_rejects_hardlinks_without_touching_bytes": 2,
+      "test_lock_leaf_disappears_during_local_asset_check": 2,
+      "test_disappearing_lock_leaf_does_not_authorize_missing_parent": 2,
+      "test_unheld_lock_inspection_errors_never_become_absence": 4
+    },
+    "added": {
+      "test_unheld_lock_resolver_prefix_after_leaf_deletion_preserves_native_ownership": 2,
+      "test_unheld_lock_rejects_caller_namespaces_before_parent_admission": 6
+    },
+    "after": {
+      "test_unheld_lock_disappearance_during_preflight_can_be_acquired": 2,
+      "test_unheld_lock_does_not_hide_missing_parent_or_validation_error": 1,
+      "test_owned_lock_still_refuses_a_disappeared_path": 1,
+      "test_declared_cpu_memory_capacity_and_release_on_exception": 1,
+      "test_request_above_policy_never_waits_or_starts": 1,
+      "test_exclusive_configured_gpus_and_device_ids": 1,
+      "test_real_free_disk_and_same_volume_commitments": 1,
+      "test_multiple_output_directories_are_admitted_as_one_atomic_request": 1,
+      "test_waiting_cancellation_is_prompt_and_adds_no_reservation": 1,
+      "test_active_timeout_is_stop_signal_never_forced_reclaim": 1,
+      "test_policy_persistence_cannot_invalidate_live_work": 1,
+      "test_one_runtime_coordinator_cannot_bind_two_policies": 1,
+      "test_capacity_freed_after_deadline_does_not_start_late_worker": 1,
+      "test_actual_spawned_process_crash_releases_without_pid_reaping": 1,
+      "test_actual_process_contention_has_no_overlapping_admission": 1,
+      "test_bad_live_metadata_stops_admission_and_unlock_recovers": 1,
+      "test_failed_publication_releases_native_lock": 1,
+      "test_runtime_leases_outside_backup_state_and_truthful_capabilities": 1,
+      "test_paths_do_not_follow_links_and_invalid_requests_are_rejected": 1,
+      "test_native_release_can_remove_the_file_during_unheld_preflight": 2,
+      "test_optional_lock_preflight_still_rejects_hardlinks_without_touching_bytes": 2,
+      "test_lock_leaf_disappears_during_local_asset_check": 2,
+      "test_disappearing_lock_leaf_does_not_authorize_missing_parent": 2,
+      "test_unheld_lock_inspection_errors_never_become_absence": 4,
+      "test_unheld_lock_resolver_prefix_after_leaf_deletion_preserves_native_ownership": 2,
+      "test_unheld_lock_rejects_caller_namespaces_before_parent_admission": 6
+    },
+    "before_cases": 32,
+    "added_cases": 8,
+    "after_cases": 40,
+    "before_functions": 24,
+    "after_functions": 26
+  },
+  "changes": [
+    {
+      "path": "carr-library/scripts/v3_acceptance_oracles.json",
+      "before_blob": "7287a4c1a8d74b6e197fa26c05165e06a909174c",
+      "before_sha256": "f3ddb02cad816213c0ec6447e0987e11ad589e8edea557e3bd3b734c97d8d23f",
+      "after_sha256": "b4f2c3fe0f58100598830f35f4a485121cade5f9055693ca6a1410a4bc6d9685"
+    },
+    {
+      "path": "carr-library/scripts/canonical_boundary_oracle.json",
+      "before_blob": "2c013bc087bc1b67cb57e2371101cc4205b7564d",
+      "before_sha256": "2159b1171b15a893042c52ab48b0124d13816816b292056da5fc41f38319c7ce",
+      "after_sha256": "453254312f502610efd7dacc242b3dec926652808be93656338c34e9f12169b4"
+    },
+    {
+      "path": "carr-library/scripts/canonical_boundary_acceptance.py",
+      "before_blob": "4bea3f7f841320eac757ff5b245755e62fcd25f0",
+      "before_sha256": "10404212e73f8d40880d93c310de185b093d06732f557ef0522db0b4abbd9d64",
+      "after_sha256": "09fb67d68eb186c5f13a8928a9dccb85beb59ae7ba87cfe149abab34e5b94097"
+    }
+  ],
+  "derived_totals": {
+    "v3_source": {
+      "before_cases": 5813,
+      "after_cases": 5821,
+      "modules_unchanged": 252
+    },
+    "v3_installed": {
+      "before_cases": 5485,
+      "after_cases": 5493,
+      "modules_unchanged": 239
+    },
+    "canonical_boundaries": {
+      "before_cases": 52,
+      "after_cases": 60,
+      "retained_cases": 36,
+      "before_added_cases": 16,
+      "after_added_cases": 24,
+      "resource_cases": 40,
+      "export_cases_unchanged": 20
+    }
+  },
+  "source_alignment": [
+    "Add only the exact two new resource function keys and multiplicities to both existing V3 source/installed maps.",
+    "Add those same keys to the canonical boundary full-module oracle; total60 equals resources40 plus unchanged export20.",
+    "Make the current canonical receipt read new_boundary_cases from ORACLE['added_cases']; retained36 plus currentadded24 equals60.",
+    "Deleting only the new keys and restoring the two canonical totals reproduces the complete old oracle documents exactly.",
+    "The canonical acceptance executable delta is one current-receipt metadata expression. Population, source/install identity and outcome validation remain unchanged."
+  ],
+  "dependency_audit": {
+    "source_commit": "014b128f13d47a900008f8970de4d0024ff0047d",
+    "files_read": 185,
+    "selected_source_inventory_sha256": "538b5796436e18f9ee890d0758c7b0cc321620f3679ff4d9656a39c8ff69f9c9",
+    "scope": "All46 CARR workflows, all39 scripts JSON oracles, all scripts Python/PowerShell runners and selected packaging check/probe/test/qualification helpers in the exact current tree.",
+    "current_main": {
+      "path": ".github/workflows/carr-windows.yml",
+      "blob": "6a826f25a0a4724b5665b3cfbcf34ab97336971d",
+      "changed": false,
+      "source": "Already selects the whole resource module once; the protected total is computed from v3_acceptance_oracles.source.",
+      "installed": "Already includes the whole resource module; complete function Counters and total are computed from v3_acceptance_oracles.installed.",
+      "count_literals_changed": false
+    },
+    "shared_focused": {
+      "oracle": "carr-library/scripts/request_cleanup_oracle.json",
+      "blob": "f3458c056aa444398220a7798ccfa088e3ed6d25",
+      "cases": 911,
+      "modules": 45,
+      "includes_test_resources": false,
+      "changed": false,
+      "explanation": "Its operation selections are test_state and UI operations policy. The current911 total and historical909 result are not resource-module totals."
+    },
+    "canonical_runner": {
+      "path": "carr-library/scripts/canonical_boundary_acceptance.py",
+      "base_runner": "carr-library/scripts/audio_batch_acceptance.py",
+      "verification": "Both source and installed run complete oracle-selected modules and require exact function/parameter Counters and total_cases.",
+      "workflow": ".github/workflows/carr-canonical-boundaries.yml",
+      "workflow_change_required": false
+    },
+    "legacy_diagnostic": {
+      "path": ".github/workflows/carr-r6-regressions.yml",
+      "blob": "c0933a1cb000467bde5429e46ba46ed3e1453ac9",
+      "trigger": "carr/v3-regression-r6-*; workflow_dispatch",
+      "existing_resource_expected_cases": 20,
+      "current_parent_resource_cases": 32,
+      "disposition": "Already predates the current32 population. Not a current main or911 dependency. Explicitly left unchanged by root scope; its historical diagnostics are not relabeled."
+    },
+    "historical_read_plan": {
+      "path": "carr-library/docs/validation/FINAL_MAIN_ARTIFACT_READ_PLAN_20261127.json",
+      "blob": "955081bda0d4a47d8eff6200a010943da7bd0cf2",
+      "changed": false,
+      "followup": "Root-owned successor binding must supply the new current oracle and totals. Existing historical5813/5485 fields and old run proofs are not rewritten or transferred."
+    }
+  },
+  "verification": {
+    "exact_old_oracle_fields_and_other_modules_retained": true,
+    "companion_added_functions_inspected": true,
+    "application_source_changes": 0,
+    "test_source_changes": 0,
+    "tests_executed": false,
+    "runtime": "NOT_RUN",
+    "compiled": "NOT_RUN",
+    "native_labels_changed": 0,
+    "workflow_changed": false,
+    "refs_or_pr_changed": false,
+    "historical_results_transferred": false
+  }
+}

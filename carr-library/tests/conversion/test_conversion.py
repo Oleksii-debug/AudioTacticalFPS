@@ -1,387 +1,372 @@
-from dataclasses import replace
-from email.message import EmailMessage
+"""Actual supervised readers and publication boundaries for reading copies."""
+from dataclasses import asdict
 from hashlib import sha256
-from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from io import BytesIO
 import json
 import os
 from pathlib import Path
-import shutil
-from threading import Thread
-from zipfile import ZipFile, ZIP_DEFLATED, ZIP_STORED
+from zipfile import ZipFile, ZIP_STORED
 
 import pytest
 
-from carr_library.conversion import ConversionService, ConversionBudget, ConversionError, ConversionUnavailable
+from carr_library.conversion import ConversionBudget, ConversionError, ConversionService, ConversionUnavailable
+from carr_library.conversion import service as service_module
+from carr_library.conversion.capabilities import capabilities
+from carr_library.extract.document_formats import SUPPORTED_SUFFIXES
+from carr_library.extract.page_ocr import Config
+from carr_library.ingest.worker import _invoke
 
 
-@pytest.fixture
-def service(tmp_path):
-    inputs, outputs = tmp_path / 'inputs', tmp_path / 'outputs'
-    inputs.mkdir()
-    outputs.mkdir()
-    return ConversionService(outputs, input_roots=(inputs,)), inputs, outputs
+def selected(tmp_path, raw, suffix='.txt', **options):
+    source = tmp_path / ('Київ-Žilina-東京' + suffix)
+    source.write_bytes(raw)
+    output = tmp_path / 'reading'
+    output.mkdir()
+    return source, output, ConversionService(output, input_roots=(source,), **options)
 
 
-def write_zip(path, members):
-    with ZipFile(path, 'w') as archive:
-        for name, content in members.items():
-            archive.writestr(name, content, compress_type=ZIP_STORED if name == 'mimetype' else ZIP_DEFLATED)
-
-
-def converted(service, source):
-    converter, _, outputs = service
-    before = source.read_bytes()
-    result = converter.extract(source, source.stem + '.txt')
-    assert source.read_bytes() == before
-    assert result.report['source_sha256'] == sha256(before).hexdigest()
-    assert result.report['verified_for_quotation'] is False
-    assert result.report['original_modified'] is False
-    assert result.report['printed_pages_reconstructed'] is False
+def assert_report(result, source):
+    raw = source.read_bytes()
+    assert result.report == json.loads(result.report_path.read_text(encoding='utf-8'))
+    assert result.report['schema'] == 'carr-reading-derivative/1'
+    assert result.report['source_sha256'] == sha256(raw).hexdigest()
+    assert result.report['source_size'] == len(raw)
     assert result.report['text_sha256'] == sha256(result.path.read_bytes()).hexdigest()
-    assert json.loads(result.report_path.read_text(encoding='utf-8')) == result.report
-    return result.path.read_text(encoding='utf-8'), result.report
-
-
-def test_exact_unicode_txt_and_source_hash(service):
-    converter, inputs, outputs = service
-    source = inputs / 'Український.txt'
-    raw = 'Точний текст.\r\nĽudská reč. English text.'
-    source.write_bytes(raw.encode('utf-8'))
-    result = converter.extract(source, 'reading.txt')
-    assert result.path.read_bytes() == raw.encode('utf-8')
     assert result.report['verified_for_quotation'] is False
-    assert result.report['sections'][0]['physical_index'] is None
+    assert result.report['printed_pages_reconstructed'] is False
+    text = result.path.read_bytes().decode('utf-8')
+    for segment in result.report['segments']:
+        start, end = segment['output_characters']
+        assert 0 <= start <= end <= len(text)
+        assert sha256(text[start:end].encode()).hexdigest() == segment['text_sha256']
+        assert segment['printed_label'] is None
+        assert segment['printed_label_verified'] is False
 
 
-def test_decode_requires_explicit_legacy_encoding(service):
-    converter, inputs, outputs = service
-    source = inputs / 'legacy.txt'
-    source.write_bytes('Український текст'.encode('cp1251'))
-    with pytest.raises(ConversionError, match='encoding|decoding'):
-        converter.extract(source, 'no.txt')
-    assert not (outputs / 'no.txt').exists()
-    result = converter.extract(source, 'yes.txt', encoding='cp1251')
-    assert result.path.read_text(encoding='utf-8') == 'Український текст'
+def test_actual_worker_keeps_utf8_crlf_formfeed_and_original(tmp_path):
+    raw = b'\xef\xbb\xbf' + 'Перший\r\n  Žilina  \f東京\n'.encode()
+    source, output, converter = selected(tmp_path, raw)
+    result = converter.extract(source, 'reading.txt')
+    assert source.read_bytes() == raw
+    assert result.path.read_bytes() == raw[3:]
+    assert len(result.report['segments']) == 2
+    assert_report(result, source)
+    assert sorted(path.name for path in output.iterdir()) == ['reading.txt', 'reading.txt.provenance.json']
 
 
-def test_html_scripts_frames_styles_entities_and_alt_are_safe(service):
-    _, inputs, _ = service
-    source = inputs / 'web.html'
-    source.write_text('<html><head><title>Metadata</title><style>secret CSS</style></head><body>'
-                      '<h1>Heading &amp; text</h1><p>Текст <b>bold</b>.</p>'
-                      '<script>fetch("https://example.com/private")</script>'
-                      '<iframe src="file:///private">hidden iframe</iframe>'
-                      '<img src="https://example.com/picture" alt="A figure"></body></html>', encoding='utf-8')
-    result, report = converted(service, source)
-    assert 'Heading & text' in result and 'Текст bold.' in result
-    assert 'Image description: A figure' in result
-    assert all(value not in result for value in ('secret CSS', 'fetch(', 'hidden iframe', 'Metadata'))
+@pytest.mark.parametrize(('suffix', 'raw', 'expected'), [
+    ('.html', '<h1>Київ</h1><p>Žilina &amp; 東京.</p><script>do_not_run()</script>'.encode(), 'Київ\n\nŽilina & 東京.'),
+    ('.md', '# Heading\n\nLiteral **text** and [link](https://example.invalid).\n'.encode(), '# Heading\n\nLiteral **text** and [link](https://example.invalid).\n'),
+    ('.eml', b'Subject: Reading\r\nMIME-Version: 1.0\r\nContent-Type: text/plain; charset=utf-8\r\n\r\nBody without attachment.\r\n', 'Body without attachment.\r\n'),
+], ids=['html-static', 'markdown-literal', 'email-body'])
+def test_current_text_adapters_execute_in_supervised_worker(tmp_path, suffix, raw, expected):
+    source, _, converter = selected(tmp_path, raw, suffix)
+    result = converter.extract(source, 'reading.txt')
+    assert result.path.read_bytes().decode('utf-8') == expected
+    assert source.read_bytes() == raw
+    assert_report(result, source)
 
 
-def test_eml_chooses_body_and_never_reads_attachment(service):
-    _, inputs, _ = service
-    message = EmailMessage()
-    message['Subject'] = 'Дослідження'
-    message.set_content('Plain body. Точний текст.')
-    message.add_alternative('<p>HTML alternative</p>', subtype='html')
-    message.add_attachment(b'attachment must not be read', maintype='application', subtype='octet-stream', filename='private.txt')
-    source = inputs / 'email.eml'
-    source.write_bytes(message.as_bytes())
-    result, report = converted(service, source)
-    assert 'Plain body.' in result and 'Точний текст.' in result
-    assert 'attachment' not in result and 'HTML alternative' not in result
-    assert report['metadata']['subject'] == 'Дослідження'
+
+def test_actual_fb2_reuses_existing_bounded_xml_reader(tmp_path):
+    raw = ('<FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0">'
+           '<body><section><p>Перша</p><p>Žilina</p></section></body></FictionBook>').encode()
+    source, _, converter = selected(tmp_path, raw, '.fb2')
+    result = converter.extract(source, 'reading.txt')
+    assert result.path.read_text(encoding='utf-8') == 'Перша\n\nŽilina'
+    assert_report(result, source)
 
 
-def test_real_docx_reuses_reviewed_parser(service):
+def test_actual_docx_uses_ordered_body_and_simple_tables(tmp_path):
     from docx import Document
-    _, inputs, _ = service
-    source = inputs / 'document.docx'
-    doc = Document()
-    doc.add_heading('Chapter', level=1)
-    doc.add_paragraph('Exact Ukrainian: Точний текст.')
-    doc.save(source)
-    result, report = converted(service, source)
-    assert 'Chapter' in result and 'Точний текст.' in result
-    assert report['engine'] == 'existing-reviewed-docx-adapter'
-    assert all(s['physical_index'] is None for s in report['sections'])
+    document = Document()
+    document.add_paragraph('First paragraph.')
+    row = document.add_table(rows=1, cols=2).rows[0]
+    row.cells[0].text = 'Left'
+    row.cells[1].text = 'Right'
+    document.add_paragraph('Last paragraph.')
+    stream = BytesIO()
+    document.save(stream)
+    source, _, converter = selected(tmp_path, stream.getvalue(), '.docx')
+    result = converter.extract(source, 'reading.txt')
+    assert result.path.read_text(encoding='utf-8') == 'First paragraph.\n\nLeft\n\nRight\n\nLast paragraph.'
+    assert [row['logical_locator'] for row in result.report['segments']] == [[1], [2, 1, 1, 1], [2, 1, 2, 1], [3]]
+    assert_report(result, source)
 
 
-def test_pdf_physical_page_positions_are_real_and_unverified(service):
-    from reportlab.pdfgen import canvas
-    _, inputs, _ = service
-    source = inputs / 'pages.pdf'
-    pdf = canvas.Canvas(str(source))
-    pdf.drawString(60, 700, 'Page one source text')
-    pdf.showPage()
-    pdf.drawString(60, 700, 'Second physical page')
-    pdf.save()
-    result, report = converted(service, source)
-    assert 'Page one' in result and 'Second physical' in result
-    assert [s['physical_index'] for s in report['sections']] == [1, 2]
-    assert all(s['printed_label'] is None for s in report['sections'])
+def epub_bytes():
+    stream = BytesIO()
+    with ZipFile(stream, 'w', compression=ZIP_STORED) as archive:
+        archive.writestr('mimetype', 'application/epub+zip')
+        archive.writestr('META-INF/container.xml',
+            '<container xmlns="urn:oasis:names:tc:opendocument:xmlns:container"><rootfiles>'
+            '<rootfile full-path="EPUB/content.opf" media-type="application/oebps-package+xml"/>'
+            '</rootfiles></container>')
+        archive.writestr('EPUB/content.opf',
+            '<package xmlns="http://www.idpf.org/2007/opf" version="3.0">'
+            '<metadata xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:title>Reading</dc:title>'
+            '<dc:language>uk</dc:language></metadata><manifest>'
+            '<item id="two" href="two.xhtml" media-type="application/xhtml+xml"/>'
+            '<item id="one" href="one.xhtml" media-type="application/xhtml+xml"/>'
+            '</manifest><spine><itemref idref="one"/><itemref idref="two"/></spine></package>')
+        for name, text in [('two', 'Друга'), ('one', 'Перша')]:
+            archive.writestr('EPUB/' + name + '.xhtml',
+                '<html xmlns="http://www.w3.org/1999/xhtml"><head><title>Reading</title></head>'
+                '<body><p>' + text + '</p></body></html>')
+    return stream.getvalue()
 
 
-@pytest.mark.parametrize('suffix,kind,body', [
-    ('.odt', 'text', '<text:h>Heading</text:h><text:p>Hello<text:s text:c="2"/>world</text:p>'),
-    ('.odp', 'presentation', '<draw:page draw:name="slide"><draw:frame><draw:text-box><text:p>Slide text</text:p></draw:text-box></draw:frame></draw:page>'),
-    ('.ods', 'spreadsheet', '<table:table table:name="Budget"><table:table-row><table:table-cell office:value-type="string"><text:p>Stored value</text:p></table:table-cell></table:table-row><table:table-row table:number-rows-repeated="1048576"><table:table-cell table:number-columns-repeated="16384"/></table:table-row></table:table>'),
-])
-def test_safe_opendocument_text_spreadsheet_and_slides(service, suffix, kind, body):
-    _, inputs, _ = service
-    source = inputs / ('open' + suffix)
-    content = ('<office:document-content xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0" '
-               'xmlns:text="urn:oasis:names:tc:opendocument:xmlns:text:1.0" '
-               'xmlns:table="urn:oasis:names:tc:opendocument:xmlns:table:1.0" '
-               'xmlns:draw="urn:oasis:names:tc:opendocument:xmlns:drawing:1.0" office:version="1.2">'
-               '<office:body><office:' + kind + '>' + body + '</office:' + kind + '></office:body></office:document-content>')
-    write_zip(source, {'mimetype': 'application/vnd.oasis.opendocument.' + kind, 'content.xml': content})
-    result, report = converted(service, source)
-    expected = {'.odt': 'Hello  world', '.odp': 'Slide text', '.ods': 'Stored value'}[suffix]
-    assert expected in result
-    assert report['engine'] == 'safe-opendocument-xml/1'
+def test_actual_epub_uses_spine_instead_of_zip_order(tmp_path):
+    source, _, converter = selected(tmp_path, epub_bytes(), '.epub')
+    result = converter.extract(source, 'reading.txt')
+    assert result.path.read_text(encoding='utf-8') == 'Перша\n\nДруга'
+    assert_report(result, source)
 
 
-def test_actual_xlsx_cached_cells_do_not_evaluate_formulas(service):
-    from openpyxl import Workbook
-    _, inputs, _ = service
-    source = inputs / 'workbook.xlsx'
-    workbook = Workbook()
-    sheet = workbook.active
-    sheet.title = 'Дані'
-    sheet['A1'] = 'Текст клітинки'
-    sheet['B1'] = 42
-    sheet['C1'] = '=HYPERLINK("https://example.com/private","external")'
-    hidden = workbook.create_sheet('Hidden')
-    hidden.sheet_state = 'hidden'
-    hidden['A1'] = 'Do not expose hidden sheet'
-    workbook.save(source)
-    result, report = converted(service, source)
-    assert 'A1: Текст клітинки' in result and 'B1: 42' in result
-    assert '[Formula without a stored result]' in result
-    assert 'HYPERLINK' not in result and 'Do not expose' not in result
+def native_pdf_bytes():
+    from pypdf import PdfWriter
+    from pypdf.generic import DecodedStreamObject, DictionaryObject, NameObject
+    writer = PdfWriter()
+    for text in ('First page.', 'Second page.'):
+        page = writer.add_blank_page(width=300, height=300)
+        font = DictionaryObject({
+            NameObject('/Type'): NameObject('/Font'),
+            NameObject('/Subtype'): NameObject('/Type1'),
+            NameObject('/BaseFont'): NameObject('/Helvetica'),
+        })
+        page[NameObject('/Resources')] = DictionaryObject({
+            NameObject('/Font'): DictionaryObject({NameObject('/F1'): font}),
+        })
+        content = DecodedStreamObject()
+        content.set_data(('BT /F1 12 Tf 40 200 Td (' + text + ') Tj ET').encode('ascii'))
+        page[NameObject('/Contents')] = content
+    stream = BytesIO()
+    writer.write(stream)
+    return stream.getvalue()
 
 
-def test_presentation_order_uses_relationship_order(service):
-    _, inputs, _ = service
-    source = inputs / 'slides.pptx'
-    # Valid complete synthetic presentation, generated with python-pptx 1.0.2.
-    # Fixture order is slide2 then slide1; archive filename sorting is wrong.
-    source.write_bytes((Path(__file__).parent / 'fixtures' / 'ordered_slides.pptx').read_bytes())
-    result, report = converted(service, source)
-    assert result.index('Earlier') < result.index('Later')
-    assert len(report['sections']) == 2
+def test_actual_pdf_keeps_physical_page_order_without_claiming_printed_labels(tmp_path):
+    source, _, converter = selected(tmp_path, native_pdf_bytes(), '.pdf')
+    result = converter.extract(source, 'reading.txt')
+    parts = result.path.read_text(encoding='utf-8').split('\n\f\n')
+    assert [value.strip() for value in parts] == ['First page.', 'Second page.']
+    assert [row['physical_index'] for row in result.report['segments']] == [1, 2]
+    assert_report(result, source)
 
 
-@pytest.mark.parametrize('suffix', ['.fb2', '.fb3'])
-def test_fictionbook_text_retains_unicode(service, suffix):
-    _, inputs, _ = service
-    source = inputs / ('book' + suffix)
-    if suffix == '.fb2':
-        source.write_text('<FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0"><body><section><p>Читання <emphasis>книги</emphasis>.</p></section></body></FictionBook>', encoding='utf-8')
-    else:
-        write_zip(source, {'[Content_Types].xml': '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Override PartName="/fb3/body.xml" ContentType="application/fb3-body+xml"/></Types>',
-            'fb3/body.xml': '<fb3-body xmlns="http://www.fictionbook.org/FictionBook3/body"><section><p>Читання <em>книги</em>.</p></section></fb3-body>'})
-    result, report = converted(service, source)
-    assert 'Читання книги.' in result
-
-
-def test_existing_epub_spine_reader_is_reused(service):
-    _, inputs, _ = service
-    source = inputs / 'book.epub'
-    write_zip(source, {'mimetype': 'application/epub+zip',
-        'META-INF/container.xml': '<container xmlns="urn:oasis:names:tc:opendocument:xmlns:container" version="1.0"><rootfiles><rootfile full-path="OEBPS/book.opf" media-type="application/oebps-package+xml"/></rootfiles></container>',
-        'OEBPS/book.opf': '<package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="id"><metadata xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:identifier id="id">synthetic</dc:identifier><dc:title>Book</dc:title><dc:language>en</dc:language></metadata><manifest><item id="chapter" href="chapter.xhtml" media-type="application/xhtml+xml"/></manifest><spine><itemref idref="chapter"/></spine></package>',
-        'OEBPS/chapter.xhtml': '<html xmlns="http://www.w3.org/1999/xhtml"><head><title>Chapter</title></head><body><h1>Heading</h1><p>Ordered EPUB body.</p></body></html>'})
-    result, report = converted(service, source)
-    assert 'Ordered EPUB body.' in result
-    assert report['engine'] == 'existing-reviewed-epub-adapter'
-
-
-def test_archives_reject_traversal_entities_and_active_code(service):
-    converter, inputs, outputs = service
-    cases = {
-        'traversal.odt': {'../outside': 'bad', 'mimetype': 'application/vnd.oasis.opendocument.text', 'content.xml': '<document/>'},
-        'macro.xlsx': {'xl/vbaProject.bin': b'bad'},
-    }
-    for name, files in cases.items():
-        source = inputs / name
-        write_zip(source, files)
-        with pytest.raises(ConversionError):
-            converter.extract(source, name + '.txt')
-    source = inputs / 'entity.fb2'
-    source.write_text('<!DOCTYPE foo [<!ENTITY private SYSTEM "file:///private">]><FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0"><body><p>&private;</p></body></FictionBook>')
+@pytest.mark.parametrize(('budget', 'raw'), [
+    (ConversionBudget(max_source_bytes=5), b'too long'),
+    (ConversionBudget(max_text_bytes=3), b'four'),
+    (ConversionBudget(max_records=1), b'one\ftwo'),
+], ids=['input-bytes', 'output-bytes', 'record-count'])
+def test_real_resource_rejections_publish_nothing(tmp_path, budget, raw):
+    source, output, converter = selected(tmp_path, raw, budget=budget)
     with pytest.raises(ConversionError):
-        converter.extract(source, 'entity.txt')
-    assert not list(outputs.iterdir())
+        converter.extract(source, 'reading.txt')
+    assert source.read_bytes() == raw
+    assert list(output.iterdir()) == []
 
 
-def test_cancellation_budget_and_no_overwrite_keep_sources(service):
-    converter, inputs, outputs = service
-    source = inputs / 'source.txt'
-    source.write_text('original', encoding='utf-8')
+def test_actual_pdf_page_budget_is_checked_before_publication(tmp_path):
+    source, output, converter = selected(tmp_path, native_pdf_bytes(), '.pdf',
+                                         budget=ConversionBudget(max_pages=1))
+    with pytest.raises(ConversionError, match='page budget'):
+        converter.extract(source, 'reading.txt')
+    assert list(output.iterdir()) == []
+
+
+def test_cancel_during_real_private_source_copy_keeps_original(tmp_path):
+    raw = b'original\n' * (400_000)
+    source, output, converter = selected(tmp_path, raw)
+    observed = []
+
+    def cancelled():
+        snapshots = list(output.glob('.carr-conversion-*/source.txt'))
+        copied = bool(snapshots and snapshots[0].stat().st_size >= 1024 * 1024)
+        observed.append(copied)
+        return copied
+
     with pytest.raises(InterruptedError):
-        converter.extract(source, 'never.txt', cancelled=lambda: True)
-    assert not list(outputs.iterdir())
-    converter.extract(source, 'reading.txt')
-    before = (outputs / 'reading.txt').read_bytes()
+        converter.extract(source, 'reading.txt', cancelled=cancelled)
+    assert any(observed)
+    assert source.read_bytes() == raw
+    assert list(output.iterdir()) == []
+
+
+def test_source_change_after_actual_worker_rejects_publication(tmp_path, monkeypatch):
+    source, output, converter = selected(tmp_path, b'original content')
+    original = service_module._invoke
+
+    def changed(*args, **kwargs):
+        result = original(*args, **kwargs)
+        source.write_bytes(b'changed content!')
+        return result
+
+    monkeypatch.setattr(service_module, '_invoke', changed)
+    with pytest.raises((ConversionError, RuntimeError, ValueError), match='changed|replaced'):
+        converter.extract(source, 'reading.txt')
+    assert source.read_bytes() == b'changed content!'
+    assert list(output.iterdir()) == []
+
+
+def test_only_explicit_inputs_and_output_root_are_authorized(tmp_path):
+    source, output, converter = selected(tmp_path, b'original')
+    neighbor = tmp_path / 'neighbor.txt'
+    neighbor.write_bytes(b'not selected')
+    with pytest.raises(PermissionError):
+        converter.extract(neighbor, 'reading.txt')
+    with pytest.raises((PermissionError, ValueError)):
+        converter.extract(source, '../escape.txt')
+    assert not (tmp_path / 'escape.txt').exists()
+    assert list(output.iterdir()) == []
+
+
+@pytest.mark.parametrize('component', ['CON.txt', 'unsafe:stream.txt', 'trailing .txt.'],
+                         ids=['device-name', 'alternate-stream', 'trailing-dot'])
+def test_portable_filename_rejection_precedes_worker(tmp_path, component, monkeypatch):
+    source, output, converter = selected(tmp_path, b'original')
+    monkeypatch.setattr(service_module, '_invoke', lambda *a, **k: pytest.fail('invalid target reached worker'))
+    with pytest.raises((ValueError, PermissionError)):
+        converter.extract(source, component)
+    assert list(output.iterdir()) == []
+
+
+@pytest.mark.parametrize('existing', ['reading.txt', 'reading.txt.provenance.json'], ids=['text', 'report'])
+def test_existing_output_or_report_never_changes(tmp_path, existing, monkeypatch):
+    source, output, converter = selected(tmp_path, b'original')
+    target = output / existing
+    target.write_bytes(b'owned by user')
+    monkeypatch.setattr(service_module, '_invoke', lambda *a, **k: pytest.fail('existing target reached worker'))
     with pytest.raises(FileExistsError):
         converter.extract(source, 'reading.txt')
-    assert (outputs / 'reading.txt').read_bytes() == before
-    tight = ConversionService(outputs, input_roots=(inputs,), budget=replace(ConversionBudget(), max_source_bytes=2))
-    with pytest.raises(ConversionError, match='budget'):
-        tight.extract(source, 'too-large.txt')
+    assert target.read_bytes() == b'owned by user'
+    assert list(output.iterdir()) == [target]
 
 
-@pytest.mark.parametrize('suffix', ['.azw', '.azw3', '.chm', '.doc', '.xls', '.wpd', '.mobi', '.lit', '.tcr'])
-def test_unverified_legacy_formats_are_not_falsely_supported(service, suffix):
-    converter, inputs, outputs = service
-    source = inputs / ('legacy' + suffix)
-    source.write_bytes(b'not a real legacy document')
-    with pytest.raises(ConversionUnavailable):
-        converter.extract(source, 'never.txt')
-    assert not list(outputs.iterdir())
+def test_receipt_collision_rolls_back_only_new_own_text(tmp_path, monkeypatch):
+    source, output, converter = selected(tmp_path, b'original')
+    original = service_module.publish_noreplace
 
+    def raced(stage, target):
+        if target.name.endswith('.provenance.json'):
+            target.write_bytes(b'other writer')
+        return original(stage, target)
 
-def test_read_and_write_scope_cannot_escape_or_follow_links(service, tmp_path):
-    converter, inputs, outputs = service
-    outside = tmp_path / 'private.txt'
-    outside.write_text('private')
-    with pytest.raises(PermissionError):
-        converter.extract(outside, 'never.txt')
-    source = inputs / 'allowed.txt'
-    source.write_text('allowed')
-    with pytest.raises(ValueError):
-        converter.extract(source, '../escape.txt')
-    linked = inputs / 'link.txt'
-    linked.symlink_to(outside)
-    with pytest.raises(ValueError):
-        converter.extract(linked, 'never.txt')
-
-
-def test_actual_installed_pandoc_rtf_or_explicit_unavailable(service):
-    converter, inputs, outputs = service
-    source = inputs / 'rich.rtf'
-    source.write_bytes(br'{\rtf1\ansi First paragraph.\par Second \b bold\b0\u8212? text.}')
-    if shutil.which('pandoc') is None:
-        with pytest.raises(ConversionUnavailable):
-            converter.extract(source, 'rich.txt')
-        return
-    result, report = converted(service, source)
-    assert 'First paragraph.' in result and 'Second bold' in result
-    assert report['engine'] == 'installed-pandoc-sandbox'
-
-
-def test_actual_pandoc_does_not_fetch_iframe_or_execute_filters(service, tmp_path):
-    converter, inputs, outputs = service
-    source = inputs / 'untrusted.html'
-    if shutil.which('pandoc') is None:
-        source.write_text('<p>Text</p>')
-        with pytest.raises(ConversionUnavailable):
-            converter.extract(source, 'reading.txt', adapter='pandoc')
-        return
-    requests = []
-    class Handler(BaseHTTPRequestHandler):
-        def do_GET(self):
-            requests.append(self.path)
-            self.send_response(200)
-            self.end_headers()
-            self.wfile.write(b'SECRET_RESPONSE')
-        def log_message(self, *args):
-            pass
-    server = ThreadingHTTPServer(('127.0.0.1', 0), Handler)
-    thread = Thread(target=server.serve_forever, daemon=True)
-    thread.start()
-    private = tmp_path / 'private.txt'
-    private.write_text('SECRET_LOCAL')
-    source.write_text(f'<p>Visible text</p><iframe src="http://127.0.0.1:{server.server_port}/private"></iframe>'
-                      f'<iframe src="{private.as_uri()}"></iframe><script>shell()</script>')
-    try:
-        result = converter.extract(source, 'reading.txt', adapter='pandoc')
-        text = result.path.read_text()
-        assert 'Visible text' in text and 'SECRET' not in text
-        assert not requests
-    finally:
-        server.shutdown()
-        server.server_close()
-        thread.join(2)
-
-
-def test_actual_local_image_ocr_requires_selected_languages(service):
-    from PIL import Image, ImageDraw, ImageFont
-    converter, inputs, outputs = service
-    source = inputs / 'synthetic.png'
-    image = Image.new('RGB', (1100, 180), 'white')
-    draw = ImageDraw.Draw(image)
-    font = ImageFont.load_default(size=48)
-    draw.text((30, 45), 'SYNTHETIC LOCAL OCR', fill='black', font=font)
-    image.save(source)
-    with pytest.raises(ConversionUnavailable, match='languages'):
-        converter.extract(source, 'no-language.txt')
-    from carr_library.extract.ocr_runtime import discover_ocr_runtime
-    if discover_ocr_runtime('eng') is None:
-        with pytest.raises(ConversionUnavailable):
-            converter.extract(source, 'image.txt', ocr_languages=('eng',))
-        return
-    result = converter.extract(source, 'image.txt', ocr_languages=('eng',))
-    assert 'SYNTHETIC LOCAL OCR' in result.path.read_text(encoding='utf-8')
-    assert result.report['verified_for_quotation'] is False
-    assert result.report['metadata']['languages'] == ['eng']
-    assert result.report['metadata']['image_frames'] == 1
-    assert result.report['metadata']['image_pixels'] == 1100 * 180
-
-
-@pytest.mark.parametrize('limit', [
-    {'max_pages': 1}, {'max_image_pixels': 500}, {'max_total_image_pixels': 1000},
-])
-def test_image_worker_bounds_all_tiff_frames_before_ocr(service, monkeypatch, limit):
-    from PIL import Image
-    from carr_library.extract.ocr_runtime import OcrRuntime
-    import carr_library.extract.ocr_runtime as discovery
-    converter, inputs, outputs = service
-    source = inputs / 'frames.tiff'
-    first, second = Image.new('RGB', (20, 20), 'white'), Image.new('RGB', (30, 30), 'white')
-    first.save(source, save_all=True, append_images=[second])
-    original = source.read_bytes()
-    # The isolated metadata reader must reject this before invoking any OCR.
-    monkeypatch.setattr(discovery, 'discover_ocr_runtime', lambda *_args, **_kwargs: OcrRuntime('never-executed'))
-    bounded = ConversionService(outputs, input_roots=(inputs,), budget=replace(ConversionBudget(), **limit))
-    with pytest.raises(ConversionError, match='budget'):
-        bounded.extract(source, 'frames.txt', ocr_languages=('eng',))
-    assert source.read_bytes() == original
-    assert not (outputs / 'frames.txt').exists()
-    assert not (outputs / 'frames.txt.provenance.json').exists()
-
-
-def test_provenance_publication_failure_rolls_back_new_derivative(service, monkeypatch):
-    converter, inputs, outputs = service
-    source = inputs / 'original.txt'
-    source.write_text('Keep this source unchanged.', encoding='utf-8')
-    original_link = os.link
-    def fail_receipt(incoming, destination, *args, **kwargs):
-        if str(destination).endswith('.provenance.json'):
-            raise OSError('simulated disk full')
-        return original_link(incoming, destination, *args, **kwargs)
-    monkeypatch.setattr(os, 'link', fail_receipt)
-    with pytest.raises(OSError, match='disk full'):
+    monkeypatch.setattr(service_module, 'publish_noreplace', raced)
+    with pytest.raises(FileExistsError):
         converter.extract(source, 'reading.txt')
-    assert not list(outputs.iterdir())
-    assert source.read_text() == 'Keep this source unchanged.'
+    assert not (output / 'reading.txt').exists()
+    assert (output / 'reading.txt.provenance.json').read_bytes() == b'other writer'
 
 
-def test_source_change_between_snapshot_and_publication_is_rejected(service):
-    converter, inputs, outputs = service
-    source = inputs / 'original.txt'
-    source.write_text('original', encoding='utf-8')
-    changed = False
-    def mutate_during_child():
-        nonlocal changed
-        if not changed and next(outputs.glob('.pending-conversion-*/request.json'), None) is not None:
-            source.write_text('modified', encoding='utf-8')
-            changed = True
-        return False
-    with pytest.raises(ConversionError, match='source changed'):
-        converter.extract(source, 'reading.txt', cancelled=mutate_during_child)
-    assert changed
-    assert not list(outputs.iterdir())
+def test_post_move_sync_failure_preserves_matching_pair_but_is_not_success(tmp_path, monkeypatch):
+    source, output, converter = selected(tmp_path, b'original')
+    original = service_module.publish_noreplace
+
+    def failed_after_move(stage, target):
+        original(stage, target)
+        if target.name.endswith('.provenance.json'):
+            raise OSError('synthetic directory sync failure after receipt move')
+
+    monkeypatch.setattr(service_module, 'publish_noreplace', failed_after_move)
+    with pytest.raises(OSError, match='directory sync'):
+        converter.extract(source, 'reading.txt')
+    report = json.loads((output / 'reading.txt.provenance.json').read_text(encoding='utf-8'))
+    assert sha256((output / 'reading.txt').read_bytes()).hexdigest() == report['text_sha256']
+    assert source.read_bytes() == b'original'
+
+
+@pytest.mark.parametrize('changed', ['none', 'replacement', 'same-stat-edit'])
+def test_first_post_move_sync_failure_removes_only_unchanged_own_text(tmp_path, monkeypatch, changed):
+    source, output, converter = selected(tmp_path, b'original')
+    original = service_module.publish_noreplace
+
+    def failed_after_first_move(stage, target):
+        original(stage, target)
+        assert target.name == 'reading.txt'
+        if changed == 'replacement':
+            replacement = output / 'other-writer.txt'
+            replacement.write_bytes(b'other writer')
+            os.replace(replacement, target)
+        elif changed == 'same-stat-edit':
+            before = target.stat()
+            target.write_bytes(b'changed!')
+            os.utime(target, ns=(before.st_atime_ns, before.st_mtime_ns))
+        raise OSError('synthetic directory sync failure after text move')
+
+    monkeypatch.setattr(service_module, 'publish_noreplace', failed_after_first_move)
+    with pytest.raises(OSError, match='directory sync failure after text move'):
+        converter.extract(source, 'reading.txt')
+    assert source.read_bytes() == b'original'
+    assert not (output / 'reading.txt.provenance.json').exists()
+    if changed == 'none':
+        assert list(output.iterdir()) == []
+        monkeypatch.setattr(service_module, 'publish_noreplace', original)
+        # The same intended destination is usable after the failed attempt.
+        assert_report(converter.extract(source, 'reading.txt'), source)
+    else:
+        expected = b'other writer' if changed == 'replacement' else b'changed!'
+        assert (output / 'reading.txt').read_bytes() == expected
+        assert [path.name for path in output.iterdir()] == ['reading.txt']
+
+
+def test_actual_batch_preserves_completed_first_file_when_later_reader_rejects(tmp_path):
+    good = tmp_path / 'good.txt'
+    bad = tmp_path / 'bad.txt'
+    good.write_bytes(b'first survives')
+    bad.write_bytes(b'\xffinvalid UTF8')
+    output = tmp_path / 'reading'
+    output.mkdir()
+    converter = ConversionService(output, input_roots=(good, bad))
+    completed = []
+    with pytest.raises(ConversionError):
+        converter.extract_many((good, bad), progress=lambda number, result: completed.append(result))
+    assert len(completed) == 1
+    assert_report(completed[0], good)
+    assert len(list(output.iterdir())) == 2
+    assert bad.read_bytes() == b'\xffinvalid UTF8'
+
+
+def test_worker_rejects_wrong_action_and_extra_request_keys(tmp_path):
+    source = tmp_path / 'source.txt'
+    source.write_bytes(b'original')
+    message = dict(action='convert', source=str(source), output=str(tmp_path / 'reading.txt'),
+        report=str(tmp_path / 'details.json'), sha256=sha256(source.read_bytes()).hexdigest(),
+        source_size=8, budget=asdict(ConversionBudget()), ocr_config=asdict(Config()), timeout=120)
+    for invalid in (dict(message, action='other'), dict(message, extra='unexpected')):
+        result = _invoke(invalid, timeout=30)
+        assert result['state'] == 'failed'
+    assert sorted(path.name for path in tmp_path.iterdir()) == ['source.txt']
+
+
+def test_capability_inventory_matches_current_registry_and_never_enables_legacy(tmp_path):
+    rows = {row['extension']: row for row in capabilities()}
+    assert {suffix for suffix, row in rows.items()
+            if row['qualification'] not in ('not_integrated', 'explicit_selection_required', 'native_fixture_not_qualified')} == set(SUPPORTED_SUFFIXES)
+    for suffix in ('.doc', '.rtf', '.djvu', '.azw3', '.mobi', '.png', '.tiff'):
+        assert rows[suffix]['available'] is False
+    source, output, converter = selected(tmp_path, b'legacy', '.doc')
+    with pytest.raises(ConversionUnavailable):
+        converter.extract(source, 'reading.txt')
+    assert list(output.iterdir()) == []
+
+
+def test_capability_rejects_reader_version_the_existing_docx_parser_rejects(monkeypatch):
+    import importlib
+    module = importlib.import_module('carr_library.conversion.capabilities')
+    original = module.version
+    monkeypatch.setattr(module, 'version', lambda name: '1.1.0' if name == 'python-docx' else original(name))
+    row = next(row for row in module.capabilities() if row['extension'] == '.docx')
+    assert row['available'] is False
+    assert any('python-docx==1.2.0' in required for required in row['missing'])
+
+
+def test_unicode_batch_name_fits_portable_component_budget(tmp_path):
+    source = tmp_path / ('界' * 80 + '.txt')
+    source.write_bytes('Exact source.'.encode())
+    output = tmp_path / 'reading'
+    output.mkdir()
+    results = ConversionService(output, input_roots=(source,)).extract_many((source,))
+    assert len(results) == 1
+    assert len(results[0].report_path.name.encode('utf-8')) < 255
+    assert_report(results[0], source)

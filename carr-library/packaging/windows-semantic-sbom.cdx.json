@@ -2,9 +2,9 @@
   "bomFormat": "CycloneDX",
   "specVersion": "1.5",
   "version": 3,
-  "serialNumber": "urn:uuid:c0a01d9e-f9a9-47ef-87cd-48907b46d55b",
+  "serialNumber": "urn:uuid:088bfc82-2a87-4b12-9b37-57ca494d21b7",
   "metadata": {
-    "timestamp": "2026-11-26T22:19:05.628511Z",
+    "timestamp": "2026-11-27T00:30:52.722541Z",
     "tools": [
       {
         "vendor": "Astral Software Inc.",
@@ -14,9 +14,9 @@
     ],
     "component": {
       "type": "library",
-      "bom-ref": "universal-research-library-runtime-1@0.2.0.dev2",
+      "bom-ref": "universal-research-library-runtime-1@0.2.0.dev1",
       "name": "universal-research-library-runtime",
-      "version": "0.2.0.dev2",
+      "version": "0.2.0.dev1",
       "properties": [
         {
           "name": "uv:package:is_project_root",
@@ -28,6 +28,14 @@
       {
         "name": "carr:academic-additions",
         "value": "bibtexparser 2.1.0, pylatexenc 2.11, quickjs-ng 0.18.0.2; verified Windows wheel hashes; prior uv inventory retained"
+      },
+      {
+        "name": "carr:sync-additions",
+        "value": "cryptography 50.0.2, cffi 2.1.1, pycparser 3.12; Windows CPython 3.11 graph exported offline by uv 0.13.9; SHA256 and license expressions verified from the admitted wheels; prior inventory retained"
+      },
+      {
+        "name": "carr:desktop-com-composition",
+        "value": "Adds only the already reviewed Windows CPython 3.11 x64 pywin32 312 wheel and its exact SHA256, source reference and upstream license record from the integrated profile. Required by the current desktop feature. All prior component records and graph edges are retained; no new uv resolver run or new license clearance is claimed."
       }
     ]
   },
@@ -736,27 +744,107 @@
     },
     {
       "type": "library",
-      "bom-ref": "comtypes@1.5.0",
-      "name": "comtypes",
-      "version": "1.5.0",
-      "purl": "pkg:pypi/comtypes@1.5.0",
-      "licenses": [
+      "bom-ref": "cffi-2@2.1.1",
+      "name": "cffi",
+      "version": "2.1.1",
+      "purl": "pkg:pypi/cffi@2.1.1",
+      "properties": [
         {
-          "license": {
-            "id": "MIT"
-          }
+          "name": "uv:package:marker",
+          "value": "python_full_version < '3.12' and implementation_name == 'cpython' and platform_machine == 'AMD64' and platform_python_implementation != 'PyPy' and sys_platform == 'win32'"
         }
       ],
       "hashes": [
         {
           "alg": "SHA-256",
-          "content": "c648ed3b243b1eb3b7cb893a873d1b35104ca1c8922061f4b1efafeb255bacb5"
+          "content": "42f6930c31dc7f50732c9ae793c2786c7b6b044195967bbdde40bb9be81c4cc0"
         }
       ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT-0"
+          }
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "cryptography-3@50.0.2",
+      "name": "cryptography",
+      "version": "50.0.2",
+      "purl": "pkg:pypi/cryptography@50.0.2",
       "properties": [
         {
           "name": "uv:package:marker",
-          "value": "sys_platform == 'win32'"
+          "value": "python_full_version < '3.12' and implementation_name == 'cpython' and platform_machine == 'AMD64' and sys_platform == 'win32'"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "7afa5a6602a9f29af1f3a2965f831bae7c9d5d597b7cbb716d41ab3b7d89879c"
+        }
+      ],
+      "licenses": [
+        {
+          "expression": "Apache-2.0 OR BSD-3-Clause"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pycparser-4@3.12",
+      "name": "pycparser",
+      "version": "3.12",
+      "purl": "pkg:pypi/pycparser@3.12",
+      "properties": [
+        {
+          "name": "uv:package:marker",
+          "value": "python_full_version < '3.12' and implementation_name == 'cpython' and platform_machine == 'AMD64' and platform_python_implementation != 'PyPy' and sys_platform == 'win32'"
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "a076f3f489b39b43ed13563a1dafe42447445bec2e294154ec5c57fcdda4c85e"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "BSD-3-Clause"
+          }
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pywin32@312",
+      "name": "pywin32",
+      "version": "312",
+      "purl": "pkg:pypi/pywin32@312",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "d11417d84412f859b722fad0841b3614459ed0047f7542d8362e77884f6b6e8a"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "name": "Mixed upstream licences; retain all wheel License-File metadata and licence files"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://pypi.org/project/pywin32/312/"
+        },
+        {
+          "type": "vcs",
+          "url": "https://github.com/mhammond/pywin32/tree/2a277cb5552756c2b4d42b524dc36d25e0bb6354"
         }
       ]
     }
@@ -984,7 +1072,7 @@
       ]
     },
     {
-      "ref": "universal-research-library-runtime-1@0.2.0.dev2",
+      "ref": "universal-research-library-runtime-1@0.2.0.dev1",
       "dependsOn": [
         "annotated-doc-2@0.0.7",
         "annotated-types-3@0.8.0",
@@ -1036,7 +1124,8 @@
         "carr-academic-bibtexparser@2.1.0",
         "carr-academic-pylatexenc@2.11",
         "carr-academic-quickjs-ng@0.18.0.2",
-        "comtypes@1.5.0"
+        "cryptography-3@50.0.2",
+        "pywin32@312"
       ]
     },
     {
@@ -1064,8 +1153,22 @@
       "ref": "carr-academic-quickjs-ng@0.18.0.2"
     },
     {
-      "ref": "comtypes@1.5.0",
-      "dependsOn": []
+      "ref": "cffi-2@2.1.1",
+      "dependsOn": [
+        "pycparser-4@3.12"
+      ]
+    },
+    {
+      "ref": "cryptography-3@50.0.2",
+      "dependsOn": [
+        "cffi-2@2.1.1"
+      ]
+    },
+    {
+      "ref": "pycparser-4@3.12"
+    },
+    {
+      "ref": "pywin32@312"
     }
   ]
 }

@@ -1,0 +1,203 @@
+{
+  "schema": "carr.packaging-profile-expectation-repair.v1",
+  "status": "SOURCE_DATA_REVIEWED_RUNTIME_NOT_RUN",
+  "base_commit": "f16959c76c1702fbdf6d6c9a6c113b2cb6660cd3",
+  "base_tree": "9b1de961f054691406da899dc5377266c8e17703",
+  "observed": {
+    "run_id": 46069523389,
+    "job_id": 140742846265,
+    "phase": "source",
+    "decoded_job_text_utf8_sha256": "f8f1267f32533fd84e79657341db59d76b33132f5c4111abdf77765a543c3286",
+    "word": {
+      "passed": 3,
+      "failed": 1,
+      "skipped": 0,
+      "failing_test": "test_word_profile_extends_exact_base_graph_with_one_reviewed_platform_wheel",
+      "assertion": "The old fixture removed pywin32 from Word before comparing it with the base, although the base now contains the identical reviewed bridge."
+    },
+    "integrated": {
+      "passed": 2,
+      "failed": 1,
+      "skipped": 0,
+      "failing_test": "test_integrated_lock_preserves_every_previously_admitted_semantic_hash",
+      "assertion": "The old fixture expected53 semantic pins; the current reviewed graph has54. Its later expected difference also incorrectly listed already-shared pywin32."
+    }
+  },
+  "data_audit": {
+    "method": "Read the exact committed named pins and complete SHA256 sets, plus all four CycloneDX JSON graphs. Independently parsed logical requirements lines in JavaScript; this is source/data verification, not execution of Python tests.",
+    "counts": {
+      "base": 18,
+      "word": 18,
+      "semantic": 54,
+      "integrated": 56
+    },
+    "word_and_base_complete_version_hash_maps_equal": true,
+    "all54_semantic_version_hash_sets_equal_in_integrated": true,
+    "exact_integrated_additions": [
+      "securesystemslib",
+      "tuf"
+    ],
+    "semantic_names": [
+      "annotated-doc",
+      "annotated-types",
+      "anyio",
+      "bibtexparser",
+      "certifi",
+      "cffi",
+      "charset-normalizer",
+      "colorama",
+      "cryptography",
+      "defusedxml",
+      "fastembed",
+      "filelock",
+      "flatbuffers",
+      "fsspec",
+      "h11",
+      "hf-xet",
+      "httpcore",
+      "httpx",
+      "huggingface-hub",
+      "idna",
+      "loguru",
+      "lxml",
+      "markdown-it-py",
+      "mdurl",
+      "mmh3",
+      "numpy",
+      "onnxruntime",
+      "packaging",
+      "pillow",
+      "platformdirs",
+      "protobuf",
+      "py-rust-stemmers",
+      "pycparser",
+      "pydantic",
+      "pydantic-core",
+      "pygments",
+      "pylatexenc",
+      "pypdf",
+      "pypdfium2",
+      "python-docx",
+      "pywin32",
+      "pyyaml",
+      "quickjs-ng",
+      "requests",
+      "rich",
+      "shellingham",
+      "tokenizers",
+      "tqdm",
+      "typer",
+      "typing-extensions",
+      "typing-inspection",
+      "urllib3",
+      "win32-setctime",
+      "wxpython"
+    ],
+    "pywin32": {
+      "version": "312",
+      "hashes": [
+        "d11417d84412f859b722fad0841b3614459ed0047f7542d8362e77884f6b6e8a"
+      ]
+    },
+    "all_four_sbom_component_name_versions_match_their_lock": true,
+    "all54_semantic_sbom_components_preserved_exactly": true,
+    "integrated_graph": {
+      "nodes": 57,
+      "all_nodes_reachable_from_root": true,
+      "no_missing_dependency": true,
+      "tuf_depends_on": [
+        "securesystemslib",
+        "urllib3"
+      ],
+      "securesystemslib_depends_on": [
+        "cryptography"
+      ],
+      "pywin32_depends_on": []
+    },
+    "all_six_trusted_client_review_versions_and_hashes_present": true,
+    "pyproject_windows_desktop_and_word_bridge": "pywin32==312; sys_platform == 'win32'"
+  },
+  "correction": {
+    "word": "Require exact18/18 counts and equality of the entire Word/base version/hash map, retaining the existing explicit312/SHA, SBOM, optional dependency and notice assertions.",
+    "integrated": "Require exact54/56 counts and exactlyTUF/securesystemslib additions, retaining every shared version/hash, explicit pywin32 pin, full SBOM identities, graph closure, trusted-client review and license assertion."
+  },
+  "preserved_case_identities": {
+    "tests.packaging.test_word_profile": {
+      "test_word_profile_extends_exact_base_graph_with_one_reviewed_platform_wheel": 1,
+      "test_com_notices_are_exact_hash_checked_and_selected_only_for_word": 1,
+      "test_existing_builder_and_installer_keep_explicit_word_wheel_and_notices": 1,
+      "test_optional_native_probe_reports_not_run_and_required_qualification_fails": 1
+    },
+    "tests.packaging.test_integrated_profile": {
+      "test_integrated_lock_preserves_every_previously_admitted_semantic_hash": 1,
+      "test_integrated_sbom_preserves_component_identities_and_has_no_missing_dependency": 1,
+      "test_integrated_roots_and_mixed_word_notices_remain_explicit": 1
+    }
+  },
+  "main_selection": {
+    "workflow_blob": "48ce451b12048babec276abd8f60cd9698b3c954",
+    "oracle_blob": "7287a4c1a8d74b6e197fa26c05165e06a909174c",
+    "source_whole_modules": [
+      "tests/packaging/test_word_profile.py",
+      "tests/packaging/test_integrated_profile.py"
+    ],
+    "protected_cases": 7,
+    "renamed_or_removed": 0,
+    "installed_selection": "These two packaging modules are source-only in the unchanged f169 oracle."
+  },
+  "unchanged_authority": {
+    "carr-library/packaging/windows-cp311.lock": {
+      "blob": "9e29ea98f8d280f86de78948de002e5593c4850c",
+      "utf8_sha256": "4e49bacae7e7b805d5f9219ca4baeb14b413786c3db787d5aba4ab72a48397c5"
+    },
+    "carr-library/packaging/windows-word-cp311.lock": {
+      "blob": "84ae4fd8a919f503ab3e1227d6b3c33743e51cfe",
+      "utf8_sha256": "c1534d22a0b1eb121d70767baa1fa7a6d2c08d7c57de4b73a81cd7e2a21dc8b1"
+    },
+    "carr-library/packaging/windows-semantic-cp311.lock": {
+      "blob": "96b9a0d1bbf2cdbf981c579065bb815f6c72adea",
+      "utf8_sha256": "afe1ca05432eecb877702b3b71948944702004b014e1c8ce69e1ce9d3aa00b9b"
+    },
+    "carr-library/packaging/windows-integrated-cp311.lock": {
+      "blob": "d2ced1652d80b33680a7247ca1afa47fd271d8f4",
+      "utf8_sha256": "12d587307f4ca4ebfadc881726ee9f0710b2f58af797fdebd5d4a732cc803edd"
+    },
+    "carr-library/packaging/build_windows_bundle.py": {
+      "blob": "bbc9796e465eef4e658a641b79125b3485b10b1a",
+      "utf8_sha256": "1b8cc3b82e67aaaeddc44638b769afae6d8b17fe0d140766158e058209150c34"
+    },
+    "carr-library/packaging/windows-sbom.cdx.json": {
+      "blob": "cdfcd1fb165ab1d52d4d3485d17863a10b705e0f",
+      "utf8_sha256": "fa9402ff76a9dd2a29788f688b5eab0b08159813046b05ea020c32ed452ee448"
+    },
+    "carr-library/packaging/windows-word-sbom.cdx.json": {
+      "blob": "ed760ab60f7b819764084d02fb8da2c1b82520ef",
+      "utf8_sha256": "939a55e7caf6bba068875a6fa189c1e946869f01cf8025b1f8dfe7370f0a4355"
+    },
+    "carr-library/packaging/windows-semantic-sbom.cdx.json": {
+      "blob": "cf0c28cc6188fa6543e698a8fe2f097fec67a39b",
+      "utf8_sha256": "15ae16a6a96a6b0a66e0609a2dace9addd5196b7c24d8fccd5c356d31f838c15"
+    },
+    "carr-library/packaging/windows-integrated-sbom.cdx.json": {
+      "blob": "6b6b40dfa5689d3b9a9f2229a36adee29c0ead5a",
+      "utf8_sha256": "a8e0dd50c3eeb598c6b33f00057aea9fed4749367b434796be57813eac9e6a79"
+    },
+    "carr-library/packaging/trusted-client-dependencies.json": {
+      "blob": "64891aff3bdc46a7d92f26a7d620ec8c1ef8fbb7",
+      "utf8_sha256": "c93c997e9fda39686a485f90d983bc865f1fb01efb7da4279d4d5a83d5bff310"
+    },
+    "carr-library/packaging/windows-integrated-roots.in": {
+      "blob": "7eeb37531a7b770eea57b1deff804b2329ad935b",
+      "utf8_sha256": "3b5df305839c7e932e7bd29145bb63efb1ca6e3dd039f2273cc12c4d081726f8"
+    },
+    "carr-library/packaging/windows-semantic-roots.in": {
+      "blob": "fb9a8d5b5eb99910ebe38e65090e05df2af998d6",
+      "utf8_sha256": "66a112605a2048b8ef2a3488d267c949c7218d34f2c99bfc6aa34b89e778fa78"
+    },
+    "carr-library/pyproject.toml": {
+      "blob": "c1615aa86ec88a7732c1d6227407077b05a0fb6c",
+      "utf8_sha256": "767e951a2761ce308509b4bef6c2fc984ae0a701ba7b7522a15b22eb6c3f444e"
+    }
+  },
+  "runtime_result": "NOT_RUN for these corrected tests. The original failures remain recorded; parent will compose and execute the unchanged exact7 population."
+}

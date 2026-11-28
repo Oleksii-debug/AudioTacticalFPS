@@ -1,0 +1,192 @@
+name: CARR typed assistant tools qualification
+
+on:
+  push:
+    branches: ['carr/assistant-tools-r10-*', 'carr/v3-acceptance-*']
+    paths:
+      - carr-library/**
+      - .github/workflows/carr-assistant-tools.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: carr-assistant-tools-${{ github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  assistant-tools:
+    name: Windows / complete assistant regression and native receipts
+    runs-on: windows-2022
+    timeout-minutes: 55
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: carr-library
+    env:
+      PYTHONUTF8: '1'
+      PYTHONUNBUFFERED: '1'
+      PIP_DISABLE_PIP_VERSION_CHECK: '1'
+      PYTEST_DISABLE_PLUGIN_AUTOLOAD: '1'
+      HF_HUB_OFFLINE: '1'
+      HF_HUB_DISABLE_TELEMETRY: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      DO_NOT_TRACK: '1'
+    steps:
+      - name: Check out exact candidate
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Set up native Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+          architecture: x64
+
+      - name: Install unchanged integrated profile and exact package
+        timeout-minutes: 12
+        run: |
+          $ErrorActionPreference = 'Stop'
+          New-Item -ItemType Directory -Force assistant-results | Out-Null
+          $head = (& git rev-parse HEAD).Trim()
+          if ($LASTEXITCODE -ne 0 -or $head -ne $env:GITHUB_SHA) { throw 'Assistant source differs from its event.' }
+          $head | Set-Content assistant-results/tested-commit.txt
+          git rev-parse 'HEAD^{tree}' | Set-Content assistant-results/tested-tree.txt
+          if ($LASTEXITCODE -ne 0) { throw 'Unable to record the candidate tree.' }
+          $venv = Join-Path $env:RUNNER_TEMP ('carr-assistant-python-' + [guid]::NewGuid().ToString('N'))
+          python -m venv $venv
+          if ($LASTEXITCODE -ne 0) { throw 'Unable to create assistant qualification environment.' }
+          $python = Join-Path $venv 'Scripts/python.exe'
+          & $python -m pip install --only-binary=:all: --require-hashes -r packaging/windows-integrated-cp311.lock -r packaging/windows-sync-test-cp311.lock
+          if ($LASTEXITCODE -ne 0) { throw 'Pinned runtime or test-tool installation failed.' }
+          & $python -m pip install --no-compile --no-deps --no-build-isolation .
+          if ($LASTEXITCODE -ne 0) { throw 'Exact candidate package installation failed.' }
+          & $python -m pip check
+          if ($LASTEXITCODE -ne 0) { throw 'Installed dependencies differ from the candidate.' }
+          & $python -m compileall -q src tests scripts packaging
+          if ($LASTEXITCODE -ne 0) { throw 'Candidate Python compilation failed.' }
+          @'
+          import importlib.metadata as m,json,pathlib,re,sys
+          assert sys.platform=='win32' and sys.flags.isolated
+          pins=dict(re.findall(r'^([A-Za-z0-9_.-]+)==([^\s]+)',pathlib.Path('packaging/windows-integrated-cp311.lock').read_text(),re.M))
+          assert len(pins)==56 and {name:m.version(name) for name in pins}==pins
+          print(json.dumps(dict(status='PASS',integrated_runtime_pins=pins),sort_keys=True))
+          '@ | & $python -I -B - | Set-Content assistant-results/runtime-56-pins.json
+          if ($LASTEXITCODE -ne 0) { throw 'Installed integrated runtime identity differs.' }
+          "CARR_ASSISTANT_PYTHON=$python" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Verify the existing pinned FFmpeg runtime for prior real-engine cases
+        timeout-minutes: 10
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $python = $env:CARR_ASSISTANT_PYTHON
+          $audioRoot = Join-Path $env:RUNNER_TEMP ('carr-assistant-ffmpeg-' + [guid]::NewGuid().ToString('N'))
+          New-Item -ItemType Directory $audioRoot | Out-Null
+          $pin = & $python -I -c "import json; from carr_library.audio.runtime import FFMPEG_ARCHIVE_URL,FFMPEG_ARCHIVE_SHA256,FFMPEG_ARCHIVE_BYTES; print(json.dumps(dict(url=FFMPEG_ARCHIVE_URL,sha256=FFMPEG_ARCHIVE_SHA256,size=FFMPEG_ARCHIVE_BYTES)))" | ConvertFrom-Json
+          if ($LASTEXITCODE -ne 0) { throw 'Unable to read the existing reviewed FFmpeg identity.' }
+          $archive = Join-Path $audioRoot 'ffmpeg-pinned.zip'
+          Invoke-WebRequest -Uri $pin.url -OutFile $archive
+          if ((Get-Item -LiteralPath $archive).Length -ne $pin.size -or (Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash.ToLowerInvariant() -ne $pin.sha256) {
+            throw 'Pinned FFmpeg archive size or checksum differs.'
+          }
+          $audioBin = Join-Path $audioRoot 'audio-runtime'
+          & $python packaging/prepare_ffmpeg_runtime.py --archive $archive --destination $audioBin --verify-native 2>&1 | Tee-Object assistant-results/ffmpeg-runtime.txt
+          if ($LASTEXITCODE -ne 0) { throw 'Actual pinned FFmpeg runtime verification failed.' }
+          $binary = Join-Path $audioBin 'ffmpeg.exe'
+          if (-not (Test-Path -LiteralPath $binary -PathType Leaf)) { throw 'Verified FFmpeg binary is missing.' }
+          Copy-Item -LiteralPath (Join-Path $audioBin 'ffmpeg-runtime.json') -Destination assistant-results/ffmpeg-runtime.json
+          "CARR_FFMPEG=$binary" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
+          $audioBin | Out-File $env:GITHUB_PATH -Encoding utf8 -Append
+
+      - name: Require actual complete source installed and native qualification
+        timeout-minutes: 32
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $python = (Resolve-Path -LiteralPath $env:CARR_ASSISTANT_PYTHON).Path
+          $ffmpeg = (Resolve-Path -LiteralPath $env:CARR_FFMPEG).Path
+          $prefix = 'CARR-ASSISTANT-' + [guid]::NewGuid().ToString('N')
+          $rules = @(
+            [pscustomobject]@{ Name = $prefix + '-PYTHON'; Program = $python },
+            [pscustomobject]@{ Name = $prefix + '-FFMPEG'; Program = $ffmpeg }
+          )
+          $saved = @(Get-NetFirewallProfile -PolicyStore PersistentStore | Select-Object Name, Enabled)
+          $activeBefore = @(Get-NetFirewallProfile -PolicyStore ActiveStore | Select-Object Name, Enabled)
+          if ($saved.Count -ne 3 -or $activeBefore.Count -ne 3) { throw 'Cannot capture every firewall profile.' }
+          $failure = $null
+          $cleanupFailures = [System.Collections.Generic.List[string]]::new()
+          $evidence = [ordered]@{
+            source_commit = $env:GITHUB_SHA
+            rules = $rules
+            saved_profiles = $saved
+            active_profiles_before = $activeBefore
+            actual_program_blocks = $false
+            scope = 'Exact qualification Python and reviewed FFmpeg executable'
+            cleanup = 'NOT_RUN'
+          }
+          try {
+            foreach ($profile in $saved) {
+              Set-NetFirewallProfile -Name $profile.Name -PolicyStore PersistentStore -Enabled True -ErrorAction Stop
+            }
+            $enabled = @(Get-NetFirewallProfile -PolicyStore ActiveStore)
+            if ($enabled.Count -ne 3 -or @($enabled | Where-Object { $_.Enabled.ToString() -ne 'True' }).Count) {
+              throw 'All actual firewall profiles must be enabled during qualification.'
+            }
+            foreach ($rule in $rules) {
+              New-NetFirewallRule -Name $rule.Name -DisplayName $rule.Name -Program $rule.Program -Direction Outbound -Action Block -Profile Any -Enabled True -PolicyStore PersistentStore | Out-Null
+              $actual = @(Get-NetFirewallRule -Name $rule.Name -PolicyStore ActiveStore -ErrorAction Stop)
+              $filters = @($actual | Get-NetFirewallApplicationFilter)
+              if ($actual.Count -ne 1 -or $actual[0].Direction.ToString() -ne 'Outbound' -or $actual[0].Action.ToString() -ne 'Block' -or $actual[0].Enabled.ToString() -ne 'True' -or $filters.Count -ne 1 -or $filters[0].Program -ne $rule.Program) {
+                throw 'The actual outbound block differs from the selected executable.'
+              }
+            }
+            $evidence.actual_program_blocks = $true
+            $evidence | ConvertTo-Json -Depth 8 | Set-Content assistant-results/firewall.json
+            $work = Join-Path $env:RUNNER_TEMP ('carr-assistant-run-' + [guid]::NewGuid().ToString('N'))
+            & $python -I -B -X utf8 scripts/qualify_assistant_tools.py --source (Get-Location).Path --output (Join-Path (Get-Location).Path 'assistant-results') --work $work
+            if ($LASTEXITCODE -ne 0) { throw 'Required assistant qualification failed.' }
+            git diff --exit-code HEAD --
+            if ($LASTEXITCODE -ne 0) { throw 'Tracked candidate changed during assistant qualification.' }
+          } catch {
+            $failure = $_
+          } finally {
+            foreach ($rule in $rules) {
+              try {
+                $owned = @(Get-NetFirewallRule -Name $rule.Name -PolicyStore PersistentStore -ErrorAction SilentlyContinue)
+                if ($owned.Count) { $owned | Remove-NetFirewallRule -ErrorAction Stop }
+                if (@(Get-NetFirewallRule -Name $rule.Name -PolicyStore ActiveStore -ErrorAction SilentlyContinue).Count) {
+                  throw 'An owned assistant firewall rule remains active.'
+                }
+              } catch { $cleanupFailures.Add($_.Exception.Message) }
+            }
+            foreach ($profile in $saved) {
+              try { Set-NetFirewallProfile -Name $profile.Name -PolicyStore PersistentStore -Enabled $profile.Enabled -ErrorAction Stop }
+              catch { $cleanupFailures.Add($_.Exception.Message) }
+            }
+            try {
+              foreach ($profile in $saved) {
+                $restored = Get-NetFirewallProfile -Name $profile.Name -PolicyStore PersistentStore
+                if ($restored.Enabled -ne $profile.Enabled) { throw 'Persistent firewall profile was not restored.' }
+              }
+              foreach ($profile in $activeBefore) {
+                $restored = Get-NetFirewallProfile -Name $profile.Name -PolicyStore ActiveStore
+                if ($restored.Enabled -ne $profile.Enabled) { throw 'Active firewall profile was not restored.' }
+              }
+            } catch { $cleanupFailures.Add($_.Exception.Message) }
+            $evidence.cleanup = if ($cleanupFailures.Count) { 'FAIL' } else { 'PASS' }
+            $evidence.cleanup_errors = @($cleanupFailures)
+            $evidence | ConvertTo-Json -Depth 8 | Set-Content assistant-results/firewall.json
+          }
+          if ($cleanupFailures.Count) { throw ('Firewall cleanup failed: ' + ($cleanupFailures -join '; ')) }
+          if ($failure) { throw $failure }
+
+      - name: Retain exact collection execution and native evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: carr-assistant-tools-${{ github.sha }}-${{ github.run_attempt }}
+          path: carr-library/assistant-results/
+          if-no-files-found: error
+          retention-days: 7

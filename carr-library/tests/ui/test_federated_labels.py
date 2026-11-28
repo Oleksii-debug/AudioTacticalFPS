@@ -15,6 +15,7 @@ import pytest
 from carr_library.application import LibraryApp
 from carr_library.ui import federated_search as module
 from carr_library.ui.federated_search import NativeSearchCenter, SearchCenter, SearchOptions
+from carr_library.ui.search_paging import PageHistory
 
 
 NAMES = (
@@ -87,7 +88,7 @@ def native_dialog(monkeypatch, rows, active):
            **{name: Control for name in ('Dialog', 'BoxSizer', 'StaticText', 'FlexGridSizer',
                                         'CheckListBox', 'TextCtrl', 'Choice', 'Button', 'ListBox')})
     monkeypatch.setitem(sys.modules, 'wx', wx)
-    controller = N(selection_changed=Mock(), search=Mock())
+    controller = N(selection_changed=Mock(), search=Mock(), paging=PageHistory(), running=False)
     monkeypatch.setattr(module, 'SearchCenter', lambda frame, view: controller)
     view = NativeSearchCenter(N(active=(active, None)), rows)
     return view, controller

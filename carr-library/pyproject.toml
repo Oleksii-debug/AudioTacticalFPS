@@ -16,7 +16,6 @@ dependencies = [
   "filelock==3.29.0",
   "Pillow==13.0.0",
   "defusedxml==0.7.1",
-  "comtypes==1.5.0; sys_platform == 'win32'",
   "bibtexparser==2.1.0",
   "pylatexenc==2.11",
   "quickjs-ng==0.18.0.2",
@@ -28,7 +27,6 @@ license-files = [
   "src/carr_library/research/_vendor_rispy/LICENSE",
   "src/carr_library/search/_vendor/rifflux/LICENSE",
   "src/carr_library/ui/_vendor/wx_grid/LICENSE",
-  "src/carr_library/speech/COMTYPES_LICENSE.txt",
   "src/carr_library/citations/_vendor_citeproc/LICENSE",
   "src/carr_library/citations/_vendor_citeproc/CPAL",
   "src/carr_library/citations/_vendor_citeproc/AGPLv3",
@@ -37,7 +35,15 @@ license-files = [
 ]
 
 [project.optional-dependencies]
-desktop = ["wxPython==4.2.4"]
+desktop = ["wxPython==4.2.4", "pywin32==312; sys_platform == 'win32'"]
+sync = ["cryptography==50.0.2"]
+word = ["pywin32==312; sys_platform == 'win32'"]
+trust = [
+  "cryptography==50.0.2",
+  "tuf==7.0.1",
+  "securesystemslib==1.6.0",
+  "urllib3==2.8.0",
+]
 semantic = [
   "fastembed==0.9.1",
   "onnxruntime==1.32.0",
@@ -62,7 +68,9 @@ test = [
 [project.scripts]
 research-library = "carr_library.__main__:main"
 research-library-bibliography = "carr_library.bibliography_cli:main"
+research-library-translate = "carr_library.translation_cli:main"
 research-library-ocr-models = "carr_library.extract.ocr_model_catalog:main"
+research-library-trust = "carr_library.security.__main__:main"
 
 [project.gui-scripts]
 research-library-desktop = "carr_library.__main__:main"
@@ -71,16 +79,19 @@ research-library-desktop = "carr_library.__main__:main"
 Source = "https://github.com/Oleksii-debug/AudioTacticalFPS/tree/carr-library/carr-library"
 
 [tool.setuptools]
-include-package-data = true
+include-package-data = false
 packages = [
   "carr_library",
+  "carr_library.assistant",
+  "carr_library.audio",
   "carr_library.acquisition",
   "carr_library.catalog",
   "carr_library.catalog._filetype",
   "carr_library.citations",
+  "carr_library.conversion",
   "carr_library.extract",
   "carr_library.ingest",
-  "carr_library.integrations",
+  "carr_library.operations",
   "carr_library.language_qualification",
   "carr_library.reader",
   "carr_library.research",
@@ -89,16 +100,11 @@ packages = [
   "carr_library.search._vendor",
   "carr_library.search._vendor.rifflux",
   "carr_library.storage",
+  "carr_library.sync",
+  "carr_library.security",
   "carr_library.ui",
   "carr_library.ui._vendor",
   "carr_library.ui._vendor.wx_grid",
-  "carr_library.audio",
-  "carr_library.speech",
-  "carr_library.studio",
-  "carr_library.assistant",
-  "carr_library.operations",
-  "carr_library.transcription",
-  "carr_library.conversion",
   "bootstrap",
   "bootstrap.vendor",
   "bootstrap.vendor.cairn_extractors",
@@ -109,13 +115,12 @@ carr_library = "src/carr_library"
 bootstrap = "bootstrap"
 
 [tool.setuptools.package-data]
-"*" = ["*.sql", "*.md", "*.ps1", "LICENSE", "UPSTREAM.json", "_rispy_LICENSE"]
-"carr_library.speech" = ["COMTYPES_LICENSE.txt"]
-"carr_library.language_qualification" = ["data/*.md"]
+"*" = ["*.sql", "*.md", "LICENSE", "UPSTREAM.json", "_rispy_LICENSE"]
 "carr_library.citations" = ["_vendor_citeproc/*", "styles/*"]
 "carr_library.extract" = ["ocr-model-catalog.json", "TESSDATA_FAST_LICENSE", "TESSDATA_BEST_LICENSE"]
+
+"carr_library.language_qualification" = ["data/*.md"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests", "bootstrap", "docs/contracts/probes"]
 pythonpath = ["src", "."]
-markers = ["requires_loopback: exercises a synthetic local HTTP server; requires a separately declared loopback-enabled gate"]

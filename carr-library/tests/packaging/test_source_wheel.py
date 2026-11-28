@@ -6,7 +6,13 @@ import importlib.util
 import io
 import os
 from pathlib import Path
+import shutil
+import stat
 import subprocess
+import sys
+import tarfile
+from tempfile import TemporaryDirectory
+import tomllib
 from zipfile import ZIP_DEFLATED, ZipFile, ZipInfo
 
 import pytest
@@ -78,10 +84,8 @@ def wheel(tmp_path, payload, *, record_mutation=None, extra=None):
     csv.writer(output, lineterminator='\n').writerows(rows)
     with ZipFile(path, 'w', ZIP_DEFLATED) as archive:
         for name, data in payload.items():
-            # ZipInfo's constructor replaces OS separators on Windows. Keep
-            # deliberately unsafe fixture names in the actual archive bytes,
-            # so path tests exercise the verifier rather than a RECORD mismatch
-            # caused by the fixture writer silently sanitizing the member name.
+            # Keep deliberately unsafe raw names on Windows too; ZipInfo's
+            # constructor otherwise changes backslashes before RECORD checks.
             info = ZipInfo('fixture-placeholder')
             info.filename = info.orig_filename = name
             info.compress_type = ZIP_DEFLATED
@@ -101,7 +105,7 @@ def test_exact_historical_commit_verified_independently_of_checkout_head(source,
 
     assert evidence['source_commit'] == first
     assert evidence['source_tree'] == git(repo, 'rev-parse', first + '^{tree}')
-    assert evidence['source_tree'] != git(repo, 'rev-parse', second + '^{tree}')
+    assert evidence['source_tree'] != git(repo, 'rev-parse', 'HEAD^{tree}')
     assert evidence['wheel_sha256'] == sha256(candidate.read_bytes()).hexdigest()
     assert evidence['required_runtime_files'] == 2
     assert evidence['payload_files'] == 3
@@ -156,12 +160,8 @@ def test_undeclared_payload_rejected_despite_complete_record(source, tmp_path, e
 def test_path_alias_and_bytecode_rejected(source, tmp_path, extra):
     repo, first, _, payload = source
     payload[extra] = b'not safe payload\n'
-    candidate = wheel(tmp_path, payload)
-    with ZipFile(candidate) as archive:
-        assert extra in {info.orig_filename for info in archive.infolist()}, (
-            'The malicious raw ZIP name must survive fixture construction.')
     with pytest.raises(ValueError, match='path|bytecode'):
-        verifier.verify_application_wheel(candidate, repo, first)
+        verifier.verify_application_wheel(wheel(tmp_path, payload), repo, first)
 
 
 def test_duplicate_zip_member_rejected(source, tmp_path):
@@ -209,3 +209,130 @@ def test_metadata_identity_and_entry_points_are_bound_to_committed_project(sourc
     payload['fixture_application-1.0.dist-info/entry_points.txt'] = b'[console_scripts]\nfixture-app = wrong:main\n'
     with pytest.raises(ValueError, match='entry points'):
         verifier.verify_application_wheel(wheel(tmp_path, payload), repo, first)
+
+
+def test_actual_sdist_builds_verified_wheel_and_keeps_ci_helpers_without_private_payloads(tmp_path):
+    # Copy only tracked public sources. Never build alongside a user's models,
+    # books, recordings or a previous egg-info manifest in their checkout.
+    tracked = subprocess.check_output(
+        ['git', 'ls-files', '-z', '--', '.'], cwd=ROOT, timeout=30,
+    ).decode('utf-8').split('\0')[:-1]
+    assert 0 < len(tracked) < 10000
+    with TemporaryDirectory(prefix='carr-sdist-', dir=tmp_path) as directory:
+        repository = Path(directory) / 'source'
+        project = repository / 'carr-library'
+        project.mkdir(parents=True)
+        total = 0
+        for name in tracked:
+            relative = Path(name)
+            assert not relative.is_absolute() and '..' not in relative.parts
+            source_path = ROOT / relative
+            info = source_path.lstat()
+            assert stat.S_ISREG(info.st_mode), name
+            total += info.st_size
+            assert total <= 64 * 1024 * 1024
+            destination = project / relative
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(source_path, destination)
+
+        # Bind the build to this exact public source snapshot, including local
+        # recipe changes under test, without committing synthetic exclusions.
+        git(repository, 'init', '-q')
+        git(repository, 'add', 'carr-library')
+        git(repository, 'commit', '-qm', 'Synthetic application build source')
+        source_commit = git(repository, 'rev-parse', 'HEAD')
+
+        configuration = tomllib.loads((project / 'pyproject.toml').read_text('utf-8'))
+        admitted, _ = verifier._inventory(
+            configuration, {f'carr-library/{name}': None for name in tracked},
+        )
+        required = {name.removeprefix('carr-library/') for name in admitted.values()}
+        required.update(configuration['project']['license-files'])
+        required.update({
+            'scripts/ci_check.py',
+            'scripts/ocr_catalog_smoke.py',
+            'scripts/windows_academic_smoke.py',
+            'scripts/windows_audio_smoke.py',
+            'scripts/windows_installer_launchers_smoke.py',
+            'scripts/windows_ocr_languages_smoke.py',
+            'scripts/windows_v3_reading_smoke.py',
+            'bootstrap/semantic_compat/test_probe.py',
+            'bootstrap/semantic_compat/probe.py',
+            'bootstrap/semantic_compat/README.md',
+            'bootstrap/semantic_compat/requirements-upstream.txt',
+            'src/carr_library/extract/ocr-model-catalog.json',
+        })
+        required.update(name for name in tracked
+                        if name.startswith('scripts/') and name.endswith('.py'))
+        assert required <= set(tracked)
+
+        # Synthetic untracked payloads exercise the real manifest exclusion;
+        # they contain no user data and are removed with this temporary tree.
+        excluded = {
+            'private-books/synthetic-private.txt',
+            'models/synthetic-model.safetensors',
+            'audio-renders/synthetic-output.wav',
+            'scripts/synthetic-recording.wav',
+            'scripts/__pycache__/synthetic.pyc',
+            'bootstrap/semantic_compat/synthetic-model.onnx',
+            'src/carr_library/audio/synthetic-recording.wav',
+        }
+        for name in excluded:
+            destination = project / name
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            destination.write_bytes(b'Synthetic exclusion fixture.\n')
+        environment = dict(os.environ, PIP_NO_INDEX='1', PYTHONNOUSERSITE='1')
+        with (project / 'build.log').open('wb+') as log:
+            result = subprocess.run(
+                [sys.executable, '-I', '-c',
+                 'from setuptools.build_meta import build_sdist; build_sdist("dist")'],
+                cwd=project, env=environment, stdout=log, stderr=subprocess.STDOUT,
+                timeout=90, check=False,
+            )
+            log.seek(max(0, log.tell() - 8000))
+            assert result.returncode == 0, log.read().decode('utf-8', errors='replace')
+        archives = list((project / 'dist').glob('*.tar.gz'))
+        assert len(archives) == 1
+        assert archives[0].stat().st_size <= 16 * 1024 * 1024
+        with tarfile.open(archives[0], 'r:gz') as archive:
+            members = archive.getmembers()
+            assert len(members) < 10000
+            assert sum(member.size for member in members) <= 64 * 1024 * 1024
+            assert all(member.isdir() or member.isfile() for member in members)
+            names = {member.name.partition('/')[2] for member in members if member.isfile()}
+            assert required <= names, sorted(required - names)
+            assert not excluded.intersection(names)
+            for member in members:
+                name = member.name.partition('/')[2]
+                if name in required:
+                    assert archive.extractfile(member).read() == (project / name).read_bytes(), name
+            roots = {member.name.split('/')[0] for member in members}
+            assert len(roots) == 1
+            extracted = Path(directory) / 'extracted'
+            archive.extractall(extracted, filter='data')
+
+        # Build from the published source archive, not the checkout. This must
+        # keep every explicitly declared resource while preventing MANIFEST.in
+        # helper files from leaking into otherwise undeclared wheel packages.
+        unpacked_project = extracted / roots.pop()
+        with (unpacked_project / 'wheel-build.log').open('wb+') as log:
+            result = subprocess.run(
+                [sys.executable, '-I', '-c',
+                 'from setuptools.build_meta import build_wheel; build_wheel("wheel-dist")'],
+                cwd=unpacked_project, env=environment, stdout=log, stderr=subprocess.STDOUT,
+                timeout=90, check=False,
+            )
+            log.seek(max(0, log.tell() - 8000))
+            assert result.returncode == 0, log.read().decode('utf-8', errors='replace')
+        wheels = list((unpacked_project / 'wheel-dist').glob('*.whl'))
+        assert len(wheels) == 1
+        evidence = verifier.verify_application_wheel(wheels[0], repository, source_commit)
+        assert evidence['source_commit'] == source_commit
+        assert evidence['payload_files'] == len(admitted)
+        with ZipFile(wheels[0]) as archive:
+            runtime_names = {name for name in archive.namelist()
+                             if '.dist-info/' not in name and not name.endswith('/')}
+            assert runtime_names == set(admitted), sorted(runtime_names.symmetric_difference(admitted))
+            for destination, source_name in admitted.items():
+                assert archive.read(destination) == (project / source_name.removeprefix('carr-library/')).read_bytes()
+            assert not excluded.intersection(archive.namelist())

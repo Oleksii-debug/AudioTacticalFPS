@@ -9,7 +9,11 @@ from carr_library.language_qualification import (
     canonical_language_tag, load_catalog,
 )
 from carr_library.language_qualification import catalog as module
-from carr_library.speech import Voice
+from carr_library.audio.engines import Voice as EngineVoice
+
+
+def Voice(identifier, name, engine, language, capabilities=(), license='Synthetic metadata fixture'):
+    return EngineVoice(identifier, name, (language,), engine, controls=capabilities, license=license)
 
 
 def _entry(catalog, label):
@@ -48,7 +52,7 @@ def test_geographic_order_and_overlaps_are_preserved_without_double_counting():
 
 def test_source_lines_reconstruct_every_selected_geographic_row():
     catalog = load_catalog()
-    source = (module._DATA / 'SELECTED_LANGUAGES_UK.md').read_text().splitlines()
+    source = (module._DATA / 'SELECTED_LANGUAGES_UK.md').read_text(encoding='utf-8').splitlines()
     rows = [association for entry in catalog.entries for association in entry.associations]
     assert {x.source_line for x in rows} == {index for index, line in enumerate(source, 1) if line.startswith('- ')}
     for row in rows:
@@ -170,10 +174,28 @@ def test_binding_is_explicit_and_cannot_be_a_verification_certificate():
 
 def test_catalog_and_matrix_do_not_launch_processes_or_discover_resources(monkeypatch):
     import subprocess
-    from carr_library.speech import VoiceRegistry
+    from carr_library.audio.engines import VoiceRegistry
     def forbidden(*args, **kwargs):
         pytest.fail('Read-only canonical catalog performed runtime discovery or execution.')
     monkeypatch.setattr(subprocess, 'Popen', forbidden)
-    monkeypatch.setattr(VoiceRegistry, 'discover', forbidden)
+    monkeypatch.setattr(VoiceRegistry, 'voices', forbidden)
     assert len(load_catalog().entries) == 135
     assert build_capability_matrix().summary()['qualified_entries'] == 0
+
+
+def test_current_multilingual_registry_preserves_exact_tags_and_unavailable_voices():
+    from dataclasses import replace
+    catalog = load_catalog()
+    english, ukrainian = _entry(catalog, 'Англійська'), _entry(catalog, 'Українська')
+    voice = EngineVoice('fixture:multi', 'Metadata only', ('en-US', 'uk-UA'), 'fixture',
+                        controls=('rate',), license='Synthetic fixture')
+    bindings = [DeclaredLanguageBinding(english.id, 'en-US', 'Explicit fixture binding'),
+                DeclaredLanguageBinding(ukrainian.id, 'uk-UA', 'Explicit fixture binding')]
+    matrix = build_capability_matrix(catalog=catalog, voices=[voice], bindings=bindings)
+    assert [row.voices[0].voice_id for row in matrix.entries if row.voices] == [voice.id, voice.id]
+    assert matrix.summary()['distinct_matched_voices'] == 1
+    assert matrix.summary()['qualified_entries'] == 0
+    unavailable = build_capability_matrix(catalog=catalog,
+        voices=[replace(voice, available=False)], bindings=bindings)
+    assert unavailable.unmatched_voice_ids == (voice.id,)
+    assert unavailable.summary()['entries_with_declared_voice_matches'] == 0

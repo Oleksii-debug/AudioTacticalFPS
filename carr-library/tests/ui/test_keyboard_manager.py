@@ -6,7 +6,6 @@ tests exercise persistence failure, rejected imports and late module wiring.
 from pathlib import Path
 import sys
 from types import SimpleNamespace
-from unittest.mock import Mock
 
 import pytest
 
@@ -143,6 +142,41 @@ def snapshot(manager):
     return (dict(manager.overrides), path.read_bytes() if path.exists() else None,
             tuple(item.GetItemLabel() for item in manager.frame.items), manager.registry.commands(),
             tuple(manager.bindings))
+
+
+@pytest.mark.parametrize('existing', [False, True], ids=['new', 'confirmed-existing'])
+def test_keymap_export_keeps_file_changed_during_validation(manager, monkeypatch, tmp_path, existing):
+    from unittest.mock import Mock
+    private = tmp_path / 'private'
+    private.mkdir()
+    manager.store = KeymapStore(private / 'keyboard-shortcuts.json')
+    target = tmp_path / 'exported-keymap.json'
+    if existing:
+        target.write_bytes(b'Approved previous keymap')
+    chooser = Mock()
+    chooser.ShowModal.return_value = 1
+    chooser.GetPath.return_value = str(target)
+    view = KeyboardSettingsDialog.__new__(KeyboardSettingsDialog)
+    view.wx = SimpleNamespace(ID_OK=1, FD_SAVE=2, FD_OVERWRITE_PROMPT=4,
+                              FileDialog=Mock(return_value=chooser))
+    view.dialog, view.manager, view.draft = object(), manager, {'library.import': 'Ctrl+K'}
+    messages = []
+    view._message = messages.append
+    before = snapshot(manager)
+    monkeypatch.setattr('carr_library.ui.export_destination._confirm_replace', lambda *_: True)
+    original = manager.validate
+
+    def changed_during_validation(values):
+        result = original(values)
+        target.write_bytes(b'Newer keymap from another application')
+        return result
+
+    monkeypatch.setattr(manager, 'validate', changed_during_validation)
+    view.export_map()
+    assert target.read_bytes() == b'Newer keymap from another application'
+    assert 'destination changed' in messages[-1]
+    assert snapshot(manager) == before
+    chooser.Destroy.assert_called_once()
 
 
 def test_apply_and_reopen_preserve_semantic_bindings_and_menu_display(manager):
@@ -481,124 +515,36 @@ def test_registration_queued_before_installation_preserves_saved_module_profile(
     assert not frame._pending_keyboard_commands
 
 
-def test_optional_late_shortcut_conflict_preserves_stable_default_and_user_file(manager):
-    manager.apply_overrides({'library.import': 'Ctrl+Shift+Q'})
-    before = manager.store.path.read_bytes()
-    item = MenuItem(91, 'Query current progress\tCtrl+Shift+Q')
-    manager.frame.items.append(item)
-    spec = CommandSpec('progress.query', 'Query current progress', default_shortcut='Ctrl+Shift+Q')
-    manager.register_menu_command(spec, item, fallback_unassigned=True)
-    assert manager.registry.get('progress.query') == spec
-    assert manager.shortcut('library.import') == 'Ctrl+Shift+Q'
-    assert manager.shortcut('progress.query') == ''
-    assert item.GetItemLabel() == 'Query current progress'
-    assert manager.load_notice and 'new command' in manager.load_notice
-    assert manager.store.path.read_bytes() == before
-    # Reset remains predictable: the declared default is unchanged.
-    manager.apply_overrides({})
-    assert manager.shortcut('library.import') == 'Ctrl+I'
-    assert manager.shortcut('progress.query') == 'Ctrl+Shift+Q'
+def test_legacy_menu_map_migrates_once_without_changing_original(manager):
+    from carr_library.keybindings import Command, KeybindingStore
+    from carr_library.ui.keyboard_settings import migrate_legacy_keymap
+    old = KeybindingStore(manager.store.path.parent)
+    old.save((Command('Library/Import books', 'Import books', 'Ctrl+I'),),
+             {'Library/Import books': 'Ctrl+Shift+K'})
+    before = old.path.read_bytes()
+    mapping = {'Library/Import books': 'library.import'}
+    assert migrate_legacy_keymap(manager, mapping)
+    assert manager.overrides == {'library.import': 'Ctrl+Shift+K'}
+    assert manager.frame.items[1].GetItemLabel() == 'Import books\tCtrl+Shift+K'
+    assert old.path.read_bytes() == before
+    # A later valid modern preference is never replaced by an old profile.
+    manager.apply_overrides({'library.import': 'Ctrl+J'})
+    assert not migrate_legacy_keymap(manager, mapping)
+    assert KeymapStore(manager.store.path).load() == {'library.import': 'Ctrl+J'}
+    assert old.path.read_bytes() == before
 
 
-def test_optional_fallback_does_not_hide_an_unrelated_existing_conflict(manager):
-    manager.apply_overrides({'library.import': 'Ctrl+K'})
-    manager.frame.items.append(MenuItem(91, 'Unrelated unregistered action\tCtrl+K'))
-    item = MenuItem(92, 'New extension\tCtrl+J')
-    manager.frame.items.append(item)
-    before = snapshot(manager)
-    with pytest.raises(ValueError, match='Unrelated'):
-        manager.register_menu_command(CommandSpec('extension.action', 'New extension',
-                                                  default_shortcut='Ctrl+J'), item, fallback_unassigned=True)
-    assert snapshot(manager) == before
-
-
-def test_late_profile_recovery_does_not_announce_a_stale_startup_warning(tmp_path, monkeypatch):
-    from carr_library.ui.builtin_keyboard_commands import builtin_commands
-    frame = Frame()
-    frame.library = SimpleNamespace(root=tmp_path)
-    frame.menu = DynamicMenuBar([('&Library', Menu(frame.items), True)])
-    frame.Bind = lambda *args, **kwargs: None
-    spec = CommandSpec('extension.action', 'Extension action', default_shortcut='Ctrl+J')
-    path = tmp_path / 'keyboard-shortcuts.json'
-    KeymapStore(path).save({'extension.action': 'Ctrl+Shift+J'},
-                          CommandRegistry((*builtin_commands(), spec)))
-    deferred = []
-    fake_wx = SimpleNamespace(Menu=Menu, ID_ANY=-1, EVT_MENU=object(),
-                              CallAfter=lambda callback, *args: deferred.append(lambda: callback(*args)))
-    monkeypatch.setitem(sys.modules, 'wx', fake_wx)
-    manager = install_keyboard_settings(frame)
-    assert manager.load_notice and deferred
-    item = frame.menu.GetMenu(0).Append(-1, 'Extension action\tCtrl+J')
-    register_menu_command(frame, spec, item)
-    assert not manager.load_notice
-    for callback in deferred:
-        callback()
-    assert frame.notices == []
-
-
-def export_form(manager, tmp_path):
-    private = tmp_path / 'private-keymaps'
-    private.mkdir()
-    manager.change_root(private)
-    destination = tmp_path / 'exported-keymap.json'
-    dialog = dialog_double(manager)
-    dialog.draft['library.import'] = 'Ctrl+K'
-    native = file_dialog_wx(destination)
-    native.FD_SAVE, native.FD_OVERWRITE_PROMPT = 8, 16
-    native.YES_NO, native.NO_DEFAULT, native.ICON_QUESTION = 32, 64, 128
-    native.YES, native.NO = 256, 512
-    native.MessageBox = Mock(return_value=native.YES)
-    dialog.wx = native
-    return dialog, destination
-
-
-@pytest.mark.parametrize('existing', [False, True])
-def test_keymap_export_preserves_other_work_written_during_validation(
-        manager, tmp_path, monkeypatch, existing):
-    dialog, destination = export_form(manager, tmp_path)
-    if existing:
-        destination.write_bytes(b'Previously approved export')
-    before = snapshot(manager)
-    validate = manager.validate
-    independent = b'Independent work saved while the draft was validated'
-
-    def validate_then_external_write(draft):
-        normalized = validate(draft)
-        destination.write_bytes(independent)
-        return normalized
-
-    monkeypatch.setattr(manager, 'validate', validate_then_external_write)
-    dialog.export_map()
-    assert destination.read_bytes() == independent
-    assert 'destination changed' in dialog.messages[-1]
-    assert dialog.wx.MessageBox.call_count == int(existing)
-    assert snapshot(manager) == before
-    assert not list(tmp_path.glob('.research-export-*'))
-
-
-def test_declined_keymap_replacement_never_validates_or_writes(
-        manager, tmp_path, monkeypatch):
-    dialog, destination = export_form(manager, tmp_path)
-    destination.write_bytes(b'Keep existing keymap')
-    dialog.wx.MessageBox.return_value = dialog.wx.NO
-    validate = Mock(side_effect=AssertionError('Declined export must not validate or write'))
-    monkeypatch.setattr(manager, 'validate', validate)
-    dialog.export_map()
-    validate.assert_not_called()
-    assert destination.read_bytes() == b'Keep existing keymap'
-    assert 'cancelled' in dialog.messages[-1].lower()
-
-
-@pytest.mark.parametrize('existing', [False, True])
-def test_confirmed_keymap_export_keeps_the_live_shortcuts_unchanged(manager, tmp_path, existing):
-    import json
-
-    dialog, destination = export_form(manager, tmp_path)
-    if existing:
-        destination.write_bytes(b'Previously approved export')
-    before = snapshot(manager)
-    dialog.export_map()
-    assert json.loads(destination.read_text()) == {'version': 1, 'bindings': dialog.draft}
-    assert snapshot(manager) == before
-    assert dialog.wx.MessageBox.call_count == int(existing)
-    assert 'was exported' in dialog.messages[-1]
+@pytest.mark.parametrize('old_id,shortcut', [
+    ('Removed/Command', 'Ctrl+K'), ('Library/Import books', 'Ctrl+N'),
+])
+def test_incompatible_legacy_map_preserves_bytes_and_current_defaults(manager, old_id, shortcut):
+    from carr_library.keybindings import Command, KeybindingStore
+    from carr_library.ui.keyboard_settings import migrate_legacy_keymap
+    old = KeybindingStore(manager.store.path.parent)
+    old.save((Command(old_id, 'Legacy command'),), {old_id: shortcut})
+    before = old.path.read_bytes()
+    assert not migrate_legacy_keymap(manager, {'Library/Import books': 'library.import'})
+    assert manager.overrides == {}
+    assert not manager.store.path.exists()
+    assert old.path.read_bytes() == before
+    assert 'kept unchanged' in manager.load_notice

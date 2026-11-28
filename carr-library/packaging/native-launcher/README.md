@@ -80,14 +80,31 @@ probe proves its architecture, imports, manifest and mitigation flags; it does n
 prove Windows execution. The portable core test can also be compiled with a local
 C compiler using `-std=c11 -Wall -Wextra -Werror test_launcher_core.c`.
 
-## Minimal private bundle hook
+## Verified bundle assembly
 
-The assembler may copy **only** the verified `ResearchLibrary.exe` into the bundle
-root before generating the bundle checksum manifest. Keep the existing offline
-installer, runtime, wheelhouse and data locations. Never include `windows_child_probe.exe`,
-test outputs, compiler files or caches in the product. No shared bundle-builder
-changes are required by this source addition. A Start-menu shortcut may target the
-same fixed root entry when the existing installer gains that separate feature.
+The current `build_windows_bundle.py` accepts the paired options
+`--native-launcher <private>/ResearchLibrary.exe` and
+`--native-launcher-evidence <private>/build-evidence.json`. Bundled Python is
+required. The preflight bounds both inputs, rejects changes during capture,
+checks the current source hashes and complete toolchain record, and compares the
+PE structure/hash against the report. It seals those exact two byte snapshots
+as `ResearchLibrary.exe` and `native-launcher-build.json` before writing the
+bundle manifest. The offline installer verifies their hashes and rejects missing,
+partial or unannounced launcher payloads. A report is provenance, not a signature.
+
+The integrated Windows workflow builds with the already installed MSVC tools,
+runs the nine actual native process cases, assembles the EXE into the complete
+offline bundle, and runs the installed application's native checks and self-test
+through that EXE. Its report keeps fresh EXE-driven installation, GUI/NVDA and
+Authenticode acceptance explicit and separate. The dedicated native workflow
+also checks the packaging boundary and existing bundle regressions; it does not
+download another compiler. The optional pinned Zig helper remains available for
+an already acquired toolchain.
+
+Keep the existing offline installer, runtime, wheelhouse and data locations.
+Never include `windows_child_probe.exe`, test outputs, compiler files or caches
+in the product. A Start-menu shortcut may target the same fixed root entry when
+the existing installer gains that separate feature.
 
 Do not commit or attach the native binary to the public repository or public CI
 artifacts. The current build is an **unsigned private candidate**. A real owner-held

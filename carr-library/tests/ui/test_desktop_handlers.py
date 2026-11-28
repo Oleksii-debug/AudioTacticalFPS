@@ -10,6 +10,7 @@ from unittest.mock import Mock
 
 import pytest
 
+import carr_library
 from carr_library.citations.anchors import Identity, Locator, Metadata, make_anchor, format_citation
 from carr_library.application import LibraryApp
 from carr_library.catalog.read_views import active_collections
@@ -18,6 +19,7 @@ from carr_library.research.topic_tree import TopicTree
 from carr_library.research.anchored_export import SavedEvidence
 from carr_library.research.topic_search import TopicHit
 from carr_library.ui.search_model import Hit, SearchModel
+from carr_library.ui.search_paging import PageHistory
 from carr_library.ui.scope_bindings import ScopeServices, scope_labels
 from carr_library.extract.document_formats import file_dialog_wildcard, supported_formats_text
 
@@ -32,7 +34,7 @@ class BaseFrame:
 
 @pytest.fixture
 def classes():
-    source = Path(__file__).resolve().parents[2] / 'src/carr_library/ui/desktop_app.py'
+    source = Path(carr_library.__file__).resolve().parent / 'ui' / 'desktop_app.py'
     parsed = ast.parse(source.read_text(encoding='utf-8'))
     nodes = [node for node in parsed.body if isinstance(node,(ast.ClassDef,ast.FunctionDef)) and
              node.name in {'DesktopFrame','DesktopSearchPanel','format_topic_results'}]
@@ -49,7 +51,8 @@ def classes():
                file_dialog_wildcard=file_dialog_wildcard,supported_formats_text=supported_formats_text,
                contextmanager=contextmanager,TopicTree=TopicTree,open_context=open_context,
                ScopeServices=ScopeServices,scope_labels=scope_labels,active_collections=active_collections,
-               text_dialog=Mock(return_value='Reviewer'),show_text=Mock(),show_page_context=Mock(),metadata_dialog=Mock())
+               text_dialog=Mock(return_value='Reviewer'),show_text=Mock(),show_page_context=Mock(),metadata_dialog=Mock(),
+               show_acquisition_dialog=Mock())
     exec(compile(ast.Module(body=nodes,type_ignores=[]),str(source),'exec'),env)
     return env,queued
 
@@ -81,6 +84,7 @@ def panel(classes):
     value = object.__new__(env['DesktopSearchPanel'])
     value.frame = SimpleNamespace(working=False,report=Mock(),run_job=Mock(),library=Mock(),cancel_event=threading.Event())
     value.bound_library = value.frame.library
+    value.paging = PageHistory()
     value.model = SearchModel()
     value.model.set_workspace('a')
     value.bound_workspace,value.bound_topic = 'a',None
@@ -106,6 +110,7 @@ def test_combined_menus_keep_import_and_academic_actions_without_shortcut_collis
     env, _ = classes
     value = frame(classes)
     value.host, value.layout, value.Bind, value.SetMenuBar = Mock(), Mock(), Mock(), Mock()
+    value.GetMenuBar = lambda: value.menu_bar
     menus = {}
 
     class Menu:
@@ -117,59 +122,118 @@ def test_combined_menus_keep_import_and_academic_actions_without_shortcut_collis
             self.items.append(item)
             return item
 
+        def AppendSeparator(self):
+            self.items.append(SimpleNamespace(title=None))
+
+        def GetMenuItems(self):
+            return tuple(self.items)
+
     env['wx'].Menu = Menu
-    env['wx'].MenuBar = lambda: SimpleNamespace(Append=lambda menu, label: menus.update({label: menu}))
+    env['wx'].MenuBar = lambda: SimpleNamespace(
+        Append=lambda menu, label: menus.update({label: menu}),
+        GetMenuCount=lambda: len(menus),
+        GetMenu=lambda index: tuple(menus.values())[index],
+        GetMenuLabel=lambda index: tuple(menus)[index],
+        FindMenu=lambda title: next((index for index, label in enumerate(menus)
+                                    if label.replace('&', '') == title), -1))
     env['wx'].Button = Mock(return_value=Mock())
-    env['wx'].ID_ANY, env['wx'].ALL = -1, 1
+    env['wx'].ID_ANY, env['wx'].ALL, env['wx'].NOT_FOUND = -1, 1, -1
     env['wx'].EVT_MENU, env['wx'].EVT_BUTTON = 'menu', 'button'
     installers = {name: Mock() for name in (
         'install_research_actions', 'install_source_review_actions', 'install_academic_actions',
         'install_reading_desk_actions', 'install_ebook_actions', 'install_catalog_insights_actions',
         'install_federated_search_actions', 'install_query_manager_actions',
-        'install_academic_comparison_actions', 'install_library_assistant_actions')}
+        'install_academic_comparison_actions',
+        'install_portable_sync_actions', 'install_language_actions')}
     env.update(installers)
+    env['wx'].Dialog = object
+    monkeypatch.setitem(sys.modules, 'wx', env['wx'])
+    from carr_library.ui.trust_status import install_trust_actions
+    from carr_library.ui.audio_studio import install_audio_studio_actions
+    from carr_library.ui.recording_dialog import install_recording_actions
+    from carr_library.ui.api_connections import install_api_connection_actions
+    from carr_library.ui.assistant_dialog import install_assistant_actions
+    from carr_library.ui.translation_dialog import install_translation_actions
+    from carr_library.ui.document_conversion import install_conversion_actions
+    from carr_library.ui.engine_settings import install_engine_settings_actions
+    from carr_library.ui.operations_dialog import install_operations_actions
+    from carr_library.ui.reading_import import install_reading_import_actions
+    from carr_library.ui.media_overlay_dialog import install_media_overlay_actions
+    from carr_library.ui.playback_queue import install_playback_queue_actions
+    from carr_library.ui.translation_scope_dialog import install_translation_scope_actions
+    real_installers = {
+        'install_trust_actions': Mock(wraps=install_trust_actions),
+        'install_audio_studio_actions': Mock(wraps=install_audio_studio_actions),
+        'install_recording_actions': Mock(wraps=install_recording_actions),
+        'install_api_connection_actions': Mock(wraps=install_api_connection_actions),
+        'install_assistant_actions': Mock(wraps=install_assistant_actions),
+        'install_translation_actions': Mock(wraps=install_translation_actions),
+        'install_conversion_actions': Mock(wraps=install_conversion_actions),
+        'install_engine_settings_actions': Mock(wraps=install_engine_settings_actions),
+        'install_operations_actions': Mock(wraps=install_operations_actions),
+        'install_reading_import_actions': Mock(wraps=install_reading_import_actions),
+        'install_media_overlay_actions': Mock(wraps=install_media_overlay_actions),
+        'install_playback_queue_actions': Mock(wraps=install_playback_queue_actions),
+        'install_translation_scope_actions': Mock(wraps=install_translation_scope_actions),
+    }
+    env.update(real_installers)
+    monkeypatch.setitem(sys.modules, 'wx', env['wx'])
     ebook = Mock()
     monkeypatch.setitem(sys.modules, 'carr_library.ui.ebook_reader',
                         SimpleNamespace(install_ebook_reader=ebook))
-    new_installers = []
-    for module, installer in [('speech_dialog', 'install_speech_actions'),
-                              ('transcription_dialog', 'install_transcription_actions'),
-                              ('operations_dialog', 'install_operations_actions'),
-                              ('studio_dialog', 'install_studio_actions'),
-                              ('assistant_dialog', 'install_assistant_actions'),
-                              ('save_actions', 'install_save_actions'),
-                              ('document_conversion', 'install_conversion_actions'),
-                              ('language_matrix', 'install_language_actions'),
-                              ('translation_dialog', 'install_translation_actions')]:
-        callback = Mock()
-        new_installers.append(callback)
-        monkeypatch.setitem(sys.modules, 'carr_library.ui.' + module,
-                            SimpleNamespace(**{installer: callback}))
-    keyboard = Mock()
-    register_command = Mock()
-    monkeypatch.setitem(sys.modules, 'carr_library.ui.keyboard_settings',
-                        SimpleNamespace(install_keyboard_settings=keyboard,
-                                        register_menu_command=register_command))
-    progress = Mock()
-    monkeypatch.setitem(sys.modules, 'carr_library.ui.progress_panel',
-                        SimpleNamespace(install_progress_panel=progress))
-
     value._menus()
 
-    labels = [item.title for menu in menus.values() for item in menu.items]
+    labels = [item.title for menu in menus.values() for item in menu.items
+              if item.title is not None]
     shortcuts = [label.split('\t', 1)[1].casefold() for label in labels if '\t' in label]
     assert len(shortcuts) == len(set(shortcuts))
+    mnemonics = [name[name.index('&')+1].casefold() for name in menus if '&' in name]
+    assert len(mnemonics) == len(set(mnemonics))
+    assert 'Open Audio Studio...\tCtrl+Alt+A' in labels
+    assert labels.count('Record microphone and manage saved inputs...') == 1
+    assert 'AI and API &connections...' in labels
+    assert labels.count('Local assistant...\tCtrl+Alt+J') == 1
+    assert labels.count('Translate selected te&xt...') == 1
+    assert labels.count('Read synchronized EPUB or DAISY...') == 1
+    assert labels.count('Saved playback queue...') == 1
+    assert labels.count('Translate documents, &chapters or batch...') == 1
+    assert labels.count('Convert documents to reading text...') == 1
+    assert labels.count('Reading conversion formats and limits...') == 1
+    assert labels.count('Local engine &profiles...') == 1
+    assert labels.count('Tasks and &resources...') == 1
+    assert labels.count('Import earlier reading history or reader session...') == 1
+    assert labels.count('Open retained reading-copy history...') == 1
+    assert {spec.command_id for spec, _ in value._pending_keyboard_commands} >= {
+        'audio.recording', 'translation.text', 'conversion.documents', 'conversion.formats',
+        'engines.local', 'operations.tasks',
+        'reading.import_legacy_copy', 'reading.open_legacy_history', 'delivery.trust_status',
+        'reading.publication', 'audio.saved_queue', 'translation.scope'}
+    assert 'Documents' not in menus
+    tools_labels = {item.title for item in menus['&Tools'].items if item.title is not None}
+    assert tools_labels == {'Local assistant...\tCtrl+Alt+J', 'Translate selected te&xt...',
+                            'Translate documents, &chapters or batch...',
+                            'Convert documents to reading text...',
+                            'Reading conversion formats and limits...',
+                            'Local engine &profiles...', 'Tasks and &resources...',
+                            'Import earlier reading history or reader session...',
+                            'Open retained reading-copy history...'}
     assert 'Academic library...\tCtrl+Shift+B' in labels
+    assert 'DOI lookup and open-access sources...' in labels
+    assert 'Document formats' in labels
+    assert labels.count('License and signed updates') == 1
     assert 'Import Center: files, folders and queues' in labels
-    registered_frame, registered_spec, registered_item = register_command.call_args.args
-    assert registered_frame is value
-    assert registered_spec.command_id == 'research.advanced_query'
-    assert registered_spec.default_shortcut == 'Ctrl+Alt+Q'
-    assert registered_item.title.startswith('Build advanced query')
     for handler in (value.import_center, value.open_academic_library, value.export_topic):
         assert any(call.args[1] == handler for call in value.Bind.call_args_list)
-    for installer in (*installers.values(), ebook, *new_installers, keyboard, progress):
+    for installer in (*installers.values(), *real_installers.values(), ebook):
         installer.assert_called_once_with(value)
+    env['show_acquisition_dialog'].assert_not_called()
+    handlers = {call.args[2].title: call.args[1] for call in value.Bind.call_args_list
+                if call.args[0] == env['wx'].EVT_MENU}
+    handlers['Document formats'](None)
+    assert env['show_text'].call_args.args == (value, 'Document formats', supported_formats_text())
+    env['show_acquisition_dialog'].assert_not_called()
+    handlers['DOI lookup and open-access sources...'](None)
+    env['show_acquisition_dialog'].assert_called_once_with(value)
     value.help(None)
     guide = env['show_text'].call_args.args[2]
     assert 'Alt+A for Academic' in guide and 'Alt+B for Bibliography' in guide
@@ -190,6 +254,177 @@ def test_repeated_enter_does_not_clear_an_active_search(classes):
     assert p._context_epoch == 1
     p.grid.refresh.assert_not_called()
     p.frame.run_job.assert_not_called()
+
+
+def test_actual_menu_installers_compose_before_keyboard_inventory(classes, monkeypatch, tmp_path):
+    """Execute every installer; this headless protocol is not native wx proof."""
+    import importlib
+    from itertools import count
+    from carr_library.ui.productivity import install_productivity_actions, collect_commands
+
+    identifiers = count(1)
+
+    class Item:
+        def __init__(self, label):
+            self.label, self.identity = label, next(identifiers)
+        def IsSeparator(self):
+            return self.label is None
+        def GetId(self):
+            return self.identity
+        def GetItemLabel(self):
+            return self.label
+        def SetItemLabel(self, label):
+            self.label = label
+        def GetSubMenu(self):
+            return None
+
+    class Menu:
+        def __init__(self):
+            self.items = []
+        def Append(self, identity, label):
+            item = Item(label)
+            self.items.append(item)
+            return item
+        def AppendSeparator(self):
+            self.items.append(Item(None))
+        def GetMenuItems(self):
+            return tuple(self.items)
+        def Delete(self, identity):
+            self.items = [item for item in self.items if item.GetId() != identity]
+
+    class MenuBar:
+        def __init__(self):
+            self.menus = []
+        def Append(self, menu, label):
+            self.menus.append((label, menu))
+        def Insert(self, index, menu, label):
+            self.menus.insert(index, (label, menu))
+        def GetMenu(self, index):
+            return self.menus[index][1]
+        def GetMenuLabel(self, index):
+            return self.menus[index][0]
+        def GetMenuCount(self):
+            return len(self.menus)
+        def FindMenu(self, title):
+            return next((i for i, (label, _) in enumerate(self.menus)
+                         if label.replace('&', '') == title), -1)
+
+    env, _ = classes
+    wx = env['wx']
+    wx.Menu, wx.MenuBar, wx.Dialog, wx.Button = Menu, MenuBar, object, Mock(return_value=Mock())
+    wx.ID_ANY, wx.ALL, wx.EVT_MENU, wx.EVT_BUTTON = -1, 1, 'menu', 'button'
+    wx.NOT_FOUND = -1
+    monkeypatch.setitem(sys.modules, 'wx', wx)
+    existing_modules = set(sys.modules)
+    try:
+        for name in ('research_actions', 'source_review', 'academic_actions',
+                     'reading_desk', 'ebook_actions', 'catalog_insights_actions',
+                     'federated_search', 'query_manager', 'academic_tools'):
+            module = importlib.import_module('carr_library.ui.' + name)
+            if hasattr(module, 'wx'):
+                monkeypatch.setattr(module, 'wx', wx)
+            original = 'install_academic_actions' if name == 'academic_tools' else 'install_' + name
+            alias = 'install_academic_comparison_actions' if name == 'academic_tools' else original
+            # Reading uses its full action suffix; other names already include it.
+            if name == 'reading_desk':
+                original = alias = 'install_reading_desk_actions'
+            elif name in ('source_review', 'federated_search', 'query_manager'):
+                original = alias = 'install_' + name + '_actions'
+            env[alias] = getattr(module, original)
+        # Audio/API work is assembled independently. When those hooks are in
+        # the real desktop, include their real installers in this same inventory.
+        menu_globals = env['DesktopFrame']._menus.__code__.co_names
+        for module_name, action_name in (
+                ('audio_studio', 'install_audio_studio_actions'),
+                ('recording_dialog', 'install_recording_actions'),
+                ('api_connections', 'install_api_connection_actions'),
+                ('assistant_dialog', 'install_assistant_actions'),
+                ('portable_sync', 'install_portable_sync_actions'),
+                ('language_matrix', 'install_language_actions'),
+                ('translation_dialog', 'install_translation_actions'),
+                ('document_conversion', 'install_conversion_actions'),
+                ('engine_settings', 'install_engine_settings_actions'),
+                ('operations_dialog', 'install_operations_actions'),
+                ('reading_import', 'install_reading_import_actions'),
+                ('media_overlay_dialog', 'install_media_overlay_actions'),
+                ('playback_queue', 'install_playback_queue_actions'),
+                ('translation_scope_dialog', 'install_translation_scope_actions'),
+                ('trust_status', 'install_trust_actions')):
+            if action_name in menu_globals:
+                module = importlib.import_module('carr_library.ui.' + module_name)
+                if hasattr(module, 'wx'):
+                    monkeypatch.setattr(module, 'wx', wx)
+                env[action_name] = getattr(module, action_name)
+        value = frame(classes)
+        value.library = SimpleNamespace(root=tmp_path)
+        value.host, value.layout = Mock(), Mock()
+        value.Bind, value.Unbind, value.SetMenuBar = Mock(), Mock(), Mock()
+        value.GetMenuBar = lambda: value.menu_bar
+        value._menus()
+        keyboard = install_productivity_actions(value)
+        current = collect_commands(value.menu_bar)
+        bindings = {item.command.identity: item.command.shortcut for item in current}
+        registered_items = {binding.item.GetId() for binding in keyboard.bindings.values()}
+        assert all(binding.item.GetId() in registered_items for binding in current
+                   if binding.command.configurable)
+        required = {
+            'File/Save current changes': 'Ctrl+S',
+            'File/Save all changes': 'Ctrl+Shift+S',
+            'Research/Build advanced query': 'Ctrl+Alt+Q',
+            'Research/Research Search Center': 'Ctrl+Alt+F',
+            'Academic/Compare sources in active topic': 'Ctrl+Alt+M',
+            'Academic/Academic library': 'Ctrl+Shift+B',
+            'Reading/Read selected book': 'Ctrl+R',
+            'Library/Read EPUB book': 'Ctrl+Shift+R',
+        }
+        assert all(bindings.get(name) == shortcut for name, shortcut in required.items())
+        assert 'File/Open saved reading copy' in bindings
+        assert 'library.portable_snapshots' in keyboard.bindings
+        assert 'audio.language_evidence' in keyboard.bindings
+        assert 'audio.recording' in keyboard.bindings
+        assert keyboard.shortcut('audio.recording') == ''
+        assert 'delivery.trust_status' in keyboard.bindings
+        from carr_library.ui.trust_status import install_trust_actions
+        before_trust_items = [(binding.command.identity, binding.item.GetId())
+                              for binding in collect_commands(value.menu_bar)]
+        install_trust_actions(value)
+        assert [(binding.command.identity, binding.item.GetId())
+                for binding in collect_commands(value.menu_bar)] == before_trust_items
+        for command in ('translation.text', 'conversion.documents', 'conversion.formats',
+                        'engines.local', 'operations.tasks',
+                        'reading.import_legacy_copy', 'reading.open_legacy_history',
+                        'reading.publication', 'audio.saved_queue', 'translation.scope'):
+            assert command in keyboard.bindings
+        assert bindings.get('Tools/Local assistant') == 'Ctrl+Alt+J'
+        assert 'Options/Keyboard shortcuts' in bindings
+        assert value.menu_bar.GetMenuLabel(0) == '&File'
+        shortcuts = [shortcut.casefold() for shortcut in bindings.values() if shortcut]
+        assert len(shortcuts) == len(set(shortcuts))
+        assert keyboard.load_notice == ''
+        assert sum(value.menu_bar.GetMenuLabel(i) == '&Options'
+                   for i in range(value.menu_bar.GetMenuCount())) == 1
+        menu_labels = [value.menu_bar.GetMenuLabel(i)
+                       for i in range(value.menu_bar.GetMenuCount())]
+        assert sum(label.replace('&', '') == 'Tools' for label in menu_labels) == 1
+        assert menu_labels.count('&Edit') == 1
+        assert menu_labels.count('Sett&ings') == 1
+        assert 'Documents' not in [label.replace('&', '') for label in menu_labels]
+        mnemonics = [label[label.index('&') + 1].casefold()
+                     for label in menu_labels if '&' in label]
+        assert len(mnemonics) == len(set(mnemonics))
+        tools = value.menu_bar.GetMenu(value.menu_bar.FindMenu('Tools'))
+        tool_items = {item.GetId() for item in tools.GetMenuItems() if not item.IsSeparator()}
+        for command in ('translation.text', 'conversion.documents', 'conversion.formats',
+                        'engines.local', 'operations.tasks',
+                        'reading.import_legacy_copy', 'reading.open_legacy_history', 'translation.scope'):
+            assert keyboard.bindings[command].item.GetId() in tool_items
+        assert not hasattr(value, 'keyboard_actions')
+    finally:
+        # Native modules imported under this temporary headless wx adapter must
+        # not remain cached for later genuine native probes or other tests.
+        for name in set(sys.modules) - existing_modules:
+            if name.startswith('carr_library.ui.'):
+                sys.modules.pop(name, None)
 
 
 def test_async_result_cannot_repopulate_changed_scope(classes):
@@ -459,21 +694,19 @@ def test_scanned_pdf_import_reuses_canonical_recognition_config(classes,monkeypa
     chooser = Mock(wraps=ocr_options.choose_ocr_config)
     monkeypatch.setattr(ocr_options,'choose_ocr_config',chooser)
     selected = Config(languages=languages, model_profile=profile)
-    monkeypatch.setattr('carr_library.ui.ocr_selection.choose_model_config', lambda parent: selected)
+    monkeypatch.setattr('carr_library.ui.ocr_selection.choose_model_config', lambda parent, **kwargs: selected)
     wx.FD_OPEN,wx.FD_FILE_MUST_EXIST,wx.FD_MULTIPLE = 1,2,4
     file_dialog = Mock()
     file_dialog.ShowModal.return_value = wx.ID_OK
     file_dialog.GetPaths.return_value = ['/sources/Scanned.PDF','/sources/notes.txt']
     wx.FileDialog = Mock(return_value=file_dialog)
+
     f.import_books(None)
     chooser.assert_called_once_with(f,['/sources/Scanned.PDF','/sources/notes.txt'])
     f.library.import_files.assert_not_called()
     _,import_files,complete = f.run_job.call_args.args
-    progress = Mock()
-    assert f.run_job.call_args.kwargs['with_progress'] is True
-    import_files(progress)
+    import_files()
     call = f.library.import_files.call_args
-    assert call.kwargs['progress'] is progress
     assert call.args == ('a',['/sources/Scanned.PDF','/sources/notes.txt'])
     config = call.kwargs['config']
     assert config is selected
@@ -483,6 +716,7 @@ def test_scanned_pdf_import_reuses_canonical_recognition_config(classes,monkeypa
 
 
 def test_cancelled_recognition_choice_imports_nothing(classes,monkeypatch):
+    from carr_library.ui import ocr_options
     f = frame(classes)
     f.library = Mock()
     f._workspace = lambda:'a'
@@ -494,7 +728,7 @@ def test_cancelled_recognition_choice_imports_nothing(classes,monkeypatch):
     dialog.ShowModal.return_value = wx.ID_OK
     dialog.GetPaths.return_value = ['book.pdf']
     wx.FileDialog = Mock(return_value=dialog)
-    wx.SingleChoiceDialog.return_value.ShowModal.return_value = 0
+    monkeypatch.setattr(ocr_options, 'choose_model_config', Mock(return_value=None))
     f.import_books(None)
     f.run_job.assert_not_called()
     f.library.import_files.assert_not_called()
@@ -519,7 +753,7 @@ def test_text_and_docx_import_reuse_helper_config_without_language_dialog(classe
     f.import_books(None)
     chooser.assert_called_once_with(f,['notes.txt','chapter.docx'])
     wx.SingleChoiceDialog.assert_not_called()
-    f.run_job.call_args.args[1](Mock())
+    f.run_job.call_args.args[1]()
     assert f.library.import_files.call_args.kwargs['config'] == Config()
 
 
@@ -635,7 +869,6 @@ def test_folder_switch_remembers_only_valid_opened_library(classes,tmp_path):
     f._drop,f.refresh_scopes = Mock(),Mock()
     f.scopes = []
     f.remember_data_dir = Mock()
-    f.keyboard_commands, f.progress_panel = Mock(), Mock()
     (tmp_path / 'library.sqlite').write_bytes(b'fixture')
     candidate = SimpleNamespace(root=tmp_path,list_scopes=Mock(return_value=()))
     classes[0]['LibraryApp'].return_value = candidate
@@ -643,43 +876,6 @@ def test_folder_switch_remembers_only_valid_opened_library(classes,tmp_path):
     assert f.library is candidate
     f.remember_data_dir.assert_called_once_with(tmp_path)
     f._drop.assert_called_once()
-    f.keyboard_commands.change_root.assert_called_once_with(tmp_path)
-    f.progress_panel.change_root.assert_called_once_with(tmp_path)
-
-
-def test_folder_switch_during_work_never_rebinds_current_job(classes,tmp_path):
-    f = frame(classes)
-    f.working = True
-    original = f.library = Mock()
-    f._confirm, f._drop, f.remember_data_dir = Mock(), Mock(), Mock()
-    with pytest.raises(RuntimeError, match='current operation'):
-        f._open_data_root(tmp_path)
-    assert f.library is original
-    f._confirm.assert_not_called()
-    f._drop.assert_not_called()
-    f.remember_data_dir.assert_not_called()
-
-
-def test_cancelled_import_summary_keeps_all_selected_files_in_the_total(classes, monkeypatch):
-    f = frame(classes)
-    f.library, f.run_job = Mock(), Mock()
-    f._workspace = lambda: 'library'
-    monkeypatch.setitem(sys.modules, 'carr_library.ui.ocr_options',
-                        SimpleNamespace(choose_ocr_config=lambda *args: object()))
-    wx = classes[0]['wx']
-    wx.FD_OPEN, wx.FD_FILE_MUST_EXIST, wx.FD_MULTIPLE = 1, 2, 4
-    chooser = Mock()
-    chooser.ShowModal.return_value = wx.ID_OK
-    chooser.GetPaths.return_value = ['first.txt', 'second.txt', 'third.txt']
-    wx.FileDialog = Mock(return_value=chooser)
-    f.import_books(None)
-    done = f.run_job.call_args.args[2]
-    done(({'file': 'first.txt', 'state': 'complete'},
-          {'file': 'second.txt', 'state': 'cancelled', 'message': 'Cancelled before processing.'}))
-    text = f.report.call_args.args[0]
-    assert '1 of 3 selected books imported' in text
-    assert '1 remaining selected files were not attempted' in text
-    assert 'second.txt: cancelled' in text
 
 
 def test_bound_services_recheck_topic_in_the_source_transaction(classes,tmp_path):
@@ -727,11 +923,8 @@ def test_import_uses_the_chosen_recognition_configuration(classes,monkeypatch):
     file_dialog.Destroy.assert_called_once()
     f.library.import_files.assert_not_called()
     _,import_files,complete = f.run_job.call_args.args
-    progress = Mock()
-    assert f.run_job.call_args.kwargs['with_progress'] is True
-    import_files(progress)
+    import_files()
     call = f.library.import_files.call_args
-    assert call.kwargs['progress'] is progress
     assert call.args == ('a',['/sources/Scanned.PDF','/sources/notes.txt'])
     assert call.kwargs['config'] is config
     assert call.kwargs['cancelled'] == f.cancel_event.is_set
@@ -857,3 +1050,143 @@ def test_real_topic_save_labels_are_distinct_without_changing_names_or_routing(c
     assert app.evidence(workspace, topics[0].id) == ()
     assert tuple(app.topics(workspace)) == topics
     chooser.return_value.Destroy.assert_called_once()
+
+def test_main_close_waits_for_save_all_and_only_retries_after_durable_success(classes):
+    from carr_library.ui.save_all import SaveCoordinator, SaveResult
+    value = frame(classes)
+    coordinator = value._save_coordinator = SaveCoordinator()
+    callbacks, dirty = [], {'value': True}
+    coordinator.register('note', 'Note', dirty=lambda: dirty['value'], save=callbacks.append)
+    coordinator.save_all(lambda summary: None)
+    value.working = True
+    value.Close = Mock()
+    event = close_event(True)
+    value.on_close(event)
+    assert event.veto and not value._closing
+    value.executor.shutdown.assert_not_called()
+    value.Close.assert_not_called()
+    value.working, dirty['value'] = False, False
+    callbacks[0](SaveResult(True))
+    assert not value._closing
+    _, queue = classes
+    assert len(queue) == 1
+    queue.pop()()
+    value.Close.assert_called_once_with()
+
+
+def test_failed_save_all_cancels_main_close_without_shutting_down_workers(classes):
+    from carr_library.ui.save_all import SaveCoordinator, SaveResult
+    value = frame(classes)
+    coordinator = value._save_coordinator = SaveCoordinator()
+    callbacks = []
+    coordinator.register('note', 'Note', dirty=lambda: True, save=callbacks.append)
+    coordinator.save_all(lambda summary: None)
+    value.Close = Mock()
+    event = close_event(True)
+    value.on_close(event)
+    callbacks[0](SaveResult(False, 'A newer writer changed the project'))
+    assert event.veto and not value._closing and not value._save_close_pending
+    value.Close.assert_not_called()
+    value.executor.shutdown.assert_not_called()
+    assert 'remains open' in value.report.call_args.args[0]
+
+
+
+def observed_frame(classes, tmp_path):
+    from carr_library.ui.operation_progress import OperationProgress
+    value = frame(classes)
+    value.library = SimpleNamespace(root=tmp_path)
+    value.menu_bar.FindMenu.return_value = 1
+    value.menu_bar.GetMenuCount.return_value = 0  # This observer fixture creates no native menus.
+    value.GetMenuBar = lambda: value.menu_bar
+    boundary = SimpleNamespace(GetActiveWindow=lambda: value)
+    notifications = SimpleNamespace(configure=Mock(), clear=Mock(), set_registry=Mock(),
+        environment=Mock(), offer=Mock(), error='', close=Mock(), quiescent=True)
+    value.operation_progress = OperationProgress(value, Mock(), Mock(),
+        wx_module=boundary, notifications=notifications, start_timer=False)
+    return value
+
+
+def test_frame_progress_retains_durable_success_after_late_cancel(classes, tmp_path):
+    from carr_library.progress import report_progress
+    value = observed_frame(classes, tmp_path)
+    future = Future()
+    value.executor.submit.return_value = future
+    output = tmp_path / 'committed.txt'
+    def write():
+        output.write_text('Actual synthetic committed bytes', encoding='utf-8')
+        report_progress(completed=1, total=1)
+        return {'state': 'complete'}
+    received = []
+    value.run_job('Write', write, received.append, progress_total=1)
+    actual = value.executor.submit.call_args.args[0]()
+    assert value.operation_progress.event.percent == 99 and output.is_file()
+    value.cancel_event.set()
+    future.set_result(actual)
+    classes[1].pop()()
+    assert received == [actual]
+    assert value.operation_progress.event.percent == 100
+    assert output.read_text(encoding='utf-8') == 'Actual synthetic committed bytes'
+
+
+def test_frame_progress_keeps_real_failure_after_cancel_request(classes, tmp_path):
+    value = observed_frame(classes, tmp_path)
+    future = Future()
+    value.executor.submit.return_value = future
+    value.run_job('Write', lambda: None)
+    value.cancel_event.set()
+    future.set_exception(OSError('Synthetic writable destination failed'))
+    classes[1].pop()()
+    assert value.operation_progress.event.state == 'failed'
+    assert value.operation_progress.event.percent is None
+    assert not value.working
+
+
+def test_old_library_job_callback_cannot_touch_new_window_state(classes, tmp_path):
+    value = observed_frame(classes, tmp_path)
+    future, received = Future(), []
+    value.executor.submit.return_value = future
+    value.run_job('Old scope', lambda: None, received.append)
+    future.set_result({'state': 'complete'})
+    value.library = SimpleNamespace(root=tmp_path / 'new')
+    value.report.reset_mock()
+    value.cancel_button.reset_mock()
+    classes[1].pop()()
+    assert received == []
+    value.report.assert_not_called()
+    value.cancel_button.Disable.assert_not_called()
+
+
+def test_folder_switch_during_work_never_rebinds_current_job(classes,tmp_path):
+    f = frame(classes)
+    f.working = True
+    original = f.library = Mock()
+    f._confirm, f._drop, f.remember_data_dir = Mock(), Mock(), Mock()
+    with pytest.raises(RuntimeError, match='current operation'):
+        f._open_data_root(tmp_path)
+    assert f.library is original
+    f._confirm.assert_not_called()
+    f._drop.assert_not_called()
+    f.remember_data_dir.assert_not_called()
+
+
+def test_cancelled_import_summary_keeps_all_selected_files_in_the_total(classes, monkeypatch):
+    f = frame(classes)
+    f.library, f.run_job = Mock(), Mock()
+    f._workspace = lambda: 'library'
+    monkeypatch.setitem(sys.modules, 'carr_library.ui.ocr_options',
+                        SimpleNamespace(choose_ocr_config=lambda *args: object()))
+    wx = classes[0]['wx']
+    wx.FD_OPEN, wx.FD_FILE_MUST_EXIST, wx.FD_MULTIPLE = 1, 2, 4
+    chooser = Mock()
+    chooser.ShowModal.return_value = wx.ID_OK
+    chooser.GetPaths.return_value = ['first.txt', 'second.txt', 'third.txt']
+    wx.FileDialog = Mock(return_value=chooser)
+    f.import_books(None)
+    done = f.run_job.call_args.args[2]
+    done(({'file': 'first.txt', 'state': 'complete'},
+          {'file': 'second.txt', 'state': 'cancelled', 'message': 'Cancelled before processing.'}))
+    text = f.report.call_args.args[0]
+    assert '1 of 3 selected books imported' in text
+    assert '1 remaining selected files were not attempted' in text
+    assert 'second.txt: cancelled' in text

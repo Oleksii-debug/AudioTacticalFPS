@@ -1,7 +1,7 @@
 """Offline distribution boundaries, using synthetic wheel bytes and real files."""
-import hashlib
 import base64
 import csv
+import hashlib
 import importlib.util
 import io
 import json
@@ -9,7 +9,9 @@ import os
 from pathlib import Path
 import tempfile
 import subprocess
+import tomllib
 import unittest
+from types import SimpleNamespace
 from unittest.mock import patch
 from zipfile import ZIP_DEFLATED, ZipFile
 
@@ -61,59 +63,20 @@ class WindowsBundleTests(unittest.TestCase):
         installer.verify(self.output)
         self.assertIn("universal-research-library==1.0", (self.output / "install.lock").read_text())
         self.assertEqual((self.output / "wheelhouse" / self.app.name).read_bytes(), self.app.read_bytes())
-
-
-    def test_native_launcher_is_sealed_and_tampering_is_rejected(self):
-        # Synthetic bytes test packaging boundaries only; native execution is
-        # independently required by the Windows launcher's real process probe.
-        launcher = self.root / "ResearchLibrary.exe"
-        approved = b"synthetic native launcher packaging fixture"
-        launcher.write_bytes(approved)
-        digest = hashlib.sha256(approved).hexdigest()
-        with patch.object(builder, "NATIVE_LAUNCHER_SHA256", digest):
-            builder.build_bundle(self.app, self.wheels, self.lock, self.output,
-                                 native_launcher=launcher)
-        self.assertEqual((self.output / "ResearchLibrary.exe").read_bytes(), approved)
         manifest = json.loads((self.output / "bundle-manifest.json").read_text())
-        self.assertEqual(manifest["files"]["ResearchLibrary.exe"], digest)
+        audio_helpers = {
+            "SetupLocalAudio.cmd": "SetupLocalAudio.cmd",
+            "tools/audio-setup/setup_local_audio.py": "setup_local_audio.py",
+            "tools/audio-setup/prepare_ffmpeg_runtime.py": "prepare_ffmpeg_runtime.py",
+        }
+        for relative, source in audio_helpers.items():
+            expected = (ROOT / "packaging" / source).read_bytes()
+            self.assertEqual((self.output / relative).read_bytes(), expected)
+            self.assertEqual(manifest["files"][relative], hashlib.sha256(expected).hexdigest())
         installer.verify(self.output)
-        (self.output / "ResearchLibrary.exe").write_bytes(b"changed executable")
+        (self.output / "tools/audio-setup/setup_local_audio.py").write_bytes(b"changed helper")
         with self.assertRaisesRegex(ValueError, "checksum"):
             installer.verify(self.output)
-
-    def test_native_launcher_wrong_identity_fails_before_output(self):
-        launcher = self.root / "ResearchLibrary.exe"
-        launcher.write_bytes(b"an unapproved executable")
-        with self.assertRaisesRegex(ValueError, "Windows-tested"):
-            builder.build_bundle(self.app, self.wheels, self.lock, self.output,
-                                 native_launcher=launcher)
-        self.assertFalse(self.output.exists())
-
-    def test_native_launcher_replaced_during_copy_is_rejected(self):
-        launcher = self.root / "ResearchLibrary.exe"
-        launcher.write_bytes(b"approved synthetic bytes")
-        digest = builder.sha256(launcher)
-        original_copy = builder.shutil.copyfile
-
-        def replace_before_copy(source, destination, *args, **kwargs):
-            if Path(source) == launcher:
-                launcher.write_bytes(b"replacement after verification")
-            return original_copy(source, destination, *args, **kwargs)
-
-        with patch.object(builder, "NATIVE_LAUNCHER_SHA256", digest):
-            with patch.object(builder.shutil, "copyfile", side_effect=replace_before_copy):
-                with self.assertRaisesRegex(ValueError, "changed during bundle assembly"):
-                    builder.build_bundle(self.app, self.wheels, self.lock, self.output,
-                                         native_launcher=launcher)
-        self.assertFalse(self.output.exists())
-
-    def test_native_launcher_directory_is_rejected(self):
-        launcher = self.root / "ResearchLibrary.exe"
-        launcher.mkdir()
-        with self.assertRaisesRegex(ValueError, "regular file"):
-            builder.build_bundle(self.app, self.wheels, self.lock, self.output,
-                                 native_launcher=launcher)
-        self.assertFalse(self.output.exists())
 
     def sbom(self, version="1.0"):
         path = self.root / "input-sbom.json"
@@ -288,6 +251,138 @@ package-dir = {"" = "src"}
         with self.assertRaisesRegex(ValueError, 'checksum'):
             installer.verify(self.output)
 
+
+    def test_failed_staging_preserves_inputs_and_removes_owned_stage(self):
+        original = builder.shutil.copyfile
+        source_bytes = self.app.read_bytes()
+        def fail(source, target, *args, **kwargs):
+            if Path(source) == self.app:
+                raise OSError('Synthetic owned staging failure')
+            return original(source, target, *args, **kwargs)
+        with patch.object(builder.shutil, 'copyfile', side_effect=fail):
+            with self.assertRaisesRegex(OSError, 'staging failure'):
+                self.build()
+        self.assertFalse(self.output.exists())
+        self.assertEqual(self.app.read_bytes(), source_bytes)
+        self.assertEqual(list(self.root.glob('.carr-bundle-*')), [])
+
+    def test_atomic_publication_failure_leaves_no_partial_output(self):
+        helper = builder._publication_tools()
+        unrelated = self.root / 'unrelated.txt'
+        unrelated.write_bytes(b'Unrelated retained bytes')
+        with (patch.object(builder, '_publication_tools', return_value=helper),
+              patch.object(helper, '_publish', side_effect=OSError('Synthetic atomic publication failure'))):
+            with self.assertRaisesRegex(OSError, 'publication failure'):
+                self.build()
+        self.assertFalse(self.output.exists())
+        self.assertEqual(list(self.root.glob('.carr-bundle-*')), [])
+        self.assertEqual(unrelated.read_bytes(), b'Unrelated retained bytes')
+
+    def test_concurrent_foreign_output_is_never_overwritten_or_removed(self):
+        helper = builder._publication_tools()
+        publish = helper._publish
+        def concurrent(stage, output, parent_fd):
+            output.mkdir()
+            (output / 'foreign.txt').write_bytes(b'Another operation owns this output')
+            return publish(stage, output, parent_fd)
+        with (patch.object(builder, '_publication_tools', return_value=helper),
+              patch.object(helper, '_publish', side_effect=concurrent)):
+            with self.assertRaises(FileExistsError):
+                self.build()
+        self.assertEqual((self.output / 'foreign.txt').read_bytes(), b'Another operation owns this output')
+        self.assertEqual({path.name for path in self.output.iterdir()}, {'foreign.txt'})
+        self.assertEqual(list(self.root.glob('.carr-bundle-*')), [])
+
+    def test_replaced_stage_is_refused_and_foreign_directory_is_not_cleaned(self):
+        helper = builder._publication_tools()
+        unchanged = helper._unchanged_directories
+        observed = []
+        retained = self.root / 'relocated-owned-stage'
+        def replace_stage(parents):
+            unchanged(parents)
+            observed.append(True)
+            if len(observed) == 2:
+                stage, = self.root.glob('.carr-bundle-*')
+                stage.rename(retained)
+                stage.mkdir()
+                (stage / 'foreign.txt').write_bytes(b'Foreign replacement')
+        with (patch.object(builder, '_publication_tools', return_value=helper),
+              patch.object(helper, '_unchanged_directories', side_effect=replace_stage)):
+            with self.assertRaisesRegex(ValueError, 'staging directory changed'):
+                self.build()
+        self.assertFalse(self.output.exists())
+        foreign, = self.root.glob('.carr-bundle-*')
+        self.assertEqual((foreign / 'foreign.txt').read_bytes(), b'Foreign replacement')
+        self.assertTrue((retained / 'bundle-manifest.json').is_file())
+        installer.verify(retained)
+
+    def test_error_after_atomic_commit_preserves_complete_verified_bundle(self):
+        helper = builder._publication_tools()
+        publish = helper._publish
+        def committed(stage, output, parent_fd):
+            publish(stage, output, parent_fd)
+            raise OSError('Synthetic acknowledgement failure after publication')
+        with (patch.object(builder, '_publication_tools', return_value=helper),
+              patch.object(helper, '_publish', side_effect=committed)):
+            with self.assertRaisesRegex(OSError, 'acknowledgement failure'):
+                self.build()
+        installer.verify(self.output)
+        self.assertEqual(list(self.root.glob('.carr-bundle-*')), [])
+        self.assertEqual((self.output / 'wheelhouse' / self.app.name).read_bytes(), self.app.read_bytes())
+
+    def test_output_inside_wheelhouse_is_rejected_before_any_staging(self):
+        self.output = self.wheels / 'nested-output'
+        before = {path.name: path.read_bytes() for path in self.wheels.iterdir()}
+        with self.assertRaisesRegex(ValueError, 'outside all input directories'):
+            self.build()
+        self.assertFalse(self.output.exists())
+        self.assertEqual({path.name: path.read_bytes() for path in self.wheels.iterdir()}, before)
+
+
+    def test_new_nested_output_parents_remain_supported(self):
+        self.output = self.root / 'new safe parent' / 'nested' / 'complete bundle'
+        self.build()
+        installer.verify(self.output)
+        self.assertEqual(list(self.root.rglob('.carr-bundle-*')), [])
+
+    def test_alias_ancestor_is_refused_before_creating_any_nested_parent(self):
+        foreign = self.root / 'foreign target'
+        foreign.mkdir()
+        sentinel = foreign / 'keep.txt'
+        sentinel.write_bytes(b'Unrelated retained target')
+        alias = self.root / 'alias parent'
+        before = {p.relative_to(foreign).as_posix(): p.read_bytes()
+                  for p in foreign.rglob('*') if p.is_file()}
+        self.output = alias / 'must not be created' / 'nested' / 'bundle'
+        if os.name != 'nt':
+            # Actual filesystem alias; the old mkdir(parents=True) creates
+            # foreign/must-not-be-created before rejecting the ancestor.
+            alias.symlink_to(foreign, target_is_directory=True)
+            with self.assertRaisesRegex(ValueError, 'unlinked local directory'):
+                self.build()
+        else:
+            # Do not require Windows symlink privilege. Feed the existing
+            # reparse guard exact native-style metadata for a real directory,
+            # then observe that no descendant is created beneath it.
+            alias.mkdir()
+            original = Path.lstat
+            def reparse(path):
+                info = original(path)
+                if path == alias:
+                    return SimpleNamespace(st_mode=info.st_mode, st_dev=info.st_dev,
+                        st_ino=info.st_ino, st_file_attributes=(
+                            getattr(info, 'st_file_attributes', 0) | 0x400))
+                return info
+            with patch.object(Path, 'lstat', reparse):
+                with self.assertRaisesRegex(ValueError, 'unlinked local directory'):
+                    self.build()
+            self.assertEqual(list(alias.iterdir()), [])
+        self.assertFalse((foreign / 'must not be created').exists())
+        self.assertFalse(self.output.exists())
+        self.assertEqual(before, {p.relative_to(foreign).as_posix(): p.read_bytes()
+                                 for p in foreign.rglob('*') if p.is_file()})
+        self.assertEqual(list(self.root.glob('.carr-bundle-*')), [])
+
     def test_application_replaced_after_source_verification_is_rejected(self):
         verified_digest = builder.sha256(self.app)
 
@@ -337,6 +432,63 @@ package-dir = {"" = "src"}
             self.lock.write_text(text)
             with self.assertRaises(ValueError):
                 self.build()
+
+
+class OfflineInstallerInventoryTests(unittest.TestCase):
+    def inventories(self):
+        for prefix, extras in (("windows", ("desktop", "sync")),
+                               ("windows-semantic", ("desktop", "sync", "semantic"))):
+            yield prefix, extras, builder.read_lock(ROOT / "packaging" / (prefix + "-cp311.lock"))
+
+    def test_installer_roots_and_locks_include_declared_application_features(self):
+        project = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))["project"]
+
+        def requirements(rows):
+            parsed = [builder.Requirement(row) for row in rows]
+            return {builder.canonicalize_name(row.name): next(iter(row.specifier)).version for row in parsed}
+
+        for prefix, extras, pins in self.inventories():
+            with self.subTest(installer=prefix):
+                expected = list(project["dependencies"])
+                for extra in extras:
+                    expected.extend(project["optional-dependencies"][extra])
+                roots = (ROOT / "packaging" / (prefix + "-roots.in")).read_text(encoding="utf-8").splitlines()
+                roots = [row.strip() for row in roots if row.strip() and not row.lstrip().startswith("#")]
+                self.assertEqual(requirements(roots), requirements(expected))
+                self.assertEqual(len(roots), len(requirements(roots)))
+                for name, version in requirements(expected).items():
+                    self.assertEqual(pins[name][0], version)
+
+    def test_sync_download_pins_are_identical_in_each_offline_installer(self):
+        sync = builder.read_lock(ROOT / "packaging/windows-sync-cp311.lock")
+        for prefix, _extras, pins in self.inventories():
+            with self.subTest(installer=prefix):
+                self.assertEqual({name: pins[name] for name in sync}, sync)
+
+    def test_installer_sbom_covers_the_exact_inventory_and_sync_dependency_graph(self):
+        sync = builder.read_lock(ROOT / "packaging/windows-sync-cp311.lock")
+        for prefix, _extras, pins in self.inventories():
+            with self.subTest(installer=prefix):
+                bom = json.loads((ROOT / "packaging" / (prefix + "-sbom.cdx.json")).read_text(encoding="utf-8"))
+                components = {builder.canonicalize_name(row["name"]): row for row in bom["components"]}
+                self.assertEqual(len(components), len(bom["components"]))
+                self.assertEqual({name: row["version"] for name, row in components.items()},
+                                 {name: pin[0] for name, pin in pins.items()})
+                refs = {row["bom-ref"] for row in components.values()}
+                self.assertEqual(len(refs), len(components))
+                root = bom["metadata"]["component"]["bom-ref"]
+                graph = {row["ref"]: set(row.get("dependsOn", ())) for row in bom["dependencies"]}
+                self.assertEqual(len(graph), len(bom["dependencies"]))
+                self.assertLessEqual(set(graph), refs | {root})
+                self.assertTrue(all(targets <= refs for targets in graph.values()))
+                crypto, cffi, parser = (components[name]["bom-ref"] for name in ("cryptography", "cffi", "pycparser"))
+                self.assertIn(crypto, graph[root])
+                self.assertIn(cffi, graph[crypto])
+                self.assertIn(parser, graph[cffi])
+                for name, (_version, hashes) in sync.items():
+                    self.assertEqual({row["content"] for row in components[name]["hashes"]
+                                      if row["alg"] == "SHA-256"}, hashes)
+                    self.assertTrue(components[name]["licenses"])
 
 
 if __name__ == "__main__":

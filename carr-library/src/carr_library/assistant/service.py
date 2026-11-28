@@ -5,7 +5,7 @@ import json
 import os
 from pathlib import Path
 import re
-from tempfile import NamedTemporaryFile
+from tempfile import NamedTemporaryFile, TemporaryDirectory
 from time import monotonic
 from uuid import NAMESPACE_URL, uuid4, uuid5
 
@@ -15,53 +15,7 @@ from .state import JobStore, now, regular
 from .backup_receipt import capture_backup_receipt, verify_backup_receipt
 
 
-_KEYS = {
-    'library.create': ({'name'}, {'description'}),
-    'library.list': (set(), set()),
-    'library.catalog': (set(), {'after', 'limit', 'title', 'author', 'language'}),
-    'library.import': ({'path'}, set()),
-    'library.import_folder': ({'path'}, set()),
-    'library.search': ({'query'}, {'mode', 'limit', 'title', 'author', 'language'}),
-    'library.extract': ({'edition', 'name'}, set()),
-    'library.backup': ({'name'}, set()),
-    'audio.produce': (set(), {'text', 'script', 'voice_ids', 'title', 'format', 'stems'}),
-    'audio.transcribe': ({'path', 'name'},
-                         {'language', 'vad_filter', 'beam_size', 'condition_on_previous_text'}),
-}
-
-
-def _check_arguments(step):
-    required, optional = _KEYS[step.tool]
-    if set(step.arguments) - required - optional or not required <= set(step.arguments):
-        raise ValueError(f'Invalid arguments for {step.tool}.')
-    for key, value in step.arguments.items():
-        if key in ('script',):
-            if type(value) is not dict:
-                raise ValueError('A structured audio script must be an object.')
-        elif key == 'voice_ids':
-            if not isinstance(value, (tuple, list)) or not value or len(value) > 100:
-                raise ValueError('Choose one or more available voice identities.')
-            for voice in value:
-                text(voice, 'voice identity', maximum=4096)
-        elif key in ('stems', 'vad_filter', 'condition_on_previous_text'):
-            if type(value) is not bool:
-                raise ValueError('The selected switch must be true or false.')
-        elif key == 'beam_size':
-            if type(value) is not int or not 1 <= value <= 10:
-                raise ValueError('Transcription beam size must be an integer from 1 to 10.')
-        elif key == 'limit':
-            if type(value) is not int or not 1 <= value <= (500 if step.tool == 'library.catalog' else 100):
-                raise ValueError('Invalid result page size.')
-        else:
-            text(value, key, maximum=4 * 1024 * 1024 if key == 'text' else 32768)
-    if step.tool == 'audio.produce' and (('text' in step.arguments) == ('script' in step.arguments)):
-        raise ValueError('Provide either script text or a structured audio script.')
-    if 'mode' in step.arguments and step.arguments['mode'] not in ('word', 'phrase', 'terms', 'thematic', 'semantic'):
-        raise ValueError('Unsupported search mode.')
-    if step.tool == 'audio.transcribe':
-        from ..integrations.supplied_transcription import recognition_settings
-        recognition_settings({key: value for key, value in step.arguments.items()
-                              if key not in ('path', 'name')}, '<configured-local-model>')
+from .validation import validate_arguments as _check_arguments
 
 
 def _hash_file(path, cancelled=lambda: False):
@@ -87,53 +41,33 @@ def _plain(value):
 
 
 class AssistantService:
-    def __init__(self, app, *, state_dir=None, production=None, transcription=None):
+    def __init__(self, app, *, state_dir=None, production=None, interactive=None, transcription=None):
         self.app = app
-        self.store = JobStore(state_dir or (app.root / 'state' / 'assistant'))
-        if not self.store.directory.is_relative_to(app.root):
-            raise ValueError('Assistant state must remain inside this application data directory.')
+        managed = app.root / 'state' / 'assistant'
+        if state_dir is not None and local_path(state_dir, must_exist=False) != managed:
+            raise ValueError('Assistant state must use this library\'s managed state/assistant directory.')
+        self.store = JobStore(managed, writer_root=app.root)
         self.production = production
+        self.interactive = interactive
         self.transcription = transcription
 
     def preview(self, instruction, scope):
         plan = preview(instruction, scope)
+        if any(step.tool == 'audio.transcribe' for step in plan.steps):
+            from .models import Step
+            from .transcription_tools import _settings
+            plan = Plan(scope, tuple(Step(step.tool, {**step.arguments,
+                'settings': _settings(step.arguments)}) if step.tool == 'audio.transcribe'
+                else step for step in plan.steps), plan.summary)
         self.validate(plan)
-        return plan
-
-    def local_planner_profiles(self):
-        """List eligible choices without selecting or contacting a provider."""
-        from .llm import is_local_planner
-        from .profiles import ProfileStore
-        return tuple(profile for profile in ProfileStore(self.app.root / 'state' / 'providers').list()
-                     if is_local_planner(profile))
-
-    def propose_local(self, instruction, scope, *, profile_id, expected_profile=None,
-                      cancelled=lambda: False):
-        """Return a validated proposal only; submission remains a separate user action."""
-        from .llm import propose_local_plan
-        from .models import Step
-        from .profiles import ProfileStore
-        from .providers import Gateway
-        # Revalidate selected workspace/path permissions before any request. No
-        # document or directory contents are added to the instruction payload.
-        self.validate(Plan(scope, (Step('library.list'),)))
-        store = ProfileStore(self.app.root / 'state' / 'providers')
-        profile = store.get(profile_id)
-        if expected_profile is not None and profile != expected_profile:
-            raise PermissionError('The selected planning profile changed. Reopen its selection before requesting a proposal.')
-        plan = propose_local_plan(Gateway(store.directory, mode='LOCAL_ONLY'), profile,
-                                  instruction, scope, cancelled=cancelled)
-        if store.get(profile_id) != profile:
-            raise PermissionError('The selected planning profile changed. Review its settings and request a new proposal.')
-        self.validate(plan)
-        if cancelled():
-            raise InterruptedError('Local plan proposal cancelled; nothing was submitted.')
         return plan
 
     def validate(self, plan):
         if not isinstance(plan, Plan):
             raise TypeError('A typed plan is required.')
         workspace = plan.scope.workspace_id
+        if plan.scope.output_root is not None and plan.scope.output_root.is_relative_to(self.app.root):
+            raise PermissionError('Choose an output folder outside the private library.')
         if workspace is not None:
             with self.app.read(workspace):
                 pass
@@ -143,35 +77,45 @@ class AssistantService:
                 if i != 0:
                     raise ValueError('Create a new library as the first step.')
                 workspace = '<new>'
-            if step.tool not in ('library.create', 'library.list', 'library.backup', 'audio.produce', 'audio.transcribe') and not workspace:
+            if step.tool not in ('library.create', 'library.list', 'library.backup', 'audio.produce',
+                                 'document.convert', 'audio.effects', 'audio.transcribe') and not workspace:
                 raise PermissionError('Choose a library before this operation.')
             if step.tool.startswith('library.import'):
                 path = plan.scope.input(step.arguments['path'])
                 if step.tool.endswith('_folder') != path.is_dir():
                     raise ValueError('The selected input does not match the import operation.')
+            if step.tool in ('topic.list', 'topic.create', 'topic.export'):
+                from .topic_tools import validate_live
+                validate_live(self.app, step, plan.scope, workspace, plan.steps, i)
             if step.tool in ('library.extract', 'library.backup'):
                 target = plan.scope.output(step.arguments['name'])
                 if target.exists():
                     raise FileExistsError('The selected output already exists; choose another name.')
             if step.tool == 'library.backup' and not plan.scope.allow_full_backup:
                 raise PermissionError('Complete backup includes all libraries; enable that explicit permission first.')
+            if step.tool in ('document.convert', 'audio.effects'):
+                from .derived_tools import validate_live
+                validate_live(step, plan.scope, self.app.root)
+            if step.tool in ('reader.control', 'player.control'):
+                from .interactive_tools import validate_saved_scope
+                validate_saved_scope(step, plan.scope.to_dict(), str(self.app.root))
+                if self.interactive is None:
+                    raise PermissionError('Open the assistant from the selected native reader to approve this command.')
+                self.interactive.validate_step(step, plan.scope)
+            if step.tool == 'audio.transcribe':
+                from .transcription_tools import review_step
+                review_step(self.app, step, plan.scope, self.transcription)
             if step.tool == 'audio.produce':
                 if plan.scope.output_root is None:
                     raise PermissionError('Choose the audio output directory.')
                 if self.production is None:
                     raise RuntimeError('The audio production runtime is not configured.')
-            if step.tool == 'audio.transcribe':
-                from ..integrations.supplied_transcription import AUDIO_EXTENSIONS, SuppliedTranscriptionAdapter
-                source = plan.scope.input(step.arguments['path'])
-                if not source.is_file() or source.suffix.lower() not in AUDIO_EXTENSIONS:
-                    raise ValueError('Choose a supported local audio file for transcription.')
-                target = plan.scope.output(step.arguments['name'])
-                if target.exists():
-                    raise FileExistsError('The transcript output directory already exists.')
-                if not target.parent.is_dir():
-                    raise ValueError('Choose an existing parent directory for transcript exports.')
-                if not isinstance(self.transcription, SuppliedTranscriptionAdapter):
-                    raise RuntimeError('Configure and verify the supplied transcription worker before submitting this plan.')
+                if callable(getattr(self.production, 'plan', None)):
+                    self.production.plan(step.arguments, max_bytes=plan.scope.max_bytes)
+        from .topic_tools import validate_plan_outputs
+        validate_plan_outputs(plan)
+        from .transcription_tools import validate_plan_outputs as validate_transcription_outputs
+        validate_transcription_outputs(plan)
         return plan
 
     def submit(self, plan):
@@ -182,14 +126,20 @@ class AssistantService:
                   'status': 'queued', 'message': '', 'workspace': plan.scope.workspace_id,
                   'steps': [{'status': 'pending', 'intent': {}, 'result': None, 'message': ''}
                             for _ in plan.steps]}
+        for index, step in enumerate(plan.steps):
+            if step.tool == 'audio.transcribe':
+                from .transcription_tools import initial_intent
+                operation_id = uuid5(NAMESPACE_URL, 'carr-assistant:' + identity + ':' + str(index)).hex
+                record['steps'][index]['intent'] = initial_intent(
+                    self.app, step, plan.scope, self.transcription, operation_id)
         self.store.save(record)
         return identity
 
     def _load(self, identity):
         record = self.store.load(identity)
-        plan = Plan.from_dict(record['plan'])
-        if record.get('data_dir') != str(self.app.root):
+        if record.get('requires_reapproval') or record.get('data_dir') != str(self.app.root):
             raise PermissionError('This job belongs to another data directory; review and submit its plan again.')
+        plan = Plan.from_dict(record['plan'])
         if record.get('plan_sha256') != plan.digest or len(record.get('steps', [])) != len(plan.steps):
             raise ValueError('The approved assistant plan has changed.')
         if record.get('status') not in ('queued', 'running', 'paused', 'cancelled', 'complete', 'attention', 'failed'):
@@ -215,11 +165,47 @@ class AssistantService:
                          record.get('message', ''))
 
     def get(self, identity):
-        record, _ = self._load(identity)
+        record = self.store.load(identity)
+        if record.get('requires_reapproval') or record.get('data_dir') != str(self.app.root):
+            return JobReport(identity, 'attention', 0, len(record['steps']), (),
+                'Restored plan requires review and a new approval; its original paths were preserved.')
+        try:
+            record, _ = self._load(identity)
+        except (OSError, ValueError) as exc:
+            # Listing does not grant execution authority. Keep a structurally
+            # validated checkpoint visible when its saved paths disappear or
+            # become unsafe; run/resume still require the unchanged _load.
+            return self._report({**record, 'status': 'attention', 'message': (
+                'Saved paths are unavailable or no longer permitted. Restore the original '
+                'folders or review and submit a new plan. ' + str(exc))[:2000]})
         return self._report(record)
 
     def jobs(self):
-        return tuple(self.get(identity) for identity in self.store.identities())
+        reports = []
+        for identity in self.store.identities():
+            try:
+                reports.append(self.get(identity))
+            except (ValueError, OSError) as exc:
+                # One damaged checkpoint must not hide the other saved jobs.
+                reports.append(JobReport(identity, 'attention', 0, 0, (),
+                    'Saved job is damaged or unavailable; it was not run. ' + str(exc)[:1000]))
+        return tuple(reports)
+
+    def workflow_templates(self):
+        """Open inert named drafts; no scope, model or execution is approved."""
+        from .templates import WorkflowTemplateStore
+        return WorkflowTemplateStore(self.app.root)
+
+    def review_instruction(self, identity):
+        """Copy saved steps into an unapproved draft, without transferring scope.
+
+        The caller must select current input/output/library permissions and run
+        the normal preview/submit flow. Original path arguments remain literal;
+        this does not edit a checkpoint or authorize resuming it elsewhere.
+        """
+        saved = self.store.load(identity)['plan']
+        return json.dumps({key: saved[key] for key in ('schema', 'steps', 'summary')},
+                          ensure_ascii=False, indent=2)
 
     def pause(self, identity):
         self._load(identity)
@@ -235,8 +221,9 @@ class AssistantService:
         return self.run(identity, **kwargs)
 
     def _artifacts(self, result, scope, cancelled):
+        from ..audio.jobs import regular_file
         raw = result.get('artifacts', []) if isinstance(result, dict) else []
-        if not isinstance(raw, (list, tuple)):
+        if not isinstance(raw, (list, tuple)) or len(raw) > scope.max_files:
             raise ValueError('Tool artifact manifest is invalid.')
         records = []
         total = 0
@@ -245,7 +232,9 @@ class AssistantService:
             path = local_path(value)
             if scope.output_root is None or not path.is_relative_to(local_path(scope.output_root)):
                 raise PermissionError('A tool returned an artifact outside the selected output folder.')
-            size = regular(path).st_size
+            # Read-only render/cache artifacts may be intentional hard links.
+            # Private assistant checkpoint files retain their stricter rule.
+            size = regular_file(path).st_size
             total += size
             if total > scope.max_bytes:
                 raise ValueError('Produced artifacts exceed the approved byte budget.')
@@ -259,14 +248,12 @@ class AssistantService:
         current = self._artifacts(result, scope, cancelled)
         if current != before:
             raise ValueError('A completed artifact changed; the job was not silently re-rendered.')
-        if 'manifest_sha256' in result and 'directory' in result:
-            directory = local_path(result['directory'])
+        if 'backup_receipt' in result:
+            directory = local_path(result.get('directory', ''))
             if scope.output_root is None or not directory.is_relative_to(local_path(scope.output_root)):
-                raise PermissionError('Backup is outside the selected output folder.')
-            if 'backup_receipt' not in result:
-                raise ValueError('This older backup result needs full verification before reuse.')
-            verify_backup_receipt(directory, result['backup_receipt'],
-                max_bytes=scope.max_bytes, max_files=scope.max_files, cancelled=cancelled)
+                raise PermissionError('The completed backup is outside the approved output directory.')
+            verify_backup_receipt(directory, result['backup_receipt'], max_bytes=scope.max_bytes,
+                                  max_files=scope.max_files, cancelled=cancelled)
 
     def run(self, identity, *, cancelled=lambda: False, progress=None):
         with self.store.lock(identity):
@@ -288,7 +275,18 @@ class AssistantService:
                         with self.app.read(record['workspace']):
                             pass
                     if checkpoint['status'] == 'complete':
-                        self._verify_completed(checkpoint['result'], plan.scope, stopped)
+                        try:
+                            if step.tool in ('topic.list', 'topic.create', 'topic.export'):
+                                from .topic_tools import verify_completed
+                                verify_completed(self.app, step, plan.scope, record, checkpoint, stopped, index)
+                            if step.tool == 'audio.transcribe':
+                                from .transcription_tools import verify_completed
+                                verify_completed(self.app, step, plan.scope, checkpoint['intent'],
+                                                 checkpoint['result'], cancelled=stopped)
+                            self._verify_completed(checkpoint['result'], plan.scope, stopped)
+                        except Exception:
+                            checkpoint['status'] = 'failed'
+                            raise
                         continue
                     checkpoint['status'] = 'running'
                     checkpoint['message'] = ''
@@ -299,12 +297,26 @@ class AssistantService:
                     result = _plain(result)
                     if not isinstance(result, dict):
                         raise RuntimeError('Tool returned an invalid result.')
-                    result['artifacts'] = self._artifacts(result, plan.scope, stopped)
+                    if step.tool in ('document.convert', 'audio.effects'):
+                        from .derived_tools import validate_result
+                        validate_result(step, result, plan.scope.to_dict(), checkpoint['intent'])
+                        # Publication is complete. Preserve that outcome if Stop
+                        # arrives while the final artifact hashes are checked.
+                        result['artifacts'] = self._artifacts(result, plan.scope, lambda: False)
+                    elif step.tool in ('topic.export', 'audio.transcribe'):
+                        # Existing publisher returned a committed file; a late Stop
+                        # cannot turn that publication into a retry.
+                        result['artifacts'] = self._artifacts(result, plan.scope, lambda: False)
+                    else:
+                        result['artifacts'] = self._artifacts(result, plan.scope, stopped)
                     checkpoint['result'] = result
                     checkpoint['status'] = 'complete'
                     persist()
                 record['status'] = 'complete'
-                record['message'] = 'All selected operations completed and returned artifacts were verified.'
+                record['message'] = (
+                    'All reviewed commands completed. A playback-start receipt confirms initiation, not completion of a book.'
+                    if any(step.tool in ('reader.control', 'player.control') for step in plan.steps)
+                    else 'All selected operations completed and returned artifacts were verified.')
             except InterruptedError as exc:
                 command = self.store.control(identity)
                 record['status'] = 'cancelled' if command == 'cancel' else 'paused'
@@ -325,10 +337,21 @@ class AssistantService:
     def _input_files(self, path, scope, cancelled):
         accepted = []
         total = 0
+        # The shared intake registry includes additional document formats when
+        # that component is installed. There is no independent suffix catalogue.
+        from ..ingest.retained_assets import SUFFIXES
+        suffixes = set(SUFFIXES.values())
+        try:
+            from ..extract.document_formats import FORMAT_BY_SUFFIX
+        except ModuleNotFoundError as exc:
+            if exc.name != 'carr_library.extract.document_formats':
+                raise
+        else:
+            suffixes.update(FORMAT_BY_SUFFIX)
         def add(candidate):
             nonlocal total
             candidate = scope.input(candidate)
-            if candidate.suffix.lower() not in ('.txt', '.pdf', '.docx', '.epub'):
+            if candidate.suffix.lower() not in suffixes:
                 return
             size = regular(candidate).st_size
             total += size
@@ -349,13 +372,50 @@ class AssistantService:
                         raise InterruptedError('Folder scan stopped.')
                     add(Path(directory) / name)
         if not accepted:
-            raise ValueError('No supported PDF, DOCX, EPUB or UTF-8 TXT files were found.')
+            raise ValueError('No supported local document files were found in the selected scope.')
         return tuple(sorted(accepted))
 
     def _execute(self, step, scope, record, checkpoint, persist, cancelled, progress, index):
         args = step.arguments
         workspace = record['workspace']
         intent = checkpoint['intent']
+        if step.tool == 'audio.transcribe':
+            from .transcription_tools import execute
+            operation_id = uuid5(NAMESPACE_URL, 'carr-assistant:' + record['id'] + ':' + str(index)).hex
+            def transcription_progress(message):
+                if progress:
+                    progress(index, len(record['steps']), message)
+            return execute(self.app, self.transcription, step, scope, intent, persist,
+                           operation_id=operation_id, cancelled=cancelled, progress=transcription_progress)
+        if step.tool in ('topic.list', 'topic.create', 'topic.export'):
+            from .topic_tools import execute
+            return execute(self.app, step, scope, record, checkpoint, persist, cancelled, index)
+        if step.tool in ('document.convert', 'audio.effects'):
+            from .derived_tools import execute
+            operation_id = uuid5(NAMESPACE_URL, 'carr-assistant:' + record['id'] + ':' + str(index)).hex
+            def derivative_progress(message):
+                if progress:
+                    progress(index, len(record['steps']), message)
+            return execute(step, scope, self.app.root, intent, persist, operation_id=operation_id,
+                           cancelled=cancelled, progress=derivative_progress)
+        if step.tool in ('reader.control', 'player.control'):
+            from .interactive_tools import validate_result
+            if intent:
+                raise PermissionError('This native command may already have been dispatched. Review the current reader and submit a new plan; it will not be replayed.')
+            if self.interactive is None:
+                raise PermissionError('The selected native reader is unavailable. Open its assistant and review a new plan.')
+            self.interactive.validate_step(step, scope)
+            if cancelled():
+                raise InterruptedError('The native command stopped before dispatch.')
+            operation_id = uuid5(NAMESPACE_URL, 'carr-assistant:' + record['id'] + ':' + str(index)).hex
+            intent['interactive_dispatch'] = operation_id
+            persist()  # A crash after this point never silently replays a command.
+            def interactive_progress(message):
+                if progress:
+                    progress(index, len(record['steps']), message)
+            result = self.interactive.execute_step(step, scope, operation_id=operation_id,
+                                                   cancelled=cancelled, progress=interactive_progress)
+            return validate_result(step, result, scope.to_dict(), intent)
         if step.tool == 'library.create':
             from ..application import _name
             from ..catalog.membership import _metadata
@@ -413,8 +473,12 @@ class AssistantService:
             return {'batch_id': intent['batch'], 'counts': batch['counts'],
                     'editions': [r['edition_id'] for r in batch['rows'] if r['state'] == 'complete']}
         if step.tool == 'library.search':
-            return {'results': _plain(self.app.search(workspace, cancelled=cancelled,
-                                                      timeout=min(60.0, scope.max_seconds), **args)),
+            page = self.app.search_page(workspace, cancelled=cancelled,
+                timeout=min(60.0, scope.max_seconds), **args)
+            return {'results': _plain(page.results), 'next_cursor': page.next_cursor,
+                    'page_number': page.page_number, 'ordering': page.ordering,
+                    'source_pages_examined': page.source_pages_examined,
+                    'total_source_pages': page.total_source_pages,
                     'notice': 'Search excerpts retain source verification status; assistant output does not approve quotations.'}
         if step.tool == 'library.extract':
             from ..reader.reading_desk import ReadingDesk
@@ -459,32 +523,55 @@ class AssistantService:
             target = scope.output(args['name'])
             if target.exists():
                 raise FileExistsError('Backup output already exists. Review its manifest before submitting a new backup.')
-            checksum = self.app.backup(target, max_bytes=scope.max_bytes, cancelled=cancelled)
-            receipt = capture_backup_receipt(target, checksum, max_bytes=scope.max_bytes,
-                max_files=scope.max_files, cancelled=cancelled)
-            return {'directory': str(target), 'manifest_sha256': checksum, 'backup_receipt': receipt.to_dict(),
+            target.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+            local_path(target.parent)
+            # The existing complete backup service owns the database, reader
+            # state and future sidecars. Stage its full result and verify every
+            # byte before publishing inside the approved output directory.
+            with TemporaryDirectory(prefix='.assistant-backup-', dir=target.parent) as temporary:
+                staged = Path(temporary) / 'backup'
+                if cancelled():
+                    raise InterruptedError('Backup cancelled before creation.')
+                checksum = self.app.backup(staged, cancelled=cancelled)
+                receipt = capture_backup_receipt(staged, checksum, max_bytes=scope.max_bytes,
+                    max_files=scope.max_files, cancelled=cancelled)
+                if cancelled():
+                    raise InterruptedError('Backup cancelled before publication.')
+                from ..library_backup import _sync_directory
+                target.mkdir(mode=0o700)
+                # Exclusive mkdir reserves the new directory; manifest last
+                # remains the existing backup service's completion boundary.
+                for child in sorted(staged.iterdir()):
+                    if child.name != 'manifest.json':
+                        child.rename(target / child.name)
+                _sync_directory(target)
+                (staged / 'manifest.json').rename(target / 'manifest.json')
+                _sync_directory(target)
+                _sync_directory(target.parent)
+            return {'directory': str(target), 'manifest_sha256': checksum,
+                    'backup_receipt': receipt.to_dict(),
                     'artifacts': [str(target / 'manifest.json')], 'includes': 'All workspaces in this application data directory'}
         if step.tool == 'audio.produce':
             if self.production is None:
                 raise RuntimeError('Audio production is unavailable.')
             settings = dict(args)
             settings['operation_id'] = uuid5(NAMESPACE_URL, 'carr-assistant:' + record['id'] + ':' + str(index)).hex
+            settings['_artifact_budget_bytes'] = scope.max_bytes
             def production_progress(message):
                 if progress:
                     progress(index, len(record['steps']), message)
-            result = self.production(settings, local_path(scope.output_root), cancelled, production_progress)
+            from ..security.admission import operation_context, admitted_operation
+            from .production import LocalProduction
+            authority = getattr(self.app, 'trust_controller', None)
+            with operation_context(authority):
+                if isinstance(self.production, LocalProduction) and self.production._default_renderer:
+                    # The actual renderer first verifies a completed-output
+                    # replay, then admits only a new synthesis operation.
+                    result = self.production(settings, local_path(scope.output_root), cancelled, production_progress)
+                else:
+                    with admitted_operation(authority, 'audio.render'):
+                        result = self.production(settings, local_path(scope.output_root), cancelled, production_progress)
             if not isinstance(result, dict) or not result.get('artifacts'):
                 raise RuntimeError('Audio production did not return completed audio artifacts.')
             return result
-        if step.tool == 'audio.transcribe':
-            if self.transcription is None:
-                raise RuntimeError('The reviewed supplied transcription installation is unavailable.')
-            def transcription_progress(message):
-                if progress:
-                    progress(index, len(record['steps']), message)
-            return self.transcription.transcribe(scope.input(args['path']), scope.output(args['name']),
-                options={key: value for key, value in args.items() if key not in ('path', 'name')},
-                intent=intent, persist=persist, state_dir=self.store.directory,
-                max_bytes=scope.max_bytes, max_seconds=scope.max_seconds,
-                cancelled=cancelled, progress=transcription_progress)
         raise ValueError('Unknown assistant tool.')

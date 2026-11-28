@@ -1,0 +1,34 @@
+{
+  "schema": 1,
+  "status": "PASS",
+  "source_commit": "d9db9f676bd7b0d282a2c6e2512b20f02b603b65",
+  "source_tree": "16c96abd94291f5d4e335d4de31985bdab7b38b3",
+  "run_id": 45986888698,
+  "job_id": 140464703786,
+  "run_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/45986888698",
+  "actual_windows": true,
+  "isolated_installed_package": true,
+  "actual_outbound_firewall": true,
+  "workload": "Fresh valid synthetic 2049 MiB PDF; native text extraction and rendering, retained original and byte readback.",
+  "executed_gate_bounds": {
+    "input_bytes_greater_than": 2148532224,
+    "input_bytes_less_than": 2149580800,
+    "retained_bytes_multiple_of_original": 2,
+    "maximum_parser_read_bytes": 16777216,
+    "python_traced_peak_less_than_bytes": 33554432,
+    "process_rss_delta_less_than_bytes": 67108864,
+    "exact_installed_source_modules": 4
+  },
+  "raw_metric_location": "Artifact JSON. Exact timing/RSS values have not been independently read from the ZIP; only the executed strict gate outcome is reported here.",
+  "artifact": {
+    "id": 15193017635,
+    "size_bytes": 5209,
+    "sha256": "18f1e783a0620f4855c8390795d98f99002285cae42b24f3d2689269eb330ed9"
+  },
+  "limits": {
+    "real_user_corpus": "NOT_RUN",
+    "multi_gigabyte_full_backup": "NOT_RUN",
+    "nvda": "NOT_RUN",
+    "later_candidate": "REQUIRES_FRESH_EXECUTION"
+  }
+}

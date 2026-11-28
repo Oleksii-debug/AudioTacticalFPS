@@ -214,3 +214,87 @@ def test_newer_draft_is_not_replaced_by_an_earlier_refresh(evidence):
     complete(snapshot)
     assert current.note.value == 'A newer draft'
     assert 'newer unsaved note' in current.status.value
+
+
+
+def test_save_completion_is_acknowledged_only_after_the_real_transaction(evidence):
+    from carr_library.ui.save_all import SaveResult
+    current, app, _ = evidence
+    replies = []
+    current.note.SetValue('Committed after worker completion')
+    assert current.save_note(completed=replies.append)
+    assert replies == [] and app.evidence(current.workspace, current.topic)[0].note == 'Saved note'
+    assert execute(current)
+    assert replies == [SaveResult(True)]
+    assert app.evidence(current.workspace, current.topic)[0].note == 'Committed after worker completion'
+
+
+def test_save_all_keeps_real_newer_note_edits_and_reports_the_remaining_draft(evidence):
+    from carr_library.ui.productivity import install_save_coordinator, save_all
+    current, app, _ = evidence
+    current.frame._restore_note_focus = Mock()
+    coordinator = install_save_coordinator(current.frame)
+    current.note.SetValue('Saved snapshot')
+    assert save_all(current.frame)
+    assert coordinator.busy and not current.frame.report.called
+    _, operation, complete, _ = current.frame.run_job.call_args.args
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        saved = pool.submit(operation).result()
+    current.note.SetValue('Newer unsaved typing')
+    complete(saved)
+    assert app.evidence(current.workspace, current.topic)[0].note == 'Saved snapshot'
+    assert current.note.GetValue() == 'Newer unsaved typing' and current._dirty()
+    assert not coordinator.busy
+    assert 'Unsaved changes remain' in current.frame.report.call_args.args[0]
+
+
+def test_save_completion_failure_keeps_the_actual_transaction_rolled_back(evidence):
+    from carr_library.ui.save_all import SaveResult
+    current, app, _ = evidence
+    transaction = current.transaction
+    @contextmanager
+    def fail_commit():
+        with transaction() as service:
+            yield service
+            raise OSError('Synthetic commit failure')
+    current.transaction = fail_commit
+    current.note.SetValue('Retained after failure')
+    replies = []
+    current.save_note(completed=replies.append)
+    assert not execute(current)
+    _, _, _, failed = current.frame.run_job.call_args.args
+    failed(OSError('Duplicate late error'))
+    assert len(replies) == 1 and replies[0].saved is False
+    assert current.note.GetValue() == 'Retained after failure' and current._dirty()
+    assert app.evidence(current.workspace, current.topic)[0].note == 'Saved note'
+
+
+@pytest.mark.parametrize('changed', ['scope', 'epoch', 'closed'])
+def test_late_saved_note_acknowledges_changed_view_without_overwriting_it(evidence, changed):
+    current, app, _ = evidence
+    replies = []
+    current.note.SetValue('Snapshot committed by worker')
+    current.save_note(completed=replies.append)
+    _, operation, complete, _ = current.frame.run_job.call_args.args
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        saved = pool.submit(operation).result()
+    current.note.SetValue('New visible draft')
+    if changed == 'scope':
+        current.frame.active = ('other-library', 'other-topic')
+    elif changed == 'epoch':
+        current._evidence_epoch += 1
+    else:
+        current.frame._closing = True
+    complete(saved)
+    assert len(replies) == 1 and not replies[0].saved and 'view changed' in replies[0].message
+    assert current.note.GetValue() == 'New visible draft'
+    assert app.evidence(current.workspace, current.topic)[0].note == 'Snapshot committed by worker'
+
+
+def test_save_requested_after_closing_never_starts_a_worker(evidence):
+    current, _, _ = evidence
+    current.frame._closing = True
+    replies = []
+    assert not current.save_note(completed=replies.append)
+    assert len(replies) == 1 and not replies[0].saved
+    current.frame.run_job.assert_not_called()

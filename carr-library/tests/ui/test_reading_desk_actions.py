@@ -40,6 +40,35 @@ def test_full_source_reading_resume_and_session_history(source):
     assert app._selections == {}
 
 
+def test_reading_copy_preparation_is_background_and_preserves_exact_source(source, monkeypatch):
+    from unittest.mock import Mock
+    from carr_library.ui.reading_desk import ReadingDialog
+    from carr_library.ui import narration_editor
+    app, workspace, book, desk, raw = source
+    controller = ReaderController(desk, ReadingState(app.root))
+    controller.start()
+    dialog = object.__new__(ReadingDialog)
+    dialog.controller = controller
+    dialog.dialog, dialog.text = Mock(), Mock()
+    dialog._run = Mock()
+    opened = Mock()
+    monkeypatch.setattr(narration_editor, 'open_narration_editor', opened)
+    dialog.edit_reading_copy()
+    opened.assert_not_called()
+    title, prepare, finish = dialog._run.call_args.args
+    assert title == 'Preparing editable reading copy'
+    page = prepare()
+    page = replace(page, metadata=replace(page.metadata, title='A' * 400))
+    finish(page)
+    project = opened.call_args.args[2]
+    assert len(project.title) == 200
+    assert project.original_text == raw.split('\f')[0]
+    assert project.source_location == controller.current.location
+    assert project.current_text == project.original_text
+    assert app.assets.resolve(book['asset']).read_bytes().decode('utf-8') == raw
+    dialog.text.SetFocus.assert_called_once()
+
+
 def test_history_forward_tail_is_replaced_after_new_navigation(source):
     app, _, _, desk, _ = source
     reader = ReaderController(desk, ReadingState(app.root))
@@ -241,10 +270,6 @@ class Dialogs:
             callback()
         return self.chosen_path
 
-    def approve_export(self, parent, path, *, private_root):
-        from carr_library.research.export_file import capture_export_destination
-        return capture_export_destination(path, private_root=private_root)
-
 
 def test_open_selected_book_preserves_unsaved_notes_and_restores_focus(source):
     app, workspace, _, _, raw = source
@@ -306,17 +331,6 @@ def test_state_export_does_not_overwrite_private_database(source):
     assert 'outside' in frame.messages[-1]
 
 
-def test_reading_export_preserves_file_created_while_job_is_queued(source, tmp_path):
-    app, workspace, _, _, _ = source
-    target = tmp_path / 'reading.json'
-    frame = Frame(app, workspace)
-    frame.before_operation = lambda: target.write_bytes(b'Independent new file')
-    ReadingActions(frame, dialogs=Dialogs(path=target)).export_state()
-    assert target.read_bytes() == b'Independent new file'
-    assert 'destination changed' in frame.messages[-1]
-    assert not list(tmp_path.glob('.research-export-*'))
-
-
 def test_import_rejects_stale_source_before_bookmark_publication(source, tmp_path):
     app, workspace, book, desk, _ = source
     state = ReadingState(app.root)
@@ -333,3 +347,50 @@ def test_import_rejects_stale_source_before_bookmark_publication(source, tmp_pat
     ReadingActions(frame, dialogs=Dialogs(path=target)).import_state()
     assert 'archived' in frame.messages[-1]
     assert state.bookmarks(workspace, book['edition']) == ()
+
+
+@pytest.mark.parametrize('existing', [False, True], ids=['new', 'confirmed-existing'])
+def test_reading_state_export_keeps_destination_changes_after_selection(
+        source, tmp_path, monkeypatch, existing):
+    app, workspace, _, _, _ = source
+    frame = Frame(app, workspace)
+    target = tmp_path / 'reading-state.json'
+    if existing:
+        target.write_bytes(b'Approved previous reading state')
+    monkeypatch.setattr('carr_library.ui.export_destination._confirm_replace', lambda *_: True)
+    frame.before_operation = lambda: target.write_bytes(b'Externally changed reading state')
+    ReadingActions(frame, dialogs=Dialogs(path=target)).export_state()
+    assert target.read_bytes() == b'Externally changed reading state'
+    assert 'destination changed' in frame.messages[-1]
+
+
+def test_reading_export_reports_saved_receipt_without_losing_cleanup_notice(source, tmp_path, monkeypatch):
+    from carr_library.research.export_file import ExportReceipt
+    from carr_library.ui import reading_desk as ui
+    app, workspace, _, _, _ = source
+    target = tmp_path / 'reading.json'
+    frame = Frame(app, workspace)
+    writer, receipts = ui.write_export, []
+    def saved(*args, **kwargs):
+        receipt = writer(*args, **kwargs)
+        receipts.append(receipt)
+        return ExportReceipt(receipt.path, 'Saved; temporary cleanup needs attention.')
+    monkeypatch.setattr(ui, 'write_export', saved)
+    ReadingActions(frame, dialogs=Dialogs(path=target)).export_state()
+    assert len(receipts) == 1 and target.is_file()
+    assert 'Saved; temporary cleanup needs attention.' in frame.messages[-1]
+
+
+def test_reading_export_honours_cancellation_during_final_staging(source, tmp_path, monkeypatch):
+    from carr_library.research import export_file
+    app, workspace, _, _, _ = source
+    target = tmp_path / 'reading.json'
+    frame = Frame(app, workspace)
+    original = export_file.os.fsync
+    def flush_then_cancel(descriptor):
+        original(descriptor)
+        frame.cancel_event.set()
+    monkeypatch.setattr(export_file.os, 'fsync', flush_then_cancel)
+    ReadingActions(frame, dialogs=Dialogs(path=target)).export_state()
+    assert not target.exists() and not list(tmp_path.glob('.research-export-*'))
+    assert 'cancelled' in frame.messages[-1]

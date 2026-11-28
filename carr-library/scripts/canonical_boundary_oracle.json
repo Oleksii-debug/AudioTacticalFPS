@@ -1,0 +1,64 @@
+{
+  "schema": 1,
+  "kind": "canonical-export-and-native-lock-boundaries",
+  "execution_status": "NOT_RUN",
+  "total_cases": 60,
+  "added_cases": 24,
+  "helpers": [],
+  "modules": {
+    "carr_library.operations._locks": "src/carr_library/operations/_locks.py",
+    "carr_library.operations._state": "src/carr_library/operations/_state.py",
+    "carr_library.operations.broker": "src/carr_library/operations/broker.py",
+    "carr_library.research.export_file": "src/carr_library/research/export_file.py",
+    "carr_library.native_file_metadata": "src/carr_library/native_file_metadata.py"
+  },
+  "source_commits": {
+    "native_lock": "b83c134032ccf12de4d2304e22f3336a86796141",
+    "export": "c3db8a858430506d97c30ebe94f512e1863982a9"
+  },
+  "constraints": [
+    "All existing resource process-entrypoint and export regression cases remain required.",
+    "The six canonical lock cases use this composition's actual local asset path adapter.",
+    "Only disappearance of an unheld lock leaf is tolerated; parent/type/link/inspection errors remain visible.",
+    "Existing approved export metadata is checked before native metadata queries or byte hashing; matching metadata still needs the existing full digest."
+  ],
+  "tests": {
+    "tests/operations/test_resources.py": {
+      "test_unheld_lock_disappearance_during_preflight_can_be_acquired": 2,
+      "test_unheld_lock_does_not_hide_missing_parent_or_validation_error": 1,
+      "test_owned_lock_still_refuses_a_disappeared_path": 1,
+      "test_declared_cpu_memory_capacity_and_release_on_exception": 1,
+      "test_request_above_policy_never_waits_or_starts": 1,
+      "test_exclusive_configured_gpus_and_device_ids": 1,
+      "test_real_free_disk_and_same_volume_commitments": 1,
+      "test_multiple_output_directories_are_admitted_as_one_atomic_request": 1,
+      "test_waiting_cancellation_is_prompt_and_adds_no_reservation": 1,
+      "test_active_timeout_is_stop_signal_never_forced_reclaim": 1,
+      "test_policy_persistence_cannot_invalidate_live_work": 1,
+      "test_one_runtime_coordinator_cannot_bind_two_policies": 1,
+      "test_capacity_freed_after_deadline_does_not_start_late_worker": 1,
+      "test_actual_spawned_process_crash_releases_without_pid_reaping": 1,
+      "test_actual_process_contention_has_no_overlapping_admission": 1,
+      "test_bad_live_metadata_stops_admission_and_unlock_recovers": 1,
+      "test_failed_publication_releases_native_lock": 1,
+      "test_runtime_leases_outside_backup_state_and_truthful_capabilities": 1,
+      "test_paths_do_not_follow_links_and_invalid_requests_are_rejected": 1,
+      "test_native_release_can_remove_the_file_during_unheld_preflight": 2,
+      "test_optional_lock_preflight_still_rejects_hardlinks_without_touching_bytes": 2,
+      "test_lock_leaf_disappears_during_local_asset_check": 2,
+      "test_disappearing_lock_leaf_does_not_authorize_missing_parent": 2,
+      "test_unheld_lock_inspection_errors_never_become_absence": 4,
+      "test_unheld_lock_resolver_prefix_after_leaf_deletion_preserves_native_ownership": 2,
+      "test_unheld_lock_rejects_caller_namespaces_before_parent_admission": 6
+    },
+    "tests/reader/test_export_reconciliation.py": {
+      "test_unapproved_file_is_not_opened": 6,
+      "test_default_creation_does_not_clobber_at_publication": 2,
+      "test_hash_cancellation_stops_after_first_real_block": 2,
+      "test_capture_cancelled_before_open": 1,
+      "test_receipt_and_native_digest_shape_are_preserved": 1,
+      "test_mismatched_existing_approval_rejected_before_open": 4,
+      "test_replaced_existing_destination_not_opened": 4
+    }
+  }
+}

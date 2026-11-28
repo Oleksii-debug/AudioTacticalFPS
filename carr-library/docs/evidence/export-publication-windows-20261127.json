@@ -1,0 +1,63 @@
+{
+  "schema": 1,
+  "source_commit": "c5e37ec798cca301e8767577550ebf33e142abe4",
+  "source_tree": "c00335da0fd3b05ae135a639839a2cd484068962",
+  "run_id": 46004624089,
+  "job_id": 140524570322,
+  "status": "PASS",
+  "source": {
+    "passed": 149,
+    "failed": 0,
+    "skipped": 0
+  },
+  "installed": {
+    "actual_windows": true,
+    "cases": {
+      "tests.citations.test_bibliography_workbench": 37,
+      "tests.reader.test_export_change_time": 24,
+      "tests.reader.test_export_no_clobber": 40,
+      "tests.reader.test_export_publication_boundary": 6,
+      "tests.reader.test_export_reconciliation": 16,
+      "tests.ui.test_citation_styles_jobs": 26
+    },
+    "failed": 0,
+    "full_platform": "NOT_CLAIMED",
+    "installed_package": true,
+    "isolated": true,
+    "module_origins": {
+      "carr_library.bibliography_cli": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\bibliography_cli.py",
+        "sha256": "52186890028f7e1a9bcb5936603067372cc7b7c454314946dabe99841912066e"
+      },
+      "carr_library.citations.bibliography_workbench": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\citations\\bibliography_workbench.py",
+        "sha256": "910a1590945a7602e57957c70cbf887d14d3b4177b7ba08d3e580d03d9afda70"
+      },
+      "carr_library.native_file_metadata": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\native_file_metadata.py",
+        "sha256": "cabb32f0f8b5a6eb717fba829ffe1e4ab060be59cf12ca911208cf78a79fb4c9"
+      },
+      "carr_library.research.export_file": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\research\\export_file.py",
+        "sha256": "0d05098e74fc81a1085e7166bffb91ef115e9ce31b93f832e3e4dbdfe3778033"
+      },
+      "carr_library.ui.citation_styles_dialog": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ui\\citation_styles_dialog.py",
+        "sha256": "29e64bea7c72b5d9533733c3001e8026b3d2f3a4c2b5164c79e01e7a79d8ea76"
+      }
+    },
+    "nvda": "NOT_RUN",
+    "passed": 149,
+    "sealed_installer": "NOT_RUN",
+    "skipped": 0,
+    "source_commit": "c5e37ec798cca301e8767577550ebf33e142abe4",
+    "source_tree": "c00335da0fd3b05ae135a639839a2cd484068962",
+    "status": "PASS"
+  },
+  "artifact": {
+    "id": 15201969443,
+    "bytes": 9293,
+    "sha256": "06dbce497dd20889558b844e72893c02f8fec71ee1fe683ccbc6ccd2381bdef8"
+  },
+  "later_boundary_changes": "The separate658259b710df23cd54b5cd1c86743990ba67c2cf boundary gate adds4 export cases and12 resource cases; it is independently52source+52installedPASS. This149/149 record is not relabeled as153/153."
+}

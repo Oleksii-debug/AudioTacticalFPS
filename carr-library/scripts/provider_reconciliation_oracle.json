@@ -1,0 +1,108 @@
+{
+  "schema": 1,
+  "base": "275a882be727aec2f2ed72e5f543fd449fcd40c3",
+  "source_status": "NOT_RUN",
+  "installed_status": "NOT_RUN",
+  "total_cases": 96,
+  "tests": {
+    "tests/e2e/test_provider_credential_echo.py": {
+      "test_llm_reflection_is_rejected_before_any_completed_receipt": 6,
+      "test_binary_audio_credential_reflection_cannot_complete": 3,
+      "test_translation_reflection_remains_fail_closed": 6,
+      "test_native_task_controller_never_publishes_reflected_credentials": 2,
+      "test_local_requests_without_credentials_remain_available": 2,
+      "test_duplicate_json_cannot_hide_an_escaped_credential": 4,
+      "test_unknown_google_metadata_cannot_escape_as_completed_raw_bytes": 4
+    },
+    "tests/e2e/test_provider_profile_import.py": {
+      "test_import_retains_settings_without_vault_bindings_or_authority": 6,
+      "test_import_rejects_untrusted_or_unbounded_documents_without_mutation": 13,
+      "test_conflict_refuses_the_complete_batch_without_overwriting_an_account": 1,
+      "test_atomic_publication_failure_preserves_prior_accounts": 1,
+      "test_real_concurrent_imports_use_one_writer_and_never_lose_an_account": 2,
+      "test_empty_export_is_a_noop_without_creating_settings": 1,
+      "test_native_controller_review_is_read_only_and_import_requires_explicit_approval": 1,
+      "test_reviewed_bytes_do_not_change_when_the_external_export_changes_later": 1,
+      "test_import_cannot_follow_a_replaced_library_root": 1,
+      "test_native_review_rejects_a_hard_linked_export": 1,
+      "test_native_review_refuses_invalid_inputs_before_any_import": 2
+    },
+    "tests/storage/test_provider_recovery.py": {
+      "test_complete_roundtrip_rebackup_keeps_history_without_restoring_active_authority": 4,
+      "test_changed_live_source_after_capture_refuses_complete_manifest": 2,
+      "test_appearing_previously_absent_source_is_not_silently_omitted": 2,
+      "test_rehashed_untrusted_recovery_data_never_becomes_valid_typed_state": 12,
+      "test_outer_manifest_rehash_cannot_hide_changed_snapshot_identity": 1,
+      "test_unreadable_existing_namespace_fails_instead_of_being_dropped": 3,
+      "test_active_or_orphan_journal_is_visible_refusal": 3,
+      "test_foreign_or_corrupt_live_ledger_never_runs_a_recovery_path": 4,
+      "test_historical_ledger_without_decoded_receipt_column_is_captured_read_only": 1,
+      "test_recovery_resource_limits_refuse_complete_backup": 5,
+      "test_cancelled_capture_never_publishes_a_complete_backup": 1,
+      "test_explicit_recovery_import_and_approved_history_export_use_existing_services": 1
+    }
+  },
+  "network": "Strict offline selectors; the existing separately allowlisted 38 real TCP cases remain unchanged.",
+  "native": {
+    "status": "NOT_RUN",
+    "probe": "scripts/windows_provider_recovery_smoke.py",
+    "arguments": [
+      "--work",
+      "<fresh-owned-directory>"
+    ],
+    "checks": [
+      "actual_complete_backup_retains_provider_record",
+      "actual_complete_backup_verifies",
+      "actual_restore_keeps_profiles_and_ledger_inactive",
+      "actual_recovery_binds_exact_disconnected_settings",
+      "actual_recovery_retains_exact_usage_states",
+      "actual_recovery_contains_no_credential_reference",
+      "native_import_action_named_and_available",
+      "native_recovery_action_named_and_available",
+      "native_import_keyboard_focus",
+      "native_explicit_profile_import_completes",
+      "native_duplicate_import_keeps_existing_accounts",
+      "native_recovery_summary_is_readonly",
+      "native_recovery_history_counts",
+      "native_recovery_import_requires_confirmation",
+      "native_recovered_settings_import_disconnected",
+      "native_recovery_keeps_history_inactive",
+      "native_history_export_preserves_exact_bytes",
+      "native_all_storage_workers_settled",
+      "actual_rebackup_preserves_prior_recovery_record",
+      "actual_original_catalog_is_unchanged",
+      "no_vault_or_provider_request_during_recovery",
+      "native_selected_recovery_record_remains_immutable"
+    ],
+    "expected_metrics": {
+      "disconnected_profiles": 2,
+      "recovered_history_operations": 2,
+      "recovery_records_after_rebackup": 2,
+      "provider_requests": 0,
+      "vault_calls": 0,
+      "explicit_import_confirmations": 4
+    },
+    "required_true": [
+      "actual_windows",
+      "isolated",
+      "native_controls"
+    ],
+    "module_origins": [
+      "carr_library.providers",
+      "carr_library.provider_recovery",
+      "carr_library.library_backup",
+      "carr_library.ui.api_connections",
+      "carr_library.ui.export_destination",
+      "carr_library.research.export_file"
+    ],
+    "limits": {
+      "process_seconds": 180
+    },
+    "not_run": [
+      "actual_credential_vault",
+      "actual_remote_provider",
+      "nvda",
+      "physical_audio"
+    ]
+  }
+}

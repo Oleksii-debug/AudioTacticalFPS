@@ -1,0 +1,40 @@
+{
+  "schema": 1,
+  "status": "OBSERVED_FIXTURE_DEPENDENCY_FAILURE_REPAIR_NOT_RUN",
+  "observed": {
+    "source_commit": "670704f1ac9f3b745e895aac5dfb7c20bcbd81d4",
+    "source_tree": "32262a9fd9fda742dd86ff42e7de3d87f27c32ae",
+    "run_id": 46006780890,
+    "job_id": 140531819119,
+    "source": {
+      "passed": 43,
+      "failed": 15,
+      "total": 58
+    },
+    "installed": {
+      "passed": 43,
+      "failed": 15,
+      "total": 58
+    },
+    "all_failed_cause": "ModuleNotFoundError: No module named 'reportlab'",
+    "failure_location": "tests/e2e/test_import_worker_publication.py PDF fixture construction before the tested import",
+    "artifact": {
+      "id": 15204733426,
+      "bytes": 369440,
+      "sha256": "4b409c8a198aa9e4ef48097bf74e34765c80d659bd7794e797012de94c86477e"
+    },
+    "wheel_sha256": "94a7a1cdf79e78e47ebe9a346b44b46ca99fd5a5c7d52e30383dcca8bfe6fc28",
+    "oracle_sha256": "cf6572196d1ec3d7cebc22b317efb6bc27e4223a166fdf5b811e71fcb48d8ed8"
+  },
+  "repair": {
+    "path": ".github/workflows/carr-request-cleanup.yml",
+    "fixture_dependency": "reportlab==4.4.9",
+    "source": "Existing full Windows source/installed acceptance uses this same pinned fixture dependency.",
+    "production_dependency_changes": 0,
+    "test_source_changes": 0,
+    "oracle_changes": 0,
+    "cases_each": 58,
+    "status": "NOT_RUN"
+  },
+  "limits": "The 15 PDF cases did not exercise their product assertions. The retained 43 passing cases do not turn either failing population into PASS. The 56 production pins are rechecked before and after adding test tooling."
+}

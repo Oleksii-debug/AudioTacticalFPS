@@ -1,0 +1,744 @@
+{
+  "schema": 1,
+  "component": "Current-family structured Audio Studio role, voice and final-output controls",
+  "status": "PASS",
+  "observed_date": "2026-11-27",
+  "qualification_scope": "Actual Windows source tests, isolated installed tests and native wx GUI for this exact frozen head",
+  "tested": {
+    "repository": "Oleksii-debug/AudioTacticalFPS",
+    "commit": "aee11f99c4be0da3aa257ac7722923d768220e7f",
+    "tree": "d5bb747a4b29472c9244af103a25d884be3cc48e",
+    "branch": "carr/studio-controls-r31-native-display-d3a-20261127",
+    "run_id": 46067792077,
+    "run_attempt": 1,
+    "job_id": 140737213058,
+    "run_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46067792077",
+    "created_at": "2026-11-27T21:03:51Z",
+    "started_at": "2026-11-27T21:03:51Z",
+    "completed_at": "2026-11-27T21:11:42Z",
+    "conclusion": "success"
+  },
+  "independently_verified": {
+    "status": "PASS",
+    "source_cases": 211,
+    "installed_cases": 211,
+    "modules": 5,
+    "function_identities": 88,
+    "native_checks": 39,
+    "installed_origins": 9,
+    "source_files_independently_hashed": 23,
+    "source_mode": "source",
+    "installed_mode": "installed",
+    "all_final_job_steps": "PASS",
+    "artifact_metadata": "PASS",
+    "artifact_zip_independent_read": "NOT_RUN",
+    "module_totals": {
+      "tests.ui.test_audio_studio": 60,
+      "tests.ui.test_audio_effect_editing": 19,
+      "tests.audio.test_effect_editing": 34,
+      "tests.audio.test_studio_controls": 62,
+      "tests.ui.test_studio_controls": 36
+    },
+    "log_sha256": "af4ae40772c1eb6f99930f711496b554cc8f22b4b6cfef8acddc480b282c5b21"
+  },
+  "source_files": {
+    "carr-library/tests/ui/test_audio_studio.py": {
+      "git_blob": "99f2a4e5ee82926e12c78a9023b8f076915494f6",
+      "sha256": "2bb7a78f024e5db7cd358b0d7fe4a87f5ce426a8fd64d17be8f28af79175c0e7"
+    },
+    "carr-library/tests/ui/test_audio_effect_editing.py": {
+      "git_blob": "acf21b2a98ed9bfe761435e07c965c522aa9afa8",
+      "sha256": "a811b5fc0f3fc023adadf85d50a2955ed4c110868f58af7ec285a779d901cd7f"
+    },
+    "carr-library/tests/audio/test_effect_editing.py": {
+      "git_blob": "57b80f6862ae78ede27bd8006e0bf9984c040c6a",
+      "sha256": "5b61a492997a43374ec34dbeb682381c9425e2d844b420537bef8ecd9bb3ab34"
+    },
+    "carr-library/tests/audio/test_studio_controls.py": {
+      "git_blob": "61c2c37e76c713798937208812f1458c0852600a",
+      "sha256": "f7dfc19e1d5100525a6a1d9c833327eb42d53a2a4f0a028a0dec58350bca70a6"
+    },
+    "carr-library/tests/ui/test_studio_controls.py": {
+      "git_blob": "8cdd5a4997121310f68868799c9f66ae81f1fbe9",
+      "sha256": "312666a7b3b4217dc2ff6be00a270fe0a193b74256077fa55534f0f23d652db8"
+    },
+    "carr-library/tests/__init__.py": {
+      "git_blob": "6cb70d1a964de7a5d84e0cef9e1cbc075d3fa331",
+      "sha256": "bda1d1b86fa69f604fb87c19f27628942b6bd77aa46b605efbc9cb9d4457183d"
+    },
+    "carr-library/scripts/audio_batch_acceptance.py": {
+      "git_blob": "597fbef8d9d3ff9af0651214f101f346142dc19e",
+      "sha256": "3fcb217a7ed9d535ea9d277191a27504f8e6f452bef235b728036358f9e6e003"
+    },
+    "carr-library/scripts/ci_check.py": {
+      "git_blob": "5937231e2f3a00a163b0e10b9707df27f279b134",
+      "sha256": "fb1d512e25adce4a9bcadeabd280fc8e2d0a0ed417019384934aa1da65c977df"
+    },
+    "carr-library/scripts/ci_watchdog.py": {
+      "git_blob": "10482b73dca31ab90796f4c2c2dcc105c20c9969",
+      "sha256": "e02be6a6c3406bdf1d9d4c24673363894d03a1ee7948b3b77d6b20fcc2bfc057"
+    },
+    "carr-library/src/carr_library/audio/studio_controls.py": {
+      "git_blob": "e037a63636b496971d3c3c4713dd0f0238662077",
+      "sha256": "41d63907f1d01d40e1b0257950d3e01e3730b2fb8960900913a2c187e3ad8da8"
+    },
+    "carr-library/src/carr_library/ui/studio_controls.py": {
+      "git_blob": "15aff8a99baa4d41123bc64e3caf96cfb28209f1",
+      "sha256": "f6b35f3a3489ea2dcbe02b5a4e575ad154c290403f53ede1666d79989a92bb81"
+    },
+    "carr-library/src/carr_library/ui/audio_studio.py": {
+      "git_blob": "c8565790601b2359e94d272fa69593ffe5262b1d",
+      "sha256": "45b5bcd83f201c121e03874a3466d38a5b9a5d9f732fd2c3d51922c423b19e70"
+    },
+    "carr-library/src/carr_library/audio/models.py": {
+      "git_blob": "7f9f9034ac8dbb985bd3e3eaa95a3e0133283c20",
+      "sha256": "a3ccea83ae8c72e531dfd2adfcf09438ee9ba234454b2a8080c62039611f2f2b"
+    },
+    "carr-library/src/carr_library/audio/production.py": {
+      "git_blob": "56fa1a804d3749c83a382f0e7bc844f7e4f1b0e2",
+      "sha256": "c65ce46aab0a60e53eaf2997ed3cf86c90796f77c8da5ed1fdb8dcba2d761f17"
+    },
+    "carr-library/src/carr_library/audio/effect_editing.py": {
+      "git_blob": "2697282ccd4beb36414c52202d51c795af2fbdb4",
+      "sha256": "7260251fd04230a7088e070a23eb34c90d0c5a0e48a8678f2a04f5dbdc6498f7"
+    },
+    "carr-library/src/carr_library/audio/managed.py": {
+      "git_blob": "b574fc7cfbffbd88d7705b325ff471486956d5a6",
+      "sha256": "ce79f657b238dae30a683774a44674269a31689591d440c471f900d9d6952045"
+    },
+    "carr-library/src/carr_library/reader/narration_text.py": {
+      "git_blob": "989922d0495ffa07ad3e6404a6496d2fc7ecd87f",
+      "sha256": "603ffd27411c25db0974d9e43f8c317e13929962f4e31c08bf3666e226d0f793"
+    },
+    "carr-library/src/carr_library/ui/save_all.py": {
+      "git_blob": "92aab94e53df97d5aeabe62538ddebc71cfee09d",
+      "sha256": "88bd92eeca43127b8ec553f7e8c7201bbd7657a60c7118fa3c09f342bbe942d3"
+    },
+    "carr-library/scripts/studio_controls_oracle.json": {
+      "git_blob": "662ed20fde3696af3860ee0822f246172fa41904",
+      "sha256": "2c08cb6996f4aae66b2c352645876b6095743a18d352c4bf263e99af10bc9650"
+    },
+    "carr-library/scripts/studio_controls_acceptance.py": {
+      "git_blob": "6f1f83cc55e63204da118b5c7b4c67c15c5b276f",
+      "sha256": "48577f680bd2e8d79cfaa9b2444667bf9f2aea4d2328e303e5766d76258dac06"
+    },
+    "carr-library/scripts/workflow_template_acceptance.py": {
+      "git_blob": "d3e4b4fd1eb849901b3509d9e1d20be267100db4",
+      "sha256": "c095652581bd3571bac7156910db13dbe4fa5d572f107175a6a3897b7341a8ab"
+    },
+    "carr-library/tests/ui/native_studio_controls_smoke.py": {
+      "git_blob": "86744468d155fdb4a6614aa1c7de1d28647feb1e",
+      "sha256": "c3c38813c75eaaca2b993b3cce2999bd97c661458b07102a937634d1bd9cdf15"
+    },
+    ".github/workflows/carr-studio-controls.yml": {
+      "git_blob": "2c92922481202d14d031502608962953aada609e",
+      "sha256": "6cb2f959217fe015238850b11223012f0dab8d2e5e218466474efc63da522656"
+    }
+  },
+  "source_receipt": {
+    "schema": 1,
+    "status": "PASS",
+    "mode": "source",
+    "declared_cases": 211,
+    "timeout_seconds": 1500,
+    "oracle_sha256": "2c08cb6996f4aae66b2c352645876b6095743a18d352c4bf263e99af10bc9650",
+    "source_commit": "aee11f99c4be0da3aa257ac7722923d768220e7f",
+    "source_tree": "d5bb747a4b29472c9244af103a25d884be3cc48e",
+    "wheel_sha256": "6b533c1089d559c46b07a8f1148053e11ccb63123b4a67876ba15ce70442353c",
+    "checkout_manifest_sha256": "f23eab647c3aa0ea6a41350ec17bc06d8d58fcc59dccbc00dfbeb13c1f8690bf",
+    "tracked_source_files": 1698,
+    "source_only_python": {
+      "bootstrap/semantic_compat/probe.py": "c51758108a418c7bf98ddd459cefdca852777b07cfc95ac669855b1195398ac7",
+      "bootstrap/semantic_compat/test_probe.py": "ae093cae9f00307c09d2ea787dacf7c8c1522184e5480a411c0979023b7b70bb"
+    },
+    "actual_ffmpeg": {
+      "sha256": "3ab4a9c404504ebff6662d6a48661db952f88ee7fb7d5949a711cad7a763b2cf",
+      "version": "ffmpeg version 9.1-full_build-www.gyan.dev Copyright (c) 2000-2026 the FFmpeg developers",
+      "version_sha256": "900a9c75d78682e23c3f73e9e13d4c9625b24a8f0dfb921a879fc5f9e445bc64"
+    },
+    "test_source_sha256": {
+      "tests/ui/test_audio_studio.py": "2bb7a78f024e5db7cd358b0d7fe4a87f5ce426a8fd64d17be8f28af79175c0e7",
+      "tests/ui/test_audio_effect_editing.py": "a811b5fc0f3fc023adadf85d50a2955ed4c110868f58af7ec285a779d901cd7f",
+      "tests/audio/test_effect_editing.py": "5b61a492997a43374ec34dbeb682381c9425e2d844b420537bef8ecd9bb3ab34",
+      "tests/audio/test_studio_controls.py": "f7dfc19e1d5100525a6a1d9c833327eb42d53a2a4f0a028a0dec58350bca70a6",
+      "tests/ui/test_studio_controls.py": "312666a7b3b4217dc2ff6be00a270fe0a193b74256077fa55534f0f23d652db8",
+      "tests/__init__.py": "bda1d1b86fa69f604fb87c19f27628942b6bd77aa46b605efbc9cb9d4457183d"
+    },
+    "runner_sha256": {
+      "audio_batch_acceptance.py": "3fcb217a7ed9d535ea9d277191a27504f8e6f452bef235b728036358f9e6e003",
+      "ci_check.py": "fb1d512e25adce4a9bcadeabd280fc8e2d0a0ed417019384934aa1da65c977df",
+      "ci_watchdog.py": "e02be6a6c3406bdf1d9d4c24673363894d03a1ee7948b3b77d6b20fcc2bfc057"
+    },
+    "pytest_exit": 0,
+    "case_counter": {
+      "tests.audio.test_effect_editing": {
+        "test_no_change_preserves_every_source_character_and_legacy_parameter_spelling": 1,
+        "test_reorder_keeps_effect_spelling_and_non_effect_lines_in_original_order": 1,
+        "test_implicit_unicode_role_is_declared_at_its_first_speech_without_reordering_roles": 1,
+        "test_bypass_edit_remove_and_multi_role_apply_are_one_reversible_draft_change": 1,
+        "test_multiple_role_changes_scan_and_parse_only_once_on_accept": 1,
+        "test_invalid_chain_change_is_atomic": 6,
+        "test_bypassed_directive_still_requires_exact_boolean_and_valid_parameters": 6,
+        "test_bypass_reaches_existing_renderer_without_losing_saved_parameters": 1,
+        "test_exact_numeric_preset_roundtrip_replaces_only_selected_chain": 1,
+        "test_preset_schema_is_inert_strict_and_bounded": 9,
+        "test_actual_preset_file_reader_rejects_ambiguity_and_oversize": 3,
+        "test_preset_publication_keeps_absent_destination_approval": 1,
+        "test_preset_cannot_be_written_to_private_library_or_without_approval": 1,
+        "test_empty_preset_is_an_explicit_clear_not_an_automatic_activation": 1
+      },
+      "tests.audio.test_studio_controls": {
+        "test_no_op_keeps_exact_script_spelling_and_line_endings": 3,
+        "test_role_and_output_edit_preserves_complete_master_timeline_and_original_words": 1,
+        "test_multiple_role_and_output_declarations_keep_prior_order_and_budget": 1,
+        "test_implicit_role_edits_keep_role_order_and_exact_scene_events": 3,
+        "test_final_gain_changes_only_the_owned_tail_and_preserves_earlier_steps": 4,
+        "test_unchanged_gain_keeps_omitted_parameters_and_never_inserts_neutral_step": 1,
+        "test_voice_capabilities_refuse_unsupported_nondefault_controls": 3,
+        "test_full_language_code_never_selects_an_unadvertised_regional_route": 3,
+        "test_unavailable_saved_voice_remains_visible_and_output_only_edit_is_passive": 2,
+        "test_explicit_voice_change_keeps_nondefault_controls_until_user_resets_them": 1,
+        "test_native_numeric_and_identity_fields_are_strict_and_atomic": 17,
+        "test_role_form_cannot_create_or_rebind_an_existing_role_identity": 2,
+        "test_invalid_output_selection_preserves_current_plan": 3,
+        "test_gain_obeys_existing_chain_bound_without_deleting_any_prior_effect": 2,
+        "test_ambiguous_or_malformed_installed_catalogue_is_refused": 5,
+        "test_each_existing_format_roundtrips_without_changing_rate_or_source": 10,
+        "test_quoted_voice_and_role_names_cannot_turn_into_script_directions": 1
+      },
+      "tests.ui.test_audio_effect_editing": {
+        "test_editing_without_changes_keeps_omitted_legacy_controls_and_bypass": 1,
+        "test_native_fields_reject_untyped_and_out_of_range_parameters": 5,
+        "test_new_effect_fields_keep_displayed_defaults_explicit": 1,
+        "test_native_accept_commits_once_and_cancel_keeps_original_draft": 1,
+        "test_native_accept_refuses_a_stale_project_or_runtime_selection": 7,
+        "test_literal_narration_is_never_interpreted_as_effect_instructions": 1,
+        "test_preset_destination_guards_current_project_recovery_and_original": 1,
+        "test_managed_save_open_and_complete_backup_keep_chain_and_source": 1,
+        "test_master_apply_uses_the_same_single_undoable_native_draft_edit": 1
+      },
+      "tests.ui.test_audio_studio": {
+        "test_save_open_preserves_immutable_source_and_derivative_and_dirty_state": 1,
+        "test_project_never_imports_an_executable_or_remote_mode": 1,
+        "test_save_conflict_disk_failure_cancel_preserve_old_project": 1,
+        "test_recovery_is_bound_to_exact_saved_base_and_does_not_claim_commit": 1,
+        "test_recovery_refuses_unrelated_file_and_external_changes": 1,
+        "test_private_outputs_and_network_destinations_fail_before_renderer": 1,
+        "test_controller_passes_cancel_and_progress_and_checks_real_output_path": 1,
+        "test_controller_rejects_incomplete_service_and_concurrent_render": 1,
+        "test_readable_preview_and_voice_choices_no_wx_dependency": 1,
+        "test_literal_mode_preserves_source_that_looks_like_script": 1,
+        "test_saved_interpretation_and_legacy_projects_are_unambiguous": 1,
+        "test_original_imported_file_cannot_be_replaced_by_project_or_reading_export": 1,
+        "test_saved_reading_copy_requires_its_exact_save_digest_before_studio_mutation": 1,
+        "test_recovery_filename_cannot_replace_an_imported_original": 1,
+        "test_selected_book_import_uses_exact_pages_and_retains_revision": 1,
+        "test_late_writer_before_export_preflight_is_preserved": 4,
+        "test_invalid_new_project_does_not_replace_current_draft": 1,
+        "test_selecting_ffmpeg_refreshes_only_owned_runtime_registry": 1,
+        "test_controller_voice_discovery_forwards_cancel_to_local_registry": 1,
+        "test_output_folder_uses_shared_local_drive_guard_before_accepting": 1,
+        "test_final_new_destination_publication_never_overwrites_a_late_writer": 3,
+        "test_new_studio_file_keeps_export_filename_guards": 6,
+        "test_studio_native_replacement_requires_separate_bound_consent": 4,
+        "test_studio_native_confirmation_cannot_approve_another_writers_new_bytes": 2,
+        "test_studio_new_destination_remains_absent_bound_after_picker": 2,
+        "test_reading_copy_captures_before_hashing_an_existing_destination": 1,
+        "test_studio_destination_approval_keeps_selected_parent_identity": 2,
+        "test_studio_picker_only_selects_path_before_separate_replacement_question": 3,
+        "test_studio_observer_failure_does_not_lose_or_retry_a_real_committed_result": 3,
+        "test_studio_real_executor_rejection_restores_controls_and_preserves_admission_error": 1,
+        "test_studio_failure_observer_cannot_replace_the_real_worker_error": 2,
+        "test_closed_studio_settles_exact_shared_task_without_touching_dead_controls": 5,
+        "test_stale_studio_completion_settles_old_task_without_relabeling_new_work": 1,
+        "test_live_studio_uses_explicit_speech_and_dsp_cancellation_types": 2
+      },
+      "tests.ui.test_studio_controls": {
+        "test_cancelled_form_never_changes_saved_source_draft_preview_or_undo": 1,
+        "test_accepted_form_is_one_undoable_edit_and_invalidates_previous_render_and_preview": 1,
+        "test_unchanged_acceptance_preserves_existing_render_and_draft_history": 1,
+        "test_form_acceptance_rechecks_exact_current_owner_source_and_selection": 20,
+        "test_inflight_registry_replacement_cannot_pair_old_rows_with_new_authority": 1,
+        "test_discovery_result_after_root_change_never_opens_a_native_form": 1,
+        "test_literal_source_is_never_parsed_or_rewritten_by_the_role_form": 1,
+        "test_busy_studio_never_discovers_or_opens_parallel_settings": 2,
+        "test_forged_modal_return_cannot_bypass_the_typed_working_copy": 1,
+        "test_default_voice_inventory_retains_saved_unavailable_id_without_implicit_selection": 1,
+        "test_non_dataclass_voice_keeps_its_actual_advertised_controls": 1,
+        "test_focus_return_never_targets_foreign_or_unusable_windows": 3,
+        "test_initial_native_construction_failure_still_destroys_exact_owned_dialog": 1,
+        "test_managed_save_restore_rebackup_keeps_source_and_controls_without_voice_activation": 1
+      }
+    },
+    "interpreter_sha256": "e0c8a17f9d7f6550d0a83f293dfe3cd87b4a6cf6a368eb6a9f1bb5bde06b9f85",
+    "actual_cases": 211,
+    "elapsed_seconds": 8.75
+  },
+  "installed_receipt": {
+    "schema": 1,
+    "status": "PASS",
+    "mode": "installed",
+    "declared_cases": 211,
+    "timeout_seconds": 1500,
+    "oracle_sha256": "2c08cb6996f4aae66b2c352645876b6095743a18d352c4bf263e99af10bc9650",
+    "source_commit": "aee11f99c4be0da3aa257ac7722923d768220e7f",
+    "source_tree": "d5bb747a4b29472c9244af103a25d884be3cc48e",
+    "wheel_sha256": "6b533c1089d559c46b07a8f1148053e11ccb63123b4a67876ba15ce70442353c",
+    "checkout_manifest_sha256": "f23eab647c3aa0ea6a41350ec17bc06d8d58fcc59dccbc00dfbeb13c1f8690bf",
+    "tracked_source_files": 1698,
+    "source_only_python": {
+      "bootstrap/semantic_compat/probe.py": "c51758108a418c7bf98ddd459cefdca852777b07cfc95ac669855b1195398ac7",
+      "bootstrap/semantic_compat/test_probe.py": "ae093cae9f00307c09d2ea787dacf7c8c1522184e5480a411c0979023b7b70bb"
+    },
+    "actual_ffmpeg": {
+      "sha256": "3ab4a9c404504ebff6662d6a48661db952f88ee7fb7d5949a711cad7a763b2cf",
+      "version": "ffmpeg version 9.1-full_build-www.gyan.dev Copyright (c) 2000-2026 the FFmpeg developers",
+      "version_sha256": "900a9c75d78682e23c3f73e9e13d4c9625b24a8f0dfb921a879fc5f9e445bc64"
+    },
+    "test_source_sha256": {
+      "tests/ui/test_audio_studio.py": "2bb7a78f024e5db7cd358b0d7fe4a87f5ce426a8fd64d17be8f28af79175c0e7",
+      "tests/ui/test_audio_effect_editing.py": "a811b5fc0f3fc023adadf85d50a2955ed4c110868f58af7ec285a779d901cd7f",
+      "tests/audio/test_effect_editing.py": "5b61a492997a43374ec34dbeb682381c9425e2d844b420537bef8ecd9bb3ab34",
+      "tests/audio/test_studio_controls.py": "f7dfc19e1d5100525a6a1d9c833327eb42d53a2a4f0a028a0dec58350bca70a6",
+      "tests/ui/test_studio_controls.py": "312666a7b3b4217dc2ff6be00a270fe0a193b74256077fa55534f0f23d652db8",
+      "tests/__init__.py": "bda1d1b86fa69f604fb87c19f27628942b6bd77aa46b605efbc9cb9d4457183d"
+    },
+    "runner_sha256": {
+      "audio_batch_acceptance.py": "3fcb217a7ed9d535ea9d277191a27504f8e6f452bef235b728036358f9e6e003",
+      "ci_check.py": "fb1d512e25adce4a9bcadeabd280fc8e2d0a0ed417019384934aa1da65c977df",
+      "ci_watchdog.py": "e02be6a6c3406bdf1d9d4c24673363894d03a1ee7948b3b77d6b20fcc2bfc057"
+    },
+    "pytest_exit": 0,
+    "case_counter": {
+      "tests.audio.test_effect_editing": {
+        "test_no_change_preserves_every_source_character_and_legacy_parameter_spelling": 1,
+        "test_reorder_keeps_effect_spelling_and_non_effect_lines_in_original_order": 1,
+        "test_implicit_unicode_role_is_declared_at_its_first_speech_without_reordering_roles": 1,
+        "test_bypass_edit_remove_and_multi_role_apply_are_one_reversible_draft_change": 1,
+        "test_multiple_role_changes_scan_and_parse_only_once_on_accept": 1,
+        "test_invalid_chain_change_is_atomic": 6,
+        "test_bypassed_directive_still_requires_exact_boolean_and_valid_parameters": 6,
+        "test_bypass_reaches_existing_renderer_without_losing_saved_parameters": 1,
+        "test_exact_numeric_preset_roundtrip_replaces_only_selected_chain": 1,
+        "test_preset_schema_is_inert_strict_and_bounded": 9,
+        "test_actual_preset_file_reader_rejects_ambiguity_and_oversize": 3,
+        "test_preset_publication_keeps_absent_destination_approval": 1,
+        "test_preset_cannot_be_written_to_private_library_or_without_approval": 1,
+        "test_empty_preset_is_an_explicit_clear_not_an_automatic_activation": 1
+      },
+      "tests.audio.test_studio_controls": {
+        "test_no_op_keeps_exact_script_spelling_and_line_endings": 3,
+        "test_role_and_output_edit_preserves_complete_master_timeline_and_original_words": 1,
+        "test_multiple_role_and_output_declarations_keep_prior_order_and_budget": 1,
+        "test_implicit_role_edits_keep_role_order_and_exact_scene_events": 3,
+        "test_final_gain_changes_only_the_owned_tail_and_preserves_earlier_steps": 4,
+        "test_unchanged_gain_keeps_omitted_parameters_and_never_inserts_neutral_step": 1,
+        "test_voice_capabilities_refuse_unsupported_nondefault_controls": 3,
+        "test_full_language_code_never_selects_an_unadvertised_regional_route": 3,
+        "test_unavailable_saved_voice_remains_visible_and_output_only_edit_is_passive": 2,
+        "test_explicit_voice_change_keeps_nondefault_controls_until_user_resets_them": 1,
+        "test_native_numeric_and_identity_fields_are_strict_and_atomic": 17,
+        "test_role_form_cannot_create_or_rebind_an_existing_role_identity": 2,
+        "test_invalid_output_selection_preserves_current_plan": 3,
+        "test_gain_obeys_existing_chain_bound_without_deleting_any_prior_effect": 2,
+        "test_ambiguous_or_malformed_installed_catalogue_is_refused": 5,
+        "test_each_existing_format_roundtrips_without_changing_rate_or_source": 10,
+        "test_quoted_voice_and_role_names_cannot_turn_into_script_directions": 1
+      },
+      "tests.ui.test_audio_effect_editing": {
+        "test_editing_without_changes_keeps_omitted_legacy_controls_and_bypass": 1,
+        "test_native_fields_reject_untyped_and_out_of_range_parameters": 5,
+        "test_new_effect_fields_keep_displayed_defaults_explicit": 1,
+        "test_native_accept_commits_once_and_cancel_keeps_original_draft": 1,
+        "test_native_accept_refuses_a_stale_project_or_runtime_selection": 7,
+        "test_literal_narration_is_never_interpreted_as_effect_instructions": 1,
+        "test_preset_destination_guards_current_project_recovery_and_original": 1,
+        "test_managed_save_open_and_complete_backup_keep_chain_and_source": 1,
+        "test_master_apply_uses_the_same_single_undoable_native_draft_edit": 1
+      },
+      "tests.ui.test_audio_studio": {
+        "test_save_open_preserves_immutable_source_and_derivative_and_dirty_state": 1,
+        "test_project_never_imports_an_executable_or_remote_mode": 1,
+        "test_save_conflict_disk_failure_cancel_preserve_old_project": 1,
+        "test_recovery_is_bound_to_exact_saved_base_and_does_not_claim_commit": 1,
+        "test_recovery_refuses_unrelated_file_and_external_changes": 1,
+        "test_private_outputs_and_network_destinations_fail_before_renderer": 1,
+        "test_controller_passes_cancel_and_progress_and_checks_real_output_path": 1,
+        "test_controller_rejects_incomplete_service_and_concurrent_render": 1,
+        "test_readable_preview_and_voice_choices_no_wx_dependency": 1,
+        "test_literal_mode_preserves_source_that_looks_like_script": 1,
+        "test_saved_interpretation_and_legacy_projects_are_unambiguous": 1,
+        "test_original_imported_file_cannot_be_replaced_by_project_or_reading_export": 1,
+        "test_saved_reading_copy_requires_its_exact_save_digest_before_studio_mutation": 1,
+        "test_recovery_filename_cannot_replace_an_imported_original": 1,
+        "test_selected_book_import_uses_exact_pages_and_retains_revision": 1,
+        "test_late_writer_before_export_preflight_is_preserved": 4,
+        "test_invalid_new_project_does_not_replace_current_draft": 1,
+        "test_selecting_ffmpeg_refreshes_only_owned_runtime_registry": 1,
+        "test_controller_voice_discovery_forwards_cancel_to_local_registry": 1,
+        "test_output_folder_uses_shared_local_drive_guard_before_accepting": 1,
+        "test_final_new_destination_publication_never_overwrites_a_late_writer": 3,
+        "test_new_studio_file_keeps_export_filename_guards": 6,
+        "test_studio_native_replacement_requires_separate_bound_consent": 4,
+        "test_studio_native_confirmation_cannot_approve_another_writers_new_bytes": 2,
+        "test_studio_new_destination_remains_absent_bound_after_picker": 2,
+        "test_reading_copy_captures_before_hashing_an_existing_destination": 1,
+        "test_studio_destination_approval_keeps_selected_parent_identity": 2,
+        "test_studio_picker_only_selects_path_before_separate_replacement_question": 3,
+        "test_studio_observer_failure_does_not_lose_or_retry_a_real_committed_result": 3,
+        "test_studio_real_executor_rejection_restores_controls_and_preserves_admission_error": 1,
+        "test_studio_failure_observer_cannot_replace_the_real_worker_error": 2,
+        "test_closed_studio_settles_exact_shared_task_without_touching_dead_controls": 5,
+        "test_stale_studio_completion_settles_old_task_without_relabeling_new_work": 1,
+        "test_live_studio_uses_explicit_speech_and_dsp_cancellation_types": 2
+      },
+      "tests.ui.test_studio_controls": {
+        "test_cancelled_form_never_changes_saved_source_draft_preview_or_undo": 1,
+        "test_accepted_form_is_one_undoable_edit_and_invalidates_previous_render_and_preview": 1,
+        "test_unchanged_acceptance_preserves_existing_render_and_draft_history": 1,
+        "test_form_acceptance_rechecks_exact_current_owner_source_and_selection": 20,
+        "test_inflight_registry_replacement_cannot_pair_old_rows_with_new_authority": 1,
+        "test_discovery_result_after_root_change_never_opens_a_native_form": 1,
+        "test_literal_source_is_never_parsed_or_rewritten_by_the_role_form": 1,
+        "test_busy_studio_never_discovers_or_opens_parallel_settings": 2,
+        "test_forged_modal_return_cannot_bypass_the_typed_working_copy": 1,
+        "test_default_voice_inventory_retains_saved_unavailable_id_without_implicit_selection": 1,
+        "test_non_dataclass_voice_keeps_its_actual_advertised_controls": 1,
+        "test_focus_return_never_targets_foreign_or_unusable_windows": 3,
+        "test_initial_native_construction_failure_still_destroys_exact_owned_dialog": 1,
+        "test_managed_save_restore_rebackup_keeps_source_and_controls_without_voice_activation": 1
+      }
+    },
+    "interpreter_sha256": "124c200cdd1292d1bf51f0821813874d62fdff7e5b9e34834a4199c62194cb11",
+    "actual_cases": 211,
+    "elapsed_seconds": 8.968999999999994
+  },
+  "native_receipt": {
+    "schema": 1,
+    "status": "PASS",
+    "mode": "native",
+    "oracle_sha256": "2c08cb6996f4aae66b2c352645876b6095743a18d352c4bf263e99af10bc9650",
+    "qualification_adapter_sha256": "c095652581bd3571bac7156910db13dbe4fa5d572f107175a6a3897b7341a8ab",
+    "qualification_dispatch_sha256": "48577f680bd2e8d79cfaa9b2444667bf9f2aea4d2328e303e5766d76258dac06",
+    "source_commit": "aee11f99c4be0da3aa257ac7722923d768220e7f",
+    "source_tree": "d5bb747a4b29472c9244af103a25d884be3cc48e",
+    "probe_sha256": "c3c38813c75eaaca2b993b3cce2999bd97c661458b07102a937634d1bd9cdf15",
+    "wheel_sha256": "6b533c1089d559c46b07a8f1148053e11ccb63123b4a67876ba15ce70442353c",
+    "native_exit": 0,
+    "actual_checks": 39,
+    "receipt": {
+      "actual_windows": true,
+      "checks": [
+        "actual installed Windows Studio owner",
+        "role and output actions are named native buttons",
+        "unlisted saved default ID remains visible without automatic substitution",
+        "default voice changes only after explicit native selection",
+        "role form has exact current modal owner",
+        "all role and output controls have native accessible names",
+        "pending native fields do not mutate the current draft",
+        "native Cancel preserves source draft undo history and saved bytes",
+        "cancelled native form returns focus to its current opening button",
+        "actual role Choice receives keyboard focus",
+        "role form loads exact saved pan voice and language",
+        "new voice does not silently choose an advertised language",
+        "unsupported saved controls remain visible for explicit reset",
+        "native Apply refuses unsupported nondefault voice controls",
+        "native Apply commits exactly one undoable draft edit",
+        "native role controls use existing exact units",
+        "final gain retains the earlier effect chain",
+        "native output controls retain sample rate and disk budget",
+        "accepted controls invalidate old result and displayed preview",
+        "accepted form preserves immutable source and waits for explicit save",
+        "accepted native form returns focus to its opening button",
+        "existing native Undo restores exact original script",
+        "existing native Redo restores accepted controls",
+        "explicit native Preview describes the current edited plan",
+        "current native Save All durably saves the accepted script",
+        "output route initially focuses the actual final-format Choice",
+        "unlisted saved role ID stays visibly selected without replacement",
+        "unavailable role keeps exact language and disabled unsupported defaults",
+        "output-only acceptance preserves the unlisted role and original source",
+        "native Apply refuses a changed current draft and leaves the form open",
+        "stale form cannot replace the later draft or its output settings",
+        "Save All retains the newer edit after stale form refusal",
+        "native window Close cancels only the owned form and preserves the draft",
+        "form controls never create a second Studio save participant",
+        "native Studio close settles the owned executor and unregisters its draft",
+        "no Studio worker thread remains after native close",
+        "native initial-load failure destroys its allocated form",
+        "native flow preserves the exact immutable Unicode source",
+        "exact installed form implementation remains unchanged"
+      ],
+      "cleanup_complete": true,
+      "draft_lifecycle": "PASS",
+      "isolated": true,
+      "metrics": {
+        "accepted_draft_edits": 2,
+        "capability_refusals": 1,
+        "forms_applied": 2,
+        "forms_cancelled": 3,
+        "initial_load_cleanup": 1,
+        "save_all_commits": 2,
+        "stale_refusals": 1
+      },
+      "module_origins": {
+        "carr_library.audio.effect_editing": {
+          "path": "D:\\a\\_temp\\carr-studio-controls-46067792077-1\\installed\\Lib\\site-packages\\carr_library\\audio\\effect_editing.py",
+          "sha256": "7260251fd04230a7088e070a23eb34c90d0c5a0e48a8678f2a04f5dbdc6498f7"
+        },
+        "carr_library.audio.managed": {
+          "path": "D:\\a\\_temp\\carr-studio-controls-46067792077-1\\installed\\Lib\\site-packages\\carr_library\\audio\\managed.py",
+          "sha256": "ce79f657b238dae30a683774a44674269a31689591d440c471f900d9d6952045"
+        },
+        "carr_library.audio.models": {
+          "path": "D:\\a\\_temp\\carr-studio-controls-46067792077-1\\installed\\Lib\\site-packages\\carr_library\\audio\\models.py",
+          "sha256": "a3ccea83ae8c72e531dfd2adfcf09438ee9ba234454b2a8080c62039611f2f2b"
+        },
+        "carr_library.audio.production": {
+          "path": "D:\\a\\_temp\\carr-studio-controls-46067792077-1\\installed\\Lib\\site-packages\\carr_library\\audio\\production.py",
+          "sha256": "c65ce46aab0a60e53eaf2997ed3cf86c90796f77c8da5ed1fdb8dcba2d761f17"
+        },
+        "carr_library.audio.studio_controls": {
+          "path": "D:\\a\\_temp\\carr-studio-controls-46067792077-1\\installed\\Lib\\site-packages\\carr_library\\audio\\studio_controls.py",
+          "sha256": "41d63907f1d01d40e1b0257950d3e01e3730b2fb8960900913a2c187e3ad8da8"
+        },
+        "carr_library.reader.narration_text": {
+          "path": "D:\\a\\_temp\\carr-studio-controls-46067792077-1\\installed\\Lib\\site-packages\\carr_library\\reader\\narration_text.py",
+          "sha256": "603ffd27411c25db0974d9e43f8c317e13929962f4e31c08bf3666e226d0f793"
+        },
+        "carr_library.ui.audio_studio": {
+          "path": "D:\\a\\_temp\\carr-studio-controls-46067792077-1\\installed\\Lib\\site-packages\\carr_library\\ui\\audio_studio.py",
+          "sha256": "45b5bcd83f201c121e03874a3466d38a5b9a5d9f732fd2c3d51922c423b19e70"
+        },
+        "carr_library.ui.save_all": {
+          "path": "D:\\a\\_temp\\carr-studio-controls-46067792077-1\\installed\\Lib\\site-packages\\carr_library\\ui\\save_all.py",
+          "sha256": "88bd92eeca43127b8ec553f7e8c7201bbd7657a60c7118fa3c09f342bbe942d3"
+        },
+        "carr_library.ui.studio_controls": {
+          "path": "D:\\a\\_temp\\carr-studio-controls-46067792077-1\\installed\\Lib\\site-packages\\carr_library\\ui\\studio_controls.py",
+          "sha256": "f6b35f3a3489ea2dcbe02b5a4e575ad154c290403f53ede1666d79989a92bb81"
+        }
+      },
+      "native_controls": true,
+      "native_events": "PASS",
+      "nvda": "NOT_RUN",
+      "physical_audio": "NOT_RUN",
+      "source_preserved": true,
+      "speech_quality": "NOT_QUALIFIED",
+      "status": "PASS",
+      "total_checks": 39,
+      "voice_metadata": "SYNTHETIC_PROTOCOL_ONLY",
+      "wx": "4.2.4 msw (phoenix) wxWidgets 3.2.8"
+    },
+    "native_output_sha256": "038f331ca3b57ec19442600962e629068afc568a79dcd0cacd4556dff021b471"
+  },
+  "aggregate_receipt": {
+    "schema": 1,
+    "status": "PASS",
+    "source_cases": 211,
+    "installed_cases": 211,
+    "oracle_sha256": "2c08cb6996f4aae66b2c352645876b6095743a18d352c4bf263e99af10bc9650",
+    "qualification_adapter_sha256": "c095652581bd3571bac7156910db13dbe4fa5d572f107175a6a3897b7341a8ab",
+    "qualification_dispatch_sha256": "48577f680bd2e8d79cfaa9b2444667bf9f2aea4d2328e303e5766d76258dac06",
+    "native_checks": 39,
+    "nvda": "NOT_RUN",
+    "language_model_quality": "NOT_QUALIFIED",
+    "physical_audio": "NOT_RUN",
+    "source_commit": "aee11f99c4be0da3aa257ac7722923d768220e7f",
+    "source_tree": "d5bb747a4b29472c9244af103a25d884be3cc48e",
+    "wheel_sha256": "6b533c1089d559c46b07a8f1148053e11ccb63123b4a67876ba15ce70442353c",
+    "actual_ffmpeg": {
+      "sha256": "3ab4a9c404504ebff6662d6a48661db952f88ee7fb7d5949a711cad7a763b2cf",
+      "version": "ffmpeg version 9.1-full_build-www.gyan.dev Copyright (c) 2000-2026 the FFmpeg developers",
+      "version_sha256": "900a9c75d78682e23c3f73e9e13d4c9625b24a8f0dfb921a879fc5f9e445bc64"
+    },
+    "native_gui": "PASS",
+    "actual_outbound_block": "PASS",
+    "firewall_cleanup": "PASS",
+    "existing_cases_retained": 113,
+    "native_receipt_sha256": "3f35012efdcbfb772d991e66175ce802ed5a7caf431646bcb934d57867a74164",
+    "new_studio_control_cases": 98
+  },
+  "final_job": {
+    "id": 140737213058,
+    "name": "Windows / current Studio role and output controls",
+    "status": "completed",
+    "conclusion": "success",
+    "run_id": 46067792077,
+    "logs_url": null,
+    "steps": [
+      {
+        "name": "Set up job",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 1
+      },
+      {
+        "name": "Enable complete reviewed Git paths on the disposable runner",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 2
+      },
+      {
+        "name": "Check out the exact event source",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 3
+      },
+      {
+        "name": "Record exact candidate and initial qualification status",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 4
+      },
+      {
+        "name": "Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 5
+      },
+      {
+        "name": "Build the source-bound wheel and install the existing 56-pin runtime with signed-admission fixtures",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 6
+      },
+      {
+        "name": "Prepare only the existing pinned FFmpeg runtime",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 7
+      },
+      {
+        "name": "Enforce actual Python and FFmpeg outbound blocks",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 8
+      },
+      {
+        "name": "Run all 211 declared current Studio source regressions",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 9
+      },
+      {
+        "name": "Run the identical 211 isolated installed Studio regressions",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 10
+      },
+      {
+        "name": "Run 39 actual installed native Studio form and draft checks",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 11
+      },
+      {
+        "name": "Remove only owned outbound rules and restore actual prior profiles",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 12
+      },
+      {
+        "name": "Require exact source, installed, native and firewall receipts",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 13
+      },
+      {
+        "name": "Preserve textual qualification evidence on every outcome",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 14
+      },
+      {
+        "name": "Remove this run's ephemeral synthetic fixtures and runtime payloads",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 15
+      },
+      {
+        "name": "Post Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 29
+      },
+      {
+        "name": "Post Check out the exact event source",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 30
+      },
+      {
+        "name": "Complete job",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 31
+      }
+    ]
+  },
+  "artifact": {
+    "id": 15231573716,
+    "name": "carr-studio-controls-aee11f99c4be0da3aa257ac7722923d768220e7f-1",
+    "size_in_bytes": 450507,
+    "url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15231573716",
+    "archive_download_url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15231573716/zip",
+    "expired": false,
+    "created_at": "2026-11-27T21:11:36Z",
+    "expires_at": "2026-12-27T21:11:36Z",
+    "updated_at": "2026-11-27T21:11:36Z",
+    "digest": "sha256:87e650978db47d21c8fc27f414f40620de595aed2f7264de41d2f64dec7c7a1a",
+    "workflow_run": {
+      "id": 46067792077,
+      "repository_id": 1341777614,
+      "head_repository_id": 1341777614,
+      "head_branch": "carr/studio-controls-r31-native-display-d3a-20261127",
+      "head_sha": "aee11f99c4be0da3aa257ac7722923d768220e7f"
+    }
+  },
+  "evidence_method": {
+    "job_log": "The complete final GitHub job log was fetched and its source, installed, native and aggregate JSON receipts were independently parsed.",
+    "counters": "Both complete whole-module/function Counters were compared with the committed oracle: five modules, 88 function identities and 211 cases per mode. No expected case was omitted.",
+    "native": "All 39 native labels, every declared typed field, all seven metrics and all nine exact installed module origins were independently compared with the committed oracle and fetched source bytes.",
+    "identity": "All six copied test/helper files, all three recorded runner files, the oracle, qualification adapter, dispatcher and native probe were independently SHA256-checked against the exact tested Git source. Source and installed receipts bind the same wheel and exact commit/tree.",
+    "cleanup": "The native receipt reports settled GUI/executor/runtime ownership; the strict aggregate reports actual outbound blocking and restoration. Every final job step, including firewall cleanup, evidence upload and owned-work cleanup, completed successfully.",
+    "artifact_boundary": "GitHub artifact metadata, run/head binding, size and digest were independently read. The artifact ZIP was not downloaded or independently unpacked in this review."
+  },
+  "retained_prior_failure": {
+    "commit": "1b884e117c57d0c083c30be76d27da79a14a1133",
+    "tree": "670461a989b8710aef05ad5f49cdc7840b86d37c",
+    "run_id": 46067267518,
+    "job_id": 140735520176,
+    "run_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46067267518",
+    "status": "FAIL",
+    "source_passed": 211,
+    "installed_passed": 211,
+    "native_passed_before_failure": 23,
+    "native_required": 39,
+    "failed_check": "explicit native Preview describes the current edited plan",
+    "observed_reason": "The probe compared native wx TextEntry.GetValue LF display text with a preview containing the original script's preserved CRLF bytes.",
+    "repair": "Only the expected display newline representation was canonicalized in the probe. The complete Unicode display equality remains required, and controller.script must still equal the exact accepted script. Persistent data, product files, source/installed cases and all 39 labels remain unchanged.",
+    "repair_evidence": "docs/validation/STUDIO_FORM_PREVIEW_DISPLAY_20261127.json",
+    "artifact": {
+      "id": 15230239903,
+      "size_in_bytes": 446211,
+      "sha256": "b6a58cc66b0d475ed1cda4abe5d9664224b18d2b16770c18a555e4d8fe05d60a"
+    },
+    "supersession": "This earlier failure remains immutable historical evidence. Only the separately executed aee11f99 successor is qualified by this proof."
+  },
+  "peer_review": {
+    "product_and_portable_tests": "Independent capacity reviewer and root reviewed the current-family edits, immutable source/draft bindings, registry identity, modal lifetime, unavailable IDs and the 98 new regressions.",
+    "native_gate": "Independent capacity reviewer compared the complete native probe, inherited strict qualification runner, oracle and workflow; all 39 labels and 211 cases were confirmed.",
+    "display_successor": "Independent capacity reviewer confirmed the aee11f99 probe-only newline adjustment preserves exact source bytes, all labels and cleanup boundaries."
+  },
+  "limits": {
+    "synthetic_voice_metadata": "Only explicit synthetic metadata was used to exercise native controls and capability refusal.",
+    "speech_quality": "NOT_QUALIFIED",
+    "private_model_execution": "NOT_RUN",
+    "language_quality": "NOT_QUALIFIED",
+    "physical_audio": "NOT_RUN",
+    "nvda": "NOT_RUN",
+    "final_composed_tree": "This proof binds the exact tested head only. The final integrated candidate requires its own source, installed, native and packaging gates.",
+    "local_executor": "No local executor result is claimed; execution above occurred on the recorded Windows GitHub runner."
+  }
+}

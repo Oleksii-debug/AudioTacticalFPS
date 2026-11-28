@@ -1,0 +1,126 @@
+{
+  "schema": "carr-basic-translation-fixture-final-composition/1",
+  "status": "SOURCE_REVIEWED_NOT_EXECUTED",
+  "date": "2026-11-28",
+  "baseline": {
+    "commit": "424cc456992c69c1ee945bc4d5ab73bc21e4e7b8",
+    "tree": "be936242ecf2aa62ab3344de8874a92605aea39e",
+    "files": 1801
+  },
+  "components": {
+    "basic_fixture": "a13457e9d4d44f23ab86e828b706184f5246aa34",
+    "focused_gate": "e0bc9d2167ee0d2f4a4a8be73dab72b244ab4569",
+    "completed_predecessor_failure": "bb7b0c743a6094a6f16e50115a3fbea68ff03eee"
+  },
+  "selected_blobs": [
+    {
+      "path": "carr-library/scripts/windows_translation_smoke.py",
+      "sha": "1b249ab87dee4c1a441dfac46232592e1a88a691"
+    },
+    {
+      "path": "carr-library/docs/evidence/basic-translation-native-root-fixture-repair-20261128.json",
+      "sha": "05cc387841d86949a9828ec96ba11e06ddaf2062"
+    },
+    {
+      "path": ".github/workflows/carr-local-translation.yml",
+      "sha": "e4dafee258246fc14f039d72908136434a20465c"
+    },
+    {
+      "path": "carr-library/docs/evidence/basic-translation-focused-gate-addition-20261128.json",
+      "sha": "53712ca5b8982144a8eade95f4a8e872d3aa6cb1"
+    },
+    {
+      "path": "carr-library/docs/evidence/424cc-main-observed-failure-20261128.json",
+      "sha": "e61074be5f7038ddfaa0c85f7dacc4b8b593be6b"
+    },
+    {
+      "path": "carr-library/docs/evidence/424CC_MAIN_OBSERVED_FAILURE_20261128.md",
+      "sha": "ba5b227a6c2d56f6b2cb3bcefc63ae6325d28b1b"
+    }
+  ],
+  "authored_documents": [
+    {
+      "path": "carr-library/docs/V3_RELEASE_READINESS.md",
+      "sha256": "956c7f68ffb455fad6fd95303bcbd7d257f464d30e4d2eddd158837a0a4b29a7"
+    },
+    {
+      "path": "carr-library/docs/validation/RESONANCE_REQUIREMENT_STATUS_20261127.json",
+      "sha256": "b71f2c508a0580d86d1e311e3c24792d18745b0356299423fb91a0d571dac194"
+    }
+  ],
+  "tree_contract": {
+    "files": 1806,
+    "changed_paths": 9,
+    "modified": 4,
+    "added": 5,
+    "deleted": 0,
+    "application_blobs": 425,
+    "application_changes": 0,
+    "all_other_baseline_files": "UNCHANGED"
+  },
+  "review": {
+    "fixture": "Independent root and capacity SOURCE_GO; exact two-line inverse and every previous assertion retained.",
+    "focused_gate": "Independent root and native SOURCE_GO; exact inverse restores all previous workflow bytes except job display name, all old gates retained.",
+    "predecessor_proof": "Root independently matched complete raw log,451 receipts,5270-function Counter,protected252/5947/6603,native108/five hashes,all59steps and API/uploader identity.",
+    "requirement_matrix": "All24 requirement objects and historical evidence objects preserved; latest observation added.",
+    "runtime": "NOT_RUN for this composed source"
+  },
+  "preserved_reader_pins": {
+    "carr-library/docs/validation/FINAL_MAIN_ARTIFACT_READ_PLAN_20261127.json": "955081bda0d4a47d8eff6200a010943da7bd0cf2",
+    ".github/workflows/carr-windows.yml": "6a826f25a0a4724b5665b3cfbcf34ab97336971d",
+    "carr-library/packaging/probe_standard_update_windows.py": "3ac3401e48e937c78142e8d296cb408f32df0429",
+    "carr-library/scripts/standard_qualification_shell_acceptance.py": "ec240ce21e39f261a09bf4403179be894c548e8d",
+    "carr-library/scripts/v3_acceptance_oracles.json": "9db65750aa51b1d7011d535ec00274e1b2d828c5",
+    "carr-library/scripts/r7_native_oracles.json": "c5c734d4d2ed9bda27da443433485f9873a4af76",
+    "carr-library/scripts/r7_native_gate.py": "29e75a6415eb914894e9aec62b87b315ccb97f16",
+    "carr-library/scripts/reader_interactive_native_gate.py": "7e415972d50ae4851934e60e585b739add6242e4",
+    "carr-library/scripts/local_translation_oracles.json": "a954839a9e373b60f13f35b16c57d7160e43750c",
+    "carr-library/scripts/translation_scope_oracles.json": "2f2f032e4e3b8d3263e1a7bec1e5fe731bfab9d2",
+    "carr-library/scripts/reader_appearance_acceptance_oracle.json": "a63625ec4911c9258927fff5dd8f32e7efe9f665",
+    "carr-library/scripts/assistant_interactive_acceptance_oracle.json": "bb16b437acbb980999729a5312ae4322dcd69198",
+    "carr-library/scripts/qualify_standard_library.py": "47e868ebfd69cab27a395cda436a4eece1c60643",
+    "carr-library/scripts/qualify_reader_appearance.py": "4bb2a090a42dffd5cba9c5c11814a9055b9000ee",
+    "carr-library/scripts/local_translation_acceptance.py": "8ab561e746748d5f36fdb30d3f053b7daf8621f9",
+    "carr-library/scripts/translation_scope_acceptance.py": "60d841da5b74fde0ee8491899c12aa516b461851",
+    "carr-library/packaging/source_wheel.py": "bba3d0cda29b475d51347434d832af9187840547",
+    "carr-library/scripts/ci_standard_update.ps1": "0c949fa71eb4e3ebc9e542a42f7f4334347f9e5b",
+    "carr-library/scripts/ci_standard_installer.ps1": "f1c00bcdb02b520316d2d9832f0ce4ce61bd2905",
+    "carr-library/scripts/ci_check.py": "2d04b9b269ae85c24349ae8d4ad9b295737866fb",
+    "carr-library/tests/loopback/test_local_planning.py": "052f67e286ad8fd6eef5ca3274575dd6c177e9ab"
+  },
+  "populations": {
+    "protected_source": 5947,
+    "protected_installed": 5619,
+    "source_modules": 252,
+    "installed_modules": 239,
+    "source_selectors": 451,
+    "inspection_source": 274,
+    "inspection_installed": 274,
+    "inspection_native": 29,
+    "translation_source": 324,
+    "translation_installed": 324,
+    "translation_existing_native": 8,
+    "translation_additional_basic": 1
+  },
+  "history": {
+    "evidence_head": "41f75f9e74a20bab3a1ef5114be3c3bd8e5298a6",
+    "previous_424_focus_proof": "01b8cf235abfb8a116c56735ec7491d7f4edf3d1",
+    "previous_424_aux_proof": "eddbaa41b98148d0445c3e0dd3bcc6def6286ce2",
+    "qualification_transfer": false
+  },
+  "execution": {
+    "focused_basic": "NOT_RUN",
+    "focused_inspection": "NOT_RUN",
+    "main": "NOT_RUN",
+    "auxiliary": "NOT_RUN",
+    "independent_main_artifact": "NOT_READY; null artifact until a successful exact-source main",
+    "canonical_promotion": "NOT_PERFORMED"
+  },
+  "limitations": {
+    "full_platform": "NOT_QUALIFIED",
+    "manual_nvda": "NOT_RUN",
+    "real_engines_languages_acoustics_hardware_corpora_rights": "Separate actual input and acceptance required; source reconciliation does not qualify these dimensions.",
+    "archive_reader": "Same reviewed7ce parser and37/6 controls; no parser or21-pin extension needed."
+  },
+  "binding_scope": "This manifest describes the immutable Git tree containing it. It deliberately has no self-referential commit or document hash."
+}

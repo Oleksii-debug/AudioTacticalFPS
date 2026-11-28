@@ -1,0 +1,91 @@
+{
+  "schema": 1,
+  "status": "OBSERVED_FAILURE_WITH_NARROW_REPAIR_NOT_YET_RUN",
+  "run": {
+    "id": 46012230866,
+    "job_id": 140550358034,
+    "commit": "11449daefabf16ff1b84e8dd1a70097bf59cf601",
+    "tree": "aa8582acf8385eb72d63fee6148ff6e703b04a60",
+    "conclusion": "FAIL"
+  },
+  "artifact": {
+    "id": 15205609666,
+    "size_bytes": 6321551,
+    "sha256": "24eccf4d62559734799a0970811683aafbf42054bf6eb206ecb67d7a77c10ed3"
+  },
+  "observed": {
+    "existing_source": {
+      "passed": 262,
+      "failed": 6,
+      "total": 268,
+      "elapsed_seconds": 26.93
+    },
+    "existing_installed": {
+      "passed": 262,
+      "failed": 6,
+      "total": 268,
+      "elapsed_seconds": 27.21
+    },
+    "local_source": {
+      "passed": 38,
+      "failed": 0,
+      "total": 38
+    },
+    "local_installed": {
+      "passed": 38,
+      "failed": 0,
+      "total": 38
+    },
+    "native_flows": {
+      "passed": 8,
+      "failed": 0,
+      "names": [
+        "existing-selected-advanced",
+        "existing-document",
+        "existing-chapter",
+        "existing-batch",
+        "local-selected",
+        "local-document",
+        "local-chapter",
+        "local-batch"
+      ]
+    }
+  },
+  "causes": [
+    {
+      "cases_per_population": 5,
+      "kind": "test_fixture_namespace",
+      "selector": "tests/ui/test_translation_advanced.py::test_native_profile_form_keeps_token_only_in_vault_and_renewal_explicit",
+      "finding": "The fixture compiles only Dialog.configure and supplies a hand-built global namespace. Product imports already include TRANSLATION_PROVIDERS and LOCAL_TRANSLATION_PROVIDER; the fixture namespace omitted them.",
+      "repair": "Supply those two actual constants in the existing extraction fixture. Preserve every renewal/cancellation case and assertion."
+    },
+    {
+      "cases_per_population": 1,
+      "kind": "diagnostic_contract",
+      "selector": "tests/assistant/test_translation_advanced.py::test_basic_and_advanced_cache_names_keep_the_existing_shared_namespace",
+      "finding": "Unrelated provider selection was correctly refused, but the message no longer contained the retained phrase translation profile.",
+      "repair": "Keep the established phrase in both current invalid-profile messages, without changing profile validation."
+    }
+  ],
+  "unchanged": {
+    "required_source_cases": 306,
+    "required_installed_cases": 306,
+    "native_flows": 8,
+    "network_allowlist": "Only the existing exact numeric-loopback fixture; no outbound endpoint or credential authority added."
+  },
+  "limits": {
+    "actual_local_translation_server": "NOT_RUN",
+    "translation_quality": "NOT_QUALIFIED",
+    "nvda": "NOT_RUN",
+    "rerun": "REQUIRED"
+  },
+  "repairs_followup": {
+    "source_commit": "bf85c5ecbfee9e45068192d40e8cc8584f95986b",
+    "additional_observation": "The retained template506 gate at ff6 also exercises TranslationStore.cache_path; its message lives in assistant/translation_state.py, separately from TranslationService.",
+    "repair": "Restore the same translation profile phrase at the third call site. The unchanged existing cache-namespace assertion remains required.",
+    "known_superseded_rerun": {
+      "branch": "carr/local-translation-r14-recovery-d3a-20261127",
+      "status": "Includes fixture repair but predates the third message correction; do not use it as final qualification."
+    }
+  }
+}

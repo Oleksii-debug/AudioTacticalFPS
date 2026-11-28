@@ -19,5 +19,19 @@
     "source": "https://github.com/huggingface/tokenizers/blob/301277072263fb3830eb66eec7e47adadf76f1dc/LICENSE",
     "file": "tokenizers-LICENSE.txt",
     "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+  },
+  {
+    "component": "pywin32",
+    "commit": "2a277cb5552756c2b4d42b524dc36d25e0bb6354",
+    "source": "https://github.com/mhammond/pywin32/blob/2a277cb5552756c2b4d42b524dc36d25e0bb6354/com/License.txt",
+    "file": "pywin32-312-COM-LICENSE.txt",
+    "sha256": "6ad44d8d785d93773a1d0430a17187337841e34f01e7f289c92bd9d8be6156c4"
+  },
+  {
+    "component": "pywin32",
+    "commit": "2a277cb5552756c2b4d42b524dc36d25e0bb6354",
+    "source": "https://github.com/mhammond/pywin32/blob/2a277cb5552756c2b4d42b524dc36d25e0bb6354/win32/License.txt",
+    "file": "pywin32-312-WIN32-LICENSE.txt",
+    "sha256": "ae254460373deef5dff3e08104f4c1f03a045c2ae1b34760b5c30f7efcef9078"
   }
 ]

@@ -1,0 +1,50 @@
+{
+  "schema": 1,
+  "status": "PASS",
+  "source_commit": "e5d03cca100a717e3785602e2ea0153ca114d7e9",
+  "source_tree": "32ee1eb9eb29fe4114348b2201252b80a7c74ca7",
+  "workflow_run": 45978658434,
+  "job": 140436691904,
+  "native": {
+    "actual_offline_firewall": true,
+    "actual_windows": true,
+    "checks": [
+      "Actual desktop Help exposes the signed client status",
+      "Native Help event reaches the status action",
+      "Default status is a named native read-only multiline control",
+      "Private default shows perpetual operation and no fake authority actions",
+      "Terms and profile are readable before accepting",
+      "Import requires explicit native checkbox acceptance",
+      "Native acceptance event enables import",
+      "Reviewed signed grant is durably verified",
+      "Configured polling uses an actual running wx.Timer",
+      "Native idle timer holds metadata checks while the frame is working",
+      "Native idle transition verifies signed metadata on the background thread",
+      "Automatic native checks leave payloads and existing signed permission untouched",
+      "Configured update status retains the explicit native repository review action",
+      "Native owner destruction stops the metadata worker",
+      "Native owner destruction stops or destroys the actual timer"
+    ],
+    "nvda": "NOT_RUN",
+    "polling_module": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\security\\polling.py",
+    "production_authority": "NOT_CONFIGURED",
+    "production_installer_upgrade": "NOT_RUN",
+    "source_commit": "e5d03cca100a717e3785602e2ea0153ca114d7e9",
+    "status": "PASS",
+    "ui_module": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ui\\trust_status.py"
+  },
+  "artifact": {
+    "id": 15189031006,
+    "sha256": "f8b4ea1fc19e927a0181b7618510596019e83763abf426150c70d609e3b98242",
+    "bytes": 2203
+  },
+  "prior_failure": {
+    "source_commit": "c0d43a4a04fbe491201ba29287f6093ef86baa9e",
+    "workflow_run": 45977083511,
+    "job": 140431395857,
+    "status": "FAIL",
+    "observed": "Native access violation after owner destruction while the polling worker remained alive; 13 of15 checks reached."
+  },
+  "fix": "Capture the live owning window ID and compare the actual destroy-event ID, preserving child/duplicate exclusion and event.Skip; do not rely on Python wrapper identity.",
+  "composition_limit": "Current standard-activation UI includes this exact lifecycle hunk; full composed qualification remains separate."
+}

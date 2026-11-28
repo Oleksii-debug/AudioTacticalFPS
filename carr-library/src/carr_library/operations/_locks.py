@@ -7,7 +7,8 @@ import threading
 import weakref
 
 from filelock import FileLock, Timeout, UnixFileLock, WindowsFileLock
-from ..durable_state import local_path, regular
+from ..audio.model_manifest import local_path as _asset_path
+from ._state import local_path, regular
 from .models import ResourceStateError
 
 
@@ -34,14 +35,38 @@ if hasattr(os, 'register_at_fork'):
     os.register_at_fork(before=_GUARD.acquire, after_in_parent=_GUARD.release, after_in_child=_after_fork)
 
 
+def _unheld_path(value):
+    """Check an ephemeral lock candidate before the native backend owns it.
+
+    The pinned Windows backend removes its lock file after releasing it. A
+    concurrent owner's ordinary release may therefore remove only the leaf
+    between validation calls. Missing parents, aliases and validation errors
+    still fail; the owned descriptor/path checks below remain strict.
+    """
+    # Resolving a Windows leaf that disappears between final-path probes can
+    # retain a device prefix. Validate the caller's original spelling, but do
+    # not promote that transient resolved spelling into path authority.
+    raw = os.fspath(value)
+    _asset_path(raw, must_exist=False)
+    lexical = Path(raw).absolute()
+    parent = local_path(lexical.parent, exists=True)
+    path = parent / lexical.name
+    regular(parent, directory=True)
+    try:
+        regular(path)
+    except FileNotFoundError:
+        # Only the released leaf may vanish; never recreate or admit through
+        # a removed, redirected, inaccessible or non-directory parent.
+        regular(parent, directory=True)
+    return path
+
+
 class NativeLock:
     def __init__(self, path):
         expected = WindowsFileLock if sys.platform == 'win32' else UnixFileLock
         if version('filelock') != '3.29.0' or FileLock is not expected:
             raise ResourceStateError('The reviewed native file locking backend is unavailable.')
-        self.path = local_path(path)
-        if os.path.lexists(self.path):
-            regular(self.path)
+        self.path = _unheld_path(path)
         self.expected, self.pid = expected, os.getpid()
         with _GUARD:
             self.lock = FileLock(self.path, mode=0o600, thread_local=False)
@@ -50,9 +75,7 @@ class NativeLock:
     def acquire(self):
         if self.pid != os.getpid():
             raise ResourceStateError('A resource lock cannot be reused in a forked child.')
-        local_path(self.path)
-        if os.path.lexists(self.path):
-            regular(self.path)
+        _unheld_path(self.path)
         with _GUARD:
             try:
                 self.lock.acquire(timeout=0)

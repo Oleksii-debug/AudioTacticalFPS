@@ -1,0 +1,177 @@
+name: CARR r9 explicit reading preparation
+
+on:
+  push:
+    branches: ['carr/v3-acceptance-*', 'carr/v3-reading-preparation-r9-*']
+    paths:
+      - carr-library/**
+      - .github/workflows/carr-r9-reading-preparation.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: carr-r9-reading-preparation-${{ github.repository }}-${{ github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  optional-reading-tools:
+    runs-on: windows-2022
+    timeout-minutes: 40
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: carr-library
+    env:
+      PYTHONUTF8: '1'
+      PYTHONUNBUFFERED: '1'
+      PIP_DISABLE_PIP_VERSION_CHECK: '1'
+      HF_HUB_OFFLINE: '1'
+      HF_HUB_DISABLE_TELEMETRY: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      DO_NOT_TRACK: '1'
+    steps:
+      - name: Check out exact candidate
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Set up native Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+          architecture: x64
+
+      - name: Install unchanged core and pinned qualification tools
+        timeout-minutes: 10
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $venv = Join-Path $env:RUNNER_TEMP ('carr-r9-python-' + [guid]::NewGuid().ToString('N'))
+          python -m venv $venv
+          if ($LASTEXITCODE -ne 0) { throw 'Unable to create qualification environment.' }
+          $python = Join-Path $venv 'Scripts/python.exe'
+          & $python -m pip install --only-binary=:all: --require-hashes -r packaging/windows-cp311.lock -r packaging/windows-sync-test-cp311.lock
+          if ($LASTEXITCODE -ne 0) { throw 'Pinned core or qualification install failed.' }
+          & $python -m pip install --no-deps --no-build-isolation .
+          if ($LASTEXITCODE -ne 0) { throw 'Current package install failed.' }
+          & $python -m pip check
+          if ($LASTEXITCODE -ne 0) { throw 'Installed package dependencies do not match.' }
+          New-Item -ItemType Directory -Force ci-results | Out-Null
+          git rev-parse HEAD | Set-Content ci-results/reading-preparation-commit.txt
+          if ($LASTEXITCODE -ne 0) { throw 'Unable to record candidate commit.' }
+          git rev-parse 'HEAD^{tree}' | Set-Content ci-results/reading-preparation-tree.txt
+          if ($LASTEXITCODE -ne 0) { throw 'Unable to record candidate tree.' }
+          & $python -m compileall -q src scripts/qualify_reading_preparation.py scripts/windows_reading_preparation_smoke.py packaging/prepare_reading_tools.py tests/reader/test_reading_preparation.py tests/reader/preparation_fixture.py packaging/reading-tools/test_optional_runtime.py tests/ui/test_narration_preparation.py tests/storage/test_preparation_backup.py
+          if ($LASTEXITCODE -ne 0) { throw 'Preparation source compilation failed.' }
+          & $python -m pip list --format=json | Set-Content ci-results/reading-preparation-host-packages.json
+          if ($LASTEXITCODE -ne 0) { throw 'Unable to record unchanged host packages.' }
+          "CARR_R9_PYTHON=$python" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Build exact selected optional packs without host installation
+        timeout-minutes: 10
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $python = $env:CARR_R9_PYTHON
+          $work = Join-Path $env:RUNNER_TEMP ('carr-r9-tools-' + [guid]::NewGuid().ToString('N'))
+          New-Item -ItemType Directory $work | Out-Null
+          $wheels = Join-Path $work 'wheels'
+          New-Item -ItemType Directory $wheels | Out-Null
+          & $python -m pip download --no-deps --only-binary=:all: --require-hashes -r packaging/reading-tools/optional-worker.lock --dest $wheels
+          if ($LASTEXITCODE -ne 0) { throw 'Pinned optional wheel acquisition failed.' }
+          $source = Join-Path $work 'hunspell-1.7.6.tar.gz'
+          Invoke-WebRequest -Uri 'https://github.com/hunspell/hunspell/releases/download/v1.7.6/hunspell-1.7.6.tar.gz' -OutFile $source
+          if ((Get-Item -LiteralPath $source).Length -ne 1167432 -or (Get-FileHash -LiteralPath $source -Algorithm SHA256).Hash.ToLowerInvariant() -ne '9c650ace31d4d8cc1da925a9507c3de1d50f1a54857af2f72429f517d5d53467') {
+            throw 'Hunspell publisher archive size/hash differs from reviewed source.'
+          }
+          tar -xf $source -C $work
+          if ($LASTEXITCODE -ne 0) { throw 'Pinned Hunspell archive extraction failed.' }
+          $build = Join-Path $work 'build'
+          cmake -S (Join-Path $work 'hunspell-1.7.6') -B $build -A x64 -DBUILD_SHARED_LIBS=ON -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded
+          if ($LASTEXITCODE -ne 0) { throw 'Native Hunspell configuration failed.' }
+          cmake --build $build --config Release --parallel 2
+          if ($LASTEXITCODE -ne 0) { throw 'Native Hunspell build failed.' }
+          $dll = Join-Path $build 'Release/hunspell-1.7.dll'
+          if (-not (Test-Path -LiteralPath $dll -PathType Leaf)) { throw 'Exact native Hunspell DLL is missing.' }
+          $normalizer = Join-Path $work 'Підготовка тексту'
+          $dictionary = Join-Path $work 'Словник Hunspell'
+          & $python -I -B -X utf8 packaging/prepare_reading_tools.py --wheelhouse $wheels --output $normalizer --reviewed-assets | Set-Content ci-results/reading-preparation-normalizer-build.json
+          if ($LASTEXITCODE -ne 0) { throw 'Optional number library pack failed verification.' }
+          & $python -I -B -X utf8 packaging/prepare_reading_tools.py --hunspell-dll $dll --hunspell-source $source --output $dictionary --reviewed-assets | Set-Content ci-results/reading-preparation-hunspell-build.json
+          if ($LASTEXITCODE -ne 0) { throw 'Native Hunspell fixture pack failed verification.' }
+          Copy-Item -LiteralPath (Join-Path $normalizer 'manifest.json') -Destination ci-results/reading-preparation-normalizer-manifest.json
+          Copy-Item -LiteralPath (Join-Path $dictionary 'manifest.json') -Destination ci-results/reading-preparation-hunspell-manifest.json
+          Copy-Item -LiteralPath packaging/reading-tools/source-lock.json -Destination ci-results/reading-preparation-source-lock.json
+          "CARR_READING_PREPARATION_MANIFEST=$(Join-Path $normalizer 'manifest.json')" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
+          "CARR_HUNSPELL_MANIFEST=$(Join-Path $dictionary 'manifest.json')" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Require source installed and native execution with actual outbound block
+        timeout-minutes: 18
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $python = (Resolve-Path -LiteralPath $env:CARR_R9_PYTHON).Path
+          $rule = 'CARR-R9-' + [guid]::NewGuid().ToString('N')
+          $saved = @(Get-NetFirewallProfile -PolicyStore PersistentStore | Select-Object Name, Enabled)
+          $activeBefore = @(Get-NetFirewallProfile -PolicyStore ActiveStore | Select-Object Name, Enabled)
+          if ($saved.Count -ne 3 -or $activeBefore.Count -ne 3) { throw 'Cannot capture every firewall profile.' }
+          $failure = $null
+          $cleanupFailures = [System.Collections.Generic.List[string]]::new()
+          $evidence = [ordered]@{ rule = $rule; program = $python; actual_block = $false; cleanup = 'NOT_RUN' }
+          try {
+            foreach ($profile in $saved) {
+              Set-NetFirewallProfile -Name $profile.Name -PolicyStore PersistentStore -Enabled True -ErrorAction Stop
+            }
+            $enabled = @(Get-NetFirewallProfile -PolicyStore ActiveStore)
+            if ($enabled.Count -ne 3 -or @($enabled | Where-Object { $_.Enabled.ToString() -ne 'True' }).Count) {
+              throw 'All actual firewall profiles must be enabled during optional tool execution.'
+            }
+            New-NetFirewallRule -Name $rule -DisplayName $rule -Program $python -Direction Outbound -Action Block -Profile Any -Enabled True -PolicyStore PersistentStore | Out-Null
+            $actual = @(Get-NetFirewallRule -Name $rule -PolicyStore ActiveStore -ErrorAction Stop)
+            $filters = @($actual | Get-NetFirewallApplicationFilter)
+            if ($actual.Count -ne 1 -or $actual[0].Direction.ToString() -ne 'Outbound' -or $actual[0].Action.ToString() -ne 'Block' -or $actual[0].Enabled.ToString() -ne 'True' -or $filters.Count -ne 1 -or $filters[0].Program -ne $python) {
+              throw 'The actual outbound Python block did not match the selected worker.'
+            }
+            $evidence.actual_block = $true
+            $evidence | ConvertTo-Json -Depth 8 | Set-Content ci-results/reading-preparation-firewall.json
+            $run = Join-Path $env:RUNNER_TEMP ('carr-r9-run-' + [guid]::NewGuid().ToString('N'))
+            & $python -I -B -X utf8 scripts/qualify_reading_preparation.py --source (Get-Location).Path --output (Join-Path (Get-Location).Path 'ci-results') --work $run
+            if ($LASTEXITCODE -ne 0) { throw 'Required reading preparation qualification failed.' }
+          } catch {
+            $failure = $_
+          } finally {
+            try {
+              $owned = @(Get-NetFirewallRule -Name $rule -PolicyStore PersistentStore -ErrorAction SilentlyContinue)
+              if ($owned.Count) { $owned | Remove-NetFirewallRule -ErrorAction Stop }
+              if (@(Get-NetFirewallRule -Name $rule -PolicyStore ActiveStore -ErrorAction SilentlyContinue).Count) {
+                throw 'Owned firewall rule remains active.'
+              }
+            } catch { $cleanupFailures.Add($_.Exception.Message) }
+            foreach ($profile in $saved) {
+              try { Set-NetFirewallProfile -Name $profile.Name -PolicyStore PersistentStore -Enabled $profile.Enabled -ErrorAction Stop }
+              catch { $cleanupFailures.Add($_.Exception.Message) }
+            }
+            try {
+              foreach ($profile in $saved) {
+                $restored = Get-NetFirewallProfile -Name $profile.Name -PolicyStore PersistentStore
+                if ($restored.Enabled -ne $profile.Enabled) { throw 'Persistent firewall profile was not restored.' }
+              }
+              foreach ($profile in $activeBefore) {
+                $restored = Get-NetFirewallProfile -Name $profile.Name -PolicyStore ActiveStore
+                if ($restored.Enabled -ne $profile.Enabled) { throw 'Active firewall profile was not restored.' }
+              }
+            } catch { $cleanupFailures.Add($_.Exception.Message) }
+            $evidence.cleanup = if ($cleanupFailures.Count) { 'FAIL' } else { 'PASS' }
+            $evidence.cleanup_errors = @($cleanupFailures)
+            $evidence | ConvertTo-Json -Depth 8 | Set-Content ci-results/reading-preparation-firewall.json
+          }
+          if ($cleanupFailures.Count) { throw ('Firewall cleanup failed: ' + ($cleanupFailures -join '; ')) }
+          if ($failure) { throw $failure }
+
+      - name: Retain exact qualification evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: carr-r9-reading-preparation-${{ github.sha }}
+          path: carr-library/ci-results/reading-preparation-*
+          if-no-files-found: error

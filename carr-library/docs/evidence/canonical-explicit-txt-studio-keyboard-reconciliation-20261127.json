@@ -1,0 +1,155 @@
+{
+  "schema": "carr-canonical-narrow-contract-reconciliation/1",
+  "source_status": "AUTHORED_SOURCE_NOT_RUN",
+  "runtime_status": "NOT_RUN",
+  "base_commit": "7959f6a9fb37b315dec18b4d310b8480d9bb94e5",
+  "canonical_reference": "e3cf74c243d4ef930b526b5648ca9003c0900057",
+  "changes": [
+    {
+      "contract": "Explicit legacy TXT decoding",
+      "canonical_paths": [
+        "src/carr_library/conversion/formats.py",
+        "src/carr_library/conversion/service.py",
+        "tests/conversion/test_conversion.py"
+      ],
+      "current_paths": [
+        "src/carr_library/conversion/models.py",
+        "src/carr_library/conversion/service.py",
+        "src/carr_library/conversion/worker.py",
+        "src/carr_library/ingest/worker.py"
+      ],
+      "api": [
+        "ConversionService.extract(..., encoding=...)",
+        "ConversionService.extract_many(..., encoding=...)"
+      ],
+      "default": "Strict UTF-8 with optional UTF-8 BOM; no UTF-16 BOM guess or codec fallback.",
+      "finite_codecs": [
+        "utf-8",
+        "utf-8-sig",
+        "utf-16",
+        "utf-16-le",
+        "utf-16-be",
+        "cp1251",
+        "cp1252",
+        "iso-8859-1",
+        "ascii"
+      ],
+      "authority": "Parent canonicalizes finite aliases; isolated worker requires exact canonical value, TXT suffix and no adapter. Parent requires matching source_encoding in private receipt before publication.",
+      "preserved": [
+        "Exact original bytes and SHA256",
+        "Existing resource admission, worker isolation, cancellation and no-replace publication",
+        "Separate streamed UTF-8 intake and all PDF launch schemas",
+        "Strict raw and decoded signature/control screening"
+      ],
+      "limits": "No codec detector, arbitrary codec plugins, replacement decoding, desktop encoding dialog or new translator/converter transport."
+    },
+    {
+      "contract": "Stable semantic registration for current Studio and prepare-book menu",
+      "canonical_paths": [
+        "src/carr_library/ui/studio_dialog.py",
+        "tests/ui/test_studio_keyboard_registration.py"
+      ],
+      "current_paths": [
+        "src/carr_library/ui/audio_studio.py",
+        "tests/ui/test_audio_studio_keyboard.py"
+      ],
+      "ids": {
+        "audio.studio": "Ctrl+Alt+A",
+        "audio.prepare_book": ""
+      },
+      "behavior": "Current menu items and handlers are registered through existing register_menu_command only after attachment. Startup pending and late live-manager registration preserve exact saved semantic keymaps; current busy/library guards and dialogs remain unchanged.",
+      "limits": "Current API/menu names differ from canonical speech/studio namespaces. Tests use existing explicit native-menu doubles, not physical key dispatch or screen-reader qualification."
+    }
+  ],
+  "new_case_count": 45,
+  "new_cases": {
+    "tests.conversion.test_explicit_text_encoding": {
+      "test_explicit_selected_codec_round_trips_exact_source_and_receipt": 9,
+      "test_absent_selection_keeps_strict_utf8_default_without_guessing": 2,
+      "test_unknown_or_ambiguous_selection_is_rejected_before_worker": 7,
+      "test_selected_codec_cannot_override_a_structured_reader": 2,
+      "test_isolated_worker_rejects_invalid_codec_authority_without_output": 6,
+      "test_explicit_codec_does_not_accept_binary_signatures_or_controls": 6,
+      "test_selected_codec_decoding_is_strict_without_replacement": 2,
+      "test_utf16_record_bound_counts_actual_formfeeds_not_low_bytes": 1,
+      "test_decoded_formfeeds_still_enforce_the_selected_record_budget": 1,
+      "test_explicit_codec_enforces_utf8_output_bytes_before_publication": 1,
+      "test_batch_forwards_one_explicit_codec_and_preserves_each_original": 1,
+      "test_parent_rejects_a_worker_receipt_with_different_codec_authority": 2,
+      "test_cancelled_explicit_conversion_does_not_start_a_worker": 1
+    },
+    "tests.ui.test_audio_studio_keyboard": {
+      "test_startup_studio_semantics_bind_the_existing_actions_and_defaults": 1,
+      "test_saved_studio_keys_survive_startup_and_late_real_manager_registration": 2,
+      "test_studio_semantic_binding_survives_caption_and_native_menu_id_changes": 1
+    }
+  },
+  "existing_test_support": [
+    "tests.ui.test_keyboard_manager"
+  ],
+  "verification": {
+    "source_readback": "Required after creation",
+    "python_compilation": "NOT_RUN",
+    "pytest_source": "NOT_RUN",
+    "pytest_installed": "NOT_RUN",
+    "native_os_dispatch": "NOT_RUN",
+    "lexical_checks": [
+      {
+        "p": "src/carr_library/conversion/models.py",
+        "lexical": {
+          "lines": 73,
+          "lexical": "balanced",
+          "compilation": "NOT_RUN"
+        }
+      },
+      {
+        "p": "src/carr_library/conversion/service.py",
+        "lexical": {
+          "lines": 362,
+          "lexical": "balanced",
+          "compilation": "NOT_RUN"
+        }
+      },
+      {
+        "p": "src/carr_library/conversion/worker.py",
+        "lexical": {
+          "lines": 190,
+          "lexical": "balanced",
+          "compilation": "NOT_RUN"
+        }
+      },
+      {
+        "p": "src/carr_library/ingest/worker.py",
+        "lexical": {
+          "lines": 1043,
+          "lexical": "balanced",
+          "compilation": "NOT_RUN"
+        }
+      },
+      {
+        "p": "tests/conversion/test_explicit_text_encoding.py",
+        "lexical": {
+          "lines": 219,
+          "lexical": "balanced",
+          "compilation": "NOT_RUN"
+        }
+      },
+      {
+        "p": "src/carr_library/ui/audio_studio.py",
+        "lexical": {
+          "lines": 2137,
+          "lexical": "balanced",
+          "compilation": "NOT_RUN"
+        }
+      },
+      {
+        "p": "tests/ui/test_audio_studio_keyboard.py",
+        "lexical": {
+          "lines": 101,
+          "lexical": "balanced",
+          "compilation": "NOT_RUN"
+        }
+      }
+    ]
+  }
+}

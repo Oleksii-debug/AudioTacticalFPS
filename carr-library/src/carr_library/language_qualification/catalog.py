@@ -440,24 +440,42 @@ def build_capability_matrix(*, catalog: LanguageCatalog | None = None,
         bound[binding.tag] = (entry, binding)
     matched = {x.id: [] for x in catalog.entries}
     unmatched, warnings, seen_voices = [], [], set()
-    from carr_library.speech.runtime import Voice
+    from ..audio.engines import Voice
     for index, voice in enumerate(voices):
-        if index >= 10_000 or not isinstance(voice, Voice) or voice.id in seen_voices:
+        if (index >= 10_000 or not isinstance(voice, Voice)
+                or not isinstance(voice.id, str) or not voice.id or len(voice.id) > 512
+                or voice.id in seen_voices):
             raise CatalogError('Use distinct bounded voice records from the installed voice registry.')
         seen_voices.add(voice.id)
-        try:
-            tag = canonical_language_tag(voice.language, adapter_underscores=True)
-        except CatalogError:
+        if (not isinstance(voice.languages, tuple) or len(voice.languages) > 256
+                or not isinstance(voice.controls, tuple) or len(voice.controls) > 64
+                or any(not isinstance(value, str) or len(value) > 4000
+                       for value in (voice.name, voice.engine, voice.license, *voice.controls))
+                or type(voice.available) is not bool):
+            raise CatalogError('The installed voice metadata is malformed or exceeds its limits.')
+        if not voice.available:
             unmatched.append(voice.id)
-            warnings.append(f'Voice {voice.id} has no well-formed explicit language tag; no language was inferred.')
+            warnings.append(f'Voice {voice.id} is unavailable; its declaration does not establish local support.')
             continue
-        if tag not in bound:
+        tags = {}
+        for language in voice.languages:
+            try:
+                tag = canonical_language_tag(language, adapter_underscores=True)
+            except CatalogError:
+                warnings.append(f'Voice {voice.id} has an invalid declared language tag; no language was inferred.')
+                continue
+            tags.setdefault(tag, language)
+        found = False
+        for tag, language in tags.items():
+            if tag not in bound:
+                continue
+            entry, binding = bound[tag]
+            coverage = 'partial' if entry.scope == 'group-standard-unresolved' else binding.coverage
+            matched[entry.id].append(VoiceMatch(voice.id, voice.name, voice.engine, language,
+                tag, voice.license, voice.controls, binding.evidence, coverage))
+            found = True
+        if not found:
             unmatched.append(voice.id)
-            continue
-        entry, binding = bound[tag]
-        coverage = 'partial' if entry.scope == 'group-standard-unresolved' else binding.coverage
-        matched[entry.id].append(VoiceMatch(voice.id, voice.name, voice.engine, voice.language,
-            tag, voice.license, voice.capabilities, binding.evidence, coverage))
     records = []
     for entry in catalog.entries:
         matches = tuple(matched[entry.id])

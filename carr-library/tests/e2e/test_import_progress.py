@@ -4,7 +4,13 @@ from threading import Event
 import pytest
 
 from carr_library.application import LibraryApp
-from carr_library.progress import operation_outcome
+from carr_library.progress import ProgressHub, finish_result
+
+
+def operation_outcome(value):
+    reporter = ProgressHub().start('Observed import')
+    finish_result(reporter, value)
+    return reporter.event.state
 
 
 def sources(tmp_path, count=3):
@@ -29,7 +35,7 @@ def test_multi_file_measurements_follow_actual_durable_file_outcomes(tmp_path):
     assert observed == [(n, 3, 'Processing files') for n in range(4)]
     reopened = LibraryApp(app.root)
     assert len(reopened.search(workspace, 'railway')) == 3
-    assert operation_outcome(results) == 'succeeded'
+    assert operation_outcome(results) == 'complete'
 
 
 @pytest.mark.parametrize('unsized', [False, True], ids=['single-file', 'generator'])
@@ -136,5 +142,5 @@ def test_late_cancel_after_last_commit_does_not_relabel_a_completed_import(tmp_p
             cancel.set()
     results = app.import_files(workspace, paths, cancelled=cancel.is_set, progress=progress)
     assert cancel.is_set() and results[0]['state'] == 'complete'
-    assert operation_outcome(results) == 'succeeded'
+    assert operation_outcome(results) == 'complete'
     assert len(LibraryApp(app.root).browse(workspace)) == 1

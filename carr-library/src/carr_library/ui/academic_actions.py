@@ -11,7 +11,7 @@ import wx
 
 from ..catalog.reference_exchange import preview_references
 from ..research.export_file import write_export, export_completion
-from .export_destination import confirm_export_destination
+from .export_destination import approve_export_destination
 from .catalog_metadata_dialog import MetadataDialog, metadata_values
 
 
@@ -300,7 +300,7 @@ def export_bibliography(frame):
                 raise ValueError('Library selection changed. Open the bibliography command again.')
 
         selected_scope()
-        approval = confirm_export_destination(frame, path, private_root=library.root, wx_module=wx)
+        approval = approve_export_destination(frame, path, private_root=library.root)
         if approval is None:
             return
         selected_scope()
@@ -326,7 +326,7 @@ def export_bibliography(frame):
 
         frame.run_job('Exporting bibliography', operation, done)
     except Exception as exc:
-        frame.report(f'Bibliography export: {exc}')
+        frame.report(f'Bibliography was not exported: {exc}')
 
 
 def export_research_outline(frame):
@@ -348,7 +348,7 @@ def export_research_outline(frame):
                 raise ValueError('Topic selection changed. Open the outline command again.')
 
         selected_scope()
-        approval = confirm_export_destination(frame, path, private_root=library.root, wx_module=wx)
+        approval = approve_export_destination(frame, path, private_root=library.root)
         if approval is None:
             return
         selected_scope()
@@ -373,7 +373,7 @@ def export_research_outline(frame):
 
         frame.run_job('Exporting verified research outline', operation, done)
     except Exception as exc:
-        frame.report(f'Research outline export: {exc}')
+        frame.report(f'Research outline was not exported: {exc}')
 
 
 def install_academic_actions(frame):

@@ -1,0 +1,113 @@
+{
+  "schema": "carr-helper-sharing-fixture-final-composition/1",
+  "status": "SOURCE_REVIEWED_REQUIRES_CURRENT_EXECUTION",
+  "base": {
+    "commit": "e9bba260fd66cfe5217f8081778fcdfc9dfd202c",
+    "tree": "c6a3df5fe5e6ed328ee6d1552d7360f1b94e0d9e"
+  },
+  "components": [
+    {
+      "name": "native_directory_access_fixture",
+      "commit": "fe1d4744fb5b758fb006771d1e78280c278f9f7d",
+      "tree": "1f010a34b1b1a0b1810a6f6ed554930009376c41",
+      "review": "ROOT_AND_NATIVE_SOURCE_GO_NOT_EXECUTED"
+    },
+    {
+      "name": "observed_e9_focused_failure",
+      "commit": "bf1c3fa91c712e09586d4c31e893a19755fcb2cf",
+      "tree": "df600d53c80a9fe423664b4c07255a29c1104fa8",
+      "review": "ROOT_AND_NATIVE_ACTUAL_FAILURE_NATIVE_PASS_WITHIN_SCOPE"
+    },
+    {
+      "name": "actual_reader_parser_controls",
+      "commit": "4981f3e6d458cc5c097f069931044fffb1f8687f",
+      "tree": "3b3b59b89c3ab8441e0f262e2a7f7b70a906b52a",
+      "review": "ROOT_AND_CAPACITY_ACTUAL_37_REFUSAL_6_POSITIVE_PASS_PARSER_ONLY"
+    }
+  ],
+  "changes": [
+    {
+      "path": "carr-library/tests/audio/test_local_voice_helper.py",
+      "before": "72426b335435ab79cc07240cfa683683c8e0b8ae",
+      "after_blob": "85edae85f0de7f1fdce09d34f32be2e163edd9e7"
+    },
+    {
+      "path": "carr-library/docs/evidence/local-voice-helper-deny-delete-fixture-repair-20261128.json",
+      "before": null,
+      "after_blob": "599618a1465f6792326cc04867769dbe84dd71fd"
+    },
+    {
+      "path": "carr-library/docs/evidence/completed-audio-inspection-focused-failure-e9-20261128.json",
+      "before": null,
+      "after_blob": "7ae2a433343db1704dcbd08c9dfde3f9c29068a3"
+    },
+    {
+      "path": "carr-library/docs/evidence/completed-audio-inspection-focused-failure-e9-20261128.md",
+      "before": null,
+      "after_blob": "fb0c9cc1e202fbee162360bf73dc03b11dc9cf4c"
+    },
+    {
+      "path": "carr-library/docs/evidence/post-c31-main-reader-parser-controls-observed-20261128.json",
+      "before": null,
+      "after_blob": "645f6914db040a71c983d7a1c0f1145a7d211c98"
+    },
+    {
+      "path": "carr-library/docs/validation/RESONANCE_REQUIREMENT_STATUS_20261127.json",
+      "before": "45104be7cd7d8005681e8f6c680ee2228c74c6ef",
+      "after_blob": null,
+      "after_sha256": "24c2ed8d74fe4dc323f3a4de9cd9c2b20ee8290441587e9a2954d27ffd3512ce"
+    },
+    {
+      "path": "carr-library/docs/V3_RELEASE_READINESS.md",
+      "before": "82b188a05bd02fe270f0de2620157e9ea6408995",
+      "after_blob": null,
+      "after_sha256": "2998c7fd167864118d3ba88fcdd0740fdb85197c19eb64bdbd80a1307b06f259"
+    }
+  ],
+  "self_manifest": {
+    "path": "carr-library/docs/evidence/helper-sharing-fixture-final-composition-20261128.json",
+    "identity": "Read the containing immutable Git tree; this file does not claim its own future blob."
+  },
+  "tree_scope": {
+    "changed_paths_including_this_manifest": 8,
+    "modifications": 3,
+    "additions": 5,
+    "deletions": 0,
+    "expected_total_leaf_blobs": 1801,
+    "application_blobs": 425,
+    "application_changed": 0,
+    "all425_application_blobs_preserved": true
+  },
+  "fixture_scope": {
+    "one_access_mask_and_comment_only": true,
+    "whole_test_inverse_matches_e9": true,
+    "no_assertion_or_test_identity_changes": true,
+    "no_counter_or_workflow_changes": true,
+    "helper_module_cases": 77
+  },
+  "preserved_populations": {
+    "protected_source": 5947,
+    "protected_installed": 5619,
+    "source_modules": 252,
+    "installed_modules": 239,
+    "source_selectors": 451,
+    "focused_source": 274,
+    "focused_installed": 274,
+    "focused_functions": 117,
+    "native_checks": 29,
+    "helper_cases": 77
+  },
+  "retained_authority": {
+    "AGENTS": "080bb9104d3224749e9317c2273d803c0ac37835",
+    "scope": "db8adbdc483a03c262885928c7ed214ca70bbaa7",
+    "acceptance": "45752d31899f91bbdc9c71e4b256ac42975beaac"
+  },
+  "execution": {
+    "current": "NOT_RUN",
+    "e9_focused": "FAIL, retained with both272+2 summaries and separate29-check native PASS.",
+    "e9_full": "RUNNING at preparation; retain its actual completed outcome separately.",
+    "successor": "Requires its own focused274/274/29 and full main/auxiliary/installed/native/standard plus independent artifact verification.",
+    "real_models_languages_acoustics_manual_nvda_hardware_corpus_rights": "Separate actual acceptance still required."
+  },
+  "full_platform_status": "NOT_QUALIFIED"
+}

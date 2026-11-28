@@ -1,322 +1,733 @@
-"""Synthetic TLS-adapter, authorization, resume and original-integrity checks."""
+"""Real files, locks, receipts and exports with synthetic provider responses only."""
+from dataclasses import replace
+from contextlib import closing
 from decimal import Decimal
 from hashlib import sha256
-import http.client
 import json
-import ssl
-from time import time
+import os
+from pathlib import Path
+import shutil
+import socket
+import sqlite3
+from threading import Event, Thread
+from tempfile import TemporaryDirectory
 import pytest
-from carr_library.assistant.profiles import ProviderProfile
-from carr_library.assistant.providers import Authorization, Gateway, ProviderError
-from carr_library.assistant.translation import TranslationService, split_text, ENDPOINT
-from carr_library.assistant.state import read_json
-from carr_library.speech.reading import ReadingDocument
-from carr_library.ui.translation_dialog import translation_approval
 
+from carr_library.assistant.models import canonical, local_path
+from carr_library.assistant.state import atomic_json
+from carr_library.assistant.translation import (
+    TranslationService, language_approval, translation_approval, split_text)
+from carr_library.assistant.translation_state import (
+    TranslationStore, allocations, is_state_path, snapshot_guard, state_limit,
+    state_paths, validate_state_document, validate_state_tree, validate_translation_job)
+from carr_library.ingest.writer_guard import exclusive_writer
+from carr_library.providers import (
+    BudgetLedger, ProfileStore, ProviderError, ProviderGateway, ProviderProfile,
+    GOOGLE_TRANSLATION_ENDPOINT, translation_receipt_sha256)
+from carr_library.reader.narration_text import NarrationDraft
 
-def profile(**changes):
-    values = dict(id='google_test', name='Synthetic account', adapter='google-translation-v2',
-                  endpoint=ENDPOINT, model='nmt',
-                  capabilities=('translation.text', 'translation.languages'),
-                  credential_ref='carr/provider/google_test/' + 'a' * 32, enabled=True)
-    values.update(changes)
-    return ProviderProfile(**values)
+SECRET = 'synthetic-account-key-do-not-send'
 
 
 class Vault:
     def __init__(self):
-        self.calls = []
+        self.values = {}
+        self.on_get = lambda: None
 
-    def get(self, identity, reference):
-        self.calls.append((identity, reference))
-        return 'SYNTHETIC_TEST_SECRET_DO_NOT_SEND'
+    def put(self, reference, binding, secret):
+        self.values[reference, binding] = secret
+
+    def get(self, reference, binding):
+        self.on_get()
+        return self.values[reference, binding]
+
+    def delete(self, reference, binding):
+        self.values.pop((reference, binding), None)
+
+
+class Transport:
+    def __init__(self):
+        self.calls, self.error = [], None
+
+    def get(self, profile, route, headers, **kwargs):
+        self.calls.append(('languages', profile.id, route, dict(headers)))
+        if self.error:
+            raise self.error
+        return json.dumps({'data': {'languages': [
+            {'language': 'en', 'name': 'English'}, {'language': 'uk', 'name': 'Ukrainian'},
+            {'language': 'sl', 'name': 'Slovenian'}]}}).encode()
+
+    def post(self, profile, route, payload, headers, **kwargs):
+        self.calls.append(('text', profile.id, json.loads(payload), dict(headers)))
+        if self.error:
+            raise self.error
+        return json.dumps({'data': {'translations': [{
+            'translatedText': 'ПЕРЕКЛАД: ' + json.loads(payload)['q'],
+            'detectedSourceLanguage': 'en', 'model': 'nmt'}]}}).encode()
 
 
 @pytest.fixture
-def connection(monkeypatch):
-    state = {'calls': [], 'status': 200, 'custom': None}
-    class Connection:
-        def __init__(self, host, port, **kwargs):
-            assert host == 'translation.googleapis.com'
-            assert port in (None, 443)
-            assert isinstance(kwargs.get('context'), ssl.SSLContext)
-            self.position = 0
-
-        def request(self, method, route, body, headers):
-            state['calls'].append({'method': method, 'route': route, 'body': body, 'headers': dict(headers)})
-            if state['custom'] is not None:
-                data = state['custom']
-            elif method == 'GET':
-                data = {'data': {'languages': [{'language': 'en', 'name': 'English'},
-                                               {'language': 'uk', 'name': 'Ukrainian'}]}}
-            else:
-                payload = json.loads(body)
-                data = {'data': {'translations': [{'translatedText': 'TRANSLATED: ' + payload['q'],
-                                                   'detectedSourceLanguage': 'en'}]}}
-            self.raw = json.dumps(data).encode('utf-8')
-            if state.get('escape_secret'):
-                secret = state['escape_secret']
-                escaped = ''.join('\\u%04x' % ord(c) for c in secret).encode('ascii')
-                self.raw = self.raw.replace(secret.encode('utf-8'), escaped)
-
-        def getresponse(self):
-            self.status = state['status']
-            return self
-
-        def getheader(self, name, default=None):
-            return {'Content-Type': 'application/json; charset=utf-8',
-                    'Content-Length': str(len(self.raw))}.get(name, default)
-
-        def read(self, size):
-            block = self.raw[self.position:self.position + size]
-            self.position += len(block)
-            return block
-
-        def close(self):
-            pass
-    monkeypatch.setattr(http.client, 'HTTPSConnection', Connection)
-    return state
+def ready(tmp_path, monkeypatch):
+    monkeypatch.setattr(socket, 'getaddrinfo', lambda *a, **k: pytest.fail('No real network in this suite'))
+    root = tmp_path / 'library'
+    root.mkdir()
+    vault, transport = Vault(), Transport()
+    profiles = ProfileStore(root / 'api-connections.json', vault)
+    selected = profiles.save(ProviderProfile(
+        'google-test', 'Synthetic NMT account', 'google-translation-v2',
+        GOOGLE_TRANSLATION_ENDPOINT, 'nmt', ('translation',)), secret=SECRET)
+    gateway = ProviderGateway(BudgetLedger(root / 'api-operations.sqlite'), vault=vault, transport=transport)
+    service = TranslationService(root, gateway=gateway, profiles=profiles)
+    service.refresh_languages(selected, approval=language_approval(selected))
+    return service, selected, vault, transport
 
 
-def ready(tmp_path, connection):
-    vault = Vault()
-    gateway = Gateway(tmp_path / 'gateway', vault=vault, mode='APPROVED_REMOTE')
-    service = TranslationService(tmp_path / 'translation', gateway=gateway)
-    p = profile()
-    approval = Authorization('language_test', 'language_test', ((p.id, p.endpoint),),
-                             ('translation.languages',), ('user-instruction',), '0', 1, time() + 60)
-    service.refresh_languages(p, authorization=approval)
-    return service, p, vault
+def submit(service, selected, value='Synthetic source', **changes):
+    permit = translation_approval(selected, value, 'en', 'uk', 2_000_000)
+    return service.submit(selected, value, 'en', 'uk', approval=permit, **changes)
 
 
-def test_local_only_blocks_google_before_credentials_or_http(tmp_path, connection):
-    vault = Vault()
-    with pytest.raises(PermissionError, match='LOCAL ONLY'):
-        Gateway(tmp_path, vault=vault).request(profile(), 'translation.text',
-            {'q': 'Synthetic test', 'target': 'uk'}, task_id='task', data_class='selected-excerpt')
-    assert not vault.calls and not connection['calls']
+def text_calls(transport):
+    return [row for row in transport.calls if row[0] == 'text']
 
 
-@pytest.mark.parametrize('change', [
-    {'endpoint': 'https://evil.example/language/translate/v2'},
-    {'endpoint': ENDPOINT + '?key=secret'},
-    {'endpoint': 'https://translation.googleapis.com/v3'},
-    {'model': 'advanced-v3'}, {'capabilities': ('llm.chat',)}, {'local': True},
-])
-def test_google_profile_has_exact_official_authority(change):
-    with pytest.raises(ValueError):
-        profile(**change)
-
-
-def test_language_discovery_uses_get_and_header_secret(tmp_path, connection):
-    service, p, vault = ready(tmp_path, connection)
-    call = connection['calls'][0]
-    assert call['method'] == 'GET' and call['body'] is None
-    assert call['route'] == '/language/translate/v2/languages?target=en&model=nmt'
-    assert call['headers']['X-goog-api-key'] == 'SYNTHETIC_TEST_SECRET_DO_NOT_SEND'
-    assert 'SYNTHETIC_TEST_SECRET' not in call['route']
-    assert service.languages(p)[1]['language'] == 'uk'
-    assert 'SYNTHETIC_TEST_SECRET' not in service._languages_path(p).read_text()
-    assert len(vault.calls) == 1
-
-
-def test_preview_requires_provider_language_inventory(tmp_path):
-    with pytest.raises(ValueError, match='fetch the supported'):
-        TranslationService(tmp_path).preview(profile(), 'Synthetic source', 'auto', 'uk')
-
-
-def test_preview_counts_unicode_and_owner_entered_price(tmp_path, connection):
-    service, p, _ = ready(tmp_path, connection)
-    value = 'Українська мова 🙂\n' * 1000
-    result = service.preview(p, value, 'auto', 'uk', rate_per_million='20')
+def test_opening_preview_and_submit_never_send_selected_text(ready):
+    service, selected, _, transport = ready
+    value = 'Український synthetic source 🙂\r\n' * 300
+    result = service.preview(selected, value, 'en', 'uk', rate_per_million='20')
+    assert result['source_sha256'] == sha256(value.encode()).hexdigest()
     assert result['characters'] == len(value)
     assert result['calls'] == len(split_text(value))
-    assert Decimal(result['estimated_cost']) == Decimal(len(value)) * Decimal(20) / Decimal(1_000_000)
-    assert len(connection['calls']) == 1
-    with pytest.raises(ValueError, match='not declared supported'):
-        service.preview(p, value, 'en', 'xx')
+    assert Decimal(result['estimated_cost']) == Decimal(len(value)) * 20 / 1_000_000
+    identity = submit(service, selected, value)
+    assert service.jobs.load(identity)['schema'] == 'carr-translation-job/1'
+    assert not text_calls(transport)
+    assert len(transport.calls) == 1
 
 
-def test_text_api_uses_plaintext_and_secret_is_only_header(tmp_path, connection):
-    service, p, _ = ready(tmp_path, connection)
-    value = 'Synthetic source <tag> & original.'
-    authorization, per_call = translation_approval(p, value, 'auto', 'uk', '1')
-    identity = service.submit(p, value, 'auto', 'uk', authorization=authorization, per_call_cost=per_call)
-    assert service.resume(identity)['status'] == 'complete'
-    call = connection['calls'][-1]
-    assert call['method'] == 'POST' and call['route'] == '/language/translate/v2'
-    assert json.loads(call['body']) == {'q': value, 'target': 'uk', 'format': 'text', 'model': 'nmt'}
-    assert 'SYNTHETIC_TEST_SECRET' not in call['body'].decode()
+def test_typed_translation_never_writes_generic_assistant_checkpoint(ready):
+    service, selected, _, _ = ready
+    identity = submit(service, selected)
+    assert service.jobs.path(identity).parent == service.root / 'state' / 'translation'
+    assert not (service.root / 'state' / 'assistant').exists()
+    validate_translation_job(service.jobs.load(identity), identity=identity)
 
 
-def test_reject_changed_text_under_prior_approval(tmp_path, connection):
-    service, p, _ = ready(tmp_path, connection)
-    approval, cost = translation_approval(p, 'First approved text', 'en', 'uk', '1')
-    with pytest.raises(PermissionError, match='exact selected text'):
-        service.submit(p, 'Different text', 'en', 'uk', authorization=approval, per_call_cost=cost)
-    assert len(connection['calls']) == 1
+@pytest.mark.parametrize('source,target', [('xx', 'uk'), ('en', 'xx'), ('en', 'en')])
+def test_supported_pair_is_required_before_job_creation(ready, source, target):
+    service, selected, _, transport = ready
+    with pytest.raises(ValueError):
+        service.preview(selected, 'Synthetic source', source, target)
+    assert not text_calls(transport)
 
 
-def test_resume_reuses_accepted_chunks_without_rebilling(tmp_path, connection):
-    service, p, _ = ready(tmp_path, connection)
-    source = 'Synthetic long paragraph. ' * 900
-    approval, cost = translation_approval(p, source, 'en', 'uk', '2')
-    identity = service.submit(p, source, 'en', 'uk', authorization=approval, per_call_cost=cost)
-    stop = []
-    result = service.resume(identity, cancelled=lambda: bool(stop), progress=lambda *args: stop.append(True))
+def test_preview_requires_exact_profile_language_inventory(ready):
+    service, selected, _, transport = ready
+    service._languages_path(selected).unlink()
+    with pytest.raises(ValueError, match='fetch the supported'):
+        service.preview(selected, 'Synthetic source', 'en', 'uk')
+    assert not text_calls(transport)
+
+
+@pytest.mark.parametrize('change', ['text', 'target', 'profile', 'calls', 'mode', 'currency', 'loopback'])
+def test_submit_cannot_expand_reviewed_authority(ready, change):
+    service, selected, _, transport = ready
+    value, target = 'Original exact text', 'uk'
+    permit = translation_approval(selected, value, 'en', target, 100)
+    if change == 'text':
+        value = 'Different text'
+    elif change == 'target':
+        target = 'sl'
+    elif change == 'profile':
+        permit = replace(permit, profile_fingerprint='f' * 64)
+    else:
+        permit = replace(permit, **{
+            'calls': {'max_calls': 2}, 'mode': {'mode': 'LOCAL_ONLY'},
+            'currency': {'currency': 'EUR'}, 'loopback': {'allow_loopback': True},
+        }[change])
+    with pytest.raises(ValueError):
+        service.submit(selected, value, 'en', target, approval=permit)
+    assert not text_calls(transport) and not service.list()
+
+
+def test_accepted_chunks_survive_restart_and_never_rebill(ready):
+    service, selected, _, transport = ready
+    source = 'Synthetic paragraph. ' * 1000
+    identity = submit(service, selected, source)
+    stop = Event()
+    result = service.resume(identity, cancelled=stop.is_set, progress=lambda *args: stop.set())
     assert result['status'] == 'paused' and result['completed'] == 1
-    before = len(connection['calls'])
-    reopened = TranslationService(service.directory, gateway=service.gateway)
-    result = reopened.resume(identity)
-    assert result['status'] == 'complete'
-    assert len(connection['calls']) - before == result['total'] - 1
-    count = len(connection['calls'])
+    before = len(text_calls(transport))
+    reopened = TranslationService(service.root, gateway=service.gateway, profiles=service.profiles)
+    assert reopened.resume(identity)['status'] == 'complete'
+    expected = sum(bool(part.strip()) for part in split_text(source))
+    assert len(text_calls(transport)) == expected and before == 1
     reopened.resume(identity)
-    assert len(connection['calls']) == count
+    assert len(text_calls(transport)) == expected
+    assert sum(row['estimate_micros'] for row in service.gateway.ledger.report(identity)) == 2_000_000
 
 
-def test_export_preserves_original_and_derivative_authority(tmp_path, connection):
-    service, p, _ = ready(tmp_path, connection)
-    value = 'Synthetic preserved source.'
+def test_whitespace_chunks_are_preserved_without_billable_requests(ready):
+    service, selected, _, transport = ready
+    source = ' ' * 4500 + 'Synthetic source\r\n'
+    identity = submit(service, selected, source)
+    result = service.resume(identity)
+    job = service.jobs.load(identity)
+    assert result['status'] == 'complete' and job['receipts'][0]['text'] == ' ' * 4500
+    assert job['receipts'][0]['operation_id'] is None and job['allocations'][0] is None
+    assert len(text_calls(transport)) == job['approval']['max_calls'] == 1
+
+
+def test_known_unsent_pause_can_resume_exact_call(ready):
+    service, selected, vault, transport = ready
+    identity = submit(service, selected)
+    stop = Event()
+    vault.on_get = stop.set
+    result = service.resume(identity, cancelled=stop.is_set)
+    assert result['status'] == 'paused' and result['completed'] == 0
+    assert service.gateway.ledger.report(identity)[0]['state'] == 'cancelled_before_send'
+    assert not text_calls(transport)
+    vault.on_get = lambda: None
+    stop.clear()
+    assert service.resume(identity, cancelled=stop.is_set)['status'] == 'complete'
+    assert len(text_calls(transport)) == 1
+
+
+def test_uncertain_charge_survives_restart_without_automatic_retry(ready):
+    service, selected, _, transport = ready
+    identity = submit(service, selected)
+    transport.error = RuntimeError('Synthetic transport leak: ' + SECRET)
+    with pytest.raises(ProviderError) as caught:
+        service.resume(identity)
+    assert SECRET not in str(caught.value)
+    assert service.jobs.load(identity)['status'] == 'attention'
+    assert service.gateway.ledger.report(identity)[0]['state'] == 'uncertain'
+    transport.error = None
+    reopened = TranslationService(service.root, gateway=service.gateway, profiles=service.profiles)
+    with pytest.raises(ProviderError, match='not retried'):
+        reopened.resume(identity)
+    assert len(text_calls(transport)) == 1
+
+
+def test_lost_paid_output_checkpoint_blocks_rebilling(ready, monkeypatch):
+    service, selected, _, transport = ready
+    identity = submit(service, selected)
+    save = service.jobs.save
+    def full_disk(value, **kwargs):
+        if value['receipts']:
+            raise OSError('synthetic full disk after paid response')
+        return save(value, **kwargs)
+    with monkeypatch.context() as patch:
+        patch.setattr(service.jobs, 'save', full_disk)
+        with pytest.raises(OSError):
+            service.resume(identity)
+    assert service.jobs.load(identity)['pending'] is not None
+    assert service.gateway.ledger.report(identity)[0]['state'] == 'complete'
+    with pytest.raises(ProviderError, match='paid output is missing'):
+        service.resume(identity)
+    assert len(text_calls(transport)) == 1
+
+
+def test_failed_intent_publication_sends_no_request(ready, monkeypatch):
+    service, selected, _, transport = ready
+    identity = submit(service, selected)
+    save = service.jobs.save
+    def stop_intent(value, **kwargs):
+        if value['pending'] is not None:
+            raise OSError('synthetic disk failure')
+        return save(value, **kwargs)
+    monkeypatch.setattr(service.jobs, 'save', stop_intent)
+    with pytest.raises(OSError):
+        service.resume(identity)
+    assert not text_calls(transport) and not service.gateway.ledger.report(identity)
+
+
+@pytest.mark.parametrize('change', ['profile-renamed', 'profile-removed', 'ledger-replaced', 'root-moved'])
+def test_live_binding_changes_revoke_saved_remote_permission(ready, tmp_path, change):
+    service, selected, _, transport = ready
+    identity = submit(service, selected)
+    if change == 'profile-renamed':
+        service.profiles.save(replace(selected, name='Different reviewed account name'))
+    elif change == 'profile-removed':
+        service.profiles.remove(selected.id)
+    elif change == 'ledger-replaced':
+        ledger_path = service.gateway.ledger.path
+        ledger_path.rename(ledger_path.with_suffix('.retained'))
+        BudgetLedger(ledger_path)
+    else:
+        moved = tmp_path / 'restored-library'
+        shutil.copytree(service.root, moved)
+        service = TranslationService(moved, profiles=ProfileStore(moved / 'api-connections.json', service.profiles.vault),
+            gateway=ProviderGateway(BudgetLedger(moved / 'api-operations.sqlite'),
+                                    vault=service.profiles.vault, transport=transport))
+    with pytest.raises((PermissionError, ValueError)):
+        service.resume(identity)
+    assert not text_calls(transport)
+
+
+def test_unknown_pending_intent_without_ledger_never_restarts_silently(ready):
+    service, selected, _, transport = ready
+    identity = submit(service, selected)
+    job = service.jobs.load(identity)
+    job['status'] = 'running'
+    job['pending'] = {'index': 0, 'operation_id': identity + '_0'}
+    service.jobs.save(job)
+    with pytest.raises(ProviderError, match='unresolved'):
+        service.resume(identity)
+    assert not text_calls(transport)
+
+
+def test_export_is_new_source_pinned_narration_derivative(ready, tmp_path):
+    service, selected, _, transport = ready
+    source = 'Original synthetic source.\r\nУкраїнський текст.'
     original = tmp_path / 'source.txt'
-    original.write_text(value)
-    approval, cost = translation_approval(p, value, 'en', 'uk', '1')
-    identity = service.submit(p, value, 'en', 'uk', authorization=approval, per_call_cost=cost)
-    service.resume(identity)
-    output = tmp_path / 'export'
-    service.export(identity, output)
-    assert original.read_text() == value == (output / 'original.txt').read_text()
-    reading = ReadingDocument.load(output / 'translation.reading.json')
-    assert reading.source_text == value and reading.text != value
-    assert reading.source_span(0, len(reading.text)).exact is False
-    report = read_json(output / 'translation-provenance.json')
-    assert report['quotation_authority'] is False
-    for filename, checksum in report['files'].items():
-        assert sha256((output / filename).read_bytes()).hexdigest() == checksum
+    original.write_bytes(source.encode())
+    identity = submit(service, selected, source)
+    assert service.resume(identity)['status'] == 'complete'
+    target = tmp_path / 'new-translation'
+    service.export(identity, target)
+    assert original.read_bytes() == (target / 'original.txt').read_bytes() == source.encode()
+    draft = NarrationDraft.from_dict(json.loads((target / 'translation.narration.json').read_text(encoding='utf-8')),
+                                    source_text=source, source_id='translation-source:' + sha256(source.encode()).hexdigest())
+    assert draft.text != source and draft.source_range(0, len(draft.text))[2] is False
+    assert draft.undo() and draft.text == source
+    report = json.loads((target / 'translation-provenance.json').read_text())
+    assert report['source_is_immutable'] is True and report['quotation_authority'] is False
+    for name, digest in report['files'].items():
+        assert sha256((target / name).read_bytes()).hexdigest() == digest
+    for file in target.iterdir():
+        assert SECRET not in file.read_text(encoding='utf-8')
+        assert selected.credential_ref not in file.read_text(encoding='utf-8')
     with pytest.raises(FileExistsError):
-        service.export(identity, output)
+        service.export(identity, target)
+    with pytest.raises(ValueError, match='outside'):
+        service.export(identity, service.root / 'forbidden-export')
+    assert not (service.root / 'forbidden-export').exists()
+    assert len(text_calls(transport)) == 1
 
 
-def test_corrupt_completed_chunk_blocks_resume(tmp_path, connection):
-    service, p, _ = ready(tmp_path, connection)
-    approval, cost = translation_approval(p, 'Synthetic source', 'en', 'uk', '1')
-    identity = service.submit(p, 'Synthetic source', 'en', 'uk', authorization=approval, per_call_cost=cost)
+def test_complete_restored_derivative_exports_offline_without_rebinding(ready, tmp_path):
+    service, selected, _, transport = ready
+    identity = submit(service, selected)
+    service.resume(identity)
+    moved = tmp_path / 'restored-library'
+    shutil.copytree(service.root, moved)
+    restored = TranslationService(moved)
+    output = tmp_path / 'restored-export'
+    restored.export(identity, output)
+    report = json.loads((output / 'translation-provenance.json').read_text(encoding='utf-8'))
+    assert all(row['decoded_receipt_integrity'] == 'archived-unverified' for row in report['chunks'])
+    assert len(text_calls(transport)) == 1
+
+
+def test_pure_snapshot_validation_and_same_owner_lock_reuse(ready):
+    service, selected, _, _ = ready
+    identity = submit(service, selected)
+    before = {path.name: path.read_bytes() for path in state_paths(service.root)}
+    with service.jobs.lock(identity):
+        with exclusive_writer(service.root), snapshot_guard(service.root):
+            validate_state_tree(None, service.root)
+            paths = state_paths(service.root)
+            assert len(paths) == 2
+            for path in paths:
+                relative = path.relative_to(service.root).as_posix()
+                assert is_state_path(relative)
+                assert len(path.read_bytes()) <= state_limit(relative)
+                validate_state_document(path.name, path.read_bytes())
+    assert before == {path.name: path.read_bytes() for path in state_paths(service.root)}
+
+
+def test_snapshot_cannot_borrow_another_threads_live_job_guard(ready):
+    service, selected, _, _ = ready
+    identity = submit(service, selected)
+    entered, release = Event(), Event()
+    errors = []
+    def hold():
+        try:
+            with service.jobs.lock(identity):
+                entered.set()
+                assert release.wait(5)
+        except BaseException as exc:
+            errors.append(exc)
+    worker = Thread(target=hold)
+    worker.start()
+    try:
+        assert entered.wait(5)
+        with exclusive_writer(service.root):
+            with pytest.raises(RuntimeError):
+                with snapshot_guard(service.root):
+                    pytest.fail('Snapshot borrowed another owner lock')
+    finally:
+        release.set()
+        worker.join(5)
+    assert not worker.is_alive() and not errors
+
+
+@pytest.mark.parametrize('mutation', ['extra-field', 'source', 'chunk-hash', 'budget-type', 'pending-index',
+                                    'complete-early', 'profile-secret', 'receipt-order'])
+def test_forged_state_is_rejected_before_resume_or_backup(ready, mutation):
+    service, selected, _, transport = ready
+    identity = submit(service, selected)
+    if mutation in ('chunk-hash', 'receipt-order'):
+        service.resume(identity)
+    value = service.jobs.load(identity)
+    if mutation == 'extra-field':
+        value['unknown'] = True
+    elif mutation == 'source':
+        value['source_text'] += 'tampered'
+    elif mutation == 'chunk-hash':
+        value['receipts'][0]['translation_sha256'] = 'f' * 64
+    elif mutation == 'budget-type':
+        value['allocations'][0] = float(value['allocations'][0])
+    elif mutation == 'pending-index':
+        value['pending'] = {'index': 2, 'operation_id': identity + '_2'}
+    elif mutation == 'complete-early':
+        value['status'] = 'complete'
+    elif mutation == 'profile-secret':
+        value['profile']['api_key'] = SECRET
+    else:
+        value['receipts'][0]['index'] = True
+    raw = canonical(value).encode()
+    with pytest.raises(ValueError):
+        validate_state_document(identity + '.json', raw)
+    atomic_json(service.jobs.path(identity), value)  # Simulate untrusted/damaged storage, bypassing writer validation.
+    before = len(transport.calls)
+    with pytest.raises(ValueError):
+        service.resume(identity)
+    with pytest.raises(ValueError):
+        validate_state_tree(None, service.root)
+    assert len(transport.calls) == before
+
+
+def test_snapshot_rejects_unknown_files_and_traversal(ready):
+    service, _, _, _ = ready
+    for relative in ('state/translation/../secret.json', 'state/translation/nested/' + 'a' * 32 + '.json',
+                     'state/translation/.state.lock', 'state/assistant/' + 'a' * 32 + '.json'):
+        assert not is_state_path(relative)
+    rogue = service.directory / 'unknown.json'
+    rogue.write_text('{}')
+    with pytest.raises(ValueError, match='Unexpected'):
+        state_paths(service.root)
+
+
+def test_chunking_and_integer_allocations_preserve_all_unicode():
+    source = '  абв🙂\r\n' * 3000
+    parts = split_text(source)
+    assert ''.join(parts) == source and max(map(len, parts)) <= 4500
+    reserved = allocations(parts, 7)
+    assert sum(value for value in reserved if value is not None) == 7
+    assert all(value is None or type(value) is int for value in reserved)
+
+
+@pytest.mark.parametrize('mutation', [
+    'text-rehashed', 'detected-language-rehashed', 'receipt-digest-removed',
+    'ledger-digest-removed', 'ledger-digest-changed',
+])
+def test_completed_translation_requires_independent_decoded_ledger_evidence(ready, tmp_path, mutation):
+    service, selected, _, transport = ready
+    identity = submit(service, selected)
     service.resume(identity)
     job = service.jobs.load(identity)
-    job['receipts'][0]['text'] = 'tampered'
+    original_source = job['source_text']
+    row = job['receipts'][0]
+    if mutation in ('text-rehashed', 'detected-language-rehashed'):
+        if mutation == 'text-rehashed':
+            row['text'] = 'Changed derivative with a recomputed local hash.'
+            row['translation_sha256'] = sha256(row['text'].encode()).hexdigest()
+        else:
+            row['detected_source'] = 'uk'
+        row['decoded_translation_sha256'] = translation_receipt_sha256(row['text'], row['detected_source'])
+    elif mutation == 'receipt-digest-removed':
+        row.pop('decoded_translation_sha256')
+    else:
+        digest = None if mutation == 'ledger-digest-removed' else 'f' * 64
+        with closing(sqlite3.connect(service.gateway.ledger.path)) as database, database:
+            database.execute('UPDATE operation SET decoded_translation_sha256=? WHERE id=?',
+                             (digest, row['operation_id']))
+    # The checkpoint's own hashes and typed schema remain valid. Only the
+    # independent live evidence can detect these altered or downgraded claims.
+    validate_translation_job(job)
     service.jobs.save(job)
-    count = len(connection['calls'])
-    with pytest.raises(ValueError, match='damaged'):
+    before = service.jobs.path(identity).read_bytes()
+    calls = len(transport.calls)
+    with pytest.raises(PermissionError, match='ledger'):
         service.resume(identity)
-    assert len(connection['calls']) == count
+    target = tmp_path / 'refused-export'
+    with pytest.raises(PermissionError, match='ledger'):
+        service.export(identity, target)
+    assert not target.exists() and len(transport.calls) == calls
+    assert service.jobs.path(identity).read_bytes() == before
+    assert service.jobs.load(identity)['source_text'] == original_source
 
 
-@pytest.mark.parametrize('status', [302, 400, 401, 429, 500])
-def test_uncertain_charge_is_not_automatically_retried(tmp_path, connection, status):
-    service, p, _ = ready(tmp_path, connection)
-    approval, cost = translation_approval(p, 'Synthetic source', 'en', 'uk', '1')
-    identity = service.submit(p, 'Synthetic source', 'en', 'uk', authorization=approval, per_call_cost=cost)
-    connection['status'] = status
-    with pytest.raises(ProviderError):
-        service.resume(identity)
-    before = len(connection['calls'])
-    with pytest.raises(ProviderError, match='already been attempted'):
-        service.resume(identity)
-    assert len(connection['calls']) == before
-
-
-def test_chunking_preserves_exact_unicode_and_bounds():
-    value = '  абв🙂\n' * 3000
-    parts = split_text(value)
-    assert ''.join(parts) == value
-    assert max(map(len, parts)) <= 4500
-
-
-@pytest.mark.parametrize('encoding', ['html', 'json_unicode'])
-@pytest.mark.parametrize('operation', ['translation.text', 'translation.languages'])
-def test_encoded_credentials_never_reach_receipts_or_language_cache(tmp_path, connection, encoding, operation):
-    service, p, _ = ready(tmp_path, connection)
-    secret = 'SYNTHETIC_TEST_SECRET_DO_NOT_SEND'
-    encoded = ''.join('&#%d;' % ord(c) for c in secret)
-    if operation == 'translation.text':
-        data = {'data': {'translations': [{'translatedText': encoded if encoding == 'html' else secret}]}}
-    else:
-        data = {'data': {'languages': [{'language': 'en', 'name': encoded if encoding == 'html' else secret}]}}
-    connection['custom'] = data
-    if encoding == 'json_unicode':
-        connection['escape_secret'] = secret
-    if operation == 'translation.text':
-        approval, cost = translation_approval(p, 'Synthetic source', 'en', 'uk', '1')
-        identity = service.submit(p, 'Synthetic source', 'en', 'uk', authorization=approval, per_call_cost=cost)
-        with pytest.raises(ProviderError, match='credential material') as error:
-            service.resume(identity)
-        assert not service.jobs.load(identity)['receipts']
-        ledger = service.gateway.ledger.get(approval.id)
-    else:
-        before = service._languages_path(p).read_bytes()
-        approval = Authorization('second_languages', 'second_languages', ((p.id, p.endpoint),),
-                                 ('translation.languages',), ('user-instruction',), '0', 1, time() + 60)
-        with pytest.raises(ProviderError, match='credential material') as error:
-            service.refresh_languages(p, authorization=approval)
-        assert service._languages_path(p).read_bytes() == before
-        ledger = service.gateway.ledger.get(approval.id)
-    assert secret not in str(error.value)
-    assert all(row['status'] == 'uncertain' and row['output_sha256'] is None
-               for row in ledger['operations'].values())
-    for path in (tmp_path / 'translation').rglob('*.json'):
-        assert secret not in path.read_text(encoding='utf-8')
-
-
-def test_cancel_before_transmission_can_resume_exact_request(tmp_path, connection):
-    service, p, _ = ready(tmp_path, connection)
-    approval, cost = translation_approval(p, 'Synthetic source', 'en', 'uk', '1')
-    identity = service.submit(p, 'Synthetic source', 'en', 'uk', authorization=approval, per_call_cost=cost)
-    calls = [0]
-    def cancelled():
-        calls[0] += 1
-        return calls[0] >= 2
-    result = service.resume(identity, cancelled=cancelled)
-    assert result['status'] == 'paused' and result['completed'] == 0
-    assert len(connection['calls']) == 1  # Only the prior language discovery.
-    ledger = service.gateway.ledger.get(approval.id)
-    assert next(iter(ledger['operations'].values()))['status'] == 'not_sent'
+def test_historical_wire_only_job_remains_exportable_without_invented_decoded_proof(ready, tmp_path):
+    service, selected, _, transport = ready
+    identity = submit(service, selected)
+    service.resume(identity)
+    job = service.jobs.load(identity)
+    for row in job['receipts']:
+        row.pop('decoded_translation_sha256', None)
+    service.jobs.save(job)
+    # Reconstruct the actual six-column historical ledger, then open it through
+    # the current migration. No text was retained there to backfill a new hash.
+    with closing(sqlite3.connect(service.gateway.ledger.path)) as database, database:
+        database.execute('ALTER TABLE operation RENAME TO modern_operation')
+        database.execute('CREATE TABLE operation (id TEXT PRIMARY KEY, job TEXT NOT NULL, request_hash TEXT NOT NULL,'
+                         'estimate_micros INTEGER NOT NULL, state TEXT NOT NULL, output_sha256 TEXT)')
+        database.execute('INSERT INTO operation SELECT id,job,request_hash,estimate_micros,state,output_sha256 FROM modern_operation')
+        database.execute('DROP TABLE modern_operation')
+    service.gateway.ledger = BudgetLedger(service.gateway.ledger.path)
+    before = service.jobs.path(identity).read_bytes()
+    calls = len(transport.calls)
     assert service.resume(identity)['status'] == 'complete'
-    assert len(connection['calls']) == 2
+    target = tmp_path / 'legacy-export'
+    service.export(identity, target)
+    report = json.loads((target / 'translation-provenance.json').read_text(encoding='utf-8'))
+    assert {row['decoded_receipt_integrity'] for row in report['chunks']} == {'legacy-wire-only'}
+    assert all('decoded_translation_sha256' not in row for row in report['chunks'])
+    assert service.jobs.path(identity).read_bytes() == before
+    assert len(transport.calls) == calls
+    assert all(row['decoded_translation_sha256'] is None for row in service.gateway.ledger.report(identity))
+    restored_root = tmp_path / 'legacy-restored'
+    shutil.copytree(service.root, restored_root)
+    restored_target = tmp_path / 'legacy-restored-export'
+    TranslationService(restored_root).export(identity, restored_target)
+    restored_report = json.loads((restored_target / 'translation-provenance.json').read_text(encoding='utf-8'))
+    assert {row['decoded_receipt_integrity'] for row in restored_report['chunks']} == {'archived-unverified'}
+
+
+def test_resumed_legacy_job_preserves_old_receipts_and_binds_only_new_calls(ready, tmp_path):
+    service, selected, _, transport = ready
+    source = 'First translated source. ' * 400
+    identity = submit(service, selected, source)
+    stop = Event()
+    service.resume(identity, cancelled=stop.is_set, progress=lambda *args: stop.set())
+    job = service.jobs.load(identity)
+    assert len(job['receipts']) == 1
+    historical = job['receipts'][0]
+    historical.pop('decoded_translation_sha256')
+    with closing(sqlite3.connect(service.gateway.ledger.path)) as database, database:
+        database.execute('UPDATE operation SET decoded_translation_sha256=NULL WHERE id=?',
+                         (historical['operation_id'],))
+    service.jobs.save(job)
+    old_receipt = canonical(historical)
     assert service.resume(identity)['status'] == 'complete'
-    assert len(connection['calls']) == 2
+    completed = service.jobs.load(identity)
+    assert canonical(completed['receipts'][0]) == old_receipt
+    assert all('decoded_translation_sha256' in row for row in completed['receipts'][1:])
+    assert len(text_calls(transport)) == sum(bool(chunk.strip()) for chunk in split_text(source))
+    target = tmp_path / 'mixed-export'
+    service.export(identity, target)
+    report = json.loads((target / 'translation-provenance.json').read_text(encoding='utf-8'))
+    assert report['chunks'][0]['decoded_receipt_integrity'] == 'legacy-wire-only'
+    assert all(row['decoded_receipt_integrity'] == 'decoded-ledger-bound' for row in report['chunks'][1:])
 
 
-@pytest.mark.parametrize('mutation', ['profile', 'model', 'operation', 'bound', 'authorization', 'request'])
-def test_not_sent_retry_cannot_expand_original_authority(tmp_path, mutation):
-    from dataclasses import replace
-    p = profile()
-    approval, _ = translation_approval(p, 'Synthetic source', 'en', 'uk', '1')
-    gateway = Gateway(tmp_path, vault=Vault(), mode='APPROVED_REMOTE')
-    ledger = gateway.ledger
-    request_hash = approval.request_hashes[0]
-    ledger.reserve(approval, 'same_op', request_hash, Decimal('1'), p, 'translation.text')
-    ledger.finish(approval.id, 'same_op', status='not_sent')
-    changed_profile = replace(p, name='Changed profile') if mutation == 'profile' else p
-    if mutation == 'model':
-        # A different valid provider model/profile cannot borrow this receipt.
-        changed_profile = ProviderProfile(p.id, p.name, 'openai-compatible',
-            'https://api.example.test/v1', 'different-model', credential_ref=p.credential_ref, enabled=True)
-    changed_approval = replace(approval, budget='2') if mutation == 'authorization' else approval
-    with pytest.raises(PermissionError):
-        ledger.reserve(changed_approval, 'same_op', 'f' * 64 if mutation == 'request' else request_hash,
-            Decimal('0.5') if mutation == 'bound' else Decimal('1'), changed_profile,
-            'translation.languages' if mutation == 'operation' else 'translation.text')
-    assert ledger.get(approval.id)['operations']['same_op']['status'] == 'not_sent'
+@pytest.mark.parametrize('source', [
+    'A' * 4498 + '\r\n' + 'B' * 100,
+    'A' * 4499 + ' ' + 'B' * 100,
+    'A' * 4500 + ' ' * 4500 + 'B',
+    'A' * 4500 + 'B' * 100,
+], ids=['crlf-boundary', 'space-boundary', 'whitespace-only-chunk', 'unbroken-word'])
+def test_export_restores_source_chunk_separators_without_rewriting_receipts(ready, tmp_path, monkeypatch, source):
+    service, selected, _, transport = ready
+    post = transport.post
+
+    def trim_outer_space(profile, route, payload, headers, **kwargs):
+        raw = post(profile, route, payload, headers, **kwargs)
+        result = json.loads(raw)
+        result['data']['translations'][0]['translatedText'] = json.loads(payload)['q'].strip()
+        return json.dumps(result).encode()
+
+    monkeypatch.setattr(transport, 'post', trim_outer_space)
+    identity = submit(service, selected, source)
+    service.resume(identity)
+    before = service.jobs.path(identity).read_bytes()
+    target = tmp_path / 'joined-export'
+    service.export(identity, target)
+    assert (target / 'translated.txt').read_bytes() == source.encode()
+    assert (target / 'original.txt').read_bytes() == source.encode()
+    assert service.jobs.path(identity).read_bytes() == before
+    job = service.jobs.load(identity)
+    for chunk, row in zip(split_text(source), job['receipts']):
+        assert row['text'] == (chunk.strip() if chunk.strip() else chunk)
+    report = json.loads((target / 'translation-provenance.json').read_text(encoding='utf-8'))
+    assert all(row['decoded_receipt_integrity'] in ('decoded-ledger-bound', 'original-whitespace')
+               for row in report['chunks'])
 
 
-@pytest.mark.parametrize('status', ['reserved', 'uncertain', 'complete'])
-def test_sent_or_unresolved_attempts_remain_nonretryable(tmp_path, status):
-    p = profile()
-    approval, _ = translation_approval(p, 'Synthetic source', 'en', 'uk', '1')
-    ledger = Gateway(tmp_path).ledger
-    request_hash = approval.request_hashes[0]
-    ledger.reserve(approval, 'same_op', request_hash, Decimal('1'), p, 'translation.text')
-    if status != 'reserved':
-        ledger.finish(approval.id, 'same_op', status=status)
-    with pytest.raises(ProviderError, match='already been attempted'):
-        ledger.reserve(approval, 'same_op', request_hash, Decimal('1'), p, 'translation.text')
+def test_single_chunk_preserves_provider_outer_whitespace_and_offline_profile_history(ready, tmp_path, monkeypatch):
+    service, selected, vault, transport = ready
+    post = transport.post
+    accepted = '  Прийнятий переклад\r\n'
+
+    def translated(profile, route, payload, headers, **kwargs):
+        raw = post(profile, route, payload, headers, **kwargs)
+        result = json.loads(raw)
+        result['data']['translations'][0]['translatedText'] = accepted
+        return json.dumps(result).encode()
+
+    monkeypatch.setattr(transport, 'post', translated)
+    identity = submit(service, selected, 'Original source')
+    service.resume(identity)
+    original_job = service.jobs.path(identity).read_bytes()
+    service.profiles.remove(selected.id)
+    vault.on_get = lambda: pytest.fail('Completed derivative attempted to reopen provider credentials.')
+    target = tmp_path / 'single-export'
+    service.export(identity, target)
+    assert (target / 'translated.txt').read_bytes() == accepted.encode()
+    assert service.jobs.path(identity).read_bytes() == original_job
+    report = json.loads((target / 'translation-provenance.json').read_text(encoding='utf-8'))
+    assert report['chunks'][0]['decoded_receipt_integrity'] == 'decoded-ledger-bound'
+    assert len(text_calls(transport)) == 1
+
+
+@pytest.mark.parametrize('digest', [None, 'f' * 64], ids=['missing-value', 'wrong-content'])
+def test_typed_translation_rejects_invalid_decoded_receipt_before_backup(ready, digest):
+    service, selected, _, _ = ready
+    identity = submit(service, selected)
+    service.resume(identity)
+    job = service.jobs.load(identity)
+    job['receipts'][0]['decoded_translation_sha256'] = digest
+    with pytest.raises(ValueError):
+        validate_state_document(identity + '.json', canonical(job).encode())
+
+
+@pytest.mark.parametrize('kind', ['relative', 'dot-parent'])
+def test_translation_connection_paths_use_the_same_safe_canonical_library(ready, tmp_path, monkeypatch, kind):
+    service, selected, vault, transport = ready
+    identity = submit(service, selected)
+    service.resume(identity)
+    before = service.jobs.path(identity).read_bytes()
+    monkeypatch.chdir(service.root.parent)
+    if kind == 'relative':
+        alias = Path(service.root.name)
+    else:
+        intermediate = service.root.parent / 'existing-intermediate'
+        intermediate.mkdir()
+        alias = intermediate / '..' / service.root.name
+        assert alias.absolute() != service.root
+    profiles = ProfileStore(alias / 'api-connections.json', vault)
+    ledger = BudgetLedger(alias / 'api-operations.sqlite')
+    reopened = TranslationService(alias, profiles=profiles,
+        gateway=ProviderGateway(ledger, vault=vault, transport=transport))
+    assert reopened.root == service.root
+    assert reopened.resume(identity)['status'] == 'complete'
+    assert reopened.charge_report(identity)['operations'] == service.charge_report(identity)['operations']
+    output = tmp_path / 'canonical-path-export'
+    reopened.export(identity, output)
+    assert json.loads((output / 'translation-provenance.json').read_text(encoding='utf-8'))[
+        'chunks'][0]['decoded_receipt_integrity'] == 'decoded-ledger-bound'
+    assert service.jobs.path(identity).read_bytes() == before and len(text_calls(transport)) == 1
+
+
+@pytest.mark.parametrize('component', ['profiles', 'ledger'])
+@pytest.mark.parametrize('alias_kind', ['foreign-copy', 'foreign-hardlink', 'symbolic-link', 'linked-parent'])
+def test_translation_safe_path_binding_refuses_foreign_and_linked_connections(
+        ready, tmp_path, component, alias_kind):
+    service, _, vault, transport = ready
+    foreign = tmp_path / 'outside-library'
+    foreign.mkdir()
+    filename = 'api-connections.json' if component == 'profiles' else 'api-operations.sqlite'
+    original = service.root / filename
+    selected = foreign / filename
+    if alias_kind == 'foreign-copy':
+        shutil.copyfile(original, selected)
+    elif alias_kind == 'foreign-hardlink':
+        os.link(original, selected)
+    elif alias_kind == 'symbolic-link':
+        selected.symlink_to(original)
+    else:
+        parent = foreign / 'linked-library'
+        parent.symlink_to(service.root, target_is_directory=True)
+        selected = parent / filename
+    profiles = ProfileStore(service.root / 'api-connections.json', vault)
+    ledger = service.gateway.ledger
+    # Existing object paths are mutable; recheck them at the service boundary
+    # even if the object was initially constructed from an ordinary local file.
+    if component == 'profiles':
+        profiles.path = selected
+    else:
+        ledger = BudgetLedger(service.root / 'api-operations.sqlite')
+        ledger.path = selected
+    calls = len(transport.calls)
+    before = original.read_bytes()
+    with pytest.raises(ValueError):
+        TranslationService(service.root, profiles=profiles,
+            gateway=ProviderGateway(ledger, vault=vault, transport=transport))
+    assert original.read_bytes() == before and len(transport.calls) == calls
+
+
+def test_windows_native_short_path_connections_bind_the_same_real_library(ready):
+    service, _, vault, transport = ready
+    if os.name != 'nt':
+        # The native alias branch is Windows-only. Portable runs still prove
+        # the exact path normalizer; they do not claim a Windows API verdict.
+        assert local_path(service.root / '..' / service.root.name) == service.root
+        return
+    import ctypes
+    from ctypes import wintypes
+    kernel = ctypes.WinDLL('kernel32', use_last_error=True)
+    short_path = kernel.GetShortPathNameW
+    short_path.argtypes = (wintypes.LPCWSTR, wintypes.LPWSTR, wintypes.DWORD)
+    short_path.restype = wintypes.DWORD
+    with TemporaryDirectory(prefix='carr-translation-path-') as directory:
+        root = (Path(directory) / 'native library identity').resolve()
+        root.mkdir()
+        needed = short_path(str(root), None, 0)
+        assert needed > 0, ctypes.get_last_error()
+        buffer = ctypes.create_unicode_buffer(needed)
+        written = short_path(str(root), buffer, needed)
+        assert 0 < written < needed, ctypes.get_last_error()
+        alias = Path(buffer.value)
+        assert local_path(alias) == root
+        profiles = ProfileStore(alias / 'api-connections.json', vault)
+        profiles.save(ProviderProfile(
+            'native-path-account', 'Synthetic path account', 'google-translation-v2',
+            GOOGLE_TRANSLATION_ENDPOINT, 'nmt', ('translation',)), secret=SECRET)
+        ledger = BudgetLedger(alias / 'api-operations.sqlite')
+        opened = TranslationService(root, profiles=profiles,
+            gateway=ProviderGateway(ledger, vault=vault, transport=transport))
+        assert opened.root == root
+        assert opened._ledger_identity() == [ledger.path.stat().st_dev, ledger.path.stat().st_ino]
+        assert opened.available_profiles()[0].id == 'native-path-account'
+        assert not text_calls(transport)
+
+@pytest.mark.parametrize('encoding', ['html', 'json-unicode'])
+@pytest.mark.parametrize('operation', ['text', 'languages'])
+def test_encoded_credential_refusal_preserves_existing_language_cache_and_job_receipts(
+        ready, monkeypatch, encoding, operation):
+    service, selected, _, transport = ready
+    cached = service._languages_path(selected)
+    before = cached.read_bytes()
+    encoded = ''.join('&#%d;' % ord(char) for char in SECRET) if encoding == 'html' else SECRET
+    document = ({'data': {'translations': [{'translatedText': encoded}]}}
+                if operation == 'text' else
+                {'data': {'languages': [{'language': 'en', 'name': encoded}]}})
+    raw = json.dumps(document).encode('utf-8')
+    if encoding == 'json-unicode':
+        raw = raw.replace(SECRET.encode(), ''.join('\\u%04x' % ord(char) for char in SECRET).encode())
+    calls = []
+    def reflected(*args, **kwargs):
+        calls.append(True)
+        return raw
+    monkeypatch.setattr(transport, 'post' if operation == 'text' else 'get', reflected)
+    if operation == 'text':
+        identity = submit(service, selected)
+        action = lambda: service.resume(identity)
+    else:
+        approval = language_approval(selected)
+        identity = approval.job_id
+        action = lambda: service.refresh_languages(selected, approval=approval)
+    with pytest.raises(ProviderError) as caught:
+        action()
+    assert SECRET not in str(caught.value) and caught.value.__cause__ is None
+    assert calls == [True] and cached.read_bytes() == before
+    rows = service.gateway.ledger.report(identity)
+    assert len(rows) == 1 and rows[0]['state'] == 'uncertain'
+    assert rows[0]['output_sha256'] is None and rows[0]['decoded_translation_sha256'] is None
+    if operation == 'text':
+        assert service.jobs.load(identity)['receipts'] == []
+    for path in (service.root / 'state' / 'translation').rglob('*.json'):
+        assert SECRET not in path.read_text(encoding='utf-8')
+

@@ -1,0 +1,32 @@
+{
+  "schema": 1,
+  "status": "OBSERVED_FAILURE",
+  "observed_source": "f4d2bbbf71da11369833ae3825f7841fed6ad0b8",
+  "run_id": 45994739854,
+  "job_id": 140491202697,
+  "run_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/45994739854",
+  "job_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/45994739854/job/140491202697",
+  "artifact": {
+    "id": 15197826023,
+    "name": "carr-standard-native-f4d2bbbf71da11369833ae3825f7841fed6ad0b8-1",
+    "size_in_bytes": 212649,
+    "digest": "sha256:a7d220fe1834d63fd5ef405c87002d171ba968ae3895a47f6efacf432e83847d"
+  },
+  "observed_error": [
+    "2026-11-27T12:33:22.3571024Z Error on line 8836 in D:\\a\\_temp\\carr-standard-installer-06adfd17fb4a43549a4b29fd4b05ae94\\.carr-standard-installer-ze51u9_j\\Resonance.iss: Column 29:",
+    "2026-11-27T12:33:22.3577511Z Closing square bracket (']') expected.",
+    "2026-11-27T12:33:22.6879451Z subprocess.CalledProcessError: Command '['C:\\\\Program Files (x86)\\\\Inno Setup 6\\\\ISCC.exe', '/Qp', 'D:\\\\a\\\\_temp\\\\carr-standard-installer-06adfd17fb4a43549a4b29fd4b05ae94\\\\.carr-standard-installer-ze51u9_j\\\\Resonance.iss']' returned non-zero exit status 2."
+  ],
+  "affected_template": "carr-library/packaging/standard_windows.iss.in",
+  "previous_A": "f26c7eeef2ad3090ab531d1b8bca72ba68eb5991",
+  "current_B": "67b35910262d49859a137275bc19aacb46cceaef",
+  "identical_bad_template_git_blob": "9eb6317c1e999ac60b9b46f13172aaaa51342bcf",
+  "corrected_template_git_blob": "6f925775bdbc728e879bc19676c98fec50793740",
+  "A_successor": "91332206578b4d8dc779fec08c8d51a67962b0ff",
+  "B_successor": "a765feb4de2d3cb453ca3d847d9eae37203ce402",
+  "correction": "Equivalent explicit ASCII lower/upper comparisons replace two unsupported Pascal Script set-range literals. All length, prefix, separator and nonzero generation bounds remain unchanged.",
+  "actual_post_correction_compilation": "NOT_RUN",
+  "actual_post_correction_native_predicates": "NOT_RUN",
+  "standard_installation50": "NOT_RUN",
+  "standard_update_AB15": "NOT_RUN"
+}

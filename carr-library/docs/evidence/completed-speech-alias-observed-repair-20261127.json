@@ -1,0 +1,48 @@
+{
+  "schema": 1,
+  "status": "SOURCE_REPAIRED_RUNTIME_NOT_RUN",
+  "base_commit": "f1ee73aa62a28aa26c5ceff81d12611fa70a0ef1",
+  "base_tree": "e40c07df8c8ca83fffd12a695d00aeb82d38de4b",
+  "production_before_blob": "77411115b11ffa959a7162fef61af7d229d3c983",
+  "observed": {
+    "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a",
+    "source_tree": "66231ae8ebc92073e63bf5998be75a786f7973de",
+    "run": 46044488676,
+    "job": 140660201649,
+    "artifact": 15224465165,
+    "artifact_bytes": 454573,
+    "artifact_sha256": "5c61bbf9a892328ec689da04c36b13c2ba19208ccecc2b5e9eabefeddc8ee545",
+    "source": {
+      "passed": 379,
+      "failed": 4
+    },
+    "installed": {
+      "passed": 379,
+      "failed": 4
+    },
+    "affected_case": "tests/audio/test_completed_speech_checkpoint.py::test_late_stop_never_receipts_corrupt_or_aliased_engine_output[hardlinked]",
+    "observed_exception": "RenderCancelled at checkpoint after cache.seal returned",
+    "other_failures": "Three Studio-keyboard fixtures rejected their reserved synthetic shortcuts; separately owned root correction."
+  },
+  "diagnosis": "This is a product admission gap, not an exception-only fixture mismatch. The exact trace reaches the post-seal checkpoint, so an aliased returned stage was accepted by the general regular-file/PCM/hash copy path. Byte identity of an independent copy does not establish that a returned engine stage is unaliased.",
+  "repair": "Require the returned raw selected-engine source to have exactly one hard link at _seal_completed_speech entry, before temporarily deferring cancellation, reserving cache storage, or publishing any receipt. Existing no-new-inference, five-second bounded I/O deferral, PCM/hash/copy/quota verification and original callback restoration remain unchanged.",
+  "test_contract": {
+    "module": "tests/audio/test_completed_speech_checkpoint.py",
+    "cases": 10,
+    "test_blob": "4b73cf16de398cf4893b3fed69a645c2749268c3",
+    "unchanged": true,
+    "hardlink_assertions": [
+      "error without success/cancel reinterpretation",
+      "journal failed",
+      "no cached WAV or JSON receipt",
+      "no work directory or whole-project completion marker",
+      "foreign linked file retains exact preexisting bytes"
+    ],
+    "actual_completed_good_chunk_cases": 3
+  },
+  "limits": [
+    "Only the completed source/installed logs and artifact API metadata were read for this diagnosis; no independent ZIP read is claimed here.",
+    "The observed run remains FAIL. The new head requires actual source/installed execution.",
+    "No test exception, journal-state or receipt assertions were weakened; no oracle count changes."
+  ]
+}

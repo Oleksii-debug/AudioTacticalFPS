@@ -14,7 +14,7 @@ import os
 from pathlib import Path, PureWindowsPath
 import stat
 
-from ..research.export_file import capture_export_destination, write_binary_export, write_export
+from ..research.export_file import (capture_export_destination, write_binary_export, write_export)
 
 
 NAME_MODES = (('literal', 'Keep author names exactly as entered'),
@@ -22,7 +22,8 @@ NAME_MODES = (('literal', 'Keep author names exactly as entered'),
 LOCALES = (('en-US', 'English (United States)'), ('en-GB', 'English (United Kingdom)'),
            ('uk-UA', 'Ukrainian'), ('sk-SK', 'Slovak'))
 EXPORT_FORMATS = (('text', 'Plain text', 'txt'), ('html', 'Formatted HTML', 'html'),
-                  ('docx', 'Word document', 'docx'))
+                  ('docx', 'Word document', 'docx'),
+                  ('docx-citations', 'Editable Word citations and bibliography', 'docx'))
 METADATA_NOTICE = ('Bibliographic formatting uses the entered metadata. It does not verify '
                    'source text or printed page numbers. Publication page ranges are not '
                    'quotation locators. Personal research notes are excluded.')
@@ -197,6 +198,19 @@ class BibliographyWorkbench:
             return preview.citations
         raise ValueError('Choose bibliography or citation examples to copy.')
 
+    def regenerate_document(self, source, destination, *, custom_style=None, cancelled=lambda: False, approval=None):
+        from .regeneration import regenerate_citation_docx
+
+        def permitted():
+            if cancelled():
+                return True
+            with self.controller.library.read(self.controller.workspace):
+                pass
+            return False
+
+        return regenerate_citation_docx(source, destination,
+            private_root=self.controller.library.root, custom_style=custom_style, cancelled=permitted, approval=approval)
+
     def export(self, preview, destination, *, format='text', cancelled=lambda: False,
                require_absent=False, approval=None, return_receipt=False):
         """Export exact content, optionally returning its publication receipt."""
@@ -210,6 +224,12 @@ class BibliographyWorkbench:
         if format == 'text':
             content = preview.bibliography
             writer = write_export
+        elif format == 'docx-citations':
+            from .documents import citation_document
+            records, _ = records_for_style(snapshot, name_mode=preview.name_mode)
+            content = citation_document(records, style=preview.style, locale=preview.locale,
+                                        cancelled=cancelled)
+            writer = write_binary_export
         elif format in ('html', 'docx'):
             from .csl import render
             records, _ = records_for_style(snapshot, name_mode=preview.name_mode)
@@ -221,7 +241,7 @@ class BibliographyWorkbench:
                 content = docx_document(rendered)
                 writer = write_binary_export
         else:
-            raise ValueError('Choose plain text, HTML or Word document output.')
+            raise ValueError('Choose plain text, HTML, Word bibliography or editable Word citations.')
         def cancelled_or_changed():
             # Recheck after the caller's callback, including the writer's final
             # staged-file checkpoint. A changed record or revoked workspace

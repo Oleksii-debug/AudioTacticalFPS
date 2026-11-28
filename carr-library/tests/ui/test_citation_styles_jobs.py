@@ -78,8 +78,8 @@ def form(tmp_path, monkeypatch):
         'EXPAND', 'ALL', 'ALIGN_CENTER_VERTICAL', 'TE_MULTILINE', 'TE_READONLY',
         'LEFT', 'RIGHT', 'BOTTOM', 'ALIGN_RIGHT', 'ID_CANCEL', 'ID_OK', 'EVT_BUTTON',
         'EVT_CHOICE', 'EVT_CLOSE', 'EVT_WINDOW_DESTROY', 'FD_SAVE', 'FD_OVERWRITE_PROMPT',
-        'FD_OPEN', 'FD_FILE_MUST_EXIST', 'YES_NO', 'NO_DEFAULT', 'ICON_QUESTION',
-        'ID_YES', 'ID_NO')
+        'FD_OPEN', 'FD_FILE_MUST_EXIST',
+        'YES_NO', 'NO_DEFAULT', 'ICON_QUESTION', 'ID_YES', 'ID_NO')
     for index, name in enumerate(constants):
         setattr(wx, name, 1 << index)
     queued = []
@@ -148,20 +148,6 @@ def test_export_is_queued_and_does_not_render_in_native_event_handler(form):
     assert dialog.generate.enabled and dialog.copy_bibliography.enabled
 
 
-def test_saved_export_with_cleanup_warning_remains_successful_and_accessible(form):
-    dialog = form.dialog
-    dialog.preview = preview('Approved preview')
-    warning = 'The file is saved. Temporary-file cleanup is still pending.'
-    dialog.workbench.export.return_value = ExportReceipt(form.destination, warning)
-    dialog.on_export()
-    form.executor.finish(0)
-    form.drain()
-    assert 'saved to' in dialog.status.value
-    assert warning in dialog.status.value and 'not exported' not in dialog.status.value
-    assert dialog.status.focused and dialog.pending is None
-    assert dialog.generate.enabled and dialog.export_button.enabled
-
-
 def test_new_job_does_not_clear_old_export_cancellation_or_publish_its_file(form):
     dialog = form.dialog
     form.private.mkdir()
@@ -169,7 +155,7 @@ def test_new_job_does_not_clear_old_export_cancellation_or_publish_its_file(form
 
     def export_file(selected, destination, *, format, cancelled, require_absent, approval, return_receipt):
         return write_export(destination, 'Obsolete export', private_root=form.private,
-                            cancelled=cancelled, require_absent=require_absent, approval=approval)
+                     cancelled=cancelled, require_absent=require_absent, approval=approval)
 
     dialog.workbench.export.side_effect = export_file
     dialog.on_export()
@@ -227,6 +213,83 @@ def test_copy_authorization_failure_never_opens_clipboard(form):
     dialog.on_copy('bibliography')
     form.wx.TheClipboard.Open.assert_not_called()
     assert 'archived' in dialog.status.value
+
+
+def use_real_writer(form):
+    def publish(selected, destination, *, format, cancelled, require_absent, approval, return_receipt):
+        return write_export(destination, selected.explanation, private_root=form.private,
+                     cancelled=cancelled, require_absent=require_absent, approval=approval)
+    form.dialog.workbench.export.side_effect = publish
+    form.dialog.preview = preview('New approved bibliography')
+
+
+def test_native_new_destination_preserves_file_created_while_export_is_queued(form):
+    use_real_writer(form)
+    form.dialog.on_export()
+    assert form.executor.calls[0][2]['require_absent'] is True
+    form.wx.MessageDialog.assert_not_called()
+    form.destination.write_bytes(b'Another program created this after file selection')
+
+    form.executor.finish(0)
+    form.drain()
+
+    assert form.destination.read_bytes() == b'Another program created this after file selection'
+    assert 'not exported' in form.dialog.status.value
+    assert 'changed' in form.dialog.status.value
+    assert not list(form.destination.parent.glob('.research-export-*'))
+
+
+def test_native_existing_destination_requires_confirmation_and_can_be_replaced(form):
+    use_real_writer(form)
+    form.destination.write_bytes(b'Existing bibliography')
+    form.dialog.on_export()
+    form.wx.MessageDialog.assert_called_once()
+    assert form.wx.MessageDialog.call_args.kwargs['style'] & form.wx.NO_DEFAULT
+    assert form.executor.calls[0][2]['require_absent'] is False
+    assert form.executor.calls[0][2]['approval'].state is not None
+
+    form.executor.finish(0)
+    form.drain()
+
+    assert form.destination.read_text() == 'New approved bibliography'
+    assert 'saved to' in form.dialog.status.value
+    form.wx.MessageDialog.return_value.Destroy.assert_called_once_with()
+
+
+def test_native_declined_overwrite_does_not_submit_or_change_file(form):
+    use_real_writer(form)
+    form.destination.write_bytes(b'Keep existing bibliography')
+    form.wx.MessageDialog.return_value.ShowModal = lambda: form.wx.ID_NO
+
+    form.dialog.on_export()
+
+    assert form.executor.calls == [] and form.dialog.pending is None
+    form.dialog.workbench.export.assert_not_called()
+    assert form.destination.read_bytes() == b'Keep existing bibliography'
+    form.wx.MessageDialog.return_value.Destroy.assert_called_once_with()
+
+
+@pytest.mark.parametrize('when', ('confirmation', 'queued'))
+def test_native_existing_approval_is_bound_before_confirmation_and_async_work(form, when):
+    use_real_writer(form)
+    form.destination.write_bytes(b'Original file presented for replacement')
+    changed = b'Newer work must survive the old approval'
+    if when == 'confirmation':
+        def confirm_while_another_program_writes():
+            form.destination.write_bytes(changed)
+            return form.wx.ID_YES
+        form.wx.MessageDialog.return_value.ShowModal = confirm_while_another_program_writes
+
+    form.dialog.on_export()
+    if when == 'queued':
+        form.destination.write_bytes(changed)
+    form.executor.finish(0)
+    form.drain()
+
+    assert form.destination.read_bytes() == changed
+    assert 'not exported' in form.dialog.status.value
+    assert 'changed' in form.dialog.status.value
+    assert not list(form.destination.parent.glob('.research-export-*'))
 
 
 def test_custom_load_replaces_one_slot_and_invalidates_the_previous_preview(form, monkeypatch):
@@ -378,78 +441,58 @@ def test_unavailable_custom_selection_does_not_submit_a_formatting_job(form, mon
     assert 'load a custom CSL file' in dialog.status.value
 
 
-def use_real_writer(form):
-    def publish(selected, destination, *, format, cancelled, require_absent, approval, return_receipt):
-        return write_export(destination, selected.explanation, private_root=form.private,
-                            cancelled=cancelled, require_absent=require_absent, approval=approval)
-    form.dialog.workbench.export.side_effect = publish
-    form.dialog.preview = preview('New approved bibliography')
-
-
-def test_native_new_destination_preserves_file_created_while_export_is_queued(form):
-    use_real_writer(form)
-    form.dialog.on_export()
-    assert form.executor.calls[0][2]['require_absent'] is True
-    form.wx.MessageDialog.assert_not_called()
-    form.destination.write_bytes(b'Another program created this after file selection')
-
+def test_regeneration_is_an_explicit_background_job_with_new_output(form):
+    form.dialog.workbench.regenerate_document = Mock()
+    form.dialog.on_regenerate()
+    assert form.dialog.pending is not None
+    assert not form.dialog.regenerate_button.enabled
+    assert not form.dialog.generate.enabled
+    approved = form.executor.calls[0][2]['approval']
+    assert approved.require_absent and approved.requested == form.destination.absolute()
+    form.dialog.workbench.regenerate_document.assert_not_called()
     form.executor.finish(0)
     form.drain()
-
-    assert form.destination.read_bytes() == b'Another program created this after file selection'
-    assert 'not exported' in form.dialog.status.value
-    assert 'changed' in form.dialog.status.value
-    assert not list(form.destination.parent.glob('.research-export-*'))
+    form.dialog.workbench.regenerate_document.assert_called_once()
+    assert form.dialog.regenerate_button.enabled
+    assert 'Original document' in form.dialog.status.value
 
 
-def test_native_existing_destination_requires_confirmation_and_can_be_replaced(form):
-    use_real_writer(form)
-    form.destination.write_bytes(b'Existing bibliography')
-    form.dialog.on_export()
-    form.wx.MessageDialog.assert_called_once()
-    assert form.wx.MessageDialog.call_args.kwargs['style'] & form.wx.NO_DEFAULT
-    assert form.executor.calls[0][2]['require_absent'] is False
-    assert form.executor.calls[0][2]['approval'].state is not None
-
-    form.executor.finish(0)
-    form.drain()
-
-    assert form.destination.read_text() == 'New approved bibliography'
-    assert 'saved to' in form.dialog.status.value
-    form.wx.MessageDialog.return_value.Destroy.assert_called_once_with()
-
-
-def test_native_declined_overwrite_does_not_submit_or_change_file(form):
-    use_real_writer(form)
-    form.destination.write_bytes(b'Keep existing bibliography')
+def test_regeneration_decline_does_not_open_a_file_or_queue_work(form):
     form.wx.MessageDialog.return_value.ShowModal = lambda: form.wx.ID_NO
-
-    form.dialog.on_export()
-
-    assert form.executor.calls == [] and form.dialog.pending is None
-    form.dialog.workbench.export.assert_not_called()
-    assert form.destination.read_bytes() == b'Keep existing bibliography'
-    form.wx.MessageDialog.return_value.Destroy.assert_called_once_with()
+    form.dialog.on_regenerate()
+    assert not form.executor.calls
+    form.wx.FileDialog.assert_not_called()
 
 
-@pytest.mark.parametrize('when', ('confirmation', 'queued'))
-def test_native_existing_approval_is_bound_before_confirmation_and_async_work(form, when):
-    use_real_writer(form)
-    form.destination.write_bytes(b'Original file presented for replacement')
-    changed = b'Newer work must survive the old approval'
-    if when == 'confirmation':
-        def confirm_while_another_program_writes():
-            form.destination.write_bytes(changed)
-            return form.wx.ID_YES
-        form.wx.MessageDialog.return_value.ShowModal = confirm_while_another_program_writes
+def test_regeneration_refuses_existing_file_and_keeps_its_bytes(form):
+    form.destination.write_bytes(b'Existing Word document')
+    form.dialog.on_regenerate()
+    assert not form.executor.calls
+    assert form.destination.read_bytes() == b'Existing Word document'
+    assert 'Choose a new filename' in form.dialog.status.value
 
-    form.dialog.on_export()
-    if when == 'queued':
-        form.destination.write_bytes(changed)
+
+def test_closed_regeneration_keeps_worker_cancellation_and_ignores_delivery(form):
+    form.dialog.workbench.regenerate_document = Mock()
+    form.dialog.on_regenerate()
+    cancelled = form.executor.calls[0][2]['cancelled']
+    form.dialog.on_close()
+    assert cancelled()
+    before = form.dialog.status.value
     form.executor.finish(0)
     form.drain()
+    assert form.dialog.status.value == before
 
-    assert form.destination.read_bytes() == changed
-    assert 'not exported' in form.dialog.status.value
-    assert 'changed' in form.dialog.status.value
-    assert not list(form.destination.parent.glob('.research-export-*'))
+
+def test_saved_export_with_cleanup_warning_remains_successful_and_accessible(form):
+    dialog = form.dialog
+    dialog.preview = preview('Approved preview')
+    warning = 'The file is saved. Temporary-file cleanup is still pending.'
+    dialog.workbench.export.return_value = ExportReceipt(form.destination, warning)
+    dialog.on_export()
+    form.executor.finish(0)
+    form.drain()
+    assert 'saved to' in dialog.status.value
+    assert warning in dialog.status.value and 'not exported' not in dialog.status.value
+    assert dialog.status.focused and dialog.pending is None
+    assert dialog.generate.enabled and dialog.export_button.enabled

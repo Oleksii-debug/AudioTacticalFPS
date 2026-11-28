@@ -1,0 +1,53 @@
+{
+  "schema": 2,
+  "anchor_workflow": ".github/workflows/carr-windows.yml",
+  "anchor_job": "integrated-desktop",
+  "pre_checkout_step": {
+    "name": "Enable complete reviewed Git history on the Windows runner",
+    "working-directory": "${{ github.workspace }}",
+    "run": "git config --global core.longpaths true\nif ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }\n"
+  },
+  "candidate_checkout": {
+    "exact_event_head": true,
+    "fetch-depth": 0,
+    "persist-credentials": false
+  },
+  "source_checkout_placement": "After the exact candidate checkout and before source builds or installed firewall phases",
+  "source_checkout_steps": [
+    {
+      "name": "Check out the reviewed maintenance generation A",
+      "uses": "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+      "with": {
+        "ref": "3cefda9cc3be02a96d4e40b291645f1bfc1fcc6f",
+        "path": "carr-standard-source-a",
+        "fetch-depth": 0,
+        "persist-credentials": false
+      }
+    },
+    {
+      "name": "Check out the unchanged original generation O",
+      "uses": "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+      "with": {
+        "ref": "91332206578b4d8dc779fec08c8d51a67962b0ff",
+        "path": "carr-standard-source-original",
+        "fetch-depth": 0,
+        "persist-credentials": false
+      }
+    }
+  ],
+  "native_step_placement": "Immediately after the existing successful ci_standard_installer.ps1 step",
+  "native_step": {
+    "name": "Verify original maintenance, distinct managed update and native rollback",
+    "timeout-minutes": 120,
+    "run": "& ./scripts/ci_standard_update.ps1 -OriginalCheckout (Join-Path $env:GITHUB_WORKSPACE 'carr-standard-source-original') -OriginalSource '91332206578b4d8dc779fec08c8d51a67962b0ff' -PreviousCheckout (Join-Path $env:GITHUB_WORKSPACE 'carr-standard-source-a') -PreviousSource '3cefda9cc3be02a96d4e40b291645f1bfc1fcc6f'\nif ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }\n"
+  },
+  "required_checks": {
+    "ordinary_maintenance": 4,
+    "managed_update": 15,
+    "installed_library": 50
+  },
+  "job_budget": "Retain every parent gate;120 minutes for independently built O/A, ordinary maintenance, distinct managed A/B, actual process-loss recovery and exact50-case installed qualification.",
+  "existing_artifact_upload": "carr-library/ci-results/",
+  "public_artifacts": "Bounded standard-update proof/log files and source-verified original/previous/candidate application wheels only; no private runtime/model payloads, compiled setup or authority keys.",
+  "native_result": "Only the exact actual successful three-generation Windows receipt qualifies the declared cohort; historical original-direct-managed update remains NOT_QUALIFIED."
+}

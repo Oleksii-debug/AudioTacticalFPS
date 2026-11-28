@@ -15,7 +15,7 @@ import shutil
 import stat
 import sys
 
-from .ocr_languages import is_model_id, model_ids
+from .ocr_languages import valid_model_code, model_ids, parse_language_report
 
 MANIFEST = 'ocr-manifest.json'
 MAX_MANIFEST = 2 * 1024 * 1024
@@ -133,6 +133,92 @@ class OcrRuntime:
             raise OcrRuntimeError('Portable OCR runtime changed during execution.')
 
 
+@dataclass(frozen=True)
+class PackOcrRuntime:
+    """A separate model selection over the unchanged, fully verified runtime."""
+    base: OcrRuntime
+    pack: object
+
+    @property
+    def executable(self):
+        return self.base.executable
+
+    @property
+    def tessdata(self):
+        return self.pack.root
+
+    @property
+    def root(self):
+        return self.base.root
+
+    @property
+    def portable(self):
+        return self.base.portable
+
+    @property
+    def target(self):
+        return self.base.target
+
+    @property
+    def manifest_sha256(self):
+        return self.base.manifest_sha256
+
+    @property
+    def model_pack_sha256(self):
+        return self.pack.manifest_sha256
+
+    @property
+    def languages(self):
+        return self.pack.languages
+
+    def command(self, argv):
+        argv = list(argv)
+        if (argv.count('--tessdata-dir') > 1
+                or any(str(value).startswith('--tessdata-dir=') for value in argv)):
+            raise OcrRuntimeError('An OCR command attempted to replace the selected verified model pack.')
+        if '--tessdata-dir' in argv:
+            index = argv.index('--tessdata-dir')
+            if index + 1 >= len(argv) or argv[index + 1] != str(self.tessdata):
+                raise OcrRuntimeError('An OCR command attempted to replace the selected verified model pack.')
+        elif '--version' not in argv:
+            argv[1:1] = ['--tessdata-dir', str(self.tessdata)]
+        return argv
+
+    def fingerprint(self):
+        return {'base_runtime': self.base.fingerprint(), 'model_pack': self.pack.fingerprint()}
+
+    def require_languages(self, languages, orientation=False):
+        wanted = set(languages.split('+')) | ({'osd'} if orientation else set())
+        if not wanted <= set(self.languages):
+            raise OcrRuntimeError('The selected verified OCR pack lacks a selected language or OSD model.')
+
+    def assert_unchanged(self, remaining=lambda: None):
+        from .language_manager import verify_offline_pack
+        # Keep the entire original bundle inventory check, including its models,
+        # executable, libraries and licenses, even though recognition uses a pack.
+        self.base.assert_unchanged(remaining)
+        if verify_offline_pack(self.tessdata, expected_manifest_sha256=self.model_pack_sha256,
+                               remaining=remaining) != self.pack:
+            raise OcrRuntimeError('The selected OCR model pack changed during execution.')
+
+
+def bind_model_pack(runtime, path, digest, *, languages=None, orientation=False,
+                    remaining=lambda: None):
+    from .language_manager import validate_pack_selection, verify_offline_pack
+    validate_pack_selection(path, digest)
+    if path is None:
+        return runtime
+    if runtime is None:
+        raise OcrRuntimeError('A verified model pack also needs an installed local OCR engine.')
+    pack = verify_offline_pack(path, expected_manifest_sha256=digest, remaining=remaining)
+    if runtime.portable and (pack.root == runtime.root or pack.root.is_relative_to(runtime.root)):
+        raise OcrRuntimeError('A separate OCR pack cannot be installed inside the sealed runtime.')
+    bound = PackOcrRuntime(runtime, pack)
+    if languages is not None:
+        bound.require_languages(languages, orientation)
+    return bound
+
+
 def _inventory(root, remaining):
     """Read every directory or fail; bound traversal before collecting entries."""
     found = set()
@@ -219,17 +305,12 @@ def verify_ocr_bundle(root, *, remaining=lambda: None):
         # The manifest cannot be changed between selecting and checking its files.
         if _read(root / MANIFEST, MAX_MANIFEST, remaining)[1] != manifest_hash:
             raise OcrRuntimeError('Portable OCR manifest changed during validation.')
-        # Tesseract reports official script packs as script/Latin, distinct
-        # from a model called Latin at the tessdata root. Preserve that exact
-        # relative identity while keeping every payload file fingerprinted.
-        prefix = tessdata + '/'
-        languages = []
-        for name in files:
-            if name.startswith(prefix) and name.endswith('.traineddata'):
-                language = name[len(prefix):-len('.traineddata')]
-                if is_model_id(language):
-                    languages.append(language)
-        languages = tuple(sorted(languages))
+        languages = tuple(sorted(
+            str(PurePosixPath(name).relative_to(tessdata))[:-len('.traineddata')]
+            for name in files
+            if name.endswith('.traineddata') and PurePosixPath(name).is_relative_to(tessdata)
+            and valid_model_code(str(PurePosixPath(name).relative_to(tessdata))[:-len('.traineddata')])
+        ))
         return OcrRuntime(str(root / executable), root / tessdata, data['target'],
                           manifest_hash, tuple(hashes), languages, root)
     except (OSError, UnicodeError, ValueError, TypeError) as exc:
@@ -252,7 +333,7 @@ def _native_target():
 
 def discover_ocr_runtime(languages='eng', *, orientation=False, remaining=lambda: None,
                          model_profile='installed'):
-    """Select the engine and an explicit installed or verified managed profile."""
+    """Use the unchanged engine authority and one explicitly selected profile."""
     try:
         model_ids(languages)
     except ValueError:
@@ -261,8 +342,6 @@ def discover_ocr_runtime(languages='eng', *, orientation=False, remaining=lambda
         raise OcrRuntimeError('Choose an installed, Fast or Best OCR model profile.')
     if model_profile == 'installed':
         return _discover_ocr_runtime(languages, orientation=orientation, remaining=remaining)
-    # The portable engine includes English, but need not bundle every selected
-    # managed model. Verify its original inventory before rebinding models.
     runtime = _discover_ocr_runtime('eng', orientation=False, remaining=remaining)
     from .managed_ocr import bind_model_profile
     return bind_model_profile(runtime, model_profile, languages,
@@ -276,10 +355,6 @@ def _discover_ocr_runtime(languages='eng', *, orientation=False, remaining=lambd
     immediate ancestors. A Windows bundle is never auto-executed on Linux.
     An explicit environment selection is also useful for build-host testing.
     """
-    try:
-        model_ids(languages)
-    except ValueError:
-        raise OcrRuntimeError('Invalid OCR language selection.') from None
     explicit = os.environ.get('CARR_OCR_DIR')
     if explicit is not None:
         if not explicit or not Path(explicit).is_absolute():
@@ -335,8 +410,7 @@ def check_runtime(*, timeout=30):
     if not version.startswith('tesseract '):
         raise OcrRuntimeError('The OCR engine returned an unexpected version.')
     report = run('--list-langs')
-    languages = [line.strip() for line in report.splitlines()
-                 if is_model_id(line.strip())]
+    languages = list(parse_language_report(report, expected_directory=runtime.tessdata))
     if 'eng' not in languages:
         raise OcrRuntimeError('The OCR engine cannot load English language data.')
     try:

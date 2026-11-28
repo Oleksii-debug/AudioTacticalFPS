@@ -1,0 +1,110 @@
+{
+  "schema": 1,
+  "status": "PASS",
+  "run": {
+    "id": 46016261528,
+    "job_id": 140564055777,
+    "commit": "ca51084875e7d9f24803aaa6fdf421b38821a537",
+    "tree": "8ab0c529b327dfd3273ad3d9eb528021e91788e3",
+    "conclusion": "success"
+  },
+  "artifact": {
+    "id": 15207972797,
+    "size_bytes": 382780,
+    "sha256": "50baf05c952ffda336cd1a1c5b37e8854110de83b5634359a6b3ea86f9714e72",
+    "independent_zip_reread": "NOT_RUN"
+  },
+  "source": {
+    "status": "PASS",
+    "cases": 58,
+    "elapsed_seconds": 117.59399999999994
+  },
+  "installed": {
+    "status": "PASS",
+    "cases": 58,
+    "elapsed_seconds": 117.23400000000015
+  },
+  "case_counter": {
+    "tests.audio.test_publication_fsync": {
+      "test_cancellation_during_final_flush_does_not_publish": 4,
+      "test_late_cancellation_cannot_reverse_actual_move": 4,
+      "test_directory_flush_cancellation_preserves_unpublished_complete_stage": 1,
+      "test_real_pcm_silence_cannot_publish_after_final_flush_cancellation": 1,
+      "test_flush_failure_still_preserves_stage_and_prevents_publication": 1
+    },
+    "tests.e2e.test_import_worker_publication": {
+      "test_barrier_leaves_other_processes_unchanged": 2,
+      "test_stopped_child_reports_verified_fresh_commit": 9,
+      "test_stopped_child_before_commit_never_reports_completion": 6,
+      "test_competing_commit_after_kill_does_not_complete_stopped_request": 9,
+      "test_cancelled_replay_cannot_claim_preexisting_publication": 1,
+      "test_replay_preserves_original_receipt_and_sql_replacement_is_rejected": 1,
+      "test_recovery_rechecks_candidate_source_and_authorization": 3,
+      "test_resumed_attempt_cannot_reuse_old_candidate_when_cancelled_before_launch": 1,
+      "test_docx_publication_keeps_existing_logical_record_capacity": 1,
+      "test_recovered_commit_with_pending_extraction_journal_survives_backup": 1
+    },
+    "tests.e2e.test_streamed_source_import": {
+      "test_explicit_streamed_import_uses_real_worker_receipt_and_independent_quote": 1,
+      "test_whole_original_proof_is_rechecked_after_same_size_late_change": 1,
+      "test_real_worker_cancellation_can_resume_from_owned_bytes_after_source_is_deleted": 1,
+      "test_profile_is_frozen_in_the_supervising_attempt": 1,
+      "test_actual_over_64_mib_source_imports_without_the_legacy_byte_api": 1,
+      "test_pdf_and_streamed_request_allowances_remain_separate": 1,
+      "test_sealed_profile_lookup_preserves_bounded_pdf_and_rejects_bare_large_text": 1
+    },
+    "tests.ingest.test_request_cleanup": {
+      "test_owned_request_waits_for_native_read_handle_release": 1,
+      "test_request_access_error_remains_visible_and_preserves_owned_bytes": 1,
+      "test_constructor_failure_closes_request_before_directory_cleanup": 1
+    },
+    "tests.ingest.test_worker_owned_family": {
+      "test_parser_owner_settles_descendant_after_leader_exit": 2,
+      "test_parser_request_handle_is_read_only": 1
+    }
+  },
+  "oracle_sha256": "cf6572196d1ec3d7cebc22b317efb6bc27e4223a166fdf5b811e71fcb48d8ed8",
+  "wheel_sha256": "fccea8e3d3563673b3f987e144a1ca12c224b03749338a59b273af8ab2eda9ff",
+  "qualification_adapter_sha256": "eb8bc2229db6641359978b49108ed3cdf0ba4320490b405ac674a57247355005",
+  "checkout_manifest_sha256": "a3a64c81c24e2543273e8cd9f591c4fb54f5030e735c3eba15e61e2738852127",
+  "test_source_sha256": {
+    "tests/e2e/test_import_worker_publication.py": "8b8f1721b764dcb6b67703b39842f087af86d237f79f74070cc898f0ff8b5abb",
+    "tests/ingest/test_worker_owned_family.py": "7a26b0a287df44380087ee2793ba7c678100ffd571fc9f23cf51201a5e88d382",
+    "tests/e2e/test_streamed_source_import.py": "3308baea93466d3bd4dd9b18366d0ba9f4b7bc1b089c892e7a8e1b99622fcbdb",
+    "tests/audio/test_publication_fsync.py": "314f102c17a8ec5096408e5e921a3f628e76a7ea77f3b18a52662972b0988eab",
+    "tests/ingest/test_request_cleanup.py": "e0e3eb6b85ac0781bdc8a85c0039f88745e59fe9487b0380ae5d7230dbd9de80",
+    "tests/__init__.py": "bda1d1b86fa69f604fb87c19f27628942b6bd77aa46b605efbc9cb9d4457183d",
+    "tests/security/__init__.py": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+    "tests/storage/__init__.py": "133dac0936d6e430af23a6ea8041d800ff72d4ee8b7e6bae54d16d6d0bff3efb",
+    "tests/security/conftest.py": "77599b257083e5a79ab901490005c68a8f087971df24143145b48c290e6232e6",
+    "tests/security/test_domain_admission.py": "f8dcae25e2738c16fb6fd0e6a51b772f5153b0118714f4b2f0bd850938242a9c"
+  },
+  "runner_sha256": {
+    "audio_batch_acceptance.py": "3fcb217a7ed9d535ea9d277191a27504f8e6f452bef235b728036358f9e6e003",
+    "ci_check.py": "a7e90c3a14dc51b78c9af17850a7038bf21513cc5ba41466293cc853cd0e2842",
+    "ci_watchdog.py": "e02be6a6c3406bdf1d9d4c24673363894d03a1ee7948b3b77d6b20fcc2bfc057"
+  },
+  "actual_ffmpeg": {
+    "sha256": "3ab4a9c404504ebff6662d6a48661db952f88ee7fb7d5949a711cad7a763b2cf",
+    "version": "ffmpeg version 9.1-full_build-www.gyan.dev Copyright (c) 2000-2026 the FFmpeg developers",
+    "version_sha256": "900a9c75d78682e23c3f73e9e13d4c9625b24a8f0dfb921a879fc5f9e445bc64"
+  },
+  "retained_prior_cases": 55,
+  "new_boundary_cases": 3,
+  "prior_failure": {
+    "run_id": 46006780890,
+    "job_id": 140531819119,
+    "cases_per_population": {
+      "passed": 43,
+      "failed": 15
+    },
+    "cause": "Missing ReportLab fixture dependency before PDF product assertions",
+    "repair": "Install the already used reportlab==4.4.9 fixture dependency; no product test or assertion removed."
+  },
+  "qualification_limits": {
+    "whole_composed_head": "NOT_ESTABLISHED_BY_THIS_RUN",
+    "native_gui": "NOT_RUN",
+    "nvda": "NOT_RUN",
+    "physical_audio": "NOT_RUN"
+  }
+}

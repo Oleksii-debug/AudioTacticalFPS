@@ -8,6 +8,7 @@ from uuid import uuid4
 
 from filelock import FileLock, Timeout
 
+from .ingest.writer_guard import exclusive_writer
 from .ui.command_registry import MAX_COMMANDS, ShortcutError, _identifier, normalize_shortcut
 
 
@@ -165,7 +166,7 @@ class KeymapStore:
             _check_path(self.path, regular=True)
             self.path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
             _check_path(lock_path, regular=True)
-            with FileLock(lock_path, timeout=5, mode=0o600):
+            with exclusive_writer(self.path.parent), FileLock(lock_path, timeout=5, mode=0o600):
                 _check_path(self.path, regular=True)
                 current = _read(self.path)
                 if self._observed is not _UNOBSERVED and _digest(current) != self._observed:

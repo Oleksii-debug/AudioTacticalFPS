@@ -1,5 +1,6 @@
 """Real draft completion, failure and re-entry contracts for Save All."""
 import pytest
+
 from carr_library.ui.save_all import SaveCoordinator, SaveResult
 
 
@@ -138,6 +139,122 @@ def test_truthy_return_is_not_a_completed_save():
     coordinator.save_all(summaries.append)
     assert coordinator.busy
     assert summaries == []
+
+
+
+def pending_save():
+    from types import SimpleNamespace
+    coordinator = SaveCoordinator()
+    state = SimpleNamespace(dirty=True, alive=True)
+    callbacks, summaries = [], []
+    coordinator.register('note', 'Note', dirty=lambda: state.dirty, save=callbacks.append)
+    assert coordinator.save_all(summaries.append)
+    return coordinator, state, callbacks, summaries
+
+
+def test_close_waits_for_successful_completion_and_rechecks_at_dispatch(tmp_path):
+    from types import SimpleNamespace
+    from carr_library.ui.save_all import defer_close
+    coordinator, state, callbacks, summaries = pending_save()
+    owner, posted, closed, messages = SimpleNamespace(), [], [], []
+    event = SimpleNamespace(CanVeto=lambda: True, Veto=lambda: messages.append('veto'))
+    options = dict(close=lambda: closed.append(True), report=messages.append,
+                   alive=lambda: state.alive, post=posted.append, event=event)
+    assert defer_close(owner, coordinator, **options)
+    assert defer_close(owner, coordinator, **options)
+    assert not posted and not closed and len(coordinator._completion_observers) == 1
+    destination = tmp_path / 'saved.txt'
+    destination.write_text('Durable draft', encoding='utf-8')
+    state.dirty = False
+    callbacks[0](SaveResult(True))
+    callbacks[0](SaveResult(True))
+    assert len(summaries) == 1 and len(posted) == 1 and not closed
+    assert destination.read_text(encoding='utf-8') == 'Durable draft'
+    posted.pop()()
+    assert closed == [True] and not owner._save_close_pending
+
+
+def test_failed_save_cancels_pending_close_and_preserves_dirty_state():
+    from types import SimpleNamespace
+    from carr_library.ui.save_all import defer_close
+    coordinator, state, callbacks, _ = pending_save()
+    owner, posted, closed, messages = SimpleNamespace(), [], [], []
+    assert defer_close(owner, coordinator, close=lambda: closed.append(True),
+        report=messages.append, alive=lambda: state.alive, post=posted.append)
+    callbacks[0](SaveResult(False, 'Destination changed in another window'))
+    assert not posted and not closed and state.dirty and not owner._save_close_pending
+    assert 'Destination changed' in messages[-1] and 'remains open' in messages[-1]
+
+
+def test_edit_between_save_confirmation_and_close_dispatch_keeps_window_open():
+    from types import SimpleNamespace
+    from carr_library.ui.save_all import defer_close
+    coordinator, state, callbacks, _ = pending_save()
+    posted, closed, messages = [], [], []
+    defer_close(SimpleNamespace(), coordinator, close=lambda: closed.append(True),
+                report=messages.append, alive=lambda: state.alive, post=posted.append)
+    state.dirty = False
+    callbacks[0](SaveResult(True))
+    state.dirty = True
+    posted.pop()()
+    assert not closed
+    assert 'newer unsaved' in messages[-1]
+
+
+def test_late_save_completion_never_touches_a_destroyed_window():
+    from types import SimpleNamespace
+    from carr_library.ui.save_all import defer_close
+    coordinator, state, callbacks, _ = pending_save()
+    posted, closed, messages = [], [], []
+    defer_close(SimpleNamespace(), coordinator, close=lambda: closed.append(True),
+                report=messages.append, alive=lambda: state.alive, post=posted.append)
+    messages.clear()
+    state.alive, state.dirty = False, False
+    callbacks[0](SaveResult(True))
+    assert not posted and not closed and not messages and not coordinator.busy
+
+
+def test_late_close_dispatch_never_touches_a_destroyed_window():
+    from types import SimpleNamespace
+    from carr_library.ui.save_all import defer_close
+    coordinator, state, callbacks, _ = pending_save()
+    posted, closed, messages = [], [], []
+    defer_close(SimpleNamespace(), coordinator, close=lambda: closed.append(True),
+                report=messages.append, alive=lambda: state.alive, post=posted.append)
+    state.dirty = False
+    callbacks[0](SaveResult(True))
+    state.alive = False
+    messages.clear()
+    posted.pop()()
+    assert not closed and not messages
+
+
+def test_close_validation_failure_is_visible_and_cannot_destroy_the_window():
+    from types import SimpleNamespace
+    from carr_library.ui.save_all import defer_close
+    coordinator, state, callbacks, _ = pending_save()
+    posted, closed, messages = [], [], []
+    defer_close(SimpleNamespace(), coordinator, close=lambda: closed.append(True),
+                report=messages.append, alive=lambda: state.alive, post=posted.append)
+    state.dirty = False
+    callbacks[0](SaveResult(True))
+    def unavailable():
+        raise OSError('Saved source scope is unavailable')
+    coordinator.register('scope', 'Source', dirty=unavailable, save=lambda done: None)
+    posted.pop()()
+    assert not closed and 'could not be verified' in messages[-1]
+
+
+def test_forced_shutdown_is_not_falsely_claimed_to_be_delayed():
+    from types import SimpleNamespace
+    from carr_library.ui.save_all import defer_close
+    coordinator, state, _, _ = pending_save()
+    called = []
+    event = SimpleNamespace(CanVeto=lambda: False, Veto=lambda: called.append('veto'))
+    assert not defer_close(SimpleNamespace(), coordinator, close=lambda: called.append('close'),
+                           report=called.append, alive=lambda: state.alive,
+                           post=called.append, event=event)
+    assert not called and not coordinator._completion_observers
 
 
 def test_late_cancel_after_final_durable_save_is_complete():

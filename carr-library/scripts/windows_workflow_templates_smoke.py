@@ -1,0 +1,602 @@
+"""Actual installed Windows workflow controls, current-scope run and passive recovery."""
+import argparse
+import ctypes
+import faulthandler
+from ctypes import wintypes
+from hashlib import sha256
+import importlib
+import json
+import os
+from pathlib import Path
+import sys
+from time import monotonic
+import traceback
+
+MODULES = (
+    'carr_library.assistant.templates', 'carr_library.assistant.template_cli',
+    'carr_library.assistant.service', 'carr_library.assistant.snapshots',
+    'carr_library.assistant.models', 'carr_library.assistant.validation',
+    'carr_library.ui.assistant_templates', 'carr_library.ui.assistant_dialog',
+    'carr_library.ui.save_all', 'carr_library.library_backup',
+)
+
+
+def module_identities():
+    prefix = Path(sys.prefix).resolve(strict=True)
+    found = {}
+    for name in MODULES:
+        path = Path(importlib.import_module(name).__file__).resolve(strict=True)
+        if not path.is_relative_to(prefix) or 'site-packages' not in {p.casefold() for p in path.parts}:
+            raise ValueError('The native probe imported a checkout module: ' + name)
+        found[name] = {'path': str(path), 'sha256': sha256(path.read_bytes()).hexdigest()}
+    return found
+
+
+def run(work):
+    if os.name != 'nt' or not sys.flags.isolated:
+        raise RuntimeError('Actual isolated Windows execution is required.')
+    print('PHASE importing actual installed native controls', flush=True)
+    import wx
+    from carr_library.application import LibraryApp
+    from carr_library.assistant import AssistantService, Scope
+    from carr_library.assistant.template_cli import run_templates
+    from carr_library.library_backup import create_backup, verify_backup, restore_backup
+    from carr_library.ui.assistant_dialog import show_assistant
+    from carr_library.ui.save_all import SaveCoordinator
+
+    work = Path(work).absolute()
+    work.mkdir(mode=0o700)
+    print('PHASE creating native app and synthetic library', flush=True)
+    gui = wx.App(False)
+    library = LibraryApp(work / 'library')
+    first = library.create_workspace('A first selected scope')
+    second = library.create_workspace('B newly reviewed scope')
+    library.add_text(first, 'Перший текст', 'Shared immutable first workspace source.')
+    library.add_text(second, 'Другий текст', 'Shared immutable second workspace source.')
+    inputs, outputs = work / 'old-input', work / 'old-output'
+    inputs.mkdir()
+    outputs.mkdir()
+    service = AssistantService(library)
+    frame = wx.Frame(None, title='Native named-workflow acceptance')
+    frame.library, frame.active, frame._closing = library, (first, None), False
+    frame._save_coordinator = SaveCoordinator()
+    frame.Show()
+    gui.SetTopWindow(frame)
+    checks, failures, timers = [], [], []
+    metrics, chosen = {}, {}
+    deadline = monotonic() + 150
+    source_before = {row.id: library.browse(row.id) for row in library.workspaces()}
+
+    def check(name, value):
+        if not value:
+            raise AssertionError(name)
+        checks.append(name)
+        print('CHECK ' + name, flush=True)
+
+    def press(button):
+        if not isinstance(button, wx.Button) or not button.IsEnabled():
+            raise AssertionError('Required native button is disabled.')
+        print('ACTION ' + button.GetName(), flush=True)
+        event = wx.CommandEvent(wx.EVT_BUTTON.typeId, button.GetId())
+        event.SetEventObject(button)
+        if not button.GetEventHandler().ProcessEvent(event):
+            raise AssertionError('The actual native button did not handle its command.')
+
+    cleanup_state = {'scheduled': False, 'until': None}
+
+    def owned_modals():
+        result = []
+        for window in wx.GetTopLevelWindows():
+            try:
+                if (not isinstance(window, wx.Dialog) or not window
+                        or window.IsBeingDeleted() or not window.IsShown()
+                        or not window.IsModal()):
+                    continue
+                current, seen = window, set()
+                for _ in range(32):
+                    if current is frame:
+                        result.append(window)
+                        break
+                    if current is None or id(current) in seen:
+                        break
+                    seen.add(id(current))
+                    current = current.GetParent()
+            except RuntimeError:
+                continue
+        return result
+
+    def modal_descends_from(window, parent):
+        current, seen = window.GetParent(), set()
+        for _ in range(32):
+            if current is parent:
+                return True
+            if current is None or id(current) in seen:
+                return False
+            seen.add(id(current))
+            current = current.GetParent()
+        raise AssertionError('The native modal owner chain exceeded its bound.')
+
+    def schedule_unwind():
+        if cleanup_state['scheduled']:
+            return
+        if cleanup_state['until'] is None:
+            cleanup_state['until'] = monotonic() + 10
+        cleanup_state['scheduled'] = True
+
+        def unwind_one():
+            cleanup_state['scheduled'] = False
+            try:
+                if monotonic() >= cleanup_state['until']:
+                    raise TimeoutError('Owned native modal cleanup did not settle.')
+                dismiss = chosen.get('dismiss_removal')
+                if dismiss is not None and dismiss():
+                    # Never end a wx parent loop while its native TaskDialog
+                    # still owns the active inner message loop.
+                    schedule_unwind()
+                    return
+                windows = owned_modals()
+                if not windows:
+                    return
+                leaves = [window for window in windows
+                          if not any(other is not window and modal_descends_from(other, window)
+                                     for other in windows)]
+                if len(leaves) != 1:
+                    raise AssertionError('Native cleanup found ambiguous active modal ownership.')
+                window = leaves[0]
+                print('CLEANUP close one owned modal: ' + type(window).__name__, flush=True)
+                if hasattr(window, 'template_handlers'):
+                    window.template_handlers['close']()
+                elif chosen.get('assistant_dialog') is window:
+                    # Use the product handler so it cancels and settles its
+                    # actual executor instead of only hiding its native loop.
+                    window.Close()
+                else:
+                    window.EndModal(wx.ID_CANCEL)
+                # Give ShowModal and its product finally block a full event
+                # turn to return before touching the next owning dialog.
+                schedule_unwind()
+            except Exception:
+                failures.append('Native cleanup: ' + traceback.format_exc())
+                print(failures[-1], file=sys.stderr, flush=True)
+        timers.append(wx.CallLater(25, unwind_one))
+
+    def failed():
+        failures.append(traceback.format_exc())
+        print(failures[-1], file=sys.stderr, flush=True)
+        schedule_unwind()
+
+    def later(callback):
+        def invoke():
+            if failures:
+                return
+            try:
+                if monotonic() >= deadline:
+                    raise TimeoutError('Actual workflow controls exceeded their bounded deadline.')
+                callback()
+            except Exception:
+                failed()
+        timers.append(wx.CallLater(25, invoke))
+
+    def until(condition, completed, description):
+        # Return to the real modal event loop between observations. A nested
+        # wx.Yield/sleep loop can suppress the very CallAfter worker completion
+        # that this probe must observe.
+        print('WAIT ' + description, flush=True)
+        def observe():
+            if condition():
+                completed()
+            else:
+                later(observe)
+        later(observe)
+
+    def answer_name(parent, value):
+        def accept():
+            candidates = [window for window in wx.GetTopLevelWindows()
+                          if isinstance(window, wx.TextEntryDialog) and window.GetParent() is parent]
+            if not candidates:
+                later(accept)
+                return
+            if len(candidates) != 1:
+                raise AssertionError('Expected one owned native workflow name dialog.')
+            candidate = candidates[0]
+            candidate.SetValue(value)
+            print('ACTION accept owned workflow name', flush=True)
+            candidate.EndModal(wx.ID_OK)
+        later(accept)
+
+    def answer_remove(parent):
+        api = ctypes.WinDLL('user32', use_last_error=True)
+        callback_type = ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.HWND, wintypes.LPARAM)
+        api.FindWindowW.argtypes = (wintypes.LPCWSTR, wintypes.LPCWSTR)
+        api.FindWindowW.restype = wintypes.HWND
+        api.GetWindow.argtypes = (wintypes.HWND, wintypes.UINT)
+        api.GetWindow.restype = wintypes.HWND
+        api.GetWindowThreadProcessId.argtypes = (wintypes.HWND, ctypes.POINTER(wintypes.DWORD))
+        api.GetWindowThreadProcessId.restype = wintypes.DWORD
+        api.GetDlgCtrlID.argtypes, api.GetDlgCtrlID.restype = (wintypes.HWND,), ctypes.c_int
+        api.GetClassNameW.argtypes = (wintypes.HWND, wintypes.LPWSTR, ctypes.c_int)
+        api.GetClassNameW.restype = ctypes.c_int
+        api.EnumChildWindows.argtypes = (wintypes.HWND, callback_type, wintypes.LPARAM)
+        api.EnumChildWindows.restype = wintypes.BOOL
+        api.IsChild.argtypes, api.IsChild.restype = (wintypes.HWND, wintypes.HWND), wintypes.BOOL
+        for name in ('IsWindow', 'IsWindowVisible', 'IsWindowEnabled'):
+            getattr(api, name).argtypes, getattr(api, name).restype = (wintypes.HWND,), wintypes.BOOL
+        api.SetActiveWindow.argtypes, api.SetActiveWindow.restype = (wintypes.HWND,), wintypes.HWND
+        api.PostMessageW.argtypes = (wintypes.HWND, wintypes.UINT, wintypes.WPARAM, wintypes.LPARAM)
+        api.PostMessageW.restype = wintypes.BOOL
+        owner = parent.GetHandle()
+        state = {'handle': None, 'inventory': None, 'inventories': 0,
+                 'yes_sent': None, 'yes_button_sent': False, 'no_sent': None,
+                 'no_button_sent': False}
+        started = monotonic()
+
+        def current_prompt():
+            handle = api.FindWindowW(None, 'Remove workflow template')
+            if not handle:
+                return None
+            if (not parent or parent.IsBeingDeleted() or not parent.IsModal()
+                    or parent.GetHandle() != owner or not api.IsWindow(owner)
+                    or api.GetWindow(handle, 4) != owner):  # GW_OWNER
+                raise AssertionError('The native removal prompt belongs to another window.')
+            process_id = wintypes.DWORD()
+            if not api.GetWindowThreadProcessId(handle, ctypes.byref(process_id)):
+                raise ctypes.WinError(ctypes.get_last_error())
+            if process_id.value != os.getpid():
+                raise AssertionError('The native removal prompt belongs to another process.')
+            if state['handle'] is not None and state['handle'] != handle:
+                raise AssertionError('The selected native removal prompt was replaced.')
+            state['handle'] = handle
+            return handle
+
+        def child_record(handle, child):
+            name = ctypes.create_unicode_buffer(256)
+            if not api.GetClassNameW(child, name, len(name)):
+                raise ctypes.WinError(ctypes.get_last_error())
+            process_id = wintypes.DWORD()
+            if not api.GetWindowThreadProcessId(child, ctypes.byref(process_id)):
+                raise ctypes.WinError(ctypes.get_last_error())
+            return {'handle': int(child), 'class': name.value,
+                    'id': api.GetDlgCtrlID(child),
+                    'visible': bool(api.IsWindowVisible(child)),
+                    'enabled': bool(api.IsWindowEnabled(child)),
+                    'same_process': process_id.value == os.getpid(),
+                    'descendant': bool(api.IsChild(handle, child))}
+
+        def inventory(handle):
+            rows, errors = [], []
+            @callback_type
+            def visit(child, unused):
+                try:
+                    if len(rows) >= 128:
+                        raise AssertionError('The owned prompt exceeded 128 native descendants.')
+                    rows.append(child_record(handle, child))
+                    return True
+                except Exception as error:
+                    errors.append(error)
+                    return False
+            # Unlike GetDlgItem, this includes children of native container
+            # windows. Never enumerate the desktop or inspect button captions.
+            api.EnumChildWindows(handle, visit, 0)
+            if errors:
+                raise errors[0]
+            if current_prompt() != handle:
+                raise AssertionError('The native prompt changed during descendant inspection.')
+            encoded = json.dumps(rows, sort_keys=True)
+            if encoded != state['inventory']:
+                if state['inventories'] >= 8:
+                    raise AssertionError('The native prompt inventory did not become stable.')
+                state['inventories'] += 1
+                state['inventory'] = encoded
+                print('NATIVE_PROMPT ' + encoded, flush=True)
+            return rows
+
+        def exact_button(handle, identity):
+            matches = [row for row in inventory(handle)
+                       if row['class'].casefold() == 'button' and row['id'] == identity
+                       and row['visible'] and row['enabled']
+                       and row['same_process'] and row['descendant']]
+            if len(matches) > 1:
+                raise AssertionError('The owned native prompt has ambiguous action buttons.')
+            if not matches:
+                return None
+            row = matches[0]
+            if current_prompt() != handle or child_record(handle, row['handle']) != row:
+                raise AssertionError('The native action button changed before its click.')
+            return row['handle']
+
+        def post(handle, message, identity=0):
+            if current_prompt() != state['handle']:
+                raise AssertionError('The native prompt changed before dispatch.')
+            if not api.PostMessageW(handle, message, identity, 0):
+                raise ctypes.WinError(ctypes.get_last_error())
+
+        def answer(identity, *, cleanup=False):
+            handle = current_prompt()
+            if handle is None:
+                return False
+            if not api.IsWindowVisible(handle) or not api.IsWindowEnabled(handle):
+                inventory(handle)
+                return True
+            button = exact_button(handle, identity)
+            prefix = 'no' if cleanup else 'yes'
+            api.SetActiveWindow(handle)
+            if state[prefix + '_sent'] is None:
+                # wxWidgets v3.2.8 uses TaskDialogIndirect on supported MSW.
+                # Its documented button message is TDM_CLICK_BUTTON, not
+                # WM_COMMAND. IDYES/IDNO are assigned in wx's native config.
+                # A legacy MessageBox ignores this message; only its observed
+                # exact standard Button may receive the later BM_CLICK.
+                print('ACTION owned native TDM_CLICK_BUTTON ' + str(identity), flush=True)
+                post(handle, 0x0400 + 102, identity)
+                state[prefix + '_sent'] = monotonic()
+            elif (monotonic() - state[prefix + '_sent'] >= 0.25
+                  and not state[prefix + '_button_sent'] and button is not None):
+                if current_prompt() != handle or exact_button(handle, identity) != button:
+                    raise AssertionError('The owned native button changed before BM_CLICK.')
+                print('ACTION owned native descendant BM_CLICK ' + str(identity), flush=True)
+                post(button, 0x00F5)  # BM_CLICK to the actual Button only.
+                state[prefix + '_button_sent'] = True
+            return True
+
+        def dismiss():
+            # This is only failure cleanup. It can never convert FAIL to PASS
+            # or grant removal; the negative answer leaves the saved item.
+            return answer(7, cleanup=True)  # IDNO
+
+        chosen['dismiss_removal'] = dismiss
+        chosen['removal_active'] = lambda: current_prompt() is not None
+
+        def accept():
+            present = answer(6)  # IDYES
+            if not present and state['yes_sent'] is not None:
+                return
+            if monotonic() - started >= 5:
+                raise TimeoutError('The exact owned native removal prompt did not accept Yes.')
+            later(accept)
+        later(accept)
+
+    def template_window():
+        result = [window for window in wx.GetTopLevelWindows()
+                  if hasattr(window, 'template_controls') and window.GetTitle() == 'Saved workflow templates']
+        if len(result) > 1:
+            raise AssertionError('Expected exactly one owned template settings window.')
+        return result[0] if result else None
+
+    def edit_templates():
+        child = template_window()
+        if child is None:
+            later(edit_templates)
+            return
+        controls = child.template_controls
+        buttons, rows = controls['buttons'], controls['rows']
+
+        def after_update():
+            value = service.workflow_templates().list()[0]
+            check('native_update_commits_reviewed_revision', value.revision == 3
+                  and value.steps[0].tool == 'library.search' and value.steps[0].arguments['query'] == 'Shared')
+            metrics['saved_revision'] = value.revision
+            chosen['saved'] = value
+            rows.SetSelection(0)
+            press(buttons['load'])
+
+        def after_rename():
+            values = service.workflow_templates().list()
+            check('native_rename_uses_same_identity_revision', len(values) == 1
+                  and values[0].name == 'Current native workflow' and values[0].revision == 2)
+            rows.SetSelection(0)
+            answer_name(child, 'Current native workflow')
+            press(buttons['update'])
+            until(lambda: buttons['refresh'].IsEnabled(), after_update, 'updated workflow revision')
+
+        def after_save():
+            values = service.workflow_templates().list()
+            check('native_save_publishes_inert_draft', len(values) == 1
+                  and values[0].revision == 1 and 'scope' not in values[0].draft and service.jobs() == ())
+            summaries = chosen['save_all_summaries']
+            check('save_all_waits_for_durable_completion', len(summaries) == 1
+                  and summaries[0].complete and not frame._save_coordinator.has_unsaved())
+            rows.SetSelection(0)
+            answer_name(child, 'Current native workflow')
+            press(buttons['rename'])
+            until(lambda: buttons['refresh'].IsEnabled(), after_rename, 'renamed workflow revision')
+
+        def opened():
+            check('native_template_controls_named', all(
+                isinstance(button, wx.Button) and button.GetName() for button in buttons.values())
+                and rows.GetName() and controls['status'].GetName())
+            check('native_empty_inventory_no_job', rows.GetCount() == 0 and service.jobs() == ())
+            answer_name(child, 'Початковий пошук')
+            press(buttons['save'])
+            summaries = []
+            chosen['save_all_summaries'] = summaries
+            check('save_all_observes_pending_settings', frame._save_coordinator.has_unsaved()
+                  and frame._save_coordinator.save_all(summaries.append) and not summaries)
+            until(lambda: buttons['refresh'].IsEnabled(), after_save, 'durable initial workflow save')
+
+        until(lambda: buttons['refresh'].IsEnabled(), opened, 'initial workflow inventory')
+
+    def ready(dialog, controls):
+        chosen['assistant_dialog'] = dialog
+        try:
+            check('native_main_template_action_named', controls['templates'].GetName() == 'Templates...'
+                  and controls['templates'].IsEnabled())
+            workspaces = library.workspaces()
+
+            def completed_run():
+                jobs = service.jobs()
+                check('native_explicit_run_completes_current_scope', len(jobs) == 1
+                      and jobs[0].status == 'complete' and jobs[0].completed == 1)
+                record = service.store.load(jobs[0].id)
+                hits = record['steps'][0]['result']['results']
+                check('native_results_use_only_new_workspace', bool(hits)
+                      and all(hit['workspace'] == second for hit in hits)
+                      and record['plan']['scope']['workspace_id'] == second)
+                metrics['fresh_run_completed_steps'] = jobs[0].completed
+                chosen['job_id'] = jobs[0].id
+                press(controls['close'])
+
+            def fresh_preview():
+                check('native_fresh_scope_preview_creates_no_job', controls['run'].IsEnabled()
+                      and service.jobs() == () and second in controls['review'].GetValue())
+                press(controls['run'])
+                until(lambda: controls['preview'].IsEnabled(), completed_run, 'explicit current-scope run')
+
+            def original_preview():
+                check('native_original_plan_preview_only', controls['run'].IsEnabled() and service.jobs() == ())
+                later(edit_templates)
+                # The product owns this ordinary nested modal dialog. Every
+                # child phase above returns to its event loop before waiting.
+                press(controls['templates'])
+                if failures:
+                    return
+                check('native_load_clears_previous_permissions', controls['scope'].GetSelection() == 0
+                      and controls['input'].GetValue() == controls['output'].GetValue() == ''
+                      and controls['full_backup'].GetValue() is False
+                      and controls['budget'].GetValue() == '1024')
+                check('native_loaded_draft_cannot_run_before_preview', not controls['run'].IsEnabled()
+                      and service.jobs() == () and 'scope' not in json.loads(controls['instruction'].GetValue()))
+                controls['scope'].SetSelection(next(i + 1 for i, row in enumerate(workspaces) if row.id == second))
+                press(controls['preview'])
+                until(lambda: controls['preview'].IsEnabled(), fresh_preview, 'new explicit scope preview')
+
+            controls['scope'].SetSelection(next(i + 1 for i, row in enumerate(workspaces) if row.id == first))
+            controls['input'].ChangeValue(str(inputs))
+            controls['output'].ChangeValue(str(outputs))
+            controls['full_backup'].SetValue(True)
+            controls['budget'].ChangeValue('64')
+            controls['instruction'].ChangeValue('Search "Shared"')
+            press(controls['preview'])
+            until(lambda: controls['preview'].IsEnabled(), original_preview, 'original plan preview')
+        except Exception:
+            failed()
+
+    try:
+        print('PHASE first native assistant modal', flush=True)
+        show_assistant(frame, on_ready=ready)
+        if failures:
+            raise AssertionError('\n'.join(failures))
+        saved = chosen['saved']
+        export = work / 'explicit-template.json'
+        print('PHASE actual template import/export and complete backup recovery', flush=True)
+        receipt = run_templates(['export', saved.id, str(export)], service)
+        check('actual_selected_template_export', receipt['status'] == 'complete'
+              and json.loads(export.read_bytes()) == saved.to_dict())
+        imported = run_templates(['import', str(export), '--name', 'Imported native workflow'], service)
+        check('actual_import_creates_new_inert_identity', imported['id'] != saved.id
+              and imported['revision'] == 1 and imported['draft'] == saved.draft
+              and len(service.jobs()) == 1)
+        metrics['template_records_after_import'] = len(service.workflow_templates().list())
+        backup = work / 'complete-backup'
+        digest = create_backup(library, backup)
+        manifest = verify_backup(backup, digest)
+        template_paths = [row['path'] for row in manifest['sidecars'] if '/templates/' in row['path']]
+        check('actual_complete_backup_includes_typed_templates', len(template_paths) == 2)
+        restored = restore_backup(backup, work / 'restored-library', digest)
+        recovered = AssistantService(LibraryApp(restored))
+        check('actual_restore_preserves_exact_inert_templates',
+              recovered.workflow_templates().get(saved.id) == saved
+              and len(recovered.workflow_templates().list()) == 2)
+        metrics['restored_template_records'] = len(recovered.workflow_templates().list())
+        check('actual_restored_old_job_requires_reapproval',
+              recovered.get(chosen['job_id']).status == 'attention')
+        before = {row.id for row in recovered.jobs()}
+        current = recovered.preview(saved.instruction(), Scope(first))
+        check('actual_restored_template_rebind_is_preview_only', current.scope.workspace_id == first
+              and {row.id for row in recovered.jobs()} == before)
+        second_backup = work / 'second-complete-backup'
+        second_digest = create_backup(recovered.app, second_backup)
+        check('actual_rebackup_preserves_template_inventory',
+              len([row for row in verify_backup(second_backup, second_digest)['sidecars']
+                   if '/templates/' in row['path']]) == 2)
+
+        def remove_current():
+            child = template_window()
+            if child is None:
+                later(remove_current)
+                return
+            controls = child.template_controls
+            buttons = controls['buttons']
+            def removed():
+                remaining = service.workflow_templates().list()
+                check('native_remove_keeps_other_settings_and_jobs', len(remaining) == 1
+                      and remaining[0].id == imported['id'] and len(service.jobs()) == 1)
+                press(buttons['close'])
+            def opened():
+                values = service.workflow_templates().list()
+                controls['rows'].SetSelection(next(i for i, value in enumerate(values) if value.id == saved.id))
+                answer_remove(child)
+                press(buttons['remove'])
+                until(lambda: buttons['refresh'].IsEnabled(), removed, 'durable explicit template removal')
+            until(lambda: buttons['refresh'].IsEnabled(), opened, 'removal inventory')
+
+        def remove_ready(dialog, controls):
+            chosen['assistant_dialog'] = dialog
+            try:
+                later(remove_current)
+                press(controls['templates'])
+                if not failures:
+                    press(controls['close'])
+            except Exception:
+                failed()
+
+        print('PHASE second native assistant modal with owned removal confirmation', flush=True)
+        show_assistant(frame, on_ready=remove_ready)
+        if failures:
+            raise AssertionError('\n'.join(failures))
+        check('actual_original_catalog_unchanged',
+              source_before == {row.id: library.browse(row.id) for row in library.workspaces()})
+        check('native_all_settings_writes_settled', not frame._save_coordinator.has_unsaved()
+              and not frame._save_coordinator.participants)
+        return {'status': 'PASS', 'actual_windows': True, 'isolated': True,
+                'checks': checks, 'metrics': metrics, 'module_origins': module_identities(),
+                'nvda': 'NOT_RUN', 'language_model_quality': 'NOT_QUALIFIED',
+                'physical_audio': 'NOT_RUN'}
+    finally:
+        for timer in timers:
+            timer.Stop()
+        if owned_modals() or chosen.get('removal_active', lambda: False)():
+            raise AssertionError('Owned native modal loops must settle before their windows are destroyed.')
+        frame.Destroy()
+        wx.YieldIfNeeded()
+        gui.Destroy()
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--work', required=True, type=Path)
+    args = parser.parse_args()
+    faulthandler.enable()
+    faulthandler.dump_traceback_later(200, exit=True)
+    print('PHASE native workflow probe started', flush=True)
+    handle = None
+    report = None
+    try:
+        if sys.platform != 'win32' or not sys.flags.isolated:
+            raise ValueError('Use an actual isolated installed Windows interpreter.')
+        from carr_library.native_runtime import activate_bundled_runtime
+        print('PHASE activating installed runtime', flush=True)
+        handle = activate_bundled_runtime()
+        print('PHASE verifying installed module identities', flush=True)
+        before = module_identities()
+        report = run(args.work)
+        if report['module_origins'] != before:
+            raise ValueError('Installed native module identities changed during execution.')
+    except Exception as error:
+        traceback.print_exc()
+        report = {'status': 'FAIL', 'reason': type(error).__name__ + ': ' + str(error),
+                  'actual_windows': sys.platform == 'win32', 'isolated': bool(sys.flags.isolated),
+                  'nvda': 'NOT_RUN', 'language_model_quality': 'NOT_QUALIFIED'}
+    finally:
+        if handle is not None:
+            try:
+                handle.close()
+            except Exception as error:
+                report = {'status': 'FAIL', 'reason': 'Native-runtime cleanup: ' + str(error),
+                          'nvda': 'NOT_RUN'}
+    faulthandler.cancel_dump_traceback_later()
+    print(json.dumps(report, ensure_ascii=False), flush=True)
+    return 0 if report['status'] == 'PASS' else 1
+
+
+if __name__ == '__main__':
+    raise SystemExit(main())

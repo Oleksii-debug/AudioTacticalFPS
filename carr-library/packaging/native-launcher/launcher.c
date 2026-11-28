@@ -82,7 +82,7 @@ static int setup_environment(void) {
     if (!set(L"ORT_DISABLE_TELEMETRY", L"1") || !set(L"HF_HUB_DISABLE_TELEMETRY", L"1") ||
         !set(L"HF_HUB_OFFLINE", L"1") || !set(L"TRANSFORMERS_OFFLINE", L"1") ||
         !set(L"DO_NOT_TRACK", L"1") || !set(L"CARR_PROGRAM_DIR", root)) return 0;
-    if (!prepend_path(L"audio\\bin", L"audio\\bin\\ffmpeg.exe") ||
+    if (!prepend_path(L"audio-runtime", L"audio-runtime\\ffmpeg.exe") ||
         !prepend_path(L"citation-runtime", L"citation-runtime\\node.exe")) return 0;
     if (child_path(L"ocr\\ocr-manifest.json", 0) == 1) {
         if (!rl_join(scratch, CAP, root, L"ocr") || !set(L"CARR_OCR_DIR", scratch)) return 0;

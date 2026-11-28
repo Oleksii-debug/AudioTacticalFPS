@@ -1,0 +1,117 @@
+{
+  "component": "r8 independent prepared-utterance playback",
+  "base_commit": "89458b334aae13478d555cfa24a748ce6b90d778",
+  "execution_status": "NOT_RUN",
+  "required_preexisting_live_cases": 88,
+  "expected_new_cases": 33,
+  "test_functions": {
+    "tests/reader/test_live_playback.py": {
+      "test_playback_accepts_only_existing_finite_effect_bounds": 10,
+      "test_extreme_playback_settings_use_only_the_existing_typed_effects": 2,
+      "test_default_playback_keeps_exact_synthesized_bytes_without_runtime_or_processing": 1,
+      "test_nondefault_playback_requires_explicit_verified_runtime_before_any_owner": 1,
+      "test_request_captures_immutable_playback_settings": 1,
+      "test_transform_reuses_same_reservation_and_does_not_change_voice_or_source": 1,
+      "test_slower_playback_expands_only_existing_declared_disk_reservation": 1,
+      "test_changed_runtime_bytes_cannot_borrow_current_metadata": 1,
+      "test_processing_retains_source_reader_until_actual_process_return": 1,
+      "test_cancel_close_retains_processor_inputs_and_resource_owner_until_settled": 1,
+      "test_changed_transformed_pcm_is_rejected_before_player_handoff": 1,
+      "test_one_operation_keeps_playback_selection_through_new_page_sessions": 1
+    },
+    "tests/ui/test_live_playback_controls.py": {
+      "test_playback_controls_require_verified_runtime_and_idle_request": 3,
+      "test_unavailable_runtime_refuses_changed_playback_until_explicit_reset": 1,
+      "test_native_voice_pitch_stays_disabled_while_independent_playback_pitch_is_available": 1,
+      "test_explicit_read_snapshots_controls_before_background_work_or_later_ui_changes": 1,
+      "test_reset_cannot_change_owned_or_prepared_request_settings": 2
+    },
+    "tests/reader/test_live_playback_ffmpeg.py": {
+      "test_actual_verified_ffmpeg_prepares_independent_tempo_and_pitch": 3
+    }
+  },
+  "required_environment_for_real_ffmpeg_cases": [
+    "CARR_FFMPEG must identify the gate-verified pinned absolute executable"
+  ],
+  "test_fixture_files": [
+    "tests/reader/test_live_playback.py"
+  ],
+  "native": {
+    "script": "scripts/windows_live_reading_smoke.py",
+    "flags": [
+      "--native",
+      "--playback-effects"
+    ],
+    "expected_checks": 32,
+    "required_check_counts": {
+      "named read-only native source control": 1,
+      "all ten live reading actions are native and named": 1,
+      "native emoji and newline selection identifies exact source": 1,
+      "native reading range includes whole book": 1,
+      "actual installed English SAPI voice enumerated": 1,
+      "voice enumeration requires explicit selection": 1,
+      "unsupported SAPI pitch control stays disabled": 1,
+      "verified local FFmpeg captured for independent playback": 1,
+      "independent native playback controls are named and enabled": 1,
+      "actual native focus reaches independent playback tempo": 1,
+      "actual native focus reaches independent playback pitch": 1,
+      "actual native keyboard focus reaches selected voice": 1,
+      "actual SAPI utterance became prepared PCM": 1,
+      "prepared utterance retains chosen independent playback settings": 1,
+      "actual transformed PCM has expected independent tempo duration": 1,
+      "measured PCM and exact spoken source digest": 1,
+      "prepared excerpt highlights exact native source range": 1,
+      "preparing does not start a device or advance cursor": 1,
+      "stop retains only the last completed text cursor": 1,
+      "stop releases private utterance PCM": 1,
+      "book resume is exact source-bound": 1,
+      "speech resource reservation is released": 1,
+      "restored cursor uses exact native character position": 1,
+      "where-am-I is exposed through named native status": 1,
+      "native modal exits only after reader owners settle": 1,
+      "immutable source remains byte-identical after the native workflow": 1,
+      "native Unicode cursor roundtrip 0": 1,
+      "native Unicode cursor roundtrip 7": 1,
+      "native Unicode cursor roundtrip 8": 1,
+      "native Unicode cursor roundtrip 11": 1,
+      "native Unicode cursor roundtrip 38": 1,
+      "native Unicode cursor roundtrip 78": 1
+    },
+    "default_without_effects_expected_checks": 26,
+    "required_fields": {
+      "status": "PASS",
+      "native_controls": "EXECUTED",
+      "independent_playback": "EXECUTED",
+      "physical_playback": "NOT_RUN",
+      "nvda": "NOT_RUN",
+      "word_alignment": "NOT_CLAIMED",
+      "language_quality": "NOT_CLAIMED"
+    },
+    "required_metric_values": {
+      "actual_sapi_pcm.playback_tempo": 1.25,
+      "actual_sapi_pcm.playback_pitch": 3
+    },
+    "positive_metric_fields": [
+      "actual_sapi_pcm.frames",
+      "actual_sapi_pcm.sample_rate",
+      "actual_sapi_pcm.synthesis_frames",
+      "actual_sapi_pcm.synthesis_sample_rate"
+    ],
+    "sha256_fields": [
+      "actual_sapi_pcm.pcm_sha256",
+      "actual_sapi_pcm.source_sha256",
+      "actual_sapi_pcm.ffmpeg_sha256"
+    ],
+    "require_ffmpeg_sha256_to_equal_gate_runtime": true,
+    "require_installed_modules": [
+      "carr_library.reader.live_speech",
+      "carr_library.ui.live_reading",
+      "carr_library.ui.reading_desk",
+      "carr_library.ui.narration_editor",
+      "carr_library.library_backup",
+      "carr_library.ui.builtin_keyboard_commands",
+      "carr_library.reader.live_playback"
+    ],
+    "require_installed_prefix_and_current_source_sha256": true
+  }
+}

@@ -1,0 +1,130 @@
+{
+  "schema": 1,
+  "title": "Bounded signed-state observation in the idle-renewal fixture",
+  "status": "SOURCE_REPAIR_NOT_RUN",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "base": {
+    "commit": "014b128f13d47a900008f8970de4d0024ff0047d",
+    "tree": "b084ad222fcc966c8fd4d9a6b6d8257f1ee5102b"
+  },
+  "observed_failure": {
+    "run_id": 46089514448,
+    "job_id": 140806885393,
+    "attempt": 1,
+    "head_sha": "014b128f13d47a900008f8970de4d0024ff0047d",
+    "conclusion": "failure",
+    "job_started_at": "2026-11-28T00:50:48Z",
+    "job_completed_at": "2026-11-28T02:09:19Z",
+    "job_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46089514448/job/140806885393",
+    "failed_step": [
+      {
+        "name": "Run required integrated source workflows",
+        "status": "completed",
+        "conclusion": "failure",
+        "number": 21,
+        "started_at": "2026-11-28T00:57:20Z",
+        "completed_at": "2026-11-28T02:09:10Z"
+      }
+    ],
+    "module": "tests/security/test_idle_renewal.py",
+    "passed": 3,
+    "failed": 1,
+    "skipped": 0,
+    "elapsed_seconds": 1.62,
+    "failed_case": "test_actual_idle_host_renews_without_clicks_and_stays_off_until_explicit_opt_in",
+    "source_line": 47,
+    "exception": "carr_library.security._files.BusyError: Another trusted-client operation is running.",
+    "failed_expression": "assert store.current().sequence == 2",
+    "boundary": [
+      "wait_until(lambda: not worker.running) returned while the periodic host remained enabled at interval .02.",
+      "EntitlementStore.current() entered the unchanged nonblocking .trust.lock.",
+      "The Windows msvcrt.LK_NBLCK contention was converted to the unchanged BusyError."
+    ],
+    "decoded_job_log": {
+      "characters": 4740167,
+      "utf8_bytes": 4740173,
+      "sha256": "1a1decd5250c4c2535748cc407d58548afe5491cd92d482c2c13fdebfc7bb01f",
+      "source": "GitHub workflow job logs API decoded response; the complete raw trace was reviewed."
+    },
+    "artifact": {
+      "id": 15242629034,
+      "name": "carr-windows-014b128f13d47a900008f8970de4d0024ff0047d-1",
+      "size_in_bytes": 304113,
+      "digest": "sha256:96deebbd3952c15beaa4faa93c0f70d89e85c704245f225338575bfca3f4205c",
+      "created_at": "2026-11-28T02:09:11Z",
+      "zip_independent_read": "NOT_RUN_BY_THIS_COMPONENT"
+    },
+    "actual_module_verdict": "FAIL: tests/security/test_idle_renewal.py: junit_passed=3, failed=1, skipped=0, pytest_exit=1"
+  },
+  "source_contract": {
+    "classification": "Fixture observation race; no application-source change.",
+    "rationale": [
+      "RefreshWorker.running is a synchronized observation of _checking and the current renewal thread, not a reservation against a later IdleRenewalHost tick.",
+      "The real periodic host calls worker.tick() again; tick reads the current signed entitlement before its due-time decision.",
+      "The nonblocking trust lock correctly refuses overlapping readers/publication operations. Its production behavior remains unchanged."
+    ],
+    "unchanged_bindings": {
+      "carr-library/src/carr_library/security/refresh.py": {
+        "git_blob": "727a18488740297bc6a3acd3fd9929c0f51d9ac0",
+        "sha256": "ab31d2ff11fbe2c9f2cc1f77fd6f9f26f90d0b79a3532cff7e5af7551eb03221"
+      },
+      "carr-library/src/carr_library/security/entitlements.py": {
+        "git_blob": "9cd523f81580c04cff85024354a68c4d9967c32a",
+        "sha256": "d94c111f60e5b82c5ac932dd5aced6f41ae534694a3c5028a60931c46e8fe95b"
+      },
+      "carr-library/src/carr_library/security/_files.py": {
+        "git_blob": "17b3e7bb3e33f22a9a0218f291f33b795f43e2bc",
+        "sha256": "7940e97ec49d3e375627046f852a209cb131f7aba9c0c360196b82e158e0c29b"
+      },
+      "carr-library/tests/security/conftest.py": {
+        "git_blob": "b2e347d78aa09950b9dd32cc84a424e2fa6b382f",
+        "sha256": "77599b257083e5a79ab901490005c68a8f087971df24143145b48c290e6232e6"
+      }
+    }
+  },
+  "repair": {
+    "path": "carr-library/tests/security/test_idle_renewal.py",
+    "before_git_blob": "04cb8cc027ffbab8ec6ddebb6847819c91dd9caa",
+    "before_sha256": "0c08a6350f8da91e50918a2a89f6be1f36e289ca202a610b70b8331f01ef44da",
+    "after_sha256": "e56bf8250c2bda607164c192f717697879942f15d042d0f1ee2d8874587ad8cf",
+    "changes": [
+      "Observe the actual signed sequence inside the existing finite two-second wait after checking worker.running.",
+      "Retry only BusyError raised by the test observation; other trust/signature/store failures still propagate.",
+      "Keep the live periodic host enabled throughout both automatic renewals and retain the second renewal without another UI/idle action.",
+      "Require exactly one first renewal and exactly two total renewals.",
+      "After the existing close and thread-settlement assertions, require the actual stored signed sequence to remain 3."
+    ],
+    "retained_assertions": [
+      "Disabled by default despite an idle signal.",
+      "An explicitly enabled host starts once and does not renew during active-user state.",
+      "The first and periodic second renewals use the actual worker/provider thread and signed entitlement store.",
+      "Exact configured profile and credential-reference bindings.",
+      "The host thread and worker are settled after close.",
+      "The other three module cases remain byte-for-byte unchanged: blocked-vault late-launch refusal, withdrawn capability/no transport, and timed-out reply/no protected-state advance."
+    ],
+    "case_population": {
+      "test_actual_idle_host_renews_without_clicks_and_stays_off_until_explicit_opt_in": 1,
+      "test_blocked_vault_check_does_not_block_data_save_or_shutdown_and_cannot_launch_late": 1,
+      "test_missing_or_withdrawn_canonical_renewal_capability_never_calls_transport": 1,
+      "test_late_signed_reply_after_time_budget_cannot_advance_protected_state": 1
+    },
+    "total_cases": 4,
+    "selectors_or_oracles_changed": false,
+    "product_lock_or_policy_changed": false,
+    "fixture_wait_budget_seconds": 2,
+    "fixture_poll_seconds": 0.005,
+    "periodic_host_interval_seconds": 0.02
+  },
+  "verification": {
+    "source_only": [
+      "All four top-level test identities are unchanged.",
+      "Reversing only the documented import/helper/two observation/final-state changes reproduces the exact old test file.",
+      "All three other test bodies are byte-for-byte retained.",
+      "The complete current refresh/store/lock owner and actual Windows failure trace were read."
+    ],
+    "executed_tests": "NOT_RUN",
+    "windows_rerun": "PENDING",
+    "runtime_result_transfer": false,
+    "refs_or_pr_changed": false
+  }
+}

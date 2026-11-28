@@ -1,0 +1,114 @@
+{
+  "schema": 1,
+  "date": "2026-11-27",
+  "component": "Explicit fixed audio acquisition through the current setup owner",
+  "base_commit": "23a09923584eb43d62d90b54f5c25b098a49d233",
+  "core_checkpoint": "b9c1b2e600d0ca95fd27d22452147ce8d02f6d9e",
+  "canonical_source_commit": "a44fac04072389caa40e0d6e799b13797712f797",
+  "canonical_sources": [
+    {
+      "path": "carr-library/packaging/acquire_audio_runtime.py",
+      "blob": "9de23d3f79bf179a2b3da4d759d324086e09675b"
+    },
+    {
+      "path": "carr-library/packaging/prepare_windows_audio.py",
+      "blob": "da79feb9899820c89809c04551c2a5fee3fd9961"
+    },
+    {
+      "path": "carr-library/packaging/setup_local_audio.py",
+      "blob": "2df676d830a4aedd2a417315f9f757d65129272d"
+    },
+    {
+      "path": "carr-library/docs/RUNNING.md",
+      "blob": "d2a2da18aff0117ab20cca466aab37ee3fd84d63"
+    }
+  ],
+  "status": "AUTHORED_NOT_RUN",
+  "source_review": {
+    "core_checkpoint": "GO by independent peer; no runtime claim",
+    "additional_boundary": "HTTP redirect rejection and HTTPError explicitly close their owned response before propagating failure."
+  },
+  "current_pin": {
+    "version": "9.1",
+    "distribution": "Gyan full static build",
+    "url": "https://github.com/GyanD/codexffmpeg/releases/download/9.1/ffmpeg-9.1-full_build.zip",
+    "bytes": 264268459,
+    "sha256": "f9a83be8f97b8989a223a15e4af234accd0842bacf7c126af5a3aae759785e48",
+    "source_commit": "74e4393595cf2b5857f0da925c4e0dd74ea306e5"
+  },
+  "contracts": {
+    "consent": "Default remains offline plan; selected --archive manual path remains offline. --download or literal YES after a download plan authorizes only the fixed archive plus existing fixed verification.",
+    "request": "Fixed GET URL and fixed headers; HTTPS only, exact github.com/release-assets.githubusercontent.com allowlist; redirect guard runs before connection; no credentials, fragments, alternate ports or control/ambiguous characters.",
+    "response": "200 complete representation, no content range, optional exact single Content-Length, no encoded body; bounded streaming actual byte count and SHA256.",
+    "publication": "Existing audio.jobs.publish_new(expected_sha256) rechecks bytes during independent copy; destination must be absent; only own partial dev/inode removed.",
+    "lifecycle": "600-second elapsed transfer budget, 30-second socket timeout, cancellation/transport response closure, temporary archive retained through existing prepare_local/final verifier and cleanup before success.",
+    "scope": "No engine/library preference activation, runtime source/format change, new process owner, external input deletion or alternate generic downloader.",
+    "rights": "BtbN and Gyan identities remain distinct. Complete transitive corresponding sources and public redistribution remain NOT_CLEARED."
+  },
+  "tests": {
+    "new_cases": 69,
+    "functions": 28,
+    "exact_function_multiplicity": {
+      "tests/packaging/test_audio_acquisition.py": {
+        "test_exact_pinned_bytes_publish_through_real_no_replace_owner": 1,
+        "test_approved_https_redirect_is_checked_by_actual_urllib_before_streaming": 5,
+        "test_denied_redirect_never_opens_second_connection_and_closes_response": 8,
+        "test_control_ambiguous_or_credential_urls_fail_before_request_construction": 6,
+        "test_body_size_and_digest_are_checked_without_trusting_absent_length": 3,
+        "test_unexpected_response_metadata_is_refused_before_body_read": 8,
+        "test_redirect_loop_stays_bounded_and_removes_owned_partial": 1,
+        "test_existing_even_matching_archive_is_not_adopted_or_downloaded": 1,
+        "test_cancel_timeout_and_transport_failures_settle_response_and_partial": 5,
+        "test_destination_created_during_download_is_preserved_by_atomic_publication": 1,
+        "test_downloaded_source_is_rehashed_during_copy_before_publication": 1,
+        "test_changed_directory_owner_refuses_before_publication": 1,
+        "test_partial_cleanup_does_not_remove_a_replacement_foreign_file": 1,
+        "test_download_directory_admission_precedes_any_network": 3
+      },
+      "tests/packaging/test_local_audio_download.py": {
+        "test_download_plan_accounts_for_archive_copy_and_does_not_authorize_execution": 1,
+        "test_default_cli_remains_offline_plan_only": 1,
+        "test_interactive_download_refusal_is_read_only": 5,
+        "test_explicit_download_uses_current_preparer_and_cleans_temporary_archive": 2,
+        "test_manual_archive_preparation_does_not_enter_network_path": 1,
+        "test_conflicting_authority_options_refuse_before_any_write": 3,
+        "test_changed_reviewed_download_plan_refuses_before_network": 4,
+        "test_destination_created_during_confirmation_is_preserved_without_download": 1,
+        "test_download_disk_budget_refuses_before_temporary_creation": 1,
+        "test_unsupported_platform_cannot_start_download_or_create_work": 1,
+        "test_wrong_download_digest_cleans_inputs_without_publishing_runtime": 1,
+        "test_native_failure_is_not_reported_as_prepared_and_does_not_keep_network_input": 1,
+        "test_temporary_cleanup_failure_cannot_leave_a_success_receipt": 1,
+        "test_keyboard_stop_during_transfer_keeps_existing_library_and_archive": 1
+      }
+    },
+    "network_mode": "offline: real urllib pipeline with only HTTPS I/O substituted",
+    "existing_manual_tests": "tests/packaging/test_local_audio_setup.py remains unchanged (19 cases)",
+    "actual_download": "NOT_RUN",
+    "native_ffmpeg": "NOT_RUN by this component",
+    "source_and_installed": "NOT_RUN; current main gate owns selection and exact source/wheel identity"
+  },
+  "main_workflow_integration": {
+    "path": ".github/workflows/carr-windows.yml",
+    "base_blob": "1ccff9984cf45c24bcf6141d01c1a98070747fc0",
+    "original": "          $pin = & $env:CARR_PYTHON -c \"import json; from carr_library.audio.runtime import FFMPEG_ARCHIVE_URL,FFMPEG_ARCHIVE_SHA256,FFMPEG_ARCHIVE_BYTES; print(json.dumps(dict(url=FFMPEG_ARCHIVE_URL,sha256=FFMPEG_ARCHIVE_SHA256,size=FFMPEG_ARCHIVE_BYTES)))\" | ConvertFrom-Json\n          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }\n          $archive = Join-Path $audioRoot 'ffmpeg-pinned.zip'\n          Invoke-WebRequest -Uri $pin.url -OutFile $archive\n          if ((Get-Item -LiteralPath $archive).Length -ne $pin.size -or (Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash.ToLowerInvariant() -ne $pin.sha256) { throw 'Pinned FFmpeg archive mismatch.' }\n          $audioWork = Join-Path $audioRoot 'explicit-local-audio'\n          $audioBin = Join-Path $audioWork 'runtime'\n          & $env:CARR_PYTHON packaging/setup_local_audio.py --archive $archive --destination $audioWork --prepare | Tee-Object 'ci-results/local-audio-setup.txt'",
+    "replacement": "          $audioWork = Join-Path $audioRoot 'explicit-local-audio'\n          $audioBin = Join-Path $audioWork 'runtime'\n          & $env:CARR_PYTHON packaging/setup_local_audio.py --download --destination $audioWork | Tee-Object 'ci-results/local-audio-setup.txt'",
+    "timeout": {
+      "step": "Prepare the sealed local FFmpeg runtime before audio regressions",
+      "before_minutes": 8,
+      "after_minutes": 15,
+      "reason": "The explicit transfer has a 600-second elapsed budget plus a 30-second socket bound; existing fixed native probes and preparation follow in the same step."
+    }
+  },
+  "validation_receipts_required": [
+    "Source/installed exact declared test populations as selected by root's current gate.",
+    "The existing main setup step's local-audio-setup.txt records downloaded fixed bytes and prepared runtime; verify_runtime is independently read back into audio-runtime.json.",
+    "Failure/timeout/cleanup error remains failure. No second acquisition workflow or duplicated runtime pipeline."
+  ],
+  "limitations": [
+    "No local executor, compilation or pytest was available while authoring.",
+    "Transport fixtures are not real TLS or external-download evidence.",
+    "Native validation means only the existing fixed FFmpeg/ffprobe/ffplay version/filter/license probes, not speech, quality, physical playback or NVDA.",
+    "Private Gyan runtime preparation is not a complete corresponding-source or public redistribution clearance."
+  ]
+}

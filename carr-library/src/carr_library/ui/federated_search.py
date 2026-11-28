@@ -6,7 +6,8 @@ Native wx controls are imported only when the desktop command is opened.
 """
 from dataclasses import dataclass
 
-from ..search.federated import FederatedSearch
+from ..search.federated import FederatedSearch, selected_workspaces
+from .search_paging import PageHistory
 from .research_actions import NativeDialogs
 from .scope_bindings import scope_labels
 
@@ -27,11 +28,18 @@ class SearchOptions:
     language: str | None = None
     edition: str | None = None
     limit_per_library: int = 50
+    paged: bool = False
 
     def validate(self):
+        if type(self.paged) is not bool:
+            raise ValueError('Choose a bounded search presentation.')
         if (not isinstance(self.workspaces, tuple) or not self.workspaces
-                or len(self.workspaces) > 20 or len(set(self.workspaces)) != len(self.workspaces)):
-            raise ValueError('Explicitly check between 1 and 20 libraries to search.')
+                or (not self.paged and len(self.workspaces) > 20)
+                or len(set(self.workspaces)) != len(self.workspaces)):
+            raise ValueError('Explicitly check distinct libraries to search.' if self.paged
+                             else 'Explicitly check between 1 and 20 libraries to search.')
+        if self.paged:
+            selected_workspaces(self.workspaces)
         if not isinstance(self.query, str) or not self.query.strip():
             raise ValueError('Enter a search query.')
         if self.mode not in MODES or self.result_mode not in PRESENTATIONS:
@@ -98,6 +106,8 @@ class SearchCenter:
         self.running = False
         self.alive = True
         self._clear_when_idle = False
+        self.paging = PageHistory()
+        self._paged_options = None
 
     def _data_identity(self):
         app = self.frame.library
@@ -127,6 +137,9 @@ class SearchCenter:
             self.view.clear_results()
 
     def options_changed(self):
+        self.paging.reset()
+        self._paged_options = None
+        self._show_paging()
         self._clear_rows()
         if self.running:
             # clear() also takes the service action lock. Do not block the UI
@@ -210,6 +223,9 @@ class SearchCenter:
             finish()
             if self.alive:
                 self._clear_rows()
+                self.paging.reset()
+                self._paged_options = None
+                self._show_paging()
                 message = ('Operation cancelled. Search again to load results.'
                            if self.frame.cancel_event.is_set() else
                            f'Operation not completed: {error}. Search again when ready.')
@@ -225,11 +241,26 @@ class SearchCenter:
         except Exception as exc:
             failed(exc)
 
-    def search(self, options):
+    def _show_paging(self):
+        if self.alive and hasattr(self.view, 'set_paging'):
+            self.view.set_paging(self.paging.can_previous, self.paging.can_next)
+
+    def next_page(self):
+        if self._paged_options is not None:
+            self.search(self._paged_options, direction='next')
+
+    def previous_page(self):
+        if self._paged_options is not None:
+            self.search(self._paged_options, direction='previous')
+
+    def search(self, options, *, direction='first'):
         try:
             self._ready()
             self._clear_rows()
             options.validate()
+            if direction != 'first' and not options.paged:
+                raise ValueError('This search does not expose continuation pages.')
+            requested_cursor = self.paging.request(direction) if options.paged else None
             epoch = self.epoch
             notices = []
 
@@ -239,15 +270,26 @@ class SearchCenter:
                 self.rows = session.hits
                 labels = scope_labels((group.workspace, None, group.library_name)
                                       for group in session.groups)
-                names = dict(zip(session.workspaces, labels))
+                names = dict(zip((group.workspace for group in session.groups), labels))
                 self.view.show_results(tuple(
                     f'{number}. {result_label(hit, names[hit.workspace])}'
                     for number, hit in enumerate(self.rows, 1)))
                 counts = '; '.join(f'{names[group.workspace]}: {len(group.hits)}'
                                    for group in session.groups)
-                text = (f'{len(self.rows)} results. {counts}. '
-                        f'Up to {options.limit_per_library} results per library. '
-                        'Results are grouped by selected library, not ranked across libraries.')
+                if options.paged:
+                    self.paging.accept(direction, requested_cursor,
+                                       session.next_cursor, session.page_number)
+                    self._paged_options = options
+                    self._show_paging()
+                    text = (f'Page {session.page_number}: {len(self.rows)} current results. {counts}. '
+                            f'Libraries completed: {session.libraries_examined} of {session.total_libraries}. '
+                            + ('Continue to the next source batch. ' if session.next_cursor
+                               else 'All selected source batches examined. ')
+                            + session.ordering + self.paging.history_notice)
+                else:
+                    text = (f'{len(self.rows)} results. {counts}. '
+                            f'Up to {options.limit_per_library} results per library. '
+                            'Results are grouped by selected library, not ranked across libraries.')
                 if any(hit.result.verified is not True for hit in self.rows):
                     text += ' Unverified extraction is labelled and cannot be saved as a quotation.'
                 if notices:
@@ -258,12 +300,15 @@ class SearchCenter:
                     self.selection_changed()
                     self.view.focus_results()
 
-            self._job('Searching selected libraries', lambda: self.service.search(
+            search = self.service.search_page if options.paged else self.service.search
+            continuation = {'cursor': requested_cursor} if options.paged else {}
+            self._job('Searching selected libraries', lambda: search(
                 options.workspaces, options.query.strip(), mode=options.mode,
                 result_mode=options.result_mode, title=options.title, author=options.author,
                 language=options.language, edition=options.edition,
                 limit_per_library=options.limit_per_library,
-                cancelled=self._cancelled, on_status=notices.append), done, epoch=epoch)
+                cancelled=self._cancelled, on_status=notices.append, **continuation),
+                done, epoch=epoch)
         except Exception as exc:
             self._report_error(exc)
 
@@ -329,8 +374,7 @@ class SearchCenter:
                                      'Create a topic in that library before saving.', focus=True)
                     return
                 index = self.dialogs.choose(self.view.parent, 'Save quotation to a topic',
-                    f'Choose a topic in the source library: {hit.library_name}',
-                    _topic_labels(topics, hit.workspace))
+                    f'Choose a topic in the source library: {hit.library_name}', _topic_labels(topics, hit.workspace))
                 if index is None:
                     self.view.report('Saving the quotation was cancelled.')
                     self.view.focus_results()
@@ -385,6 +429,8 @@ class SearchCenter:
 
     def dispose(self):
         self.alive = False
+        self.paging.reset()
+        self._paged_options = None
         self.epoch += 1
         self.rows = ()
         if self.running:
@@ -433,7 +479,7 @@ class NativeSearchCenter:
             'Thematic (local keywords)', 'Semantic (local model)']))
         self.presentation = field('Result presentation', wx.Choice(self.window,
             choices=['Short quotations', 'Thematic excerpts']))
-        self.limit = field('Maximum results per library', wx.Choice(self.window,
+        self.limit = field('Results per continuation page', wx.Choice(self.window,
             choices=[str(value) for value in LIMITS]))
         self.retrieval.SetSelection(0)
         self.presentation.SetSelection(0)
@@ -447,6 +493,12 @@ class NativeSearchCenter:
         self.cancel_button = wx.Button(self.window, label='Cancel &operation')
         commands.Add(self.search_button, 0, wx.ALL, 5)
         commands.Add(self.cancel_button, 0, wx.ALL, 5)
+        self.previous_button = wx.Button(self.window, label='Pre&vious results page')
+        self.next_button = wx.Button(self.window, label='&Next results page')
+        self.previous_button.SetName('Previous results page')
+        self.next_button.SetName('Next results page')
+        commands.Add(self.previous_button, 0, wx.ALL, 5)
+        commands.Add(self.next_button, 0, wx.ALL, 5)
         layout.Add(commands, 0, wx.EXPAND)
         layout.Add(wx.StaticText(self.window, label='Results — grouped by source library'),
                    0, wx.LEFT | wx.RIGHT, 8)
@@ -486,6 +538,8 @@ class NativeSearchCenter:
         self.search_button.Bind(wx.EVT_BUTTON, self._search)
         self.query.Bind(wx.EVT_TEXT_ENTER, self._search)
         self.cancel_button.Bind(wx.EVT_BUTTON, lambda event: controller.cancel())
+        self.previous_button.Bind(wx.EVT_BUTTON, lambda event: controller.previous_page())
+        self.next_button.Bind(wx.EVT_BUTTON, lambda event: controller.next_page())
         self.context_button.Bind(wx.EVT_BUTTON, lambda event: controller.context())
         self.quote_button.Bind(wx.EVT_BUTTON, lambda event: controller.copy('quote'))
         self.citation_button.Bind(wx.EVT_BUTTON, lambda event: controller.copy('citation'))
@@ -521,7 +575,7 @@ class NativeSearchCenter:
                 tuple(row.id for index, row in enumerate(self.libraries)
                       if self.libraries_control.IsChecked(index)), self.query.GetValue(),
                 mode=MODES[indices[0]], result_mode=PRESENTATIONS[indices[1]],
-                limit_per_library=LIMITS[indices[2]],
+                limit_per_library=LIMITS[indices[2]], paged=True,
                 **{key: control.GetValue().strip() or None for key, control in self.filters.items()})
             self.controller.search(options)
         except Exception as exc:
@@ -541,12 +595,18 @@ class NativeSearchCenter:
         elif event is not None and hasattr(event, 'CanVeto') and event.CanVeto():
             event.Veto()
 
+    def set_paging(self, previous, following):
+        busy = self.controller.running
+        self.previous_button.Enable(bool(previous) and not busy)
+        self.next_button.Enable(bool(following) and not busy)
+
     def set_busy(self, busy):
         for control in (self.libraries_control, self.query, self.retrieval, self.presentation,
                         self.limit, *self.filters.values(), self.search_button, self.results,
                         self.close_button):
             control.Enable(not busy)
         self.cancel_button.Enable(busy)
+        self.set_paging(self.controller.paging.can_previous, self.controller.paging.can_next)
         if busy:
             for control in (self.context_button, self.quote_button, self.citation_button, self.save_button):
                 control.Disable()

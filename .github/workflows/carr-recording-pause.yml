@@ -1,0 +1,133 @@
+name: CARR bounded recording pause acceptance
+
+on:
+  push:
+    branches: ['carr/v3-recording-pause-*']
+    paths:
+      - carr-library/**
+      - .github/workflows/carr-recording-pause.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: carr-recording-pause-${{ github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  windows-recording-pause:
+    name: Windows / actual FFmpeg / bounded pause / native keys
+    runs-on: windows-2022
+    timeout-minutes: 18
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: carr-library
+    env:
+      PYTHONUTF8: '1'
+      PYTHONUNBUFFERED: '1'
+      HF_HUB_OFFLINE: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      DO_NOT_TRACK: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+          architecture: x64
+      - name: Install pinned desktop and separately verified test audio runtime
+        id: install
+        run: |
+          New-Item -ItemType Directory -Force recording-pause-results | Out-Null
+          python -m pip install --only-binary=:all: --require-hashes -r packaging/windows-cp311.lock
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m pip install pytest==9.0.2 --only-binary=:all:
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m pip install --no-deps .
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $audioRoot = Join-Path $env:RUNNER_TEMP 'carr-pinned-audio'
+          New-Item -ItemType Directory -Force $audioRoot | Out-Null
+          $pin = python -c "import json; from carr_library.audio.runtime import FFMPEG_ARCHIVE_URL,FFMPEG_ARCHIVE_SHA256,FFMPEG_ARCHIVE_BYTES; print(json.dumps(dict(url=FFMPEG_ARCHIVE_URL,sha256=FFMPEG_ARCHIVE_SHA256,size=FFMPEG_ARCHIVE_BYTES)))" | ConvertFrom-Json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $archive = Join-Path $audioRoot 'ffmpeg-pinned.zip'
+          Invoke-WebRequest -Uri $pin.url -OutFile $archive
+          if ((Get-Item -LiteralPath $archive).Length -ne $pin.size -or (Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash.ToLowerInvariant() -ne $pin.sha256) { throw 'Pinned FFmpeg archive mismatch.' }
+          $audioBin = Join-Path $audioRoot 'audio-runtime'
+          python packaging/prepare_ffmpeg_runtime.py --archive $archive --destination $audioBin --verify-native
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $binary = Join-Path $audioBin 'ffmpeg.exe'
+          "CARR_FFMPEG=$binary" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          $audioBin | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          git rev-parse HEAD
+          & $binary -version
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Verify 115 strict recording, monitor, process and UI regressions
+        id: source
+        timeout-minutes: 9
+        run: |
+          @'
+          import collections,json,os,pathlib,xml.etree.ElementTree as E
+          import importlib.util,subprocess,sys
+          spec=importlib.util.spec_from_file_location('recording_ci_runner',pathlib.Path('scripts/ci_check.py').resolve())
+          runner=importlib.util.module_from_spec(spec)
+          spec.loader.exec_module(runner)
+          env=dict(os.environ)
+          for key in ('PYTEST_ADDOPTS','PYTEST_PLUGINS','PYTHONPATH','CARR_CI_ALLOW_LOOPBACK'):
+              env.pop(key,None)
+          env.update(PYTEST_DISABLE_PLUGIN_AUTOLOAD='1',PYTHONPATH=str(pathlib.Path('src').resolve()),
+              ORT_DISABLE_TELEMETRY='1',HF_HUB_DISABLE_TELEMETRY='1',HF_HUB_OFFLINE='1',
+              TRANSFORMERS_OFFLINE='1',DO_NOT_TRACK='1')
+          selectors=['tests/audio/test_recording.py','tests/audio/test_recording_process.py',
+              'tests/audio/test_recording_pause.py','tests/audio/test_recording_monitor.py',
+              'tests/ui/test_recording_dialog.py']
+          process=subprocess.run([sys.executable,'-c',runner.PYTEST_CHILD,'offline','-o','addopts=',
+              '-o','xfail_strict=true','-vv','-rs','--durations=15','--tb=short',
+              '--junitxml=recording-pause-results/source.xml','--import-mode=importlib',*selectors],
+              env=env,timeout=480,check=False)
+          assert process.returncode==0, process.returncode
+          expected=json.loads("{\"tests.audio.test_recording\":{\"test_device_inventory_excludes_video_and_preserves_unique_microphone_identity\":1,\"test_device_cannot_inject_another_stream_or_external_source\":4,\"test_capture_limits_are_validated_before_opening_any_device\":5,\"test_actual_pcm_publication_is_verified_and_reopenable\":1,\"test_actual_graceful_stop_finalizes_short_pcm\":1,\"test_actual_cancel_discards_incomplete_capture\":1,\"test_unknown_device_and_early_stop_do_not_launch_any_capture\":1,\"test_new_capture_never_overwrites_an_existing_identity\":1,\"test_bad_pcm_and_changed_runtime_do_not_publish\":1,\"test_observer_failure_cannot_erase_valid_recording\":1,\"test_receipt_does_not_grant_external_path_authority\":1,\"test_listing_rejects_malformed_audio_receipts_without_opening_saved_pcm\":5,\"test_actual_capture_backup_delete_original_root_restore_and_verify\":1,\"test_capture_admission_is_exclusive_and_released_after_failure\":1,\"test_recording_receipt_validation_is_pure_and_rejects_incomplete_limits\":1,\"test_unverified_original_listing_is_read_only_and_never_probes_audio\":1,\"test_pending_cleanup_returns_worker_and_keeps_staging_and_both_admission_locks\":1,\"test_pcm_validation_cancellation_uses_the_shared_bounded_wave_reader\":1,\"test_actual_retake_retains_originals_and_uses_current_managed_sound_assets\":1,\"test_retake_binding_cannot_be_changed_or_backed_up\":2,\"test_actual_capture_holds_shared_media_and_resource_admission_until_completion\":1,\"test_capture_and_pending_cleanup_are_excluded_from_complete_backup\":1,\"test_receipt_write_failure_keeps_an_inert_original_in_backup\":1,\"test_backup_preserves_unverified_original_without_decoding_it\":2,\"test_backup_rejects_unknown_recording_state_instead_of_omitting_it\":1,\"test_backup_checks_copied_recording_against_its_receipt_before_publication\":1,\"test_recording_manifest_limits_fail_before_opening_payload_files\":3},\"tests.audio.test_recording_process\":{\"test_actual_capture_child_uses_owned_launcher_and_sanitized_environment\":1,\"test_actual_capture_reader_start_failure_closes_exact_owned_child\":2,\"test_actual_capture_pending_cleanup_keeps_owned_child_until_confirmation\":1,\"test_actual_capture_stop_sends_only_fixed_quit_command\":1,\"test_expected_device_inspection_exit_does_not_bypass_diagnostic_budget\":1},\"tests.audio.test_recording_pause\":{\"test_actual_pause_closes_owned_capture_and_resumes_exact_recorded_duration\":1,\"test_stop_during_pause_saves_existing_parts_without_reopening_device\":1,\"test_cancel_during_pause_discards_parts_and_releases_device_admission\":1,\"test_initial_pause_does_not_open_device_until_explicit_resume\":1,\"test_initial_pause_can_finish_without_opening_any_capture\":2,\"test_changed_runtime_before_resume_refuses_another_device_open\":1,\"test_paused_retake_roundtrips_complete_backup_with_original_identity\":1,\"test_paused_receipt_cannot_claim_another_sample_sequence\":4,\"test_state_observer_failure_cannot_destroy_valid_recorded_pcm\":1,\"test_segment_limit_saves_verified_pcm_instead_of_losing_the_recording\":1,\"test_pause_timeout_saves_captured_pcm_without_reopening_device\":1,\"test_pause_callback_validation_precedes_device_open\":1,\"test_empty_pcm_is_only_admitted_for_explicit_unfinished_parts\":1,\"test_cancel_after_finalizing_signal_keeps_prior_completed_original\":1,\"test_late_cancel_after_paused_publication_keeps_the_committed_original\":1,\"test_pending_pause_cleanup_retains_reservation_without_claiming_paused\":1},\"tests.audio.test_recording_monitor\":{\"test_actual_live_pipe_precedes_publication_and_equals_saved_pcm\":2,\"test_monitor_requires_an_explicit_current_output_before_any_capture\":3,\"test_unavailable_monitor_fails_before_the_microphone_opens\":1,\"test_monitor_output_failure_gracefully_retains_the_actual_recording\":1,\"test_cancelled_actual_monitor_discards_incomplete_capture_and_releases_both_devices\":1,\"test_actual_monitor_stream_must_match_finalized_wav_before_publication\":1,\"test_monitor_cleanup_retains_saved_recording_and_shared_leases_until_exact_output_is_closed\":1,\"test_monitor_output_inventory_never_opens_or_selects_a_device\":1,\"test_actual_monitor_stream_stays_bounded_across_device_pause_and_resume\":1},\"tests.ui.test_recording_dialog\":{\"test_discovery_never_records_or_automatically_selects_even_one_microphone\":1,\"test_start_waits_for_shared_quiet_then_uses_one_real_host_task_and_explicit_options\":1,\"test_stop_or_cancel_while_waiting_for_silence_never_opens_microphone\":2,\"test_close_active_operation_waits_for_real_host_cleanup\":1,\"test_quiet_handoff_failure_does_not_record_or_leave_busy_controls\":1,\"test_real_running_worker_keeps_quiet_until_cleanup_after_detach\":1,\"test_progress_observer_failure_cannot_reverse_saved_result_or_retry_capture\":2,\"test_detached_waiting_prepare_never_touches_destroyed_controls_or_opens_capture\":1,\"test_pending_cleanup_keeps_quiet_after_host_and_modal_settle\":2,\"test_monitor_requires_explicit_current_output_and_passes_exact_device\":1,\"test_retake_passes_selected_record_identity_without_changing_prior_record\":1,\"test_submit_rejection_releases_quiet_and_never_starts_microphone\":1,\"test_late_cancel_keeps_the_actual_completed_recording\":1,\"test_selected_record_is_retained_only_for_an_explicit_managed_project\":1,\"test_plain_selection_does_not_create_a_project_or_reinterpret_narration\":1,\"test_changed_library_cannot_open_a_queued_microphone_or_publish_selection\":1,\"test_installation_reuses_one_audio_command_without_default_shortcut\":1,\"test_studio_selection_inserts_only_into_explicit_saved_structured_project\":4,\"test_studio_recording_selection_cannot_cross_project_identity\":2,\"test_saved_recording_can_be_previewed_with_real_wave_and_pcm_players_after_capture\":1,\"test_pause_controls_wait_for_actual_shutdown_acknowledgment\":1,\"test_paused_ui_stop_cancel_and_close_never_issue_resume\":3,\"test_idle_pause_and_resume_never_start_or_schedule_capture\":1,\"test_late_recording_state_callback_cannot_change_another_ui_context\":3}}")
+          root=E.parse('recording-pause-results/source.xml')
+          observed={}
+          for case in root.findall('.//testcase'):
+              assert not any(case.find(kind) is not None for kind in ('failure','error','skipped')), E.tostring(case)
+              module=case.attrib['classname']
+              observed.setdefault(module,collections.Counter())[case.attrib['name'].split('[',1)[0]]+=1
+          assert observed=={key:collections.Counter(value) for key,value in expected.items()}, (observed,expected)
+          count=sum(sum(value.values()) for value in observed.values())
+          assert count==115, count
+          report={'status':'PASS','source_commit':os.environ['GITHUB_SHA'],'strict_cases':count,'modules':{key:sum(value.values()) for key,value in observed.items()},'physical_microphone':'NOT_RUN','nvda':'NOT_RUN'}
+          pathlib.Path('recording-pause-results/source-proof.json').write_text(json.dumps(report,sort_keys=True)+'\n',encoding='utf-8')
+          print(json.dumps(report,sort_keys=True))
+          '@ | python -
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Verify installed recording with actual native Pause Resume Stop and Cancel keys
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        timeout-minutes: 3
+        run: |
+          python -I -B scripts/windows_recording_smoke.py --ffmpeg $env:CARR_FFMPEG 2>&1 | Tee-Object recording-pause-results/native.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          @'
+          import collections,json,os,pathlib
+          raw=pathlib.Path('recording-pause-results/native.txt').read_text(encoding='utf-8-sig')
+          report=json.loads(raw[raw.rfind('\n{')+1:])
+          expected=json.loads("{\"explicit local FFmpeg executable\":1,\"selected executable hash retained\":1,\"installed exact source: carr_library.audio.recording_process\":1,\"installed exact source: carr_library.audio.recording\":1,\"installed exact source: carr_library.ui.recording_dialog\":1,\"opening the dialog does not discover or capture\":1,\"recording progress has a native accessible gauge\":1,\"native live monitoring is off until explicitly selected\":1,\"native retake waits for a selected original\":1,\"single discovered input is not automatically selected\":1,\"Start remains disabled until explicit selection\":1,\"actual FFmpeg reports recorded PCM while UI remains responsive\":1,\"Stop finalizes and verifies an actual retained recording\":1,\"Stop reports retained completion\":1,\"native retake targets the displayed saved original\":1,\"retake preserves the previous verified original\":1,\"Cancel removes unfinished audio and preserves both originals\":1,\"Cancel is announced distinctly\":1,\"native recording owner window actually destroyed\":1,\"Escape closes only after active capture cleanup\":1,\"closing preserves exactly the verified originals\":1,\"native focus reaches Refresh microphones\":1,\"native key dispatch: Refresh microphones\":1,\"native focus reaches Microphone device (explicit selection required)\":1,\"native key dispatch: Microphone device (explicit selection required)\":1,\"native focus reaches Start recording\":3,\"native key dispatch: Start recording\":3,\"native focus reaches Stop and save recording\":3,\"native key dispatch: Stop and save recording\":3,\"native focus reaches Record retake of selected recording\":1,\"native key dispatch: Record retake of selected recording\":1,\"native focus reaches Cancel unfinished recording\":1,\"native key dispatch: Cancel unfinished recording\":1,\"native Pause and Resume wait for an active capture\":1,\"Pause confirms the exact owned capture tree has closed\":1,\"paused native capture does not advance recorded samples\":1,\"Resume opens another owned part while the native dialog remains responsive\":1,\"paused native recording retains both verified PCM parts without inserted silence\":1,\"native focus reaches Pause recording\":1,\"native key dispatch: Pause recording\":1,\"native focus reaches Resume recording\":1,\"native key dispatch: Resume recording\":1}")
+          assert report['status']=='PASS' and report['actual_native_keys'] is True and report['actual_ffmpeg_synthetic_capture'] is True
+          assert collections.Counter(report['checks'])==collections.Counter(expected) and len(report['checks'])==50, report
+          assert all(report[key]=='NOT_RUN' for key in ('physical_microphone','physical_monitor_output','nvda','audio_listening')), report
+          report['source_commit']=os.environ['GITHUB_SHA']
+          pathlib.Path('recording-pause-results/native-proof.json').write_text(json.dumps(report,sort_keys=True)+'\n',encoding='utf-8')
+          print(json.dumps(report,sort_keys=True))
+          '@ | python -I -
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Preserve fixed synthetic recording acceptance evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: carr-recording-pause-${{ github.sha }}-${{ github.run_attempt }}
+          path: carr-library/recording-pause-results/
+          if-no-files-found: warn
+          retention-days: 7

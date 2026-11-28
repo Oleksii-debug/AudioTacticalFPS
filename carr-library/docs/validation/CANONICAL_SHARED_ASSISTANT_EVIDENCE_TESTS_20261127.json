@@ -1,0 +1,1303 @@
+{
+  "schema": 1,
+  "kind": "bounded-shared-canonical-assistant-evidence-test-disposition",
+  "canonical_commit": "e5c64a5245583f8f8b404a0f042f6ca438c24d7f",
+  "current_review_baseline": "5070b0e9808e1242936fac314bab9a8d9f20213a",
+  "test_additions_checkpoint": "5f3e1de63560c6124b0d73e55c0a35254b1891c0",
+  "scope": {
+    "canonical_shared_modules": 4,
+    "canonical_functions": 55,
+    "identical_shared_function_bodies": 26,
+    "current_product_changes": 0,
+    "new_cases": 25,
+    "new_case_counter": {
+      "tests/assistant/test_planning_handlers.py": {
+        "test_saved_job_resume_waits_for_its_current_native_result_callback": 2,
+        "test_silent_change_of_reviewed_goal_requires_fresh_preview": 1
+      },
+      "tests/ui/test_evidence_draft_recovery.py": {
+        "test_save_all_waits_for_actual_note_commit_and_retains_newer_edit": 1,
+        "test_save_all_never_claims_a_blocked_or_stale_note_was_saved": 3
+      },
+      "tests/assistant/test_translation.py": {
+        "test_encoded_credential_refusal_preserves_existing_language_cache_and_job_receipts": 4
+      },
+      "tests/e2e/test_google_translation_gateway.py": {
+        "test_known_unsent_reservation_rejects_every_changed_original_binding": 6,
+        "test_sent_or_unresolved_translation_reservation_never_replays": 3,
+        "test_each_failed_http_translation_remains_uncertain_without_automatic_retry": 5
+      }
+    }
+  },
+  "rows": [
+    {
+      "canonical": {
+        "path": "carr-library/tests/assistant/test_local_assistant.py",
+        "blob": "1a915067511c15a57413018e37a493beafb72827",
+        "test": "test_real_ukrainian_create_nested_import_search_reopen_no_duplicates",
+        "function_body_sha256": "b730581ff867513e625f6b82c65c83b1894688ea1b4bb51816b9c80c3d2f152b"
+      },
+      "current": [
+        {
+          "path": "carr-library/tests/assistant/test_local_assistant.py",
+          "test": "test_real_ukrainian_create_nested_import_search_reopen_no_duplicates"
+        }
+      ],
+      "required_assertions": [
+        "assert result.status == 'complete', result",
+        "assert result.completed == 3",
+        "assert len(hits) == 1 and hits[0]['workspace'] == workspace",
+        "assert hits[0]['verified'] and hits[0]['quote'] == 'Залізниця'",
+        "assert repeat.status == 'complete'",
+        "assert len(app.workspaces()) == 2 and len(app.browse(workspace)) == 1",
+        "assert source.read_text(encoding='utf-8').startswith('Залізниця')"
+      ],
+      "disposition": "IDENTICAL_SHARED_FUNCTION_BODY",
+      "semantic_difference": "Function bodies are identical after separating the following function's decorators; current fixture and surrounding module remain the selected current family.",
+      "execution": "Source comparison only; new additions are NOT_RUN and no canonical test PASS is transferred."
+    },
+    {
+      "canonical": {
+        "path": "carr-library/tests/assistant/test_local_assistant.py",
+        "blob": "1a915067511c15a57413018e37a493beafb72827",
+        "test": "test_approved_plan_is_not_mutable_after_submit",
+        "function_body_sha256": "3f34e2f3ad454f4fe1bbcb52eff4eb7f37d8aabbf06a06bb4f34bb9e342ee720"
+      },
+      "current": [
+        {
+          "path": "carr-library/tests/assistant/test_local_assistant.py",
+          "test": "test_approved_plan_is_not_mutable_after_submit"
+        }
+      ],
+      "required_assertions": [
+        "with pytest.raises(ValueError, match='approved assistant plan'):"
+      ],
+      "disposition": "IDENTICAL_SHARED_FUNCTION_BODY",
+      "semantic_difference": "Function bodies are identical after separating the following function's decorators; current fixture and surrounding module remain the selected current family.",
+      "execution": "Source comparison only; new additions are NOT_RUN and no canonical test PASS is transferred."
+    },
+    {
+      "canonical": {
+        "path": "carr-library/tests/assistant/test_local_assistant.py",
+        "blob": "1a915067511c15a57413018e37a493beafb72827",
+        "test": "test_unlisted_tools_are_rejected",
+        "function_body_sha256": "bf1fd8881d8df76f2c96c4a5eef96281cd51d772a039cc906153668e78f2d6f9"
+      },
+      "current": [
+        {
+          "path": "carr-library/tests/assistant/test_local_assistant.py",
+          "test": "test_unlisted_tools_are_rejected"
+        }
+      ],
+      "required_assertions": [
+        "with pytest.raises(ValueError):"
+      ],
+      "disposition": "IDENTICAL_SHARED_FUNCTION_BODY",
+      "semantic_difference": "Function bodies are identical after separating the following function's decorators; current fixture and surrounding module remain the selected current family.",
+      "execution": "Source comparison only; new additions are NOT_RUN and no canonical test PASS is transferred."
+    },
+    {
+      "canonical": {
+        "path": "carr-library/tests/assistant/test_local_assistant.py",
+        "blob": "1a915067511c15a57413018e37a493beafb72827",
+        "test": "test_plan_cannot_inject_scope_or_expand_input_permissions",
+        "function_body_sha256": "e1719742f60d1bd0430b526ba51b5d1165a5bc153800d2375274dcb6888f373f"
+      },
+      "current": [
+        {
+          "path": "carr-library/tests/assistant/test_local_assistant.py",
+          "test": "test_plan_cannot_inject_scope_or_expand_input_permissions"
+        }
+      ],
+      "required_assertions": [
+        "with pytest.raises(PermissionError):",
+        "with pytest.raises(PermissionError, match='expand'):",
+        "with pytest.raises(ValueError):"
+      ],
+      "disposition": "IDENTICAL_SHARED_FUNCTION_BODY",
+      "semantic_difference": "Function bodies are identical after separating the following function's decorators; current fixture and surrounding module remain the selected current family.",
+      "execution": "Source comparison only; new additions are NOT_RUN and no canonical test PASS is transferred."
+    },
+    {
+      "canonical": {
+        "path": "carr-library/tests/assistant/test_local_assistant.py",
+        "blob": "1a915067511c15a57413018e37a493beafb72827",
+        "test": "test_output_traversal_and_whole_library_backup_require_explicit_scope",
+        "function_body_sha256": "f881deb22eb785428a0e49ce858dc6002f86987c4a4b35052ed9ee9f5015bdd8"
+      },
+      "current": [
+        {
+          "path": "carr-library/tests/assistant/test_local_assistant.py",
+          "test": "test_output_traversal_and_whole_library_backup_require_explicit_scope"
+        }
+      ],
+      "required_assertions": [
+        "with pytest.raises(PermissionError):",
+        "with pytest.raises(PermissionError, match='all libraries'):"
+      ],
+      "disposition": "IDENTICAL_SHARED_FUNCTION_BODY",
+      "semantic_difference": "Function bodies are identical after separating the following function's decorators; current fixture and surrounding module remain the selected current family.",
+      "execution": "Source comparison only; new additions are NOT_RUN and no canonical test PASS is transferred."
+    },
+    {
+      "canonical": {
+        "path": "carr-library/tests/assistant/test_local_assistant.py",
+        "blob": "1a915067511c15a57413018e37a493beafb72827",
+        "test": "test_actual_extract_preserves_unicode_and_authentication",
+        "function_body_sha256": "7c941451db1602c1c9c18fe2f93281cc17d470c4da2ead24f4c99c1930f721e4"
+      },
+      "current": [
+        {
+          "path": "carr-library/tests/assistant/test_local_assistant.py",
+          "test": "test_actual_extract_preserves_unicode_and_authentication"
+        }
+      ],
+      "required_assertions": [
+        "assert result.status == 'complete', result",
+        "assert (outputs / 'reading.txt').read_bytes() == raw.encode('utf-8')",
+        "assert source.read_bytes() == raw.encode('utf-8')",
+        "assert result.status == 'failed' and 'changed' in result.message",
+        "assert (outputs / 'reading.txt').read_text() == 'tampered'"
+      ],
+      "disposition": "IDENTICAL_SHARED_FUNCTION_BODY",
+      "semantic_difference": "Function bodies are identical after separating the following function's decorators; current fixture and surrounding module remain the selected current family.",
+      "execution": "Source comparison only; new additions are NOT_RUN and no canonical test PASS is transferred."
+    },
+    {
+      "canonical": {
+        "path": "carr-library/tests/assistant/test_local_assistant.py",
+        "blob": "1a915067511c15a57413018e37a493beafb72827",
+        "test": "test_revoked_workspace_blocks_resume",
+        "function_body_sha256": "049d617432bbc2dc23b8e787c67cef0ace978170bbebc59e13fc7947d1d034ed"
+      },
+      "current": [
+        {
+          "path": "carr-library/tests/assistant/test_local_assistant.py",
+          "test": "test_revoked_workspace_blocks_resume"
+        }
+      ],
+      "required_assertions": [
+        "assert result.status == 'failed'",
+        "assert result.completed == 0"
+      ],
+      "disposition": "IDENTICAL_SHARED_FUNCTION_BODY",
+      "semantic_difference": "Function bodies are identical after separating the following function's decorators; current fixture and surrounding module remain the selected current family.",
+      "execution": "Source comparison only; new additions are NOT_RUN and no canonical test PASS is transferred."
+    },
+    {
+      "canonical": {
+        "path": "carr-library/tests/assistant/test_local_assistant.py",
+        "blob": "1a915067511c15a57413018e37a493beafb72827",
+        "test": "test_pause_before_execution_then_resume_real_import",
+        "function_body_sha256": "80140605e8389e4ef1af1ef7a1ca1de18cc4f89681f45651faaf354b72c380b1"
+      },
+      "current": [
+        {
+          "path": "carr-library/tests/assistant/test_local_assistant.py",
+          "test": "test_pause_before_execution_then_resume_real_import"
+        }
+      ],
+      "required_assertions": [
+        "assert service.run(identity).status == 'paused'",
+        "assert not app.browse(workspace)",
+        "assert result.status == 'complete', result",
+        "assert len(app.browse(workspace)) == 1"
+      ],
+      "disposition": "IDENTICAL_SHARED_FUNCTION_BODY",
+      "semantic_difference": "Function bodies are identical after separating the following function's decorators; current fixture and surrounding module remain the selected current family.",
+      "execution": "Source comparison only; new additions are NOT_RUN and no canonical test PASS is transferred."
+    },
+    {
+      "canonical": {
+        "path": "carr-library/tests/assistant/test_local_assistant.py",
+        "blob": "1a915067511c15a57413018e37a493beafb72827",
+        "test": "test_create_crash_window_reconciles_without_duplicate",
+        "function_body_sha256": "5b3a00fe18f6c2b6ec24153c40b078108c7463d650be466585e02d2855ac4843"
+      },
+      "current": [
+        {
+          "path": "carr-library/tests/assistant/test_local_assistant.py",
+          "test": "test_create_crash_window_reconciles_without_duplicate"
+        }
+      ],
+      "required_assertions": [
+        "assert service.run(identity).status == 'complete'",
+        "assert AssistantService(app).resume(identity).status == 'complete'",
+        "assert [w.name for w in app.workspaces()] == ['One']"
+      ],
+      "disposition": "IDENTICAL_SHARED_FUNCTION_BODY",
+      "semantic_difference": "Function bodies are identical after separating the following function's decorators; current fixture and surrounding module remain the selected current family.",
+      "execution": "Source comparison only; new additions are NOT_RUN and no canonical test PASS is transferred."
+    },
+    {
+      "canonical": {
+        "path": "carr-library/tests/assistant/test_local_assistant.py",
+        "blob": "1a915067511c15a57413018e37a493beafb72827",
+        "test": "test_production_callback_is_executed_and_actual_artifacts_verified",
+        "function_body_sha256": "feef11772f8804bb8b6c91c250d207975211fa6965ed19cadf5387d69867d42e"
+      },
+      "current": [
+        {
+          "path": "carr-library/tests/assistant/test_local_assistant.py",
+          "test": "test_production_callback_is_executed_and_actual_artifacts_verified"
+        }
+      ],
+      "required_assertions": [
+        "assert plan.steps[0].arguments['text'].endswith('run shell.')",
+        "assert result.status == 'complete'",
+        "assert len(calls) == 1 and 'operation_id' in calls[0]",
+        "assert result.results[0]['artifacts'][0]['size'] == 1644",
+        "assert (0, 1, 'Rendering actual callback artifact') in messages",
+        "assert service.resume(identity).status == 'complete'",
+        "assert len(calls) == 1"
+      ],
+      "disposition": "IDENTICAL_SHARED_FUNCTION_BODY",
+      "semantic_difference": "Function bodies are identical after separating the following function's decorators; current fixture and surrounding module remain the selected current family.",
+      "execution": "Source comparison only; new additions are NOT_RUN and no canonical test PASS is transferred."
+    },
+    {
+      "canonical": {
+        "path": "carr-library/tests/assistant/test_local_assistant.py",
+        "blob": "1a915067511c15a57413018e37a493beafb72827",
+        "test": "test_production_cannot_report_success_without_real_artifact",
+        "function_body_sha256": "f06edc2fdbbdf344254b40000ce0c61469513e0e5195feec2c6150e3e41da21a"
+      },
+      "current": [
+        {
+          "path": "carr-library/tests/assistant/test_local_assistant.py",
+          "test": "test_production_cannot_report_success_without_real_artifact"
+        }
+      ],
+      "required_assertions": [
+        "assert result.status == 'failed' and result.completed == 0"
+      ],
+      "disposition": "IDENTICAL_SHARED_FUNCTION_BODY",
+      "semantic_difference": "Function bodies are identical after separating the following function's decorators; current fixture and surrounding module remain the selected current family.",
+      "execution": "Source comparison only; new additions are NOT_RUN and no canonical test PASS is transferred."
+    },
+    {
+      "canonical": {
+        "path": "carr-library/tests/assistant/test_local_assistant.py",
+        "blob": "1a915067511c15a57413018e37a493beafb72827",
+        "test": "test_parallel_runner_is_locked_and_cancel_survives_reopen",
+        "function_body_sha256": "6412cefb7c552bb043d4659c6dc5c330051f331f1214bb9955ac651d53217b3e"
+      },
+      "current": [
+        {
+          "path": "carr-library/tests/assistant/test_local_assistant.py",
+          "test": "test_parallel_runner_is_locked_and_cancel_survives_reopen"
+        }
+      ],
+      "required_assertions": [
+        "assert entered.wait(5)",
+        "with pytest.raises(RuntimeError, match='already running'):",
+        "assert AssistantService(app).get(identity).status == 'cancelled'"
+      ],
+      "disposition": "IDENTICAL_SHARED_FUNCTION_BODY",
+      "semantic_difference": "Function bodies are identical after separating the following function's decorators; current fixture and surrounding module remain the selected current family.",
+      "execution": "Source comparison only; new additions are NOT_RUN and no canonical test PASS is transferred."
+    },
+    {
+      "canonical": {
+        "path": "carr-library/tests/assistant/test_local_assistant.py",
+        "blob": "1a915067511c15a57413018e37a493beafb72827",
+        "test": "test_scope_revalidates_symlinks_at_action",
+        "function_body_sha256": "4d9ecf891717e3785ce030df041ca78bc942b16391fa72cac00e565b728ac4f6"
+      },
+      "current": [
+        {
+          "path": "carr-library/tests/assistant/test_local_assistant.py",
+          "test": "test_scope_revalidates_symlinks_at_action"
+        }
+      ],
+      "required_assertions": [
+        "assert result.status == 'failed'",
+        "assert not app.browse(workspace)"
+      ],
+      "disposition": "IDENTICAL_SHARED_FUNCTION_BODY",
+      "semantic_difference": "Function bodies are identical after separating the following function's decorators; current fixture and surrounding module remain the selected current family.",
+      "execution": "Source comparison only; new additions are NOT_RUN and no canonical test PASS is transferred."
+    },
+    {
+      "canonical": {
+        "path": "carr-library/tests/assistant/test_local_assistant.py",
+        "blob": "1a915067511c15a57413018e37a493beafb72827",
+        "test": "test_resume_cannot_substitute_another_import_queue",
+        "function_body_sha256": "45a79ff9dc7371882cce0f0414cde6ba92d2be4750b2ef8e41d1aae2fc832696"
+      },
+      "current": [
+        {
+          "path": "carr-library/tests/assistant/test_local_assistant.py",
+          "test": "test_resume_cannot_substitute_another_import_queue"
+        }
+      ],
+      "required_assertions": [
+        "assert result.status == 'attention' and result.completed == 0",
+        "assert not app.browse(workspace)"
+      ],
+      "disposition": "IDENTICAL_SHARED_FUNCTION_BODY",
+      "semantic_difference": "Function bodies are identical after separating the following function's decorators; current fixture and surrounding module remain the selected current family.",
+      "execution": "Source comparison only; new additions are NOT_RUN and no canonical test PASS is transferred."
+    },
+    {
+      "canonical": {
+        "path": "carr-library/tests/ui/test_evidence_draft_recovery.py",
+        "blob": "3c6818e63dd4ac51f7938d37f97c307b6405168b",
+        "test": "test_explicit_recover_restores_editor_only_after_authorization",
+        "function_body_sha256": "7c233f1cf835dacf955ca560b6e7dbafbdf414882faa8fe7c943b67967b79107"
+      },
+      "current": [
+        {
+          "path": "carr-library/tests/ui/test_evidence_draft_recovery.py",
+          "test": "test_explicit_recover_restores_editor_only_after_authorization"
+        }
+      ],
+      "required_assertions": [
+        "assert panel.note.GetValue() == draft.text and panel._dirty()",
+        "assert panel.note.focused and 'recovered' in panel.status.GetValue()",
+        "assert app.evidence(panel.workspace, panel.topic)[0].note == 'Saved note'",
+        "assert panel._recovery_owned == draft"
+      ],
+      "disposition": "IDENTICAL_SHARED_FUNCTION_BODY",
+      "semantic_difference": "Function bodies are identical after separating the following function's decorators; current fixture and surrounding module remain the selected current family.",
+      "execution": "Source comparison only; new additions are NOT_RUN and no canonical test PASS is transferred."
+    },
+    {
+      "canonical": {
+        "path": "carr-library/tests/ui/test_evidence_draft_recovery.py",
+        "blob": "3c6818e63dd4ac51f7938d37f97c307b6405168b",
+        "test": "test_discard_and_keep_choices_do_not_replace_saved_note",
+        "function_body_sha256": "78287c815b56233bed7016e69fa1b2bdcd124e22e7d9b10b6f2cc566b6c39218"
+      },
+      "current": [
+        {
+          "path": "carr-library/tests/ui/test_evidence_draft_recovery.py",
+          "test": "test_discard_and_keep_choices_do_not_replace_saved_note"
+        }
+      ],
+      "required_assertions": [
+        "assert panel.note.GetValue() == 'Saved note'",
+        "assert app.evidence(panel.workspace, panel.topic)[0].note == 'Saved note'",
+        "assert panel._recovery_store.get(*draft.key) == (None if choice == 1 else draft)"
+      ],
+      "disposition": "IDENTICAL_SHARED_FUNCTION_BODY",
+      "semantic_difference": "Function bodies are identical after separating the following function's decorators; current fixture and surrounding module remain the selected current family.",
+      "execution": "Source comparison only; new additions are NOT_RUN and no canonical test PASS is transferred."
+    },
+    {
+      "canonical": {
+        "path": "carr-library/tests/ui/test_evidence_draft_recovery.py",
+        "blob": "3c6818e63dd4ac51f7938d37f97c307b6405168b",
+        "test": "test_revocation_during_native_confirmation_never_reveals_draft",
+        "function_body_sha256": "1c97d7ab7d4a10e14735cfc37b932806e53c254176215f799e2ad911b73bd743"
+      },
+      "current": [
+        {
+          "path": "carr-library/tests/ui/test_evidence_draft_recovery.py",
+          "test": "test_revocation_during_native_confirmation_never_reveals_draft"
+        }
+      ],
+      "required_assertions": [
+        "assert panel.note.GetValue() == 'Saved note'",
+        "assert 'unavailable' in panel.status.GetValue()",
+        "assert panel._recovery_store.get(*draft.key) == draft"
+      ],
+      "disposition": "IDENTICAL_SHARED_FUNCTION_BODY",
+      "semantic_difference": "Function bodies are identical after separating the following function's decorators; current fixture and surrounding module remain the selected current family.",
+      "execution": "Source comparison only; new additions are NOT_RUN and no canonical test PASS is transferred."
+    },
+    {
+      "canonical": {
+        "path": "carr-library/tests/ui/test_evidence_draft_recovery.py",
+        "blob": "3c6818e63dd4ac51f7938d37f97c307b6405168b",
+        "test": "test_changed_note_baseline_can_only_be_reviewed_without_replacing_editor",
+        "function_body_sha256": "0248a604a282f4f89b59ef53994a9267b2fed1a6a0714e9acde6b84841297c1a"
+      },
+      "current": [
+        {
+          "path": "carr-library/tests/ui/test_evidence_draft_recovery.py",
+          "test": "test_changed_note_baseline_can_only_be_reviewed_without_replacing_editor"
+        }
+      ],
+      "required_assertions": [
+        "assert panel.note.GetValue() == 'Another editor saved this'",
+        "assert panel._recovery_owned is None",
+        "assert panel._recovery_store.get(*draft.key) == draft"
+      ],
+      "disposition": "IDENTICAL_SHARED_FUNCTION_BODY",
+      "semantic_difference": "Function bodies are identical after separating the following function's decorators; current fixture and surrounding module remain the selected current family.",
+      "execution": "Source comparison only; new additions are NOT_RUN and no canonical test PASS is transferred."
+    },
+    {
+      "canonical": {
+        "path": "carr-library/tests/ui/test_evidence_draft_recovery.py",
+        "blob": "3c6818e63dd4ac51f7938d37f97c307b6405168b",
+        "test": "test_stale_confirmation_never_overwrites_newer_recovery_revision",
+        "function_body_sha256": "3bbb3a5a0f01af3735a401108c24621f06f2e467345076ed8d59212b36d9ceb8"
+      },
+      "current": [
+        {
+          "path": "carr-library/tests/ui/test_evidence_draft_recovery.py",
+          "test": "test_stale_confirmation_never_overwrites_newer_recovery_revision"
+        }
+      ],
+      "required_assertions": [
+        "assert panel.note.GetValue() == 'Saved note'",
+        "assert panel._recovery_store.get(*first.key) == saved[0]",
+        "assert 'Nothing was replaced' in panel.status.GetValue()"
+      ],
+      "disposition": "IDENTICAL_SHARED_FUNCTION_BODY",
+      "semantic_difference": "Function bodies are identical after separating the following function's decorators; current fixture and surrounding module remain the selected current family.",
+      "execution": "Source comparison only; new additions are NOT_RUN and no canonical test PASS is transferred."
+    },
+    {
+      "canonical": {
+        "path": "carr-library/tests/ui/test_evidence_draft_recovery.py",
+        "blob": "3c6818e63dd4ac51f7938d37f97c307b6405168b",
+        "test": "test_successful_save_removes_only_saved_checkpoint",
+        "function_body_sha256": "ef0a3d3b64e39fe0454c748065e6e7cc2b435c17f1d28f4f146aa7b87898a8b5"
+      },
+      "current": [
+        {
+          "path": "carr-library/tests/ui/test_evidence_draft_recovery.py",
+          "test": "test_successful_save_removes_only_saved_checkpoint"
+        }
+      ],
+      "required_assertions": [
+        "assert execute(panel)",
+        "assert app.evidence(panel.workspace, panel.topic)[0].note == 'Ready to commit'",
+        "assert panel._recovery_store.get(*draft.key) is None",
+        "assert not panel._dirty()"
+      ],
+      "disposition": "IDENTICAL_SHARED_FUNCTION_BODY",
+      "semantic_difference": "Function bodies are identical after separating the following function's decorators; current fixture and surrounding module remain the selected current family.",
+      "execution": "Source comparison only; new additions are NOT_RUN and no canonical test PASS is transferred."
+    },
+    {
+      "canonical": {
+        "path": "carr-library/tests/ui/test_evidence_draft_recovery.py",
+        "blob": "3c6818e63dd4ac51f7938d37f97c307b6405168b",
+        "test": "test_newer_edit_during_save_is_checkpointed_against_new_saved_baseline",
+        "function_body_sha256": "0300161599fe2552e9d114aa752d92af80aacd5922ab48bc1d19c507b36e1024"
+      },
+      "current": [
+        {
+          "path": "carr-library/tests/ui/test_evidence_draft_recovery.py",
+          "test": "test_newer_edit_during_save_is_checkpointed_against_new_saved_baseline"
+        }
+      ],
+      "required_assertions": [
+        "assert execute(panel, before_completion=lambda: checkpoint(panel, 'Newer unsaved version'))",
+        "assert current.note == 'Saved version'",
+        "assert draft.text == panel.note.GetValue() == 'Newer unsaved version'",
+        "assert draft.matches(current) and draft.revision != first.revision"
+      ],
+      "disposition": "IDENTICAL_SHARED_FUNCTION_BODY",
+      "semantic_difference": "Function bodies are identical after separating the following function's decorators; current fixture and surrounding module remain the selected current family.",
+      "execution": "Source comparison only; new additions are NOT_RUN and no canonical test PASS is transferred."
+    },
+    {
+      "canonical": {
+        "path": "carr-library/tests/ui/test_evidence_draft_recovery.py",
+        "blob": "3c6818e63dd4ac51f7938d37f97c307b6405168b",
+        "test": "test_failed_note_commit_preserves_exact_recovery_revision",
+        "function_body_sha256": "421b948f00e7527f3401a5b17f218b2a7570d11de21ef88d353a1a321ea412d6"
+      },
+      "current": [
+        {
+          "path": "carr-library/tests/ui/test_evidence_draft_recovery.py",
+          "test": "test_failed_note_commit_preserves_exact_recovery_revision"
+        }
+      ],
+      "required_assertions": [
+        "assert not execute(panel)",
+        "assert panel._recovery_store.get(*draft.key) == draft",
+        "assert panel.note.GetValue() == draft.text",
+        "assert app.evidence(panel.workspace, panel.topic)[0].note == 'Saved note'"
+      ],
+      "disposition": "IDENTICAL_SHARED_FUNCTION_BODY",
+      "semantic_difference": "Function bodies are identical after separating the following function's decorators; current fixture and surrounding module remain the selected current family.",
+      "execution": "Source comparison only; new additions are NOT_RUN and no canonical test PASS is transferred."
+    },
+    {
+      "canonical": {
+        "path": "carr-library/tests/ui/test_evidence_draft_recovery.py",
+        "blob": "3c6818e63dd4ac51f7938d37f97c307b6405168b",
+        "test": "test_panel_destruction_flushes_cached_pending_text_without_reading_controls",
+        "function_body_sha256": "59f92d6a5dbcbe6a082d132fe48d6f068162661f2ce1074ccab7d19893ee06e5"
+      },
+      "current": [
+        {
+          "path": "carr-library/tests/ui/test_evidence_draft_recovery.py",
+          "test": "test_panel_destruction_flushes_cached_pending_text_without_reading_controls"
+        }
+      ],
+      "required_assertions": [
+        "assert panel._recovery_store.get(*first.key).text == 'First edit'",
+        "assert panel._recovery_store.get(*first.key).text == 'Last edit before destruction'",
+        "assert panel._recovery_disposed"
+      ],
+      "disposition": "IDENTICAL_SHARED_FUNCTION_BODY",
+      "semantic_difference": "Function bodies are identical after separating the following function's decorators; current fixture and surrounding module remain the selected current family.",
+      "execution": "Source comparison only; new additions are NOT_RUN and no canonical test PASS is transferred."
+    },
+    {
+      "canonical": {
+        "path": "carr-library/tests/ui/test_evidence_draft_recovery.py",
+        "blob": "3c6818e63dd4ac51f7938d37f97c307b6405168b",
+        "test": "test_explicit_discard_does_not_recreate_draft_during_destruction",
+        "function_body_sha256": "ba9b04bc7e22ab08fc987108dfc2ea056c10aae07696715d2b27a09c740cc12f"
+      },
+      "current": [
+        {
+          "path": "carr-library/tests/ui/test_evidence_draft_recovery.py",
+          "test": "test_explicit_discard_does_not_recreate_draft_during_destruction"
+        }
+      ],
+      "required_assertions": [
+        "assert panel.discard_recovery()",
+        "assert panel._recovery_store.get(*draft.key) is None"
+      ],
+      "disposition": "IDENTICAL_SHARED_FUNCTION_BODY",
+      "semantic_difference": "Function bodies are identical after separating the following function's decorators; current fixture and surrounding module remain the selected current family.",
+      "execution": "Source comparison only; new additions are NOT_RUN and no canonical test PASS is transferred."
+    },
+    {
+      "canonical": {
+        "path": "carr-library/tests/ui/test_evidence_draft_recovery.py",
+        "blob": "3c6818e63dd4ac51f7938d37f97c307b6405168b",
+        "test": "test_corrupt_recovery_storage_reports_error_and_keeps_editor",
+        "function_body_sha256": "459afc88a01b9ee9392c3461bd4482d93782bd2141d29b30ed434b0be816017c"
+      },
+      "current": [
+        {
+          "path": "carr-library/tests/ui/test_evidence_draft_recovery.py",
+          "test": "test_corrupt_recovery_storage_reports_error_and_keeps_editor"
+        }
+      ],
+      "required_assertions": [
+        "assert panel.note.GetValue() == 'Text remains editable'",
+        "assert 'could not be saved' in panel.status.GetValue()",
+        "assert panel._recovery_store.path.read_bytes() == b'broken existing file'"
+      ],
+      "disposition": "IDENTICAL_SHARED_FUNCTION_BODY",
+      "semantic_difference": "Function bodies are identical after separating the following function's decorators; current fixture and surrounding module remain the selected current family.",
+      "execution": "Source comparison only; new additions are NOT_RUN and no canonical test PASS is transferred."
+    },
+    {
+      "canonical": {
+        "path": "carr-library/tests/ui/test_evidence_draft_recovery.py",
+        "blob": "3c6818e63dd4ac51f7938d37f97c307b6405168b",
+        "test": "test_declined_or_failed_discard_keeps_scope_open",
+        "function_body_sha256": "2e5e68f45ac0858a10658bdf5e9930c9f8e35f384380b9f59e6a65c83a67a8a5"
+      },
+      "current": [
+        {
+          "path": "carr-library/tests/ui/test_evidence_draft_recovery.py",
+          "test": "test_declined_or_failed_discard_keeps_scope_open"
+        }
+      ],
+      "required_assertions": [
+        "assert not env['_confirm'](frame)",
+        "assert panel._recovery_store.get(*draft.key) == draft",
+        "assert not env['_confirm'](frame)",
+        "assert panel.note.GetValue() == 'Keep unless explicitly discarded'"
+      ],
+      "disposition": "IDENTICAL_SHARED_FUNCTION_BODY",
+      "semantic_difference": "Function bodies are identical after separating the following function's decorators; current fixture and surrounding module remain the selected current family.",
+      "execution": "Source comparison only; new additions are NOT_RUN and no canonical test PASS is transferred."
+    },
+    {
+      "canonical": {
+        "path": "carr-library/tests/assistant/test_local_assistant.py",
+        "blob": "1a915067511c15a57413018e37a493beafb72827",
+        "test": "test_native_probe_waits_for_resumed_job_result_callback",
+        "function_body_sha256": "e41edc1bb9a234f3d96883d89e3bff6525e1803faca1c56db987b477a4f19276"
+      },
+      "current": [
+        {
+          "path": "carr-library/tests/assistant/test_planning_handlers.py",
+          "test": "test_saved_job_resume_waits_for_its_current_native_result_callback"
+        }
+      ],
+      "required_assertions": [
+        "Run remains disabled while the resumed worker is pending and after the worker finishes while its GUI callback is still queued.",
+        "A stale saved complete summary is not the new completed result; Preview becomes ready only after the current completion callback.",
+        "The actual three-step completed job is reused without duplicating imports, changing original source bytes or changing accepted results."
+      ],
+      "disposition": "ADAPTED_TO_CURRENT_NATIVE_OWNER",
+      "semantic_difference": "The donor's create_assistant_dialog and windows_assistant_smoke.py are absent from the selected family. Two new cases use the actual current show_assistant handlers and deterministic Future/GUI scheduling; they do not claim native Windows acceptance.",
+      "execution": "Source comparison only; new additions are NOT_RUN and no canonical test PASS is transferred."
+    },
+    {
+      "canonical": {
+        "path": "carr-library/tests/assistant/test_planning_handlers.py",
+        "blob": "4106a29238039fa9faf5d24192dfedf11eb17e3d",
+        "test": "test_default_guided_preview_never_calls_a_model",
+        "function_body_sha256": "85b82bfeaf4a0e684e46367407482962f0e28488e354bae0b6a8a1a4633889e3"
+      },
+      "current": [
+        {
+          "path": "carr-library/tests/assistant/test_planning_handlers.py",
+          "test": "test_guided_preview_is_background_and_never_requests_a_model"
+        }
+      ],
+      "required_assertions": [
+        "Default guided Preview sends no model request, creates no job/library, and only enables Run after validated completion."
+      ],
+      "disposition": "ADAPTED_TO_CURRENT_NATIVE_OWNER",
+      "semantic_difference": "Current guided validation intentionally runs on the owned worker; the donor expected synchronous preview. This preserves the nonblocking current owner.",
+      "execution": "Source comparison only; new additions are NOT_RUN and no canonical test PASS is transferred."
+    },
+    {
+      "canonical": {
+        "path": "carr-library/tests/assistant/test_planning_handlers.py",
+        "blob": "4106a29238039fa9faf5d24192dfedf11eb17e3d",
+        "test": "test_model_proposal_is_background_review_then_separate_run",
+        "function_body_sha256": "8d6675c83d1c54bc26d7f3ab10e6c8ad40852ea912cca228e70b7e77cb28025e"
+      },
+      "current": [
+        {
+          "path": "carr-library/tests/assistant/test_planning_handlers.py",
+          "test": "test_model_proposal_requires_separate_preview_and_run"
+        }
+      ],
+      "required_assertions": [
+        "A proposal runs in the background, makes one explicitly approved local-model request, creates no workspace/job by itself, and requires explicit execution."
+      ],
+      "disposition": "ADAPTED_TO_CURRENT_NATIVE_OWNER",
+      "semantic_difference": "The current model button produces an inert draft and requires a separate Preview before Run. This is stricter than the donor's model-selected Preview; no direct proposal-to-run authority is restored.",
+      "execution": "Source comparison only; new additions are NOT_RUN and no canonical test PASS is transferred."
+    },
+    {
+      "canonical": {
+        "path": "carr-library/tests/assistant/test_planning_handlers.py",
+        "blob": "4106a29238039fa9faf5d24192dfedf11eb17e3d",
+        "test": "test_edited_inputs_discard_late_response_even_without_text_event",
+        "function_body_sha256": "249253560e37be67aab374a8e64a77dddf7580082d84e0c7ebf64e4ba6a0e5ae"
+      },
+      "current": [
+        {
+          "path": "carr-library/tests/assistant/test_planning_handlers.py",
+          "test": "test_changed_inputs_discard_late_response_without_relying_on_events"
+        }
+      ],
+      "required_assertions": [
+        "Late completion after an unannounced input/goal/output/full-backup/scope change is discarded and cannot authorize Run or create data."
+      ],
+      "disposition": "ADAPTED_TO_CURRENT_NATIVE_OWNER",
+      "semantic_difference": "Current coverage includes byte/file/time budgets and scope (eight fields). The old planning-source selector is replaced by an explicit model action, not a stored mode.",
+      "execution": "Source comparison only; new additions are NOT_RUN and no canonical test PASS is transferred."
+    },
+    {
+      "canonical": {
+        "path": "carr-library/tests/assistant/test_planning_handlers.py",
+        "blob": "4106a29238039fa9faf5d24192dfedf11eb17e3d",
+        "test": "test_change_then_restore_original_text_still_cancels_pending_proposal",
+        "function_body_sha256": "9ee92297b00706d34caf4850779a23a40508501c8f3d16bfd8a3c2745d88751b"
+      },
+      "current": [
+        {
+          "path": "carr-library/tests/assistant/test_planning_handlers.py",
+          "test": "test_edit_then_restore_original_still_cancels_the_pending_request"
+        }
+      ],
+      "required_assertions": [
+        "Changing and restoring the same text still changes the revision; no provider call occurs and Run stays disabled."
+      ],
+      "disposition": "ADAPTED_TO_CURRENT_NATIVE_OWNER",
+      "semantic_difference": "The current handler uses its revision and cancellation event, preserving the donor's anti-stale intent.",
+      "execution": "Source comparison only; new additions are NOT_RUN and no canonical test PASS is transferred."
+    },
+    {
+      "canonical": {
+        "path": "carr-library/tests/assistant/test_planning_handlers.py",
+        "blob": "4106a29238039fa9faf5d24192dfedf11eb17e3d",
+        "test": "test_cancel_or_close_cannot_publish_a_late_proposal",
+        "function_body_sha256": "fdfe89142b14423ad14c78e4602ebb4ee67f061d95e6be3d3d45ecf414d9b9ef"
+      },
+      "current": [
+        {
+          "path": "carr-library/tests/assistant/test_planning_handlers.py",
+          "test": "test_edit_then_restore_original_still_cancels_the_pending_request"
+        },
+        {
+          "path": "carr-library/tests/assistant/test_planning_handlers.py",
+          "test": "test_close_discards_queued_model_result_and_remains_idempotent"
+        },
+        {
+          "path": "carr-library/tests/assistant/test_planning_handlers.py",
+          "test": "test_voice_inventory_stays_off_event_thread_and_cannot_publish_after_cancel"
+        }
+      ],
+      "required_assertions": [
+        "Cancellation prevents pending work from publishing; close cannot write or focus disposed controls or create jobs."
+      ],
+      "disposition": "ADAPTED_TO_CURRENT_NATIVE_OWNER",
+      "semantic_difference": "The cancelled model-worker guard, actual Pause handler for preview, and close-after-response boundary are retained in separate current-owner tests; counts are not equated with the donor function.",
+      "execution": "Source comparison only; new additions are NOT_RUN and no canonical test PASS is transferred."
+    },
+    {
+      "canonical": {
+        "path": "carr-library/tests/assistant/test_planning_handlers.py",
+        "blob": "4106a29238039fa9faf5d24192dfedf11eb17e3d",
+        "test": "test_silently_edited_approved_goal_cannot_run",
+        "function_body_sha256": "42ca363e4c7a4dbe9d0a15490f9178154a7a257e0ce550f4dba9c034367315c4"
+      },
+      "current": [
+        {
+          "path": "carr-library/tests/assistant/test_planning_handlers.py",
+          "test": "test_silent_change_of_reviewed_goal_requires_fresh_preview"
+        },
+        {
+          "path": "carr-library/tests/assistant/test_planning_handlers.py",
+          "test": "test_silent_change_of_reviewed_budget_cannot_submit_a_job"
+        }
+      ],
+      "required_assertions": [
+        "A changed approved goal without EVT_TEXT cannot submit a job; Run is disabled and a fresh review is required."
+      ],
+      "disposition": "ADAPTED_TO_CURRENT_NATIVE_OWNER",
+      "semantic_difference": "A new exact goal-mutation case supplements the existing budget-mutation case.",
+      "execution": "Source comparison only; new additions are NOT_RUN and no canonical test PASS is transferred."
+    },
+    {
+      "canonical": {
+        "path": "carr-library/tests/assistant/test_planning_handlers.py",
+        "blob": "4106a29238039fa9faf5d24192dfedf11eb17e3d",
+        "test": "test_changed_profile_cannot_silently_contact_a_new_model",
+        "function_body_sha256": "96da96f5810eddd6400a2fbdab7b1e95f924fc0a35681b9b906657f402170209"
+      },
+      "current": [
+        {
+          "path": "carr-library/tests/assistant/test_planning_handlers.py",
+          "test": "test_saved_profile_change_before_dispatch_never_contacts_stale_model"
+        }
+      ],
+      "required_assertions": [
+        "Changing the saved selected model/profile before dispatch makes no provider call and leaves Run disabled."
+      ],
+      "disposition": "ADAPTED_TO_CURRENT_NATIVE_OWNER",
+      "semantic_difference": "The current explicit-selection action is captured before the queued worker, then the immutable profile is revalidated.",
+      "execution": "Source comparison only; new additions are NOT_RUN and no canonical test PASS is transferred."
+    },
+    {
+      "canonical": {
+        "path": "carr-library/tests/assistant/test_planning_handlers.py",
+        "blob": "4106a29238039fa9faf5d24192dfedf11eb17e3d",
+        "test": "test_library_switch_discards_pending_response",
+        "function_body_sha256": "5f55600510654e36b6af390412340b6e9a2497c62dcd537bb2bd1dbf2ded1d1b"
+      },
+      "current": [
+        {
+          "path": "carr-library/tests/assistant/test_planning_handlers.py",
+          "test": "test_changed_library_discards_a_completed_proposal"
+        }
+      ],
+      "required_assertions": [
+        "A completed response for the previous library cannot create data or enable Run in either old or new library."
+      ],
+      "disposition": "ADAPTED_TO_CURRENT_NATIVE_OWNER",
+      "semantic_difference": "The selected current LibraryApp identity is checked on native callback application.",
+      "execution": "Source comparison only; new additions are NOT_RUN and no canonical test PASS is transferred."
+    },
+    {
+      "canonical": {
+        "path": "carr-library/tests/assistant/test_planning_handlers.py",
+        "blob": "4106a29238039fa9faf5d24192dfedf11eb17e3d",
+        "test": "test_narration_voice_discovery_is_background_and_cancelled_before_voice_choice",
+        "function_body_sha256": "1f89e415c8474b0eeb86cf8fcd042adb2afb4f93112f3410303444bbe7909787"
+      },
+      "current": [
+        {
+          "path": "carr-library/tests/assistant/test_planning_handlers.py",
+          "test": "test_voice_inventory_stays_off_event_thread_and_cannot_publish_after_cancel"
+        }
+      ],
+      "required_assertions": [
+        "Voice inventory never runs on the native event thread; cancellation prevents inventory/choice publication and no job is created."
+      ],
+      "disposition": "ADAPTED_TO_CURRENT_NATIVE_OWNER",
+      "semantic_difference": "The current VoiceRegistry/LocalProduction path adds a second worker validation after the explicit voice choice and retains both cancellation outcomes.",
+      "execution": "Source comparison only; new additions are NOT_RUN and no canonical test PASS is transferred."
+    },
+    {
+      "canonical": {
+        "path": "carr-library/tests/assistant/test_planning_handlers.py",
+        "blob": "4106a29238039fa9faf5d24192dfedf11eb17e3d",
+        "test": "test_assistant_close_cancels_then_closes_production_after_pending_work",
+        "function_body_sha256": "ef93d97aef81581c7abfb4d716f13fe781f1760756a82b893f989ea59a44ada6"
+      },
+      "current": [
+        {
+          "path": "carr-library/tests/assistant/test_planning_handlers.py",
+          "test": "test_close_discards_queued_model_result_and_remains_idempotent"
+        },
+        {
+          "path": "carr-library/tests/assistant/test_dialog_lifecycle.py",
+          "test": "test_close_signals_worker_without_competing_write_and_ignores_late_callbacks"
+        },
+        {
+          "path": "carr-library/tests/audio/test_production.py",
+          "test": "test_cancel_then_restart_reuses_sealed_speech"
+        }
+      ],
+      "required_assertions": [
+        "Close is idempotent, signals cancellation, prevents late callback publication and does not create a workspace/job."
+      ],
+      "disposition": "ADAPTED_TO_CURRENT_NATIVE_OWNER",
+      "semantic_difference": "The donor's persistent studio.render.ProductionService.close owner is absent. Current LocalProduction has no persistent renderer owner: each __call__ delegates the existing render_project cancellation/resource lifecycle. Current dialog_lifecycle verifies cancellation/shutdown and ignored late callbacks; existing production tests verify cancelled rendering and retained resume separately, without asserting case equivalence.",
+      "execution": "Source comparison only; new additions are NOT_RUN and no canonical test PASS is transferred."
+    },
+    {
+      "canonical": {
+        "path": "carr-library/tests/assistant/test_translation.py",
+        "blob": "cd13dcb6539dcf494dc539a467fdce600bf48f2a",
+        "test": "test_local_only_blocks_google_before_credentials_or_http",
+        "function_body_sha256": "cccae1fde18f8c99d69e5dce012b74dea8da100a0b4c3901cecd2b54263ff3e2"
+      },
+      "current": [
+        {
+          "path": "carr-library/tests/e2e/test_google_translation_gateway.py",
+          "test": "test_default_local_only_rejects_before_vault_or_transport"
+        }
+      ],
+      "required_assertions": [
+        "LOCAL_ONLY refuses remote Google use before vault access, transport or budget operations."
+      ],
+      "disposition": "CURRENT_OWNER_ASSERTIONS_RETAINED_OR_RESTORED",
+      "semantic_difference": "Current typed ProviderGateway retains the same pre-transmission boundary.",
+      "execution": "Source comparison only; new additions are NOT_RUN and no canonical test PASS is transferred."
+    },
+    {
+      "canonical": {
+        "path": "carr-library/tests/assistant/test_translation.py",
+        "blob": "cd13dcb6539dcf494dc539a467fdce600bf48f2a",
+        "test": "test_google_profile_has_exact_official_authority",
+        "function_body_sha256": "e88e80d60acc77bb35e1b5ffb3f601a224c5b90775df21c3e18a5e192496bd9d"
+      },
+      "current": [
+        {
+          "path": "carr-library/tests/e2e/test_google_translation_gateway.py",
+          "test": "test_profile_pins_official_v2_authority"
+        }
+      ],
+      "required_assertions": [
+        "Reject wrong host/route, query-string credentials, wrong model/capability and a false local flag."
+      ],
+      "disposition": "CURRENT_OWNER_ASSERTIONS_RETAINED_OR_RESTORED",
+      "semantic_difference": "Current profile cases additionally reject HTTP, unreviewed ports and trailing routes.",
+      "execution": "Source comparison only; new additions are NOT_RUN and no canonical test PASS is transferred."
+    },
+    {
+      "canonical": {
+        "path": "carr-library/tests/assistant/test_translation.py",
+        "blob": "cd13dcb6539dcf494dc539a467fdce600bf48f2a",
+        "test": "test_language_discovery_uses_get_and_header_secret",
+        "function_body_sha256": "078b1fda8baa65ab8542a27d30e691cf980ffa0947078c03d2a406627ae80841"
+      },
+      "current": [
+        {
+          "path": "carr-library/tests/e2e/test_google_translation_gateway.py",
+          "test": "test_language_query_sends_no_selected_text_and_key_is_header_only"
+        },
+        {
+          "path": "carr-library/tests/e2e/test_google_translation_gateway.py",
+          "test": "test_direct_language_transport_keeps_tls_and_exact_get_authority"
+        },
+        {
+          "path": "carr-library/tests/assistant/test_translation.py",
+          "test": "test_encoded_credential_refusal_preserves_existing_language_cache_and_job_receipts"
+        }
+      ],
+      "required_assertions": [
+        "GET has no selected-text body, uses the exact fixed language route, puts the secret only in the header, resolves the credential once and keeps cache contents secret-free."
+      ],
+      "disposition": "CURRENT_OWNER_ASSERTIONS_RETAINED_OR_RESTORED",
+      "semantic_difference": "Current profile endpoint and route are composed by DirectTransport; the wire-route test verifies the complete original path.",
+      "execution": "Source comparison only; new additions are NOT_RUN and no canonical test PASS is transferred."
+    },
+    {
+      "canonical": {
+        "path": "carr-library/tests/assistant/test_translation.py",
+        "blob": "cd13dcb6539dcf494dc539a467fdce600bf48f2a",
+        "test": "test_preview_requires_provider_language_inventory",
+        "function_body_sha256": "102d7ca58285a47df3c1d0165a60094fd6bec58e67ac17075c068a960f71c413"
+      },
+      "current": [
+        {
+          "path": "carr-library/tests/assistant/test_translation.py",
+          "test": "test_preview_requires_exact_profile_language_inventory"
+        }
+      ],
+      "required_assertions": [
+        "Preview cannot proceed without the matching account's supported-language inventory."
+      ],
+      "disposition": "CURRENT_OWNER_ASSERTIONS_RETAINED_OR_RESTORED",
+      "semantic_difference": "The current fixture removes its actual saved cache and proves no selected-text call.",
+      "execution": "Source comparison only; new additions are NOT_RUN and no canonical test PASS is transferred."
+    },
+    {
+      "canonical": {
+        "path": "carr-library/tests/assistant/test_translation.py",
+        "blob": "cd13dcb6539dcf494dc539a467fdce600bf48f2a",
+        "test": "test_preview_counts_unicode_and_owner_entered_price",
+        "function_body_sha256": "a1bd265c3395ba7ba8d6798bc01dd59e1444707e7998d24666626a4a24006bf3"
+      },
+      "current": [
+        {
+          "path": "carr-library/tests/assistant/test_translation.py",
+          "test": "test_opening_preview_and_submit_never_send_selected_text"
+        },
+        {
+          "path": "carr-library/tests/assistant/test_translation.py",
+          "test": "test_supported_pair_is_required_before_job_creation"
+        }
+      ],
+      "required_assertions": [
+        "Count exact Unicode characters and chunks/calls, calculate the owner-entered per-million estimate, reject unsupported target and perform no translation request during preview."
+      ],
+      "disposition": "CURRENT_OWNER_ASSERTIONS_RETAINED_OR_RESTORED",
+      "semantic_difference": "Two literal count assertions are restored to the existing current preview test without adding a case. The existing whitespace-only chunk case separately records the current nonbillable behavior.",
+      "execution": "Source comparison only; new additions are NOT_RUN and no canonical test PASS is transferred."
+    },
+    {
+      "canonical": {
+        "path": "carr-library/tests/assistant/test_translation.py",
+        "blob": "cd13dcb6539dcf494dc539a467fdce600bf48f2a",
+        "test": "test_text_api_uses_plaintext_and_secret_is_only_header",
+        "function_body_sha256": "63320f3420acb2283950d297f6eda8e4106dcdac49f5ce1119be51917dbe2fe6"
+      },
+      "current": [
+        {
+          "path": "carr-library/tests/e2e/test_google_translation_gateway.py",
+          "test": "test_translation_uses_exact_plaintext_pair_and_model"
+        },
+        {
+          "path": "carr-library/tests/e2e/test_google_translation_gateway.py",
+          "test": "test_each_failed_http_translation_remains_uncertain_without_automatic_retry"
+        }
+      ],
+      "required_assertions": [
+        "POST uses plaintext, exact target/model and fixed route; an auto source omits the source field and the secret never enters the body."
+      ],
+      "disposition": "CURRENT_OWNER_ASSERTIONS_RETAINED_OR_RESTORED",
+      "semantic_difference": "The accepted explicit-language response path is existing; the new controlled HTTP matrix also asserts the exact automatic-source payload and header before its error response.",
+      "execution": "Source comparison only; new additions are NOT_RUN and no canonical test PASS is transferred."
+    },
+    {
+      "canonical": {
+        "path": "carr-library/tests/assistant/test_translation.py",
+        "blob": "cd13dcb6539dcf494dc539a467fdce600bf48f2a",
+        "test": "test_reject_changed_text_under_prior_approval",
+        "function_body_sha256": "9c066732af2284bd74d75a13712b7da2e992519351656b62d0c51b1806349523"
+      },
+      "current": [
+        {
+          "path": "carr-library/tests/assistant/test_translation.py",
+          "test": "test_submit_cannot_expand_reviewed_authority"
+        },
+        {
+          "path": "carr-library/tests/e2e/test_google_translation_gateway.py",
+          "test": "test_changed_request_cannot_borrow_prior_approval"
+        }
+      ],
+      "required_assertions": [
+        "A changed exact source text cannot borrow the earlier request approval and sends nothing."
+      ],
+      "disposition": "CURRENT_OWNER_ASSERTIONS_RETAINED_OR_RESTORED",
+      "semantic_difference": "The current scope tests also bind source/target/profile/budget/call/mode/currency/loopback fields.",
+      "execution": "Source comparison only; new additions are NOT_RUN and no canonical test PASS is transferred."
+    },
+    {
+      "canonical": {
+        "path": "carr-library/tests/assistant/test_translation.py",
+        "blob": "cd13dcb6539dcf494dc539a467fdce600bf48f2a",
+        "test": "test_resume_reuses_accepted_chunks_without_rebilling",
+        "function_body_sha256": "1ee5dd574932dea89f94941f022eebe78074305e576357685a57b3f6057599f3"
+      },
+      "current": [
+        {
+          "path": "carr-library/tests/assistant/test_translation.py",
+          "test": "test_accepted_chunks_survive_restart_and_never_rebill"
+        }
+      ],
+      "required_assertions": [
+        "Restart reuses accepted chunks and a second completed resume never sends another provider request."
+      ],
+      "disposition": "CURRENT_OWNER_ASSERTIONS_RETAINED_OR_RESTORED",
+      "semantic_difference": "Current persistent typed job and independently bound ledger remain the owners.",
+      "execution": "Source comparison only; new additions are NOT_RUN and no canonical test PASS is transferred."
+    },
+    {
+      "canonical": {
+        "path": "carr-library/tests/assistant/test_translation.py",
+        "blob": "cd13dcb6539dcf494dc539a467fdce600bf48f2a",
+        "test": "test_export_preserves_original_and_derivative_authority",
+        "function_body_sha256": "d9cf35ae15e0036c90444882f93d4d20af9c660383d475491a03541ae16dd2a4"
+      },
+      "current": [
+        {
+          "path": "carr-library/tests/assistant/test_translation.py",
+          "test": "test_export_is_new_source_pinned_narration_derivative"
+        }
+      ],
+      "required_assertions": [
+        "Original bytes remain exact; export is a separate nonquotation derivative with verified file hashes and no overwrite."
+      ],
+      "disposition": "CURRENT_OWNER_ASSERTIONS_RETAINED_OR_RESTORED",
+      "semantic_difference": "Current NarrationDraft replaces the alternate ReadingDocument family and additionally tests undo, forbidden private output and secret/reference-free provenance.",
+      "execution": "Source comparison only; new additions are NOT_RUN and no canonical test PASS is transferred."
+    },
+    {
+      "canonical": {
+        "path": "carr-library/tests/assistant/test_translation.py",
+        "blob": "cd13dcb6539dcf494dc539a467fdce600bf48f2a",
+        "test": "test_corrupt_completed_chunk_blocks_resume",
+        "function_body_sha256": "eee394f4c3caa429c9784a53715efbbf49b57434548576d37e166d012376ac31"
+      },
+      "current": [
+        {
+          "path": "carr-library/tests/assistant/test_translation.py",
+          "test": "test_forged_state_is_rejected_before_resume_or_backup"
+        },
+        {
+          "path": "carr-library/tests/assistant/test_translation.py",
+          "test": "test_completed_translation_requires_independent_decoded_ledger_evidence"
+        }
+      ],
+      "required_assertions": [
+        "A damaged completed translation cannot resume or trigger another paid request."
+      ],
+      "disposition": "CURRENT_OWNER_ASSERTIONS_RETAINED_OR_RESTORED",
+      "semantic_difference": "Current validation covers raw chunk corruption and rehashed decoded text/language attacks using independent ledger evidence.",
+      "execution": "Source comparison only; new additions are NOT_RUN and no canonical test PASS is transferred."
+    },
+    {
+      "canonical": {
+        "path": "carr-library/tests/assistant/test_translation.py",
+        "blob": "cd13dcb6539dcf494dc539a467fdce600bf48f2a",
+        "test": "test_uncertain_charge_is_not_automatically_retried",
+        "function_body_sha256": "858e2ef67e867e40fe698589972ad17db4fcd24c22503d5702abdd798df2ba29"
+      },
+      "current": [
+        {
+          "path": "carr-library/tests/e2e/test_google_translation_gateway.py",
+          "test": "test_each_failed_http_translation_remains_uncertain_without_automatic_retry"
+        },
+        {
+          "path": "carr-library/tests/assistant/test_translation.py",
+          "test": "test_uncertain_charge_survives_restart_without_automatic_retry"
+        }
+      ],
+      "required_assertions": [
+        "HTTP 302/400/401/429/500 attempts are uncertain, emit no accepted receipt and never repeat automatically after restart or retry."
+      ],
+      "disposition": "CURRENT_OWNER_ASSERTIONS_RETAINED_OR_RESTORED",
+      "semantic_difference": "All five explicit statuses are restored through the current controlled DirectTransport and durable BudgetLedger, with exactly one request/vault access and closed connection.",
+      "execution": "Source comparison only; new additions are NOT_RUN and no canonical test PASS is transferred."
+    },
+    {
+      "canonical": {
+        "path": "carr-library/tests/assistant/test_translation.py",
+        "blob": "cd13dcb6539dcf494dc539a467fdce600bf48f2a",
+        "test": "test_chunking_preserves_exact_unicode_and_bounds",
+        "function_body_sha256": "59c21b1c82b9faf3db1dd05ff7c04d922d149087e2af7835eea87fdfcbde8ebf"
+      },
+      "current": [
+        {
+          "path": "carr-library/tests/assistant/test_translation.py",
+          "test": "test_chunking_and_integer_allocations_preserve_all_unicode"
+        }
+      ],
+      "required_assertions": [
+        "Concatenation preserves every Unicode character and each part is at most 4500 characters."
+      ],
+      "disposition": "CURRENT_OWNER_ASSERTIONS_RETAINED_OR_RESTORED",
+      "semantic_difference": "Current coverage also preserves CRLF and exact integer allocation sums.",
+      "execution": "Source comparison only; new additions are NOT_RUN and no canonical test PASS is transferred."
+    },
+    {
+      "canonical": {
+        "path": "carr-library/tests/assistant/test_translation.py",
+        "blob": "cd13dcb6539dcf494dc539a467fdce600bf48f2a",
+        "test": "test_encoded_credentials_never_reach_receipts_or_language_cache",
+        "function_body_sha256": "bf679f29aa6a4648185db5f3b7581643d0c7223204afc2e48c277fb169e64a4a"
+      },
+      "current": [
+        {
+          "path": "carr-library/tests/assistant/test_translation.py",
+          "test": "test_encoded_credential_refusal_preserves_existing_language_cache_and_job_receipts"
+        },
+        {
+          "path": "carr-library/tests/e2e/test_google_translation_gateway.py",
+          "test": "test_reflected_credentials_never_become_results_or_receipts"
+        }
+      ],
+      "required_assertions": [
+        "HTML and JSON-Unicode encoded credentials never become a completed ledger receipt or job result; existing language cache remains unchanged and diagnostics are secret-free."
+      ],
+      "disposition": "CURRENT_OWNER_ASSERTIONS_RETAINED_OR_RESTORED",
+      "semantic_difference": "Four service-level cache/job assertions are restored in addition to current gateway tests for raw/nested/deep encodings.",
+      "execution": "Source comparison only; new additions are NOT_RUN and no canonical test PASS is transferred."
+    },
+    {
+      "canonical": {
+        "path": "carr-library/tests/assistant/test_translation.py",
+        "blob": "cd13dcb6539dcf494dc539a467fdce600bf48f2a",
+        "test": "test_cancel_before_transmission_can_resume_exact_request",
+        "function_body_sha256": "7a3286b36bfcd7a196de1f28533a1868b58ba7ec6868a920d57cd7c563aef325"
+      },
+      "current": [
+        {
+          "path": "carr-library/tests/assistant/test_translation.py",
+          "test": "test_known_unsent_pause_can_resume_exact_call"
+        },
+        {
+          "path": "carr-library/tests/e2e/test_google_translation_gateway.py",
+          "test": "test_known_unsent_cancellation_reuses_only_exact_original_reservation"
+        }
+      ],
+      "required_assertions": [
+        "Proven unsent cancellation does not transmit; the same exact reservation may resume once and completed attempts never replay."
+      ],
+      "disposition": "CURRENT_OWNER_ASSERTIONS_RETAINED_OR_RESTORED",
+      "semantic_difference": "Current state name cancelled_before_send replaces donor not_sent; the proof obligation and one-transmission bound stay explicit.",
+      "execution": "Source comparison only; new additions are NOT_RUN and no canonical test PASS is transferred."
+    },
+    {
+      "canonical": {
+        "path": "carr-library/tests/assistant/test_translation.py",
+        "blob": "cd13dcb6539dcf494dc539a467fdce600bf48f2a",
+        "test": "test_not_sent_retry_cannot_expand_original_authority",
+        "function_body_sha256": "4c2ca852837a46fffeef4b0e3f71210b0675ad032bdc0dee8422eadbb069918a"
+      },
+      "current": [
+        {
+          "path": "carr-library/tests/e2e/test_google_translation_gateway.py",
+          "test": "test_known_unsent_reservation_rejects_every_changed_original_binding"
+        }
+      ],
+      "required_assertions": [
+        "Six mutations of profile/model/operation/reservation bound/approval/request cannot alter or reuse an unsent reservation."
+      ],
+      "disposition": "CURRENT_OWNER_ASSERTIONS_RETAINED_OR_RESTORED",
+      "semantic_difference": "Six cases are restored with the current request/profile fingerprint and typed approval. The old ledger argument API is not imported.",
+      "execution": "Source comparison only; new additions are NOT_RUN and no canonical test PASS is transferred."
+    },
+    {
+      "canonical": {
+        "path": "carr-library/tests/assistant/test_translation.py",
+        "blob": "cd13dcb6539dcf494dc539a467fdce600bf48f2a",
+        "test": "test_sent_or_unresolved_attempts_remain_nonretryable",
+        "function_body_sha256": "33bfb432c6fc412a50e5753bd29207a3b4a81666205002cdc33c4192712f7e05"
+      },
+      "current": [
+        {
+          "path": "carr-library/tests/e2e/test_google_translation_gateway.py",
+          "test": "test_sent_or_unresolved_translation_reservation_never_replays"
+        }
+      ],
+      "required_assertions": [
+        "Reserved, uncertain and complete attempts cannot be reserved again and their stored rows do not change."
+      ],
+      "disposition": "CURRENT_OWNER_ASSERTIONS_RETAINED_OR_RESTORED",
+      "semantic_difference": "Three cases are restored through current BudgetLedger reserve/cancel/finish APIs.",
+      "execution": "Source comparison only; new additions are NOT_RUN and no canonical test PASS is transferred."
+    },
+    {
+      "canonical": {
+        "path": "carr-library/tests/ui/test_evidence_draft_recovery.py",
+        "blob": "3c6818e63dd4ac51f7938d37f97c307b6405168b",
+        "test": "test_save_all_waits_for_actual_note_commit_and_retains_newer_edit",
+        "function_body_sha256": "f75f0fbf50ffe7242806b8d0b07601548571b2fe01f218340a9b6cf7c85576c6"
+      },
+      "current": [
+        {
+          "path": "carr-library/tests/ui/test_evidence_draft_recovery.py",
+          "test": "test_save_all_waits_for_actual_note_commit_and_retains_newer_edit"
+        },
+        {
+          "path": "carr-library/tests/ui/test_desktop_evidence_jobs.py",
+          "test": "test_save_all_keeps_real_newer_note_edits_and_reports_the_remaining_draft"
+        }
+      ],
+      "required_assertions": [
+        "Save All waits for the actual transaction, reports the saved snapshot, preserves newer editor text and reports the remaining unsaved draft."
+      ],
+      "disposition": "RESTORED_CURRENT_COMPATIBLE_ASSERTIONS",
+      "semantic_difference": "The original function uses the current recovery fixture and current SaveCoordinator unchanged; one new case supplements existing host-route coverage.",
+      "execution": "Source comparison only; new additions are NOT_RUN and no canonical test PASS is transferred."
+    },
+    {
+      "canonical": {
+        "path": "carr-library/tests/ui/test_evidence_draft_recovery.py",
+        "blob": "3c6818e63dd4ac51f7938d37f97c307b6405168b",
+        "test": "test_save_all_never_claims_a_blocked_or_stale_note_was_saved",
+        "function_body_sha256": "c8637fbe94842265373348217bbf2d7af6a83d3346676db9b5f088f5d783fc82"
+      },
+      "current": [
+        {
+          "path": "carr-library/tests/ui/test_evidence_draft_recovery.py",
+          "test": "test_save_all_never_claims_a_blocked_or_stale_note_was_saved"
+        },
+        {
+          "path": "carr-library/tests/ui/test_desktop_evidence_jobs.py",
+          "test": "test_late_saved_note_acknowledges_changed_view_without_overwriting_it"
+        }
+      ],
+      "required_assertions": [
+        "Busy, cancelled and changed-view saves never produce a false successful summary, never leave the coordinator busy and preserve editable draft text.",
+        "Busy/cancelled operations preserve the original database note; a committed changed-view operation is acknowledged without overwriting the new view."
+      ],
+      "disposition": "RESTORED_CURRENT_COMPATIBLE_ASSERTIONS",
+      "semantic_difference": "All three original conditions are restored at the current coordinator boundary; the domain transaction may already be committed when only the UI owner changes.",
+      "execution": "Source comparison only; new additions are NOT_RUN and no canonical test PASS is transferred."
+    }
+  ],
+  "additional_current_tests": "The two current evidence timer-disposal regressions and current unavailable-scope/listing corruption regressions remain untouched.",
+  "case_counts": {
+    "planning_handlers": {
+      "before": 21,
+      "after": 24
+    },
+    "evidence_recovery": {
+      "before": 15,
+      "after": 19
+    },
+    "translation": {
+      "before": 63,
+      "after": 67
+    },
+    "google_gateway": {
+      "before": 48,
+      "after": 62
+    },
+    "all_four_selectors": {
+      "before": 147,
+      "after": 172
+    }
+  },
+  "component_oracle_impacts": {
+    "assistant_transcription": {
+      "before": 684,
+      "after": 691,
+      "native_checks": 30
+    },
+    "workflow_templates": {
+      "before": 518,
+      "after": 525,
+      "native_checks": 24
+    }
+  },
+  "qualification": {
+    "status": "SOURCE_REVIEW_ONLY_NEW_CASES_NOT_RUN",
+    "new_source_and_installed_counts": "Declared from exact additions, awaiting actual collection/execution in the composed strict gate.",
+    "canonical_pass_transfer": false,
+    "nvda": "NOT_RUN",
+    "model_quality": "NOT_QUALIFIED",
+    "paid_provider_calls": "NOT_RUN",
+    "physical_audio": "NOT_RUN"
+  },
+  "remaining_required_behavior_in_this_bounded_scope": "No additional concrete product gap found after comparing the current owners and preserving/restoring the specified assertions. This bounded review does not replace the other canonical family dispositions."
+}

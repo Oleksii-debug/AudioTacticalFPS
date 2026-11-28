@@ -32,24 +32,37 @@ class InstalledVoiceInventory:
     enumerated_at: str
 
 
+def _voice_registry(library):
+    # Use the Studio's actual configured adapter boundary and verified runtime.
+    # Construction and filtering never call this explicit refresh helper.
+    from .audio_studio import StudioController
+    return StudioController(private_root=library.root)._registry()
+
+
 def collect_installed_voices(library, *, cancelled=lambda: False):
     """Explicit local registry enumeration only; no synthesis or tag matching."""
     if cancelled():
         raise InterruptedError("Installed voice inventory cancelled.")
-    from ..runtime_settings import voice_registry
-    registry = voice_registry(Path(library.root) / "state")
-    try:
-        if cancelled():
-            raise InterruptedError("Installed voice inventory cancelled after the bounded adapter probe.")
-        voices = tuple(registry.voices())
-        notices = tuple(registry.notices)
-        if len(voices) > 10_000 or len(notices) > 1000 or any(not isinstance(item, str) or len(item) > 4000 for item in notices):
-            raise ValueError("The local voice inventory exceeds its metadata limits.")
-        return InstalledVoiceInventory(voices, notices, datetime.now(timezone.utc).isoformat(timespec="seconds"))
-    finally:
-        close = getattr(registry, "close", None)
-        if callable(close):
-            close()
+    registry = _voice_registry(library)
+    if cancelled():
+        raise InterruptedError("Installed voice inventory cancelled after the bounded adapter probe.")
+    voices = tuple(registry.voices(refresh=True, cancelled=cancelled))
+    raw_notices = tuple(registry.notices)
+    if len(raw_notices) > 1000:
+        raise ValueError("The local voice inventory exceeds its metadata limits.")
+    notices = []
+    for notice in raw_notices:
+        if isinstance(notice, str):
+            notices.append(notice)
+        elif (isinstance(notice, dict) and isinstance(notice.get("engine"), str)
+                and isinstance(notice.get("reason"), str)):
+            notices.append(notice["engine"] + ": " + notice["reason"])
+        else:
+            raise ValueError("The configured voice adapter returned invalid notice metadata.")
+    notices = tuple(notices)
+    if len(voices) > 10_000 or len(notices) > 1000 or any(not isinstance(item, str) or len(item) > 4000 for item in notices):
+        raise ValueError("The local voice inventory exceeds its metadata limits.")
+    return InstalledVoiceInventory(voices, notices, datetime.now(timezone.utc).isoformat(timespec="seconds"))
 
 
 class LanguageMatrixController:
@@ -121,8 +134,8 @@ class LanguageMatrixController:
                  "No automatic language bindings were made."]
         for number, voice in enumerate(self.inventory.voices, 1):
             lines.extend(("", f"{number}. {voice.name}", f"Engine: {voice.engine}",
-                          f"Adapter-declared language: {voice.language}",
-                          "Declared controls: " + (", ".join(voice.capabilities) or "None"),
+                          f"Adapter-declared languages: {', '.join(voice.languages) or 'Not declared'}",
+                          "Declared controls: " + (", ".join(voice.controls) or "None"),
                           "License notice: " + voice.license))
         if self.inventory.notices:
             lines.extend(("", "Adapter notices", *self.inventory.notices))
@@ -333,7 +346,7 @@ def show_language_matrix(frame):
 
 
 def install_language_actions(frame):
-    """Add the read-only evidence command to the native Voice menu."""
+    """Add the read-only evidence command to the existing native Audio menu."""
     if getattr(frame, "_carr_language_actions_installed", False):
         return
     import wx
@@ -341,7 +354,7 @@ def install_language_actions(frame):
     if bar is None:
         raise ValueError("Install the native menu bar before language actions.")
     menu = None
-    for title in ("Voice", "Help"):
+    for title in ("Audio", "Voice", "Help"):
         for index in range(bar.GetMenuCount()):
             if bar.GetMenuLabel(index).replace("&", "") == title:
                 menu = bar.GetMenu(index)
@@ -351,11 +364,12 @@ def install_language_actions(frame):
     if menu is None:
         menu = wx.Menu()
         bar.Append(menu, "Languages")
-    elif menu.GetMenuItemCount():
+    elif menu.GetMenuItems():
         menu.AppendSeparator()
     item = menu.Append(wx.ID_ANY, "Languages and capability evidence...")
     frame.Bind(wx.EVT_MENU, lambda event: show_language_matrix(frame), item)
     from .command_registry import CommandSpec
     from .keyboard_settings import register_menu_command
-    register_menu_command(frame, CommandSpec("voice.languages", "Languages and capability evidence"), item)
+    register_menu_command(frame,
+        CommandSpec("audio.language_evidence", "Languages and capability evidence", "main"), item)
     frame._carr_language_actions_installed = True

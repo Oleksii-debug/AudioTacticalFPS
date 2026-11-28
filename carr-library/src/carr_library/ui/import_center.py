@@ -15,7 +15,13 @@ def batch_summary(batch):
               ('duplicate', 'exact duplicates'), ('rejected', 'not accepted'),
               ('failed', 'failed'), ('quarantined', 'need page review'), ('excluded', 'excluded')]
     detail = ', '.join(f'{counts.get(key, 0)} {label}' for key, label in labels if counts.get(key, 0))
-    return f'{batch.get("total", len(batch.get("rows", ())))} files: {detail or "none"}.'
+    result = f'{batch.get("total", len(batch.get("rows", ())))} files: {detail or "none"}.'
+    scan = batch.get('scan')
+    if scan and scan['cursor'] is not None:
+        result += (' Unscanned external folders require a new selection after restore.'
+                   if scan['review_required'] else
+                   ' More selected sources remain. Use Continue scan for the next bounded page.')
+    return result
 
 
 def row_details(row):
@@ -181,12 +187,16 @@ class ImportCenterActions:
             finish(error=exc)
 
     def plan(self, paths):
+        from dataclasses import replace
+        from ..extract.page_ocr import Config
         self._bound()
         index = self.collection.GetSelection()
-        if not 0 <= index < len(self.collection_ids):
+        if not 0 <= index < len(self.collection_ids) or not isinstance(self.ocr_config, Config):
             raise ValueError('Choose a destination collection and text recognition languages.')
-        config = self._new_plan_ocr_config()
         collections = () if self.collection_ids[index] is None else (self.collection_ids[index],)
+        # Capture a complete immutable choice. Later model-dialog changes affect
+        # new plans only; durable existing plans keep their original settings.
+        config = replace(self.ocr_config)
         recursive = self.recursive.GetValue()
 
         def done(batch):
@@ -196,53 +206,52 @@ class ImportCenterActions:
 
         self._job('Checking files and duplicates', lambda: self.library.plan_import_batch(
             self.workspace, paths, collections=collections, recursive=recursive, config=config,
-            cancelled=self.frame.cancel_event.is_set), done, planning=True)
+            cancelled=self.frame.cancel_event.is_set, paged=True), done, planning=True)
 
-    def _new_plan_ocr_config(self):
-        from ..extract.page_ocr import Config
-        from .ocr_options import LANGUAGES
-        language = self.languages.GetSelection()
-        if 0 <= language < len(LANGUAGES):
-            return Config(languages=LANGUAGES[language][1])
-        custom = getattr(self, 'custom_ocr_config', None)
-        if language == len(LANGUAGES) and isinstance(custom, Config):
-            return custom
-        raise ValueError('Choose a destination collection and text recognition languages.')
-
-    def choose_ocr_models(self, event=None):
-        """Change only the explicit settings captured by future import plans."""
-        from ..extract.page_ocr import Config
-        from .ocr_options import LANGUAGES
-        from .ocr_selection import choose_model_config
-        if self.busy or self.frame.working:
-            self.report('An operation is already running. Wait or choose Cancel operation.')
-            return
+    def continue_scan(self, event=None):
         try:
             self._bound()
-            try:
-                initial = self._new_plan_ocr_config()
-            except ValueError:
-                initial = Config()
-            chosen = choose_model_config(self, initial=initial)
-            if chosen is None:
+            batch = self.batch
+            if batch is None:
+                raise ValueError('Select a saved import batch first.')
+            scan = batch.get('scan')
+            if scan is None or scan['cursor'] is None:
+                raise ValueError('This scan is complete. Choose Add files or Add folder for new sources.')
+            if scan['review_required']:
+                raise ValueError('Unscanned external folders were not backed up. '
+                                 'Review and select those folders again; saved files remain available.')
+            batch_id = batch['batch_id']
+
+            def done(following):
+                self.refresh(selected=following['batch_id'])
+                self.report('Next scan page saved. ' + batch_summary(following) +
+                            ' Review its files before starting queued imports.')
+
+            self._job('Continuing the selected import scan',
+                lambda: self.library.continue_import_scan(self.workspace, batch_id,
+                    cancelled=self.frame.cancel_event.is_set), done, planning=True)
+        except Exception as exc:
+            self.report(str(exc))
+
+    def choose_languages(self, event=None):
+        from .ocr_options import choose_model_config, config_summary
+        from ..extract.page_ocr import Config
+        try:
+            self._bound()
+            if self.busy or self.frame.working:
+                raise ValueError('Wait for the current operation before changing recognition models.')
+            config = choose_model_config(self, self.ocr_config, preset_root=self.library.root)
+            if config is None:
                 return
-            if not isinstance(chosen, Config):
+            if not isinstance(config, Config):
                 raise ValueError('The OCR model selection did not return valid import settings.')
             self._bound()
             if self.busy or self.frame.working:
-                raise ValueError('An import operation started. Choose model settings when it finishes.')
-            profile = {'installed': 'Installed', 'fast': 'Fast', 'best': 'Best'}[chosen.model_profile]
-            identifiers = chosen.languages.split('+')
-            preview = ', '.join(identifiers[:6])
-            if len(identifiers) > 6:
-                preview += f'; {len(identifiers) - 6} more'
-            label = f'Custom — {profile}: {preview}'
-            self.languages.SetItems([text for text, _ in LANGUAGES] + [label])
-            self.languages.SetSelection(len(LANGUAGES))
-            self.custom_ocr_config = chosen
-            orientation = 'on' if chosen.orientation else 'off'
-            self.report(f'OCR settings for new plans: {profile}; {", ".join(identifiers)}. '
-                        f'Page orientation detection: {orientation}.')
+                raise ValueError('An import operation started. Change recognition settings when it finishes.')
+            self.ocr_config = config
+            self.languages.SetValue(config_summary(config))
+            self.report('New plans will use ' + config_summary(config) +
+                        '. Existing saved plans keep their previous settings.')
         except Exception as exc:
             self.report(str(exc))
 
@@ -260,6 +269,55 @@ class ImportCenterActions:
                 self.plan(paths)
             except Exception as exc:
                 self.report(str(exc))
+
+    def import_streamed_text(self, path):
+        """Explicit single-source action; the ordinary batch defaults stay put."""
+        from dataclasses import replace
+        from ..ingest.streamed_text import TextProfile
+        self._bound()
+        maximum = self.stream_mib.GetValue()
+        if type(maximum) is not int or not 1 <= maximum <= 128:
+            raise ValueError('Choose a streamed source allowance from 1 through 128 MiB.')
+        index = self.collection.GetSelection()
+        if not 0 <= index < len(self.collection_ids):
+            raise ValueError('Choose the destination for this source.')
+        collections = () if self.collection_ids[index] is None else (self.collection_ids[index],)
+        profile, config = TextProfile(maximum * 1024**2), replace(self.ocr_config)
+        library, workspace = self.library, self.workspace
+        def operation():
+            self._bound()
+            return library.import_file(workspace, path, source_profile=profile,
+                collections=collections, config=config, timeout=180,
+                cancelled=self.frame.cancel_event.is_set)
+        def done(result):
+            if result.get('state') == 'complete':
+                if self.frame.book is not None:
+                    self.frame.book.GetPage(1).refresh()
+                self.report(f'Streamed text imported: {result["completed"]} exact logical fragments. '
+                            'Original bytes are retained; these locations are unpaginated.')
+            else:
+                self.report('Streamed text request: ' + readable(result.get('state', 'failed')) + '. '
+                    + readable(result.get('message', '')) +
+                    ' Close Import Center and choose Library, Resume interrupted import. '
+                    'The saved request keeps its original byte allowance.')
+        self._job('Importing selected streamed UTF-8 text', operation, done)
+
+    def choose_streamed_text(self, event=None):
+        import wx
+        try:
+            self._bound()
+            if self.busy or self.frame.working:
+                raise ValueError('Wait or cancel the current operation before selecting another source.')
+            dialog = wx.FileDialog(self, 'Import a selected large UTF-8 text',
+                wildcard='UTF-8 text (*.txt)|*.txt', style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST)
+            try:
+                path = dialog.GetPath() if dialog.ShowModal() == wx.ID_OK else None
+            finally:
+                dialog.Destroy()
+            if path:
+                self.import_streamed_text(path)
+        except Exception as exc:
+            self.report(str(exc))
 
     def add_folder(self, event=None):
         import wx
@@ -283,6 +341,10 @@ class ImportCenterActions:
             token = object()
 
             def progress(batch):
+                from ..progress import batch_progress, current_progress
+                reporter = current_progress()
+                if reporter is not None:
+                    batch_progress(reporter, batch)
                 import wx
                 def apply():
                     if (not self.closed and self.busy and self.frame.library is self.library
@@ -323,7 +385,7 @@ class ImportCenterActions:
     def save_report(self, event=None):
         import wx
         from ..research.export_file import write_export, export_completion
-        from .export_destination import confirm_export_destination
+        from .export_destination import approve_export_destination
         try:
             self._bound()
             if self.batch is None:
@@ -337,7 +399,7 @@ class ImportCenterActions:
                 dialog.Destroy()
             if path:
                 self._bound()
-                approval = confirm_export_destination(self, path, private_root=self.library.root, wx_module=wx)
+                approval = approve_export_destination(self, path, private_root=self.library.root)
                 if approval is None:
                     return
                 self._bound()
@@ -368,7 +430,8 @@ class ImportCenterActions:
 
 def show_import_center(frame, workspace):
     import wx
-    from .ocr_options import LANGUAGES
+    from ..extract.page_ocr import Config
+    from .ocr_options import config_summary
 
     class ImportCenter(wx.Dialog, ImportCenterActions):
         def __init__(self):
@@ -377,7 +440,6 @@ def show_import_center(frame, workspace):
             self.frame, self.library, self.workspace = frame, frame.library, workspace
             self.busy = self.closed = False
             self.batch, self.summaries = None, ()
-            self.custom_ocr_config = None
             self.mutable = []
             layout = wx.BoxSizer(wx.VERTICAL)
             introduction = wx.StaticText(self, label='Prepare a file or folder import, review the plan, then start. '
@@ -392,32 +454,46 @@ def show_import_center(frame, workspace):
                 self.collection_ids.append(identity)
                 collection_labels.append(f'{number}. Collection: {readable(name)}')
             self.collection = wx.Choice(self, choices=collection_labels)
-            self.languages = wx.Choice(self, choices=[label for label, _ in LANGUAGES])
+            self.collection.SetSelection(0)
+            self.ocr_config = Config()
+            self.languages = wx.TextCtrl(self, value=config_summary(self.ocr_config),
+                                         style=wx.TE_READONLY | wx.TE_MULTILINE, size=(-1, 40))
             for label, control in [('Destination for new plans', self.collection),
                                    ('Text recognition languages for new plans', self.languages)]:
                 control.SetName(label)
-                control.SetSelection(0)
                 options.Add(wx.StaticText(self, label=label), 0, wx.ALIGN_CENTER_VERTICAL)
                 options.Add(control, 1, wx.EXPAND)
-                self.mutable.append(control)
+            self.mutable.append(self.collection)
             layout.Add(options, 0, wx.EXPAND | wx.ALL, 8)
-            self.ocr_models_button = wx.Button(self, label='Choose installed or managed OCR &models…')
-            self.ocr_models_button.SetName('Choose installed or managed OCR models for new plans')
-            self.ocr_models_button.Bind(wx.EVT_BUTTON, self.choose_ocr_models)
-            self.mutable.append(self.ocr_models_button)
-            layout.Add(self.ocr_models_button, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
+            models = wx.Button(self, label='Recognition &models...')
+            models.Bind(wx.EVT_BUTTON, self.choose_languages)
+            self.mutable.append(models)
+            layout.Add(models, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
             self.recursive = wx.CheckBox(self, label='Include subfol&ders in new plans')
             self.recursive.SetValue(True)
             self.mutable.append(self.recursive)
             layout.Add(self.recursive, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
             add = wx.BoxSizer(wx.HORIZONTAL)
             for label, handler in [('&Add files...', self.add_files), ('Add &folder...', self.add_folder),
-                                   ('Refresh saved &queues', self.refresh)]:
+                                   ('Refresh saved &queues', self.refresh),
+                                   ('Continue sca&n', self.continue_scan)]:
                 control = wx.Button(self, label=label)
                 control.Bind(wx.EVT_BUTTON, handler)
                 self.mutable.append(control)
                 add.Add(control, 0, wx.RIGHT, 8)
             layout.Add(add, 0, wx.ALL, 8)
+            streamed = wx.BoxSizer(wx.HORIZONTAL)
+            self.stream_mib = wx.SpinCtrl(self, min=1, max=128, initial=128)
+            self.stream_mib.SetName('Maximum bytes for one streamed UTF-8 text, in MiB')
+            streamed.Add(wx.StaticText(self, label='Streamed UTF-8 source limit (MiB)'),
+                         0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 8)
+            streamed.Add(self.stream_mib, 0, wx.RIGHT, 8)
+            large_text = wx.Button(self, label='Import large UTF-8 te&xt...')
+            large_text.SetName('Import selected UTF-8 text in bounded logical fragments')
+            large_text.Bind(wx.EVT_BUTTON, self.choose_streamed_text)
+            streamed.Add(large_text, 0)
+            self.mutable.extend((self.stream_mib, large_text))
+            layout.Add(streamed, 0, wx.ALL, 8)
             layout.Add(wx.StaticText(self, label='Saved import batches'), 0, wx.LEFT | wx.RIGHT, 8)
             self.batches = wx.ListBox(self, size=(-1, 65))
             self.batches.SetName('Saved import batches')

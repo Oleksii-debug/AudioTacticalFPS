@@ -1,0 +1,63 @@
+{
+  "schema": 1,
+  "component": "headless-audio-resource-fixture-repair",
+  "date": "2026-11-27",
+  "observed": {
+    "commit": "43f6908c82982630c85e6b72ebf7b940dfb06b45",
+    "tree": "acb92a0e27145178e5c43d438ae447e455afef19",
+    "run_id": 46023219849,
+    "job_id": 140587880067,
+    "status": "FAIL",
+    "source": {
+      "passed": 229,
+      "failed": 3,
+      "total": 232
+    },
+    "installed": {
+      "passed": 229,
+      "failed": 3,
+      "total": 232
+    },
+    "provider_native": {
+      "status": "PASS",
+      "checks": 22
+    },
+    "artifact": {
+      "id": 15212910459,
+      "bytes": 419272,
+      "sha256": "9b651694798369354f1abae4eba63be960b51cf3835265e152cd4ca2689c5207"
+    },
+    "evidence_read": "Completed GitHub job log; independent ZIP read not performed for this repair."
+  },
+  "failures": [
+    {
+      "test": "test_fresh_cli_waits_on_selected_library_and_cancel_preserves_the_other_lease",
+      "cause": "Existing persistent .render.lock was incorrectly treated as a produced audio artifact.",
+      "repair": "Require the exact single .render.lock entry and require it to be a regular file; preserve cancellation status, original source, restored signal handler and independent lease assertions."
+    },
+    {
+      "test": "test_cli_project_manifest_path_cannot_replace_registered_music_authority",
+      "cause": "Existing persistent .render.lock was omitted from the exact expected output inventory.",
+      "repair": "Require exact .render.lock and models entries, require the lock file, exact original model filename and unchanged model bytes; preserve unregistered-profile refusal, no renderer/PATH discovery and empty active leases."
+    },
+    {
+      "test": "test_failed_cli_renderer_releases_its_admission_after_cleanup_without_releasing_another",
+      "cause": "The synthetic independent lease requested zero of every resource and was rejected before the intended renderer failure.",
+      "repair": "Reserve one byte of memory with zero CPU for the independent passive owner; preserve two active leases inside the renderer and only the independent lease after settled failure."
+    }
+  ],
+  "retained": {
+    "test_module": "tests/e2e/test_audio_cli_resources.py",
+    "case_count": 9,
+    "selected_runtime_preference": "CARR_FFMPEG, then CARR_AUDIO_FFMPEG, then existing PATH fallback",
+    "product_changes": 0,
+    "oracle_changes": 0
+  },
+  "validation": {
+    "source_review": "COMPLETE",
+    "static_function_inventory": "9 cases, unchanged",
+    "lexical_check": "balanced",
+    "python_compilation": "NOT_RUN",
+    "runtime_after_repair": "NOT_RUN"
+  }
+}

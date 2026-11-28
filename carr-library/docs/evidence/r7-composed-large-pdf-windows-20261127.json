@@ -1,0 +1,39 @@
+{
+  "schema": 1,
+  "status": "PASS",
+  "source_commit": "523aa40f9215569a276f0625d09fcc0fa84bb520",
+  "source_tree": "b6416525dd57ddbcc931f119811e4e73faed68f6",
+  "run_id": 45993629541,
+  "job_id": 140487431325,
+  "scope": "Actual installed Windows generation, extraction, rendering and retained-file readback of a valid synthetic PDF greater than 2049 MiB and less than 2050 MiB.",
+  "executed_bounds": {
+    "parser_read_block_bytes": 16777216,
+    "python_peak_less_than_bytes": 33554432,
+    "rss_delta_less_than_bytes": 67108864,
+    "retained_original_readbacks": 2
+  },
+  "artifact": {
+    "id": 15195613042,
+    "name": "carr-r6-large-pdf-523aa40f9215569a276f0625d09fcc0fa84bb520-1",
+    "size_in_bytes": 5207,
+    "url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15195613042",
+    "archive_download_url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15195613042/zip",
+    "expired": false,
+    "created_at": "2026-11-27T12:07:26Z",
+    "expires_at": "2026-12-04T12:07:25Z",
+    "updated_at": "2026-11-27T12:07:26Z",
+    "digest": "sha256:66aef15f2ab69407d280b66ff9a211abaef66457b241de15b44c25672fe3a22e",
+    "workflow_run": {
+      "id": 45993629541,
+      "repository_id": 1341777614,
+      "head_repository_id": 1341777614,
+      "head_branch": "carr/v3-acceptance-d3a-r7-exec-20261127",
+      "head_sha": "523aa40f9215569a276f0625d09fcc0fa84bb520"
+    }
+  },
+  "evidence_access": "Observed complete native run and all required workflow steps. Precise measurement JSON is retained in the artifact; its inner values have not been independently read in this executorless session.",
+  "limitations": [
+    "Synthetic fixture, not real user PDF corpus.",
+    "No manual NVDA, huge full-library backup or general hardware scale claim."
+  ]
+}

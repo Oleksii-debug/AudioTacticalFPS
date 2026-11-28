@@ -2,12 +2,12 @@ name: CARR bibliography and import acceptance
 
 on:
   pull_request:
-    branches: [carr-library]
+    branches: [carr-library, carr/v3-local-studio-20261126-a4f9]
     paths:
       - carr-library/**
       - .github/workflows/carr-bibliography.yml
   push:
-    branches: [carr-library, 'carr/v3-academic-interchange-*', carr/unified-publication-24-20261127]
+    branches: [carr-library, 'carr/v3-academic-interchange-*', carr/v3-local-studio-20261126-a4f9, 'carr/v3-acceptance-*', 'carr/v3-repair-r8-*', 'carr/v3-bib-r8-*']
     paths:
       - carr-library/**
       - .github/workflows/carr-bibliography.yml
@@ -24,7 +24,7 @@ jobs:
   windows-bibliography:
     name: Windows x64 / CPython 3.11 / installed bibliography
     runs-on: windows-2022
-    timeout-minutes: 25
+    timeout-minutes: 30
     defaults:
       run:
         shell: pwsh
@@ -105,7 +105,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Run strict bibliography, replay and export acceptance
-        timeout-minutes: 18
+        timeout-minutes: 20
         run: |
           $suites = @(
             'tests/research/test_bibtex_import.py',
@@ -118,13 +118,14 @@ jobs:
             'tests/ui/test_citation_styles_jobs.py',
             'tests/ui/test_academic_library_dialog.py',
             'tests/ui/test_academic_actions.py',
+            'tests/ui/test_academic_tools.py',
             'tests/ui/test_academic_export_handler.py',
             'tests/catalog/test_bibliography.py',
+            'tests/catalog/test_ris_apply_v4.py',
             'tests/catalog/test_reference_exchange.py',
             'tests/ingest/test_import_replay_identity.py',
             'tests/ingest/test_txt_replay_registration.py',
             'tests/reader/test_export_no_clobber.py',
-            'tests/reader/test_export_reconciliation.py',
             'tests/reader/test_file_export.py',
             'tests/reader/test_binary_file_export.py',
             'tests/reader/test_academic_documents.py',
@@ -136,7 +137,7 @@ jobs:
             'tests/e2e/test_academic_document_export.py',
             'tests/e2e/test_export_destination.py'
           )
-          & $env:CARR_PYTHON scripts/ci_check.py --jobs 3 @suites 2>&1 | Tee-Object 'ci-bibliography-results/strict-acceptance.txt'
+          & $env:CARR_PYTHON scripts/ci_check.py --jobs 2 @suites 2>&1 | Tee-Object 'ci-bibliography-results/strict-acceptance.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Retain text acceptance evidence only

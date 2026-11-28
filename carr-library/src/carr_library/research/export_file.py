@@ -6,7 +6,6 @@ temporary file is written; they are not a sandbox against a process that can
 maliciously replace directory entries at the instant of publication.
 """
 from dataclasses import dataclass
-from functools import lru_cache
 import ctypes
 import hashlib
 import logging
@@ -15,6 +14,8 @@ import os
 import stat
 from tempfile import NamedTemporaryFile
 from time import monotonic
+
+from ..native_file_metadata import _WindowsFileBasicInfo, _windows_file_api
 
 
 @dataclass(frozen=True)
@@ -102,29 +103,6 @@ def _content_fingerprint(path, expected, check_cancelled):
         return digest.digest()
     finally:
         os.close(descriptor)
-
-
-class _WindowsFileBasicInfo(ctypes.Structure):
-    # FILE_BASIC_INFO: four LARGE_INTEGER values and one DWORD. Fixed-width
-    # fields also make the ABI checks meaningful on non-Windows test hosts.
-    _fields_ = [('CreationTime', ctypes.c_int64), ('LastAccessTime', ctypes.c_int64),
-                ('LastWriteTime', ctypes.c_int64), ('ChangeTime', ctypes.c_int64),
-                ('FileAttributes', ctypes.c_uint32)]
-
-
-@lru_cache(maxsize=1)
-def _windows_file_api():
-    kernel = ctypes.WinDLL('kernel32', use_last_error=True)
-    create, query, close = (kernel.CreateFileW, kernel.GetFileInformationByHandleEx,
-                            kernel.CloseHandle)
-    create.argtypes = [ctypes.c_wchar_p, ctypes.c_uint32, ctypes.c_uint32,
-                       ctypes.c_void_p, ctypes.c_uint32, ctypes.c_uint32, ctypes.c_void_p]
-    create.restype = ctypes.c_void_p
-    query.argtypes = [ctypes.c_void_p, ctypes.c_int32, ctypes.c_void_p, ctypes.c_uint32]
-    query.restype = ctypes.c_int32
-    close.argtypes = [ctypes.c_void_p]
-    close.restype = ctypes.c_int32
-    return create, query, close
 
 
 def _windows_api_error(operation):
@@ -249,7 +227,8 @@ def _export_paths(path, private_root):
     return requested, Path(private_root).absolute()
 
 
-def capture_export_destination(path, *, private_root, cancelled=lambda: False):
+def capture_export_destination(path, *, private_root, cancelled=lambda: False,
+                               require_absent=False):
     """Inspect a chosen path before asking to replace its existing file.
 
     Pass this same immutable snapshot to the writer after confirmation. It
@@ -265,14 +244,18 @@ def capture_export_destination(path, *, private_root, cancelled=lambda: False):
         if cancelled():
             raise TimeoutError('Export cancelled; the destination was not changed.')
 
+    if type(require_absent) is not bool:
+        raise ValueError('The export replacement policy must be boolean.')
     check_cancelled()
     requested, private = _export_paths(path, private_root)
-    target, parent_identity, state = _destination(requested, private, check_cancelled)
+    reject_existing = (FileExistsError('The export destination already exists; replacement was not authorized.')
+                       if require_absent else None)
+    target, parent_identity, state = _destination(requested, private, check_cancelled, reject_existing)
     return ExportDestination(requested, private, target, parent_identity, state)
 
 
 def write_export(path, content, *, private_root, cancelled=lambda: False,
-                 require_absent=False, approval=None):
+                 require_absent=False, approval=None, prepared=None):
     """Atomically write exact UTF-8 text to an explicitly selected destination.
 
     A normal existing file may be replaced after caller-side confirmation.
@@ -283,11 +266,15 @@ def write_export(path, content, *, private_root, cancelled=lambda: False,
     absent destination always uses atomic no-clobber publication. Once atomic
     replacement completes, the save is complete. CR, LF and CRLF remain unchanged.
     The receipt distinguishes a saved file from a remaining staging-cleanup warning.
+    An optional trusted prepared callback receives the fsynced staging path and
+    immutable destination before publication, for a caller's existing durable journal.
+    Its failure or cancellation leaves the destination unchanged.
     """
     if not isinstance(content, str):
         raise ValueError('Text export required.')
     return _write_payload(path, content.encode('utf-8'), private_root=private_root,
-                          cancelled=cancelled, require_absent=require_absent, approval=approval)
+                          cancelled=cancelled, require_absent=require_absent, approval=approval,
+                          prepared=prepared)
 
 
 def write_binary_export(path, content, *, private_root, cancelled=lambda: False,
@@ -304,11 +291,14 @@ def write_binary_export(path, content, *, private_root, cancelled=lambda: False,
                           cancelled=cancelled, require_absent=require_absent, approval=approval)
 
 
-def _write_payload(path, payload, *, private_root, cancelled, require_absent=False, approval=None):
+def _write_payload(path, payload, *, private_root, cancelled, require_absent=False, approval=None,
+                   prepared=None):
     if not callable(cancelled):
         raise ValueError('An export cancellation callback is required.')
     if type(require_absent) is not bool:
         raise ValueError('The export replacement policy must be boolean.')
+    if prepared is not None and not callable(prepared):
+        raise ValueError('An export preparation callback must be callable.')
 
     def check_cancelled():
         if cancelled():
@@ -350,6 +340,9 @@ def _write_payload(path, payload, *, private_root, cancelled, require_absent=Fal
             output.flush()
             os.fsync(output.fileno())
 
+        check_cancelled()
+        if prepared is not None:
+            prepared(temporary, ExportDestination(requested, private, target, parent_identity, previous))
         check_cancelled()
         reject_existing = (ValueError('The export destination changed. Choose the destination again.')
                            if require_absent else None)

@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "kind": "canonical-import-metadata-and-inert-watermark-preservation",
+  "canonical_commit": "e5c64a5245583f8f8b404a0f042f6ca438c24d7f",
+  "source_parent": "8e63256d4da4a6e12a66714b83a89d6643bb5abf",
+  "canonical_module": "tests/ingest/test_worker_publication_boundary.py",
+  "current_module": "tests/ingest/test_canonical_worker_backup.py",
+  "restored_cases": 13,
+  "counter": {
+    "test_another_requests_fresh_publication_cannot_hide_metadata_or_membership_failure": 7,
+    "test_legacy_watermark_survives_backup_validation_but_is_not_restored": 2,
+    "test_malformed_legacy_watermark_cannot_enter_backup": 4
+  },
+  "change": "Retain all three canonical test bodies and their thirteen parametrized cases. Adapt only the competing child launch interception from subprocess.Popen to the existing owned engines._start_process; import current barrier/source helpers and Config from extract.page_ocr. No product, receipt, metadata, backup, cancellation or process-admission policy is changed.",
+  "contracts": [
+    "Seven distinct conflicting metadata/membership actual publications cannot grant the cancelled or failed child another request's completion.",
+    "Two valid historical watermark values survive backup admission as inert data and are stripped during restore; explicit resume revalidates retained source and preserves one revision/receipt.",
+    "Four malformed historical watermark values fail complete backup admission."
+  ],
+  "related_current_regression": "tests/ingest/test_worker_publication_boundary.py::test_other_import_after_parent_snapshot_is_not_this_workers_commit retains the current actual prelaunch competing publication boundary.",
+  "qualification": {
+    "execution": "NOT_RUN",
+    "canonical_results_transferred": false
+  }
+}

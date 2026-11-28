@@ -1,0 +1,855 @@
+{
+  "schema": 1,
+  "component": "PR209 keyboard commands, contextual Reader and draft recovery",
+  "status": "PASS",
+  "observed_date": "2026-11-27",
+  "tested": {
+    "repository": "Oleksii-debug/AudioTacticalFPS",
+    "pull_request": 209,
+    "commit": "f16959c76c1702fbdf6d6c9a6c113b2cb6660cd3",
+    "tree": "9b1de961f054691406da899dc5377266c8e17703",
+    "parents": [
+      "506d61ca09d2083263e864c9261cecbaf5f59fc0",
+      "e5c64a5245583f8f8b404a0f042f6ca438c24d7f"
+    ],
+    "workflow": ".github/workflows/carr-windows.yml",
+    "workflow_blob": "48ce451b12048babec276abd8f60cd9698b3c954",
+    "run_id": 46069523389,
+    "run_attempt": 1,
+    "job_id": 140742846571,
+    "job_name": "Windows x64 / native commands and draft recovery",
+    "run_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46069523389",
+    "scope": "The completed keyboard-native job only; the separate integrated-desktop job is not qualified by this record."
+  },
+  "actual": {
+    "source_suites": 11,
+    "source_passed": 291,
+    "source_failed": 0,
+    "source_skipped": 0,
+    "case_start_events": 291,
+    "function_identities": 142,
+    "native_probes": 5,
+    "native_checks": 146,
+    "all_final_job_steps": "PASS"
+  },
+  "source_suites": [
+    {
+      "path": "tests/ui/test_keyboard_registration_compatibility.py",
+      "passed": 3,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "path": "tests/ui/test_command_registry.py",
+      "passed": 107,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "path": "tests/storage/test_keyboard_preferences.py",
+      "passed": 32,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "path": "tests/ui/test_keyboard_manager.py",
+      "passed": 34,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "path": "tests/ui/test_save_all.py",
+      "passed": 31,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "path": "tests/ui/test_save_all_current_drafts.py",
+      "passed": 3,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "path": "tests/ui/test_desktop_evidence_jobs.py",
+      "passed": 17,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "path": "tests/ui/test_reader_command_dispatch.py",
+      "passed": 15,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "path": "tests/ui/test_reader_keymap_context.py",
+      "passed": 11,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "path": "tests/storage/test_evidence_drafts.py",
+      "passed": 19,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "path": "tests/ui/test_evidence_draft_recovery.py",
+      "passed": 19,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    }
+  ],
+  "source_case_counter": {
+    "tests/ui/test_keyboard_registration_compatibility.py::test_optional_late_shortcut_conflict_preserves_stable_default_and_user_file": 1,
+    "tests/ui/test_keyboard_registration_compatibility.py::test_optional_fallback_does_not_hide_an_unrelated_existing_conflict": 1,
+    "tests/ui/test_keyboard_registration_compatibility.py::test_late_profile_recovery_does_not_announce_a_stale_startup_warning": 1,
+    "tests/ui/test_command_registry.py::test_normalization": 15,
+    "tests/ui/test_command_registry.py::test_native_editing_navigation_screenreader_and_os_combinations_are_reserved": 59,
+    "tests/ui/test_command_registry.py::test_malformed_unsupported_or_oversized_shortcuts_are_rejected": 20,
+    "tests/ui/test_command_registry.py::test_same_key_is_valid_in_distinct_contexts": 1,
+    "tests/ui/test_command_registry.py::test_conflicts_consider_overrides_and_unmodified_defaults": 1,
+    "tests/ui/test_command_registry.py::test_clear_old_assignment_and_move_binding_are_validated_together": 1,
+    "tests/ui/test_command_registry.py::test_swapping_two_bindings_is_atomic": 1,
+    "tests/ui/test_command_registry.py::test_unknown_commands_and_bad_maps_fail_without_registry_mutation": 1,
+    "tests/ui/test_command_registry.py::test_conflicting_registration_and_repeated_ids_leave_registry_intact": 1,
+    "tests/ui/test_command_registry.py::test_command_identity_and_labels_are_validated": 6,
+    "tests/ui/test_command_registry.py::test_command_collection_is_bounded_and_read_only": 1,
+    "tests/storage/test_keyboard_preferences.py::test_first_run_is_read_only_and_save_roundtrips": 1,
+    "tests/storage/test_keyboard_preferences.py::test_corrupt_settings_are_never_overwritten_by_load": 17,
+    "tests/storage/test_keyboard_preferences.py::test_oversized_binding_population_is_rejected": 1,
+    "tests/storage/test_keyboard_preferences.py::test_invalid_save_never_changes_disk_or_caller_mapping": 1,
+    "tests/storage/test_keyboard_preferences.py::test_io_failure_before_commit_preserves_previous_file_and_removes_temporary": 2,
+    "tests/storage/test_keyboard_preferences.py::test_other_window_edit_is_reported_without_losing_newer_settings": 1,
+    "tests/storage/test_keyboard_preferences.py::test_external_deletion_is_not_silently_recreated": 1,
+    "tests/storage/test_keyboard_preferences.py::test_directory_and_symlink_targets_are_refused": 1,
+    "tests/storage/test_keyboard_preferences.py::test_known_version_file_still_requires_registry_validation": 1,
+    "tests/storage/test_keyboard_preferences.py::test_corrupt_load_still_detects_external_change_before_explicit_repair": 1,
+    "tests/storage/test_keyboard_preferences.py::test_explicit_repair_of_unchanged_corrupt_file_is_possible": 1,
+    "tests/storage/test_keyboard_preferences.py::test_hard_link_settings_and_lock_are_rejected_without_touching_original": 1,
+    "tests/storage/test_keyboard_preferences.py::test_windows_reparse_attribute_is_rejected_even_without_posix_symlink": 1,
+    "tests/storage/test_keyboard_preferences.py::test_backup_validator_preserves_inert_future_commands_but_requires_bounded_strict_bytes": 1,
+    "tests/storage/test_keyboard_preferences.py::test_external_edit_during_temporary_write_is_preserved": 1,
+    "tests/ui/test_keyboard_manager.py::test_keymap_export_keeps_file_changed_during_validation": 2,
+    "tests/ui/test_keyboard_manager.py::test_apply_and_reopen_preserve_semantic_bindings_and_menu_display": 1,
+    "tests/ui/test_keyboard_manager.py::test_rejected_maps_leave_active_persisted_and_native_menu_state_unchanged": 4,
+    "tests/ui/test_keyboard_manager.py::test_native_parser_failure_happens_before_any_change": 1,
+    "tests/ui/test_keyboard_manager.py::test_storage_failure_does_not_change_live_or_saved_bindings": 1,
+    "tests/ui/test_keyboard_manager.py::test_native_apply_failure_on_first_save_does_not_create_a_settings_file": 1,
+    "tests/ui/test_keyboard_manager.py::test_native_apply_failure_cannot_commit_then_require_a_second_disk_write": 1,
+    "tests/ui/test_keyboard_manager.py::test_rejected_extension_registration_does_not_leave_partial_command_or_binding": 3,
+    "tests/ui/test_keyboard_manager.py::test_explicit_late_command_registration_is_discoverable_and_rebindable": 1,
+    "tests/ui/test_keyboard_manager.py::test_startup_saved_binding_conflicting_with_new_unmanaged_menu_uses_safe_defaults": 1,
+    "tests/ui/test_keyboard_manager.py::test_startup_default_collision_is_unassigned_with_notice_and_no_disk_write": 1,
+    "tests/ui/test_keyboard_manager.py::test_unknown_menu_shortcut_is_a_real_conflict": 1,
+    "tests/ui/test_keyboard_manager.py::test_disabled_native_item_or_parent_is_unavailable": 1,
+    "tests/ui/test_keyboard_manager.py::test_root_change_loads_the_new_folders_map_without_overwriting_either": 1,
+    "tests/ui/test_keyboard_manager.py::test_invalid_import_keeps_draft_live_map_and_persisted_settings": 4,
+    "tests/ui/test_keyboard_manager.py::test_valid_import_is_only_a_draft_until_save": 1,
+    "tests/ui/test_keyboard_manager.py::test_settings_open_before_root_change_cannot_save_into_new_library": 1,
+    "tests/ui/test_keyboard_manager.py::test_pending_saved_module_map_activates_only_after_all_command_ids_are_known": 1,
+    "tests/ui/test_keyboard_manager.py::test_native_registration_failure_rolls_back_registry_bindings_and_active_profile": 1,
+    "tests/ui/test_keyboard_manager.py::test_failed_registration_cannot_partly_activate_a_pending_saved_map": 1,
+    "tests/ui/test_keyboard_manager.py::test_inserted_top_level_menu_does_not_change_enablement_of_registered_command": 1,
+    "tests/ui/test_keyboard_manager.py::test_registration_queued_before_installation_preserves_saved_module_profile": 1,
+    "tests/ui/test_keyboard_manager.py::test_legacy_menu_map_migrates_once_without_changing_original": 1,
+    "tests/ui/test_keyboard_manager.py::test_incompatible_legacy_map_preserves_bytes_and_current_defaults": 2,
+    "tests/ui/test_save_all.py::test_coordinator_follows_native_parent_links_and_rejects_a_cycle": 1,
+    "tests/ui/test_save_all.py::test_many_clean_documents_do_not_exhaust_the_ui_stack": 1,
+    "tests/ui/test_save_all.py::test_many_synchronous_durable_saves_finish_once_without_recursion": 1,
+    "tests/ui/test_save_all.py::test_cancel_check_failure_releases_busy_and_retains_drafts": 1,
+    "tests/ui/test_save_all.py::test_async_completion_waits_for_durable_result_and_preserves_newer_edit": 1,
+    "tests/ui/test_save_all.py::test_failure_does_not_skip_other_drafts_or_claim_all_saved": 1,
+    "tests/ui/test_save_all.py::test_newly_opened_dirty_document_prevents_false_complete": 1,
+    "tests/ui/test_save_all.py::test_cancellation_after_one_completed_draft_reports_remaining": 1,
+    "tests/ui/test_save_all.py::test_unregister_is_lease_scoped_and_replacement_is_not_lost": 1,
+    "tests/ui/test_save_all.py::test_truthy_return_is_not_a_completed_save": 1,
+    "tests/ui/test_save_all.py::test_close_waits_for_successful_completion_and_rechecks_at_dispatch": 1,
+    "tests/ui/test_save_all.py::test_failed_save_cancels_pending_close_and_preserves_dirty_state": 1,
+    "tests/ui/test_save_all.py::test_edit_between_save_confirmation_and_close_dispatch_keeps_window_open": 1,
+    "tests/ui/test_save_all.py::test_late_save_completion_never_touches_a_destroyed_window": 1,
+    "tests/ui/test_save_all.py::test_late_close_dispatch_never_touches_a_destroyed_window": 1,
+    "tests/ui/test_save_all.py::test_close_validation_failure_is_visible_and_cannot_destroy_the_window": 1,
+    "tests/ui/test_save_all.py::test_forced_shutdown_is_not_falsely_claimed_to_be_delayed": 1,
+    "tests/ui/test_save_all.py::test_late_cancel_after_final_durable_save_is_complete": 1,
+    "tests/ui/test_save_all.py::test_late_cancel_with_clean_tail_is_complete": 1,
+    "tests/ui/test_save_all.py::test_cancel_before_saving_clean_drafts_does_not_invent_unsaved_changes": 1,
+    "tests/ui/test_save_all.py::test_cancel_with_newer_edits_still_reports_unsaved_changes": 1,
+    "tests/ui/test_save_all.py::test_cancel_after_failed_save_not_misreported_as_complete": 1,
+    "tests/ui/test_save_all.py::test_failed_old_save_does_not_hide_replacement_draft": 1,
+    "tests/ui/test_save_all.py::test_failed_old_save_does_not_focus_clean_replacement": 1,
+    "tests/ui/test_save_all.py::test_queued_replacement_is_reported_separately_and_never_saved_under_old_registration": 1,
+    "tests/ui/test_save_all.py::test_focus_rechecks_registration_after_completion_notification": 1,
+    "tests/ui/test_save_all.py::test_live_failed_registration_retains_its_own_focus": 1,
+    "tests/ui/test_save_all.py::test_focus_chooses_first_usable_live_failed_draft": 3,
+    "tests/ui/test_save_all.py::test_focus_skips_replaced_registration_and_unavailable_target": 1,
+    "tests/ui/test_save_all_current_drafts.py::test_save_all_writes_current_managed_studio_and_reading_copy_without_source_edits": 1,
+    "tests/ui/test_save_all_current_drafts.py::test_studio_conflict_retains_the_other_writer_and_saves_other_open_drafts": 1,
+    "tests/ui/test_save_all_current_drafts.py::test_running_studio_job_is_reported_as_pending_without_a_concurrent_save": 1,
+    "tests/ui/test_desktop_evidence_jobs.py::test_refresh_and_selection_resolve_sources_outside_the_ui_thread": 1,
+    "tests/ui/test_desktop_evidence_jobs.py::test_queued_initial_load_does_not_touch_a_closed_frame": 1,
+    "tests/ui/test_desktop_evidence_jobs.py::test_note_commits_in_worker_and_updates_ui_only_after_commit": 1,
+    "tests/ui/test_desktop_evidence_jobs.py::test_commit_failure_preserves_draft_and_allows_retry": 1,
+    "tests/ui/test_desktop_evidence_jobs.py::test_late_refresh_never_replaces_closed_or_changed_view": 3,
+    "tests/ui/test_desktop_evidence_jobs.py::test_cancelled_refresh_keeps_the_existing_draft": 1,
+    "tests/ui/test_desktop_evidence_jobs.py::test_cancelled_selection_restores_draft_row_for_immediate_save_retry": 1,
+    "tests/ui/test_desktop_evidence_jobs.py::test_newer_draft_is_not_replaced_by_an_earlier_refresh": 1,
+    "tests/ui/test_desktop_evidence_jobs.py::test_save_completion_is_acknowledged_only_after_the_real_transaction": 1,
+    "tests/ui/test_desktop_evidence_jobs.py::test_save_all_keeps_real_newer_note_edits_and_reports_the_remaining_draft": 1,
+    "tests/ui/test_desktop_evidence_jobs.py::test_save_completion_failure_keeps_the_actual_transaction_rolled_back": 1,
+    "tests/ui/test_desktop_evidence_jobs.py::test_late_saved_note_acknowledges_changed_view_without_overwriting_it": 3,
+    "tests/ui/test_desktop_evidence_jobs.py::test_save_requested_after_closing_never_starts_a_worker": 1,
+    "tests/ui/test_reader_command_dispatch.py::test_busy_command_cannot_overlap_work_or_undo_pending_cancellation": 8,
+    "tests/ui/test_reader_command_dispatch.py::test_worker_completion_alone_never_advances_display_resume_or_history": 1,
+    "tests/ui/test_reader_command_dispatch.py::test_cancel_after_worker_completion_rejects_queued_page_without_persisting_it": 1,
+    "tests/ui/test_reader_command_dispatch.py::test_changed_scope_after_worker_completion_rejects_queued_page": 1,
+    "tests/ui/test_reader_command_dispatch.py::test_close_after_worker_completion_never_touches_destroyed_native_controls": 1,
+    "tests/ui/test_reader_command_dispatch.py::test_closed_reader_cannot_submit_another_navigation": 1,
+    "tests/ui/test_reader_command_dispatch.py::test_close_cancels_unstarted_work_without_late_ui_delivery": 1,
+    "tests/ui/test_reader_command_dispatch.py::test_submission_failure_restores_controls_without_false_navigation": 1,
+    "tests/ui/test_reader_keymap_context.py::test_context_reuse_dispatches_only_to_the_active_reader": 1,
+    "tests/ui/test_reader_keymap_context.py::test_remap_refreshes_all_open_readers_without_changing_other_context_defaults": 1,
+    "tests/ui/test_reader_keymap_context.py::test_reset_and_unassign_remove_old_accelerators_in_every_open_reader": 1,
+    "tests/ui/test_reader_keymap_context.py::test_conflicting_remap_preserves_persisted_keymap_and_all_active_native_tables": 1,
+    "tests/ui/test_reader_keymap_context.py::test_accelerator_callback_cannot_bypass_command_availability": 4,
+    "tests/ui/test_reader_keymap_context.py::test_disposed_reader_drops_bound_and_queued_callbacks_and_is_not_refreshed": 1,
+    "tests/ui/test_reader_keymap_context.py::test_reader_launcher_and_settings_do_not_open_from_an_unavailable_context": 2,
+    "tests/storage/test_evidence_drafts.py::test_unicode_and_empty_note_drafts_survive_restart_without_committing": 1,
+    "tests/storage/test_evidence_drafts.py::test_stale_editor_cannot_replace_or_remove_newer_draft": 1,
+    "tests/storage/test_evidence_drafts.py::test_saved_note_and_source_changes_are_distinguished_from_recovery": 1,
+    "tests/storage/test_evidence_drafts.py::test_distinct_scopes_merge_without_eviction": 1,
+    "tests/storage/test_evidence_drafts.py::test_invalid_saved_note_can_still_have_a_bounded_recovery_copy": 1,
+    "tests/storage/test_evidence_drafts.py::test_disk_failure_preserves_previous_checkpoint_and_cleans_temp": 1,
+    "tests/storage/test_evidence_drafts.py::test_directory_fsync_failure_returns_committed_revision_and_warning": 1,
+    "tests/storage/test_evidence_drafts.py::test_invalid_existing_storage_is_not_silently_reset": 7,
+    "tests/storage/test_evidence_drafts.py::test_duplicate_scoped_draft_is_rejected": 1,
+    "tests/storage/test_evidence_drafts.py::test_existing_directory_and_hardlink_are_not_followed": 1,
+    "tests/storage/test_evidence_drafts.py::test_busy_library_writer_does_not_destroy_existing_draft": 1,
+    "tests/storage/test_evidence_drafts.py::test_limits_reject_new_entries_without_evicting_old_notes": 1,
+    "tests/storage/test_evidence_drafts.py::test_checkpoint_survives_process_exit_without_destructors": 1,
+    "tests/ui/test_evidence_draft_recovery.py::test_explicit_recover_restores_editor_only_after_authorization": 1,
+    "tests/ui/test_evidence_draft_recovery.py::test_discard_and_keep_choices_do_not_replace_saved_note": 2,
+    "tests/ui/test_evidence_draft_recovery.py::test_revocation_during_native_confirmation_never_reveals_draft": 1,
+    "tests/ui/test_evidence_draft_recovery.py::test_changed_note_baseline_can_only_be_reviewed_without_replacing_editor": 1,
+    "tests/ui/test_evidence_draft_recovery.py::test_stale_confirmation_never_overwrites_newer_recovery_revision": 1,
+    "tests/ui/test_evidence_draft_recovery.py::test_successful_save_removes_only_saved_checkpoint": 1,
+    "tests/ui/test_evidence_draft_recovery.py::test_newer_edit_during_save_is_checkpointed_against_new_saved_baseline": 1,
+    "tests/ui/test_evidence_draft_recovery.py::test_failed_note_commit_preserves_exact_recovery_revision": 1,
+    "tests/ui/test_evidence_draft_recovery.py::test_panel_destruction_flushes_cached_pending_text_without_reading_controls": 1,
+    "tests/ui/test_evidence_draft_recovery.py::test_explicit_discard_does_not_recreate_draft_during_destruction": 1,
+    "tests/ui/test_evidence_draft_recovery.py::test_destroy_unbinds_exact_timer_and_queued_callback_cannot_retry_failed_checkpoint": 1,
+    "tests/ui/test_evidence_draft_recovery.py::test_child_destruction_preserves_live_recovery_timer_and_real_checkpoint": 1,
+    "tests/ui/test_evidence_draft_recovery.py::test_corrupt_recovery_storage_reports_error_and_keeps_editor": 1,
+    "tests/ui/test_evidence_draft_recovery.py::test_declined_or_failed_discard_keeps_scope_open": 1,
+    "tests/ui/test_evidence_draft_recovery.py::test_save_all_waits_for_actual_note_commit_and_retains_newer_edit": 1,
+    "tests/ui/test_evidence_draft_recovery.py::test_save_all_never_claims_a_blocked_or_stale_note_was_saved": 3
+  },
+  "native": [
+    {
+      "probe": "tests/ui/native_keyboard_settings_smoke.py",
+      "actual_label_count": 35,
+      "observed_labels": [
+        "production DesktopFrame opens the synthetic evidence topic",
+        "probe starts with a real unsaved research note",
+        "application and keyboard modules load from the installed distribution",
+        "extension command uses the production stable-ID registry",
+        "actual default shortcut dispatches the current native menu handler",
+        "settings use named native controls in a real modal dialog",
+        "native Assign edits a draft before persistence",
+        "native Save closes the settings dialog successfully",
+        "saved native settings persist a semantic command ID and update the menu",
+        "saving keyboard settings preserves the complete unsaved research note",
+        "old native menu accelerator stops after remapping",
+        "new native menu accelerator dispatches exactly once",
+        "actual shortcut cannot dispatch a disabled native menu item",
+        "cancel probe chooses an available integrated shortcut",
+        "settings use named native controls in a real modal dialog",
+        "cancel probe has an unapplied native settings draft",
+        "actual Escape cancels the native settings dialog",
+        "Cancel preserves the saved keymap bytes and active binding",
+        "Cancel preserves the complete unsaved evidence note",
+        "settings use named native controls in a real modal dialog",
+        "conflicting shortcut remains in the open native settings dialog",
+        "failed native Save preserves the previous file, binding, source, and note",
+        "rejected settings can be cancelled without publication",
+        "settings use named native controls in a real modal dialog",
+        "native settings support explicit unassignment",
+        "unassigned native accelerator no longer dispatches",
+        "native launcher finds an available command with no assigned shortcut",
+        "native launcher invokes the original current menu handler",
+        "settings use named native controls in a real modal dialog",
+        "native reset selects the original command shortcut",
+        "native settings save the reset shortcut",
+        "reset removes the previously custom native accelerator",
+        "reset restores the original native accelerator",
+        "native Ctrl+A still selects editable note text",
+        "all keyboard workflows preserve the original data root, source, saved note, and unsaved draft"
+      ],
+      "receipt": {
+        "checks": 35,
+        "native_key_backend": "wx.UIActionSimulator",
+        "nvda": "NOT_RUN",
+        "origins": {
+          "carr_library.application": "D:\\a\\_temp\\carr-keyboard-python\\Lib\\site-packages\\carr_library\\application.py",
+          "carr_library.keyboard_preferences": "D:\\a\\_temp\\carr-keyboard-python\\Lib\\site-packages\\carr_library\\keyboard_preferences.py",
+          "carr_library.ui.desktop_app": "D:\\a\\_temp\\carr-keyboard-python\\Lib\\site-packages\\carr_library\\ui\\desktop_app.py",
+          "carr_library.ui.keyboard_settings": "D:\\a\\_temp\\carr-keyboard-python\\Lib\\site-packages\\carr_library\\ui\\keyboard_settings.py"
+        },
+        "platform": "Windows",
+        "settings_controls": "native; command filter and shortcut text supplied by probe",
+        "source_override": null,
+        "status": "PASS",
+        "wx": "4.2.4 msw (phoenix) wxWidgets 3.2.8"
+      }
+    },
+    {
+      "probe": "tests/ui/native_reader_keymap_smoke.py",
+      "actual_label_count": 23,
+      "observed_labels": [
+        "modal reader opens the first exact source",
+        "reader is tested in a real native modal context",
+        "reader exposes the shared configurable command adapter",
+        "reader and keyboard modules load from the installed distribution",
+        "actual Ctrl+PageDown opens the next source",
+        "actual Ctrl+PageUp opens the previous source",
+        "actual Where am I shortcut focuses the named native location control",
+        "actual bookmark shortcut persists the current source location",
+        "shared chord dispatches to Reader bookmarks in the modal context",
+        "old next shortcut is inactive after remapping",
+        "new next shortcut dispatches the real source navigation",
+        "unmodified previous shortcut still works after remapping",
+        "native keyboard guide reports the current remapped shortcut",
+        "shortcut cannot bypass an explicitly disabled native command",
+        "reader operation is held while its native commands are disabled",
+        "busy native shortcuts neither open prompts nor clear pending cancellation",
+        "cancelled work leaves the displayed and persisted source unchanged",
+        "reset removes the custom native shortcut",
+        "reset restores the default native shortcut",
+        "keyboard reading preserves the unsaved host note and citation state",
+        "actual Escape closes the modal Reader",
+        "host accepts native keyboard focus after Reader closes",
+        "same chord invokes the host context only after Reader closes"
+      ],
+      "receipt": {
+        "checks": 23,
+        "native_key_backend": "wx.UIActionSimulator",
+        "nvda": "NOT_RUN",
+        "origins": {
+          "carr_library.reader.reading_desk": "D:\\a\\_temp\\carr-keyboard-python\\Lib\\site-packages\\carr_library\\reader\\reading_desk.py",
+          "carr_library.reader.reading_state": "D:\\a\\_temp\\carr-keyboard-python\\Lib\\site-packages\\carr_library\\reader\\reading_state.py",
+          "carr_library.ui.reading_desk": "D:\\a\\_temp\\carr-keyboard-python\\Lib\\site-packages\\carr_library\\ui\\reading_desk.py",
+          "carr_library.ui.reading_shortcuts": "D:\\a\\_temp\\carr-keyboard-python\\Lib\\site-packages\\carr_library\\ui\\reading_shortcuts.py"
+        },
+        "platform": "Windows",
+        "source_override": null,
+        "status": "PASS",
+        "wx": "4.2.4 msw (phoenix) wxWidgets 3.2.8"
+      }
+    },
+    {
+      "probe": "tests/ui/native_evidence_drafts_smoke.py",
+      "actual_label_count": 15,
+      "observed_labels": [
+        "recovery code is loaded from the installed package",
+        "native evidence asynchronously loads its authorized source",
+        "note is a named native editable text control",
+        "recovery is available as a named native button",
+        "native text event publishes its first recovery checkpoint",
+        "destroy flushes pending native edit to the actual sidecar",
+        "destroyed native owner stops its timer and rejects queued checkpoint work",
+        "recovery checkpoint does not commit research note",
+        "keyboard recovery restores exact text into reopened native editor",
+        "recovery returns keyboard focus to the note",
+        "restored draft remains unsaved until explicit Save",
+        "Save note receives actual keyboard focus",
+        "native Space key activates Save note",
+        "native save commits note and removes its recovery copy",
+        "no native background or keyboard error occurred"
+      ],
+      "receipt": {
+        "checks": 15,
+        "nvda": "NOT_RUN",
+        "origins": {
+          "carr_library.evidence_drafts": "D:\\a\\_temp\\carr-keyboard-python\\Lib\\site-packages\\carr_library\\evidence_drafts.py",
+          "carr_library.ui.desktop_evidence_panel": "D:\\a\\_temp\\carr-keyboard-python\\Lib\\site-packages\\carr_library\\ui\\desktop_evidence_panel.py"
+        },
+        "platform": "Windows",
+        "source_override": null,
+        "status": "PASS",
+        "wx": "4.2.4 msw (phoenix) wxWidgets 3.2.8"
+      }
+    },
+    {
+      "probe": "tests/ui/native_save_all_smoke.py",
+      "actual_label_count": 38,
+      "observed_labels": [
+        "real Windows native controls",
+        "save implementation loaded from installed package",
+        "native_edit_menu_has_six_named_actions",
+        "native_recovery_and_edit_commands_use_current_registry",
+        "native_edit_undo_restores_previous_draft",
+        "native_edit_redo_obeys_current_control_capability",
+        "native_edit_copy_keeps_exact_draft",
+        "native_edit_cut_changes_only_selected_draft",
+        "native_edit_paste_restores_exact_unicode",
+        "native_edit_select_all_covers_current_control",
+        "native_edit_refuses_readonly_mutation",
+        "native_file_recovery_requires_explicit_choice",
+        "native_file_recovery_keeps_saved_note_and_original_unchanged",
+        "reading editor shares the main Save All coordinator",
+        "native button handler: Save all open drafts",
+        "Save All waits for the real note transaction",
+        "note is uncommitted while the worker is held",
+        "native button handler: C&lose",
+        "native Close keeps the editor open during save",
+        "reading draft survives the complete native event flow",
+        "successful pending close follows both durable writes",
+        "closed reading editor unregisters its save participant",
+        "reading editor shares the main Save All coordinator",
+        "native button handler: Save all open drafts",
+        "Save All waits for the real note transaction",
+        "note is uncommitted while the worker is held",
+        "native button handler: C&lose",
+        "native Close keeps the editor open during save",
+        "failed note commit cancels the pending close",
+        "failed note remains editable and baseline is preserved",
+        "another valid reading draft still saves after the failure",
+        "reading draft survives the complete native event flow",
+        "closed reading editor unregisters its save participant",
+        "existing File Save All command reaches the native handler",
+        "native main close is deferred during the write",
+        "main close occurs after the note is committed",
+        "all save operations preserve immutable retained source bytes",
+        "no native callback failed"
+      ],
+      "receipt": {
+        "actual_windows": true,
+        "checks": [
+          "real Windows native controls",
+          "save implementation loaded from installed package",
+          "native_edit_menu_has_six_named_actions",
+          "native_recovery_and_edit_commands_use_current_registry",
+          "native_edit_undo_restores_previous_draft",
+          "native_edit_redo_obeys_current_control_capability",
+          "native_edit_copy_keeps_exact_draft",
+          "native_edit_cut_changes_only_selected_draft",
+          "native_edit_paste_restores_exact_unicode",
+          "native_edit_select_all_covers_current_control",
+          "native_edit_refuses_readonly_mutation",
+          "native_file_recovery_requires_explicit_choice",
+          "native_file_recovery_keeps_saved_note_and_original_unchanged",
+          "reading editor shares the main Save All coordinator",
+          "native button handler: Save all open drafts",
+          "Save All waits for the real note transaction",
+          "note is uncommitted while the worker is held",
+          "native button handler: C&lose",
+          "native Close keeps the editor open during save",
+          "reading draft survives the complete native event flow",
+          "successful pending close follows both durable writes",
+          "closed reading editor unregisters its save participant",
+          "reading editor shares the main Save All coordinator",
+          "native button handler: Save all open drafts",
+          "Save All waits for the real note transaction",
+          "note is uncommitted while the worker is held",
+          "native button handler: C&lose",
+          "native Close keeps the editor open during save",
+          "failed note commit cancels the pending close",
+          "failed note remains editable and baseline is preserved",
+          "another valid reading draft still saves after the failure",
+          "reading draft survives the complete native event flow",
+          "closed reading editor unregisters its save participant",
+          "existing File Save All command reaches the native handler",
+          "native main close is deferred during the write",
+          "main close occurs after the note is committed",
+          "all save operations preserve immutable retained source bytes",
+          "no native callback failed"
+        ],
+        "deferred_close": "PASS",
+        "durable_stores": "PASS",
+        "isolated": true,
+        "metrics": {
+          "edit_commands": 6,
+          "failed_save_scenarios": 1,
+          "recovery_dialogs": 1,
+          "successful_save_scenarios": 1
+        },
+        "module_origins": {
+          "carr_library.evidence_drafts": {
+            "path": "D:\\a\\_temp\\carr-keyboard-python\\Lib\\site-packages\\carr_library\\evidence_drafts.py",
+            "sha256": "0e3e7dc501ae97b69bba7092f874458f9db4d784a831723e1cc276273c61361d"
+          },
+          "carr_library.ui.desktop_app": {
+            "path": "D:\\a\\_temp\\carr-keyboard-python\\Lib\\site-packages\\carr_library\\ui\\desktop_app.py",
+            "sha256": "ee90a47c87d43c6d3556e427eeb52954b12425f6b85540952e7e169d82d5ca17"
+          },
+          "carr_library.ui.desktop_evidence_panel": {
+            "path": "D:\\a\\_temp\\carr-keyboard-python\\Lib\\site-packages\\carr_library\\ui\\desktop_evidence_panel.py",
+            "sha256": "7fcb865418d93fd81ef525742685a60e0f73ce2072b0c817f3dc5645cb57d06c"
+          },
+          "carr_library.ui.keyboard_settings": {
+            "path": "D:\\a\\_temp\\carr-keyboard-python\\Lib\\site-packages\\carr_library\\ui\\keyboard_settings.py",
+            "sha256": "be9aacf22fc20b0e40a7d11046d639b7f8b545d31808d378817e29947c960548"
+          },
+          "carr_library.ui.narration_editor": {
+            "path": "D:\\a\\_temp\\carr-keyboard-python\\Lib\\site-packages\\carr_library\\ui\\narration_editor.py",
+            "sha256": "70f88f59beb37485f0dbdf6bd8aa9c94b8d1d3de82d2ac22ad35a86e316911d9"
+          },
+          "carr_library.ui.productivity": {
+            "path": "D:\\a\\_temp\\carr-keyboard-python\\Lib\\site-packages\\carr_library\\ui\\productivity.py",
+            "sha256": "a88afba19542aa23368865d592b3e37e77a32ec46013455793e135fae800a767"
+          },
+          "carr_library.ui.save_all": {
+            "path": "D:\\a\\_temp\\carr-keyboard-python\\Lib\\site-packages\\carr_library\\ui\\save_all.py",
+            "sha256": "88bd92eeca43127b8ec553f7e8c7201bbd7657a60c7118fa3c09f342bbe942d3"
+          }
+        },
+        "native_controls": true,
+        "native_events": "PASS",
+        "nvda": "NOT_RUN",
+        "physical_audio": "NOT_RUN",
+        "status": "PASS",
+        "total_checks": 38,
+        "wx": "4.2.4 msw (phoenix) wxWidgets 3.2.8"
+      }
+    },
+    {
+      "probe": "scripts/windows_progress_smoke.py",
+      "actual_label_count": 35,
+      "observed_labels": [
+        "installed exact source: carr_library.ui.operation_progress",
+        "installed exact source: carr_library.ui.desktop_app",
+        "canonical desktop opens",
+        "named native gauge with bounded range",
+        "progress label has an accessible name",
+        "notification defaults to Off",
+        "actual worker reports zero of four",
+        "native focus reaches button",
+        "measured 1 of four displays 25 percent",
+        "automatic update 1 preserves focus",
+        "native focus reaches button",
+        "measured 2 of four displays 50 percent",
+        "automatic update 2 preserves focus",
+        "OS injects current-progress shortcut",
+        "real busy-time query dispatch",
+        "native focus reaches button",
+        "measured 3 of four displays 75 percent",
+        "automatic update 3 preserves focus",
+        "native focus reaches button",
+        "measured 4 of four displays 99 percent",
+        "automatic update 4 preserves focus",
+        "100 follows the service verified publication",
+        "completion callback sees durable output",
+        "verified operation reaches 100 after callback",
+        "indeterminate worker starts",
+        "stale worker cannot mutate current operation",
+        "native focus reaches button",
+        "OS injects cancel button Space",
+        "actual cancellation is distinct from success",
+        "actual output commits before cancellation request",
+        "native focus reaches button",
+        "OS injects late cancellation request",
+        "late cancellation request arrives",
+        "committed success remains success after late request",
+        "durable output survives late request"
+      ],
+      "receipt": {
+        "status": "PASS",
+        "checks": [
+          "installed exact source: carr_library.ui.operation_progress",
+          "installed exact source: carr_library.ui.desktop_app",
+          "canonical desktop opens",
+          "named native gauge with bounded range",
+          "progress label has an accessible name",
+          "notification defaults to Off",
+          "actual worker reports zero of four",
+          "native focus reaches button",
+          "measured 1 of four displays 25 percent",
+          "automatic update 1 preserves focus",
+          "native focus reaches button",
+          "measured 2 of four displays 50 percent",
+          "automatic update 2 preserves focus",
+          "OS injects current-progress shortcut",
+          "real busy-time query dispatch",
+          "native focus reaches button",
+          "measured 3 of four displays 75 percent",
+          "automatic update 3 preserves focus",
+          "native focus reaches button",
+          "measured 4 of four displays 99 percent",
+          "automatic update 4 preserves focus",
+          "100 follows the service verified publication",
+          "completion callback sees durable output",
+          "verified operation reaches 100 after callback",
+          "indeterminate worker starts",
+          "stale worker cannot mutate current operation",
+          "native focus reaches button",
+          "OS injects cancel button Space",
+          "actual cancellation is distinct from success",
+          "actual output commits before cancellation request",
+          "native focus reaches button",
+          "OS injects late cancellation request",
+          "late cancellation request arrives",
+          "committed success remains success after late request",
+          "durable output survives late request"
+        ],
+        "actual_native_keys": true,
+        "nvda": "NOT_RUN",
+        "audio_listening": "NOT_RUN",
+        "voice_synthesis": "NOT_RUN"
+      }
+    }
+  ],
+  "source_files": {
+    ".github/workflows/carr-windows.yml": {
+      "git_blob": "48ce451b12048babec276abd8f60cd9698b3c954",
+      "sha256": "2c1b1389424b84368181c792f2a035eb38e91b3a864bec9bbf0fb0674ebf9f48"
+    },
+    "carr-library/scripts/ci_check.py": {
+      "git_blob": "5937231e2f3a00a163b0e10b9707df27f279b134",
+      "sha256": "fb1d512e25adce4a9bcadeabd280fc8e2d0a0ed417019384934aa1da65c977df"
+    },
+    "carr-library/tests/ui/native_keyboard_settings_smoke.py": {
+      "git_blob": "a14da51e452274ad5fda7a5c0b16e2ec16396231",
+      "sha256": "8f2042e5c828a17ba6e09242d846db85691305bbf143aed1b3d71e8efdd8161c"
+    },
+    "carr-library/tests/ui/native_reader_keymap_smoke.py": {
+      "git_blob": "45bcb63a6bc82767010678ec8033d677131c3b5a",
+      "sha256": "46881c0bf74819f461b11fb4f22f07aa70ada9813c7ea5f4b4e97d0415c6e5b7"
+    },
+    "carr-library/tests/ui/native_evidence_drafts_smoke.py": {
+      "git_blob": "21e7e60e51bf03176022b28443b0c4f16c08acbf",
+      "sha256": "6b9a16148c94bc75eb4eed0939c40dd5a859f7ce623839beec4adce6949fccbe"
+    },
+    "carr-library/tests/ui/native_save_all_smoke.py": {
+      "git_blob": "74c167447d7fd980c024ce9bc77c319ea5e618a8",
+      "sha256": "41c119103d90618667edb73de4af0a3659e9f850321e61b82191642fb74642d1"
+    },
+    "carr-library/scripts/windows_progress_smoke.py": {
+      "git_blob": "336ac577e0f6adc88d874481de72d26a6d60ec5b",
+      "sha256": "4af459ad689beba71e9a7d94bea05a43b2bc0eb69f167f3fc67a75ebd701228f"
+    },
+    "carr-library/tests/ui/test_keyboard_registration_compatibility.py": {
+      "git_blob": "8db72a6cecbe5e090f1f0b820bb5f9189d14b92b",
+      "sha256": "7ecccbf2203ea1d61955842252a8cadd81dcbd2cc01c8b1b8f8444b531864e31"
+    },
+    "carr-library/tests/ui/test_command_registry.py": {
+      "git_blob": "50e42e73a7e07a9569ffec1c139520e610f6aedc",
+      "sha256": "7639923fde9d9fea8a59cf49b87c637488e430481ce4e8376f412dacfc9f0c54"
+    },
+    "carr-library/tests/storage/test_keyboard_preferences.py": {
+      "git_blob": "a2b12f19dc58974ce56d70d8262ac077ba1ce3d0",
+      "sha256": "c476609f518c07ba7f6f453088900a3de941fb3d1a18be724a53610db756d769"
+    },
+    "carr-library/tests/ui/test_keyboard_manager.py": {
+      "git_blob": "13a3dc0865c1619ad3c525f7c721284c852ca62f",
+      "sha256": "4656085b9d79ba4675d832587f541891f0a6c6e387e91d4802ceb2edabf3664b"
+    },
+    "carr-library/tests/ui/test_save_all.py": {
+      "git_blob": "6757253dec78348cf27c4719cc3f034105ab935a",
+      "sha256": "f812ea52074ffa138b363a446c0558a99164d627f85bb626981d4265d354f931"
+    },
+    "carr-library/tests/ui/test_save_all_current_drafts.py": {
+      "git_blob": "c3ca05388704e699ec04ad44475fe108237e9df1",
+      "sha256": "b3fb4a602a956f19d146ee33a5c5496cce7efe04f4d109f510ae511db9436e78"
+    },
+    "carr-library/tests/ui/test_desktop_evidence_jobs.py": {
+      "git_blob": "b3fd65427b680c79475395e33bc4b0c311fbb104",
+      "sha256": "c471af5cc8b2b50a7649c101647f2a89ea44c03b059c867fa2be8cee490b6e5f"
+    },
+    "carr-library/tests/ui/test_reader_command_dispatch.py": {
+      "git_blob": "04e59448987c4b84f18bf1a62110d1120d78b041",
+      "sha256": "3aa2421c633ecb9a0c3acd873b6062d7c7675d89b3365dbfc5e8911baf9138b2"
+    },
+    "carr-library/tests/ui/test_reader_keymap_context.py": {
+      "git_blob": "ccc6d520b449113a9c63f8b586cac917682f6280",
+      "sha256": "c75e634a18d43cfa6d0baa2b4a1941d1c3c9e0a0dc36a69361aeaa1dade5ce91"
+    },
+    "carr-library/tests/storage/test_evidence_drafts.py": {
+      "git_blob": "6478be38517786c48e56ab7865a18eacea88b253",
+      "sha256": "2c3003d45ecf45cef4ec84af071f6290c01de6b839fa24737548367cfd195e42"
+    },
+    "carr-library/tests/ui/test_evidence_draft_recovery.py": {
+      "git_blob": "909dfdbe61d9154631a22733e35ee1ca799f4f3f",
+      "sha256": "d3e571d21451288bb846e2a422be18fd2523891ab1a22db11d9d8058c3ed8531"
+    },
+    "carr-library/src/carr_library/evidence_drafts.py": {
+      "git_blob": "345789646032ad8b61f2ec4a7eb601f1d6bf6b39",
+      "sha256": "0e3e7dc501ae97b69bba7092f874458f9db4d784a831723e1cc276273c61361d"
+    },
+    "carr-library/src/carr_library/ui/desktop_app.py": {
+      "git_blob": "94fde0a14c7243983e3b1fa0ee1362bc014e2100",
+      "sha256": "ee90a47c87d43c6d3556e427eeb52954b12425f6b85540952e7e169d82d5ca17"
+    },
+    "carr-library/src/carr_library/ui/desktop_evidence_panel.py": {
+      "git_blob": "1043da325fb6b7de3c7855dcf468e20f351032aa",
+      "sha256": "7fcb865418d93fd81ef525742685a60e0f73ce2072b0c817f3dc5645cb57d06c"
+    },
+    "carr-library/src/carr_library/ui/keyboard_settings.py": {
+      "git_blob": "58912be85954a059c680783ccda66769757ec491",
+      "sha256": "be9aacf22fc20b0e40a7d11046d639b7f8b545d31808d378817e29947c960548"
+    },
+    "carr-library/src/carr_library/ui/narration_editor.py": {
+      "git_blob": "da98eddc262c4fff582d742fc66a05b2985883d0",
+      "sha256": "70f88f59beb37485f0dbdf6bd8aa9c94b8d1d3de82d2ac22ad35a86e316911d9"
+    },
+    "carr-library/src/carr_library/ui/productivity.py": {
+      "git_blob": "348cc35dd963e99d01659dc89a85bea1e95e299f",
+      "sha256": "a88afba19542aa23368865d592b3e37e77a32ec46013455793e135fae800a767"
+    },
+    "carr-library/src/carr_library/ui/save_all.py": {
+      "git_blob": "92aab94e53df97d5aeabe62538ddebc71cfee09d",
+      "sha256": "88bd92eeca43127b8ec553f7e8c7201bbd7657a60c7118fa3c09f342bbe942d3"
+    }
+  },
+  "independently_verified": {
+    "exact_head_and_tree": "Fetched Git commit f16959c has the same reviewed 9b1de9 tree and exact parents 506d61 and e5c64. Actual checkout lines and recorded artifact metadata name f16959c.",
+    "source_counter": "All 291 CASE_START events were matched to all 11 successful required-suite JUnit summaries; every observed function exists in the fetched exact-head test source.",
+    "committed_protected_subset": {
+      "tests.ui.test_keyboard_registration_compatibility": 3,
+      "tests.ui.test_save_all": 31,
+      "tests.ui.test_save_all_current_drafts": 3,
+      "tests.ui.test_evidence_draft_recovery": 19
+    },
+    "counter_scope": "The complete 291 observed Counter is recorded. Four whole modules additionally have exact committed protected Counters and were compared; this does not invent a separate predeclared all 291 oracle.",
+    "native_receipts": "All five actual receipts report PASS. Their 35/23/15/38/35 counts equal the corresponding logged PASS-label populations; native arrays preserve exact order and multiplicity.",
+    "installed_module_hashes": "All seven Save All module-origin SHA256 values equal exact-head fetched product bytes and name the installed carr-keyboard-python/Lib/site-packages tree.",
+    "other_origin_fields": "Keyboard, Reader and evidence probes report installed paths without module SHA fields; no additional hash receipt is invented for them.",
+    "cleanup": "Every final job step completed successfully, including artifact upload and both post-job checkout/interpreter cleanup steps.",
+    "log_sha256": "16c609da83e783588c5218530710e600ea10c635e31f805d2c30b33992887c45",
+    "artifact_metadata": "Exact artifact ID, size, digest and run/head binding independently fetched.",
+    "artifact_zip_read": "NOT_RUN"
+  },
+  "final_job": {
+    "id": 140742846571,
+    "name": "Windows x64 / native commands and draft recovery",
+    "status": "completed",
+    "conclusion": "success",
+    "run_id": 46069523389,
+    "logs_url": null,
+    "steps": [
+      {
+        "name": "Set up job",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 1
+      },
+      {
+        "name": "Check out the exact event commit",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 2
+      },
+      {
+        "name": "Set up native x64 CPython",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 3
+      },
+      {
+        "name": "Install the pinned desktop and record the tested source",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 4
+      },
+      {
+        "name": "Require contextual commands and recovery regressions",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 5
+      },
+      {
+        "name": "Exercise actual native Main keyboard settings and command dispatch",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 6
+      },
+      {
+        "name": "Exercise actual contextual Reader key remapping",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 7
+      },
+      {
+        "name": "Exercise native research-note draft recovery and explicit save",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 8
+      },
+      {
+        "name": "Exercise native Save All and completion-aware close",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 9
+      },
+      {
+        "name": "Exercise measured native progress and accessible status queries",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 10
+      },
+      {
+        "name": "Preserve actual keyboard and recovery evidence",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 11
+      },
+      {
+        "name": "Post Set up native x64 CPython",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 21
+      },
+      {
+        "name": "Post Check out the exact event commit",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 22
+      },
+      {
+        "name": "Complete job",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 23
+      }
+    ]
+  },
+  "artifact": {
+    "id": 15232775948,
+    "name": "carr-keyboard-f16959c76c1702fbdf6d6c9a6c113b2cb6660cd3-1",
+    "size_in_bytes": 11431,
+    "url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15232775948",
+    "archive_download_url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15232775948/zip",
+    "expired": false,
+    "created_at": "2026-11-27T21:21:22Z",
+    "expires_at": "2026-12-04T21:21:22Z",
+    "updated_at": "2026-11-27T21:21:22Z",
+    "digest": "sha256:67f7d02a025366a423f909840df0f3c382cb4d52e05aca5209861b7cf198c3d3",
+    "workflow_run": {
+      "id": 46069523389,
+      "repository_id": 1341777614,
+      "head_repository_id": 1341777614,
+      "head_branch": "carr/v3-final-composition-20261127-d3a",
+      "head_sha": "f16959c76c1702fbdf6d6c9a6c113b2cb6660cd3"
+    }
+  },
+  "limits": {
+    "current_head_transfer": "This proof binds f16959c only. Any later source or workflow successor requires its own relevant executed gates.",
+    "full_main": "NOT_CLAIMED_BY_THIS_JOB",
+    "standard_upgrade": "NOT_CLAIMED_BY_THIS_JOB",
+    "manual_nvda": "NOT_RUN",
+    "physical_audio": "NOT_RUN",
+    "voice_quality": "NOT_QUALIFIED",
+    "source_and_installed_scope": "The 291 cases are required source suites. The146 native checks execute installed programs with -I -B; this record does not claim a second installed 291 regression run.",
+    "local_executor": "No local executor result is claimed."
+  }
+}

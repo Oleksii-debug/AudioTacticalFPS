@@ -1,0 +1,116 @@
+{
+  "schema": 1,
+  "status": "PASS",
+  "source_commit": "3f95e47c287d4a193e69d133c13db2ec71762b8d",
+  "source_tree": "eb8f5a02fad05000c9b03f92fb9c03b74d6e2fed",
+  "workflow_run": 45975256450,
+  "job": 140425271989,
+  "source": {
+    "actual_offline_firewall": true,
+    "actual_windows": true,
+    "failed": 0,
+    "nvda": "NOT_RUN",
+    "passed": 174,
+    "real_corpus_benchmark": "NOT_RUN",
+    "required_cases": {
+      "tests/e2e/test_import_scan_continuation.py": 9,
+      "tests/e2e/test_search_continuation.py": 9,
+      "tests/ingest/test_scan_continuation.py": 14,
+      "tests/reader/test_ebook_reader.py": 25,
+      "tests/ui/test_desktop_query_jobs.py": 7,
+      "tests/ui/test_desktop_result_modes.py": 9,
+      "tests/ui/test_ebook_reader.py": 22,
+      "tests/ui/test_federated_labels.py": 40,
+      "tests/ui/test_import_center.py": 28,
+      "tests/ui/test_search_paging.py": 11
+    },
+    "skipped": 0,
+    "source_commit": "3f95e47c287d4a193e69d133c13db2ec71762b8d",
+    "source_tree": "eb8f5a02fad05000c9b03f92fb9c03b74d6e2fed",
+    "status": "PASS"
+  },
+  "native": {
+    "actual_domain_services": true,
+    "actual_native_keys": true,
+    "actual_offline_firewall": true,
+    "check_count": 26,
+    "checks": [
+      "actual-desktop-frame-exists-before-mainloop",
+      "import-continue-control-keyboard-addressable",
+      "small-injected-import-page-is-durable",
+      "import-page-status-announces-continuation",
+      "native-continue-starts-existing-background-service",
+      "native-cancel-reaches-live-scan-callback",
+      "cancelled-page-keeps-previous-durable-batch",
+      "cancelled-page-does-not-publish-next-batch",
+      "native-continue-retries-the-same-next-identity",
+      "continued-page-has-a-distinct-exact-selected-source",
+      "continued-batches-reopen-without-rescanning",
+      "native-import-close-destroys-owned-hwnd",
+      "native-epub-command-opens-first-bounded-page",
+      "epub-chooser-is-keyboard-addressable",
+      "native-epub-next-opens-second-page",
+      "epub-second-page-has-previous-and-next",
+      "native-epub-previous-restores-first-book-choice",
+      "native-epub-selection-opens-the-second-edition",
+      "selected-epub-text-matches-retained-original",
+      "epub-list-and-source-work-use-existing-worker-thread",
+      "native-epub-back-destroys-owned-reader-hwnd",
+      "native-epub-cancel-opens-no-source-section",
+      "host-library-scope-is-preserved",
+      "all-synthetic-original-bytes-are-unchanged",
+      "native-close-destroys-owned-desktop-hwnd",
+      "all-recorded-owned-native-windows-are-gone"
+    ],
+    "failures": [],
+    "injected_test_page_limits": {
+      "epub_editions": 1,
+      "import_files": 1
+    },
+    "installed_package": true,
+    "module_origins": {
+      "carr_library.application": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\application.py",
+        "sha256": "ec3572c8c6225e223c75205172e888129429ee63ad65daaec26a290835f213e5"
+      },
+      "carr_library.ingest.batch_scan": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ingest\\batch_scan.py",
+        "sha256": "cf1eb33f78c65949b5c7e62a244cb37ebfd5e8c33369b91656ce6521df6cd1ff"
+      },
+      "carr_library.ingest.batches": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ingest\\batches.py",
+        "sha256": "2d6c6bce7c40078cf20c31da7fc35dfd2029c4b7195da0aba86d23e825f9217e"
+      },
+      "carr_library.reader.ebook": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\reader\\ebook.py",
+        "sha256": "550372777362031b367d14cb8c413022532fb133b8640541774ce075e43b5c4b"
+      },
+      "carr_library.ui.ebook_reader": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ui\\ebook_reader.py",
+        "sha256": "011415a49a25442de823d6966e5017f3ab35807cb776dd11f61191bf881cf3bc"
+      },
+      "carr_library.ui.import_center": {
+        "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ui\\import_center.py",
+        "sha256": "d93649c9e6084c26408f718065602ff0990dc744c42c52e48fd986b9aea8fd07"
+      }
+    },
+    "nvda": "NOT_RUN",
+    "platform": "Windows-10-10.0.20348-SP0",
+    "python": "3.11.9",
+    "real_corpus_benchmark": "NOT_RUN",
+    "result": "PASS",
+    "source_commit": "3f95e47c287d4a193e69d133c13db2ec71762b8d",
+    "source_tree": "eb8f5a02fad05000c9b03f92fb9c03b74d6e2fed",
+    "synthetic_sources": true
+  },
+  "artifact": {
+    "id": 15187071438,
+    "sha256": "e3647f1bf9338fc8485094b3efa933f95cb48b704df611a547c2745b890185be",
+    "bytes": 8445
+  },
+  "limits": {
+    "real_corpus_benchmark": "NOT_RUN",
+    "nvda": "NOT_RUN",
+    "current_composed_acceptance": "NOT_RUN"
+  }
+}

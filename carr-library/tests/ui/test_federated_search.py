@@ -598,16 +598,6 @@ def test_result_labels_include_unknown_edition_and_number_repeated_same_page_hit
     hit = center.controller.rows[0]
     assert 'Unknown edition' in result_label(hit)
 
-
-from unittest.mock import Mock
-
-
-from carr_library.ui.federated_search import (
-    NativeSearchCenter, SearchCenter, SearchOptions, default_libraries,
-    install_federated_search_actions, _topic_labels,
-)
-
-
 COLLIDING_NAMES = [('Café', 'Cafe\u0301'), ('Історія', 'Історія '),
     ('Research  methods', 'Research methods'), ('Same', 'Same', 'Same [0]'),
     ('Same', 'Same', 'Same (library w; topic 0)'), ('Same', 'Same'), ('Unique', 'Distinct')]

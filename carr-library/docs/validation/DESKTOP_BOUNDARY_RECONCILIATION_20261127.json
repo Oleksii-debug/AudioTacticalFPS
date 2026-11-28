@@ -1,0 +1,56 @@
+{
+  "schema": 1,
+  "kind": "desktop-current-fixture-and-canonical-boundaries",
+  "execution_status": "NOT_RUN",
+  "canonical_source": "e5c64a5245583f8f8b404a0f042f6ca438c24d7f",
+  "review_baseline": "e0ff956cafe5105d4b930aad53fe354b73e9fd4a",
+  "observed_full_run": {
+    "source_commit": "7959f6a9fb37b315dec18b4d310b8480d9bb94e5",
+    "job_id": 140624345878,
+    "status": "FAIL",
+    "desktop_fixture_failures": 2,
+    "reason": "Extracted _menus had no install_media_overlay_actions global; bounded closure audit also found omitted playback queue and scoped translation installers."
+  },
+  "fixture_repair": {
+    "real_installers": [
+      "carr_library.ui.media_overlay_dialog.install_media_overlay_actions",
+      "carr_library.ui.playback_queue.install_playback_queue_actions",
+      "carr_library.ui.translation_scope_dialog.install_translation_scope_actions"
+    ],
+    "old_test_functions_retained": 42,
+    "new_test_functions": 2,
+    "whole_module_cases_before_from_observed_inventory": 64,
+    "whole_module_cases_after": 66,
+    "old_assertions_preserved": true,
+    "new_assertions": "Actual labels, current semantic registration and Tools-menu membership; every original inventory and collision assertion retained.",
+    "source_provenance": "Resolve desktop_app.py from the actual imported carr_library package, so source mode reads its admitted checkout package and isolated installed mode reads installed site-packages; no checkout src tree is staged or substituted.",
+    "case_count_change_for_provenance": 0
+  },
+  "new_function_counter": {
+    "test_folder_switch_during_work_never_rebinds_current_job": 1,
+    "test_cancelled_import_summary_keeps_all_selected_files_in_the_total": 1
+  },
+  "product_fixes": [
+    {
+      "function": "DesktopFrame._open_data_root",
+      "behavior": "Refuse before pathname checks, confirmation, disposal, remembered root or library rebinding while a current operation owns the frame.",
+      "canonical_test_reused": true
+    },
+    {
+      "function": "DesktopFrame.import_books.done",
+      "behavior": "Keep all selected files in the denominator and explicitly report unattempted files after cancellation; retain per-file failures, quarantine directions, warnings and current progress callback.",
+      "canonical_test_reused": true
+    }
+  ],
+  "preserved_current_hooks": [
+    "TrustController on new LibraryApp",
+    "operation_progress.change_root",
+    "keyboard_commands.change_root and current load notice",
+    "all current native menu actions",
+    "current bound import library and report_progress adapter"
+  ],
+  "later_current_repairs": {
+    "progress_view": "Current f1b683759810ab5609e0aca05d694aed7ea8efba already accepts and asserts NotificationWorker library_root.",
+    "assistant_interactive": "Current product19093dab359271b329b2edcdaa97af73d5d6734c uses engine_options; punctuation default normalization and enabled-value binding retained. Current pure49/UI27 case populations were measured by frozen628684/684."
+  }
+}

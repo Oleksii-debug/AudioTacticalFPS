@@ -6,9 +6,11 @@ The build uses packaging for wheel/requirement validation; installation uses pip
 from __future__ import annotations
 
 import argparse
+from contextlib import contextmanager
 import hashlib
 import importlib.util
 import json
+import os
 from pathlib import Path
 import re
 import shutil
@@ -26,8 +28,6 @@ from packaging.utils import canonicalize_name, parse_wheel_filename
 
 
 TARGET = "Windows x64 / CPython 3.11"
-# Exact unsigned candidate independently built and executed on Windows; no override.
-NATIVE_LAUNCHER_SHA256 = "5ba9218a329f8d002539bd57f73d91170125f5ec91c78d49ff85ca6c74443cec"
 HERE = Path(__file__).resolve().parent
 TAGS = set(cpython_tags((3, 11), abis=["cp311"], platforms=["win_amd64"]))
 TAGS.update(compatible_tags((3, 11), interpreter="cp311", platforms=["win_amd64"]))
@@ -108,37 +108,87 @@ def verify_application_source(wheel, source_commit):
     return verifier.verify_application_wheel(wheel, HERE.parent.parent, source_commit)
 
 
-def verify_dependency_closure(selected):
-    """Check the exact Windows dependency graph without invoking a resolver."""
-    environment = default_environment()
-    environment.update(os_name="nt", sys_platform="win32", platform_system="Windows",
-                       platform_machine="AMD64", python_version="3.11",
-                       python_full_version="3.11.0", implementation_name="cpython",
-                       platform_python_implementation="CPython", extra="")
-    for _path, _version, metadata in selected.values():
-        for raw in metadata.get_all("Requires-Dist", []):
-            req = Requirement(raw)
-            if req.marker and not req.marker.evaluate(environment):
-                continue
-            dependency = selected.get(canonicalize_name(req.name))
-            if req.url or dependency is None or dependency[1] not in req.specifier:
-                raise ValueError(f"unsatisfied Windows dependency: {req}")
+def _publication_tools():
+    # Reuse only the current low-level directory publication primitives.
+    # No delivery archive creation or audio redistribution gate is invoked.
+    spec = importlib.util.spec_from_file_location(
+        "carr_bundle_publication", Path(__file__).resolve().with_name("create_delivery.py"))
+    helper = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(helper)
+    return helper
+
+
+@contextmanager
+def _bundle_stage(output):
+    """Publish one complete directory or clean only the exact owned stage."""
+    helper = _publication_tools()
+    output = helper._absolute(output)
+    # Validate each existing ancestor before creating any missing child.
+    # mkdir(parents=True) would follow a known symlink/reparse ancestor and
+    # create directories outside the reviewed path before _directories refused.
+    parents = []
+    for directory in (*reversed(output.parent.parents), output.parent):
+        try:
+            info = helper._plain(directory, directory=True)
+        except FileNotFoundError:
+            helper._unchanged_directories(parents)
+            try:
+                directory.mkdir(mode=0o700)
+            except FileExistsError:
+                pass  # Inspect a concurrently created directory before use.
+            info = helper._plain(directory, directory=True)
+        parents.append((directory, helper._identity(info)))
+    parent_fd = (os.open(output.parent, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+                 if os.name != "nt" else None)
+    stage, identity = None, None
+    try:
+        helper._unchanged_directories(parents)
+        stage = Path(tempfile.mkdtemp(prefix=".carr-bundle-", dir=output.parent))
+        identity = helper._identity(helper._plain(stage, directory=True))
+        yield stage
+        helper._unchanged_directories(parents)
+        if helper._identity(helper._plain(stage, directory=True)) != identity:
+            raise ValueError("Bundle staging directory changed before publication.")
+        helper._publish(stage, output, parent_fd)
+        stage = None
+    finally:
+        try:
+            if stage is not None and identity is not None:
+                helper._cleanup(stage, identity, parent_fd)
+        finally:
+            if parent_fd is not None:
+                os.close(parent_fd)
 
 
 def build_bundle(wheel, wheelhouse, lock, output, python_archive=None,
                  model_dir=None, model_manifest=None, sbom=None, source_commit=None, ocr_dir=None,
-                 ocr_source_archive=None, native_launcher=None):
+                 ocr_source_archive=None, audio_dir=None, native_launcher=None,
+                 native_launcher_evidence=None):
     wheel, wheelhouse, lock, output = map(Path, (wheel, wheelhouse, lock, output))
     if output.exists() or output.is_symlink():
         raise ValueError("output must be a new directory")
+    # A build must not add staging or output files to an admitted input tree.
+    destination = output.resolve(strict=False)
+    for source in (wheelhouse, model_dir, ocr_dir, audio_dir):
+        if source is not None:
+            source = Path(source).resolve(strict=False)
+            if destination.is_relative_to(source) or source.is_relative_to(destination):
+                raise ValueError("output must be outside all input directories")
     if source_commit is not None and not re.fullmatch(r"[0-9a-f]{40}", source_commit):
         raise ValueError("source commit must be a full lowercase Git SHA")
     if wheelhouse.is_symlink() or not wheelhouse.is_dir():
         raise ValueError("expected a dedicated wheel directory")
+    if (native_launcher is None) != (native_launcher_evidence is None):
+        raise ValueError("supply both native launcher and build evidence")
+    launcher_snapshot = None
     if native_launcher is not None:
-        native_launcher = regular(Path(native_launcher))
-        if sha256(native_launcher) != NATIVE_LAUNCHER_SHA256:
-            raise ValueError("Native launcher differs from the exact Windows-tested executable")
+        if python_archive is None:
+            raise ValueError("native launcher requires bundled Python")
+        spec = importlib.util.spec_from_file_location(
+            "carr_native_launcher_capture", HERE / "native_launcher.py")
+        capture = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(capture)
+        launcher_snapshot = capture.capture_native_launcher(native_launcher, native_launcher_evidence)
     pins = read_lock(lock)
     if sbom is not None:
         sbom = regular(Path(sbom))
@@ -229,13 +279,36 @@ def build_bundle(wheel, wheelhouse, lock, output, python_archive=None,
     elif ocr_source_archive is not None:
         raise ValueError("OCR source archive requires the OCR runtime")
 
+    if audio_dir is not None:
+        source_root = str(HERE.parent / "src")
+        if source_root not in sys.path:
+            sys.path.insert(0, source_root)
+        from carr_library.audio.runtime import ARCHIVE_MEMBERS, verify_runtime
+        audio_dir = Path(audio_dir)
+        verify_runtime(audio_dir)
+        # Preserve these exact bytes; the copied snapshot is independently
+        # verified again before the final bundle inventory is sealed.
+        audio_manifest_bytes = regular(audio_dir / "ffmpeg-runtime.json").read_bytes()
+        if len(audio_manifest_bytes) > 1024 * 1024:
+            raise ValueError("audio runtime manifest exceeds its build budget")
+
     # Validate active Windows requirements from every wheel. Pip performs the
     # actual offline resolution again at install time; this is a build preflight.
-    verify_dependency_closure(selected)
+    environment = default_environment()
+    environment.update(os_name="nt", sys_platform="win32", platform_system="Windows",
+                       platform_machine="AMD64", python_version="3.11",
+                       python_full_version="3.11.0", implementation_name="cpython",
+                       platform_python_implementation="CPython", extra="")
+    for _path, _version, metadata in selected.values():
+        for raw in metadata.get_all("Requires-Dist", []):
+            req = Requirement(raw)
+            if req.marker and not req.marker.evaluate(environment):
+                continue
+            dependency = selected.get(canonicalize_name(req.name))
+            if req.url or dependency is None or dependency[1] not in req.specifier:
+                raise ValueError(f"unsatisfied Windows dependency: {req}")
 
-    output.parent.mkdir(parents=True, exist_ok=True)
-    with tempfile.TemporaryDirectory(prefix="carr-bundle-", dir=output.parent) as scratch:
-        staged = Path(scratch)
+    with _bundle_stage(output) as staged:
         staged_wheels = staged / "wheelhouse"
         staged_wheels.mkdir()
         install = []
@@ -296,45 +369,28 @@ def build_bundle(wheel, wheelhouse, lock, output, python_archive=None,
                 shutil.copyfile(ocr_source_archive, source_destination)
                 if sha256(source_destination) != source_identity["sha256"]:
                     raise ValueError("OCR source archive changed during bundle assembly")
-        for name in ("install_windows.py", "Install.cmd", "ResearchLibrary.cmd", "CheckInstallation.cmd"):
+        if audio_dir is not None:
+            destination = staged / "audio-runtime"
+            destination.mkdir()
+            for name in ARCHIVE_MEMBERS:
+                (destination / name).parent.mkdir(parents=True, exist_ok=True)
+                shutil.copyfile(regular(audio_dir / name), destination / name)
+            (destination / "ffmpeg-runtime.json").write_bytes(audio_manifest_bytes)
+            verify_runtime(destination)
+        for name in ("install_windows.py", "Install.cmd", "ResearchLibrary.cmd", "CheckInstallation.cmd", "SetupLocalAudio.cmd"):
             shutil.copyfile(regular(HERE / name), staged / name)
-        # Setup helpers are source only. A user may explicitly acquire and
-        # prepare the pinned runtime on their own machine; transfer archives
-        # never include that runtime. Copy only this reviewed file inventory.
-        shutil.copyfile(regular(HERE / "SetupLocalAudio.cmd"), staged / "SetupLocalAudio.cmd")
-        for relative in (
-            "setup_local_audio.py",
-            "acquire_audio_runtime.py",
-            "prepare_audio_runtime.py",
-            "audio-runtime/README.txt",
-            "audio-runtime/licenses/BUILD_RECIPES_LICENSE",
-            "audio-runtime/licenses/COPYING.GPLv2",
-            "audio-runtime/licenses/COPYING.GPLv3",
-            "audio-runtime/licenses/COPYING.LGPLv2.1",
-            "audio-runtime/licenses/COPYING.LGPLv3",
-            "audio-runtime/licenses/LICENSE.md",
-            "audio-runtime/provenance/build-configuration.txt",
-            "audio-runtime/provenance/checksums.sha256",
-            "audio-runtime/provenance/dependency-source-index.json",
-            "audio-runtime/source-lock.json",
-        ):
-            target = staged / "tools" / "audio-setup" / relative
-            target.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copyfile(regular(HERE / relative), target)
+        audio_setup = staged / "tools" / "audio-setup"
+        audio_setup.mkdir(parents=True)
+        for name in ("setup_local_audio.py", "prepare_ffmpeg_runtime.py"):
+            shutil.copyfile(regular(HERE / name), audio_setup / name)
         shutil.copyfile(HERE.parent / "docs" / "RUNNING.md", staged / "README.txt")
         shutil.copyfile(HERE.parent / "docs" / "START_UK.txt", staged / "START_UK.txt")
-        shutil.copyfile(HERE.parent / "docs" / "START_V3_UK.txt", staged / "START_V3_UK.txt")
         if sbom is not None:
             (staged / "runtime-sbom.cdx.json").write_bytes(sbom_bytes)
-        if native_launcher is not None:
-            destination = staged / "ResearchLibrary.exe"
-            shutil.copyfile(regular(native_launcher), destination)
-            if sha256(destination) != NATIVE_LAUNCHER_SHA256:
-                raise ValueError("Native launcher changed during bundle assembly")
+        if launcher_snapshot is not None:
+            (staged / "ResearchLibrary.exe").write_bytes(launcher_snapshot[0])
+            (staged / "native-launcher-build.json").write_bytes(launcher_snapshot[1])
         if source_evidence is not None:
-            # Retain the verifier's exact commit/tree/wheel binding inside the
-            # sealed payload, so installed acceptance can attest those same
-            # bytes. Use deterministic LF bytes on both build platforms.
             (staged / "application-source.json").write_bytes(
                 (json.dumps(source_evidence, indent=2, sort_keys=True) + "\n").encode("utf-8"))
         files = {p.relative_to(staged).as_posix(): sha256(p)
@@ -342,18 +398,17 @@ def build_bundle(wheel, wheelhouse, lock, output, python_archive=None,
         manifest = {"schema": 1, "target": TARGET, "bundled_python": python_archive is not None,
                     "bundled_model": model_dir is not None,
                     "bundled_ocr": ocr_dir is not None,
+                    "bundled_audio_runtime": audio_dir is not None,
+                    "bundled_native_launcher": launcher_snapshot is not None,
                     "files": files}
         if source_commit is not None:
             manifest["source_commit"] = source_commit
             manifest["source_tree"] = source_evidence["source_tree"]
         (staged / "bundle-manifest.json").write_text(
             json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-        # Reserve a fresh destination; never overwrite an existing installation.
-        output.mkdir(exist_ok=False)
-        for item in staged.iterdir():
-            shutil.move(str(item), output / item.name)
+        manifest_sha256 = sha256(staged / "bundle-manifest.json")
     return {"target": TARGET, "wheels": len(selected), "output": str(output),
-            "manifest_sha256": sha256(output / "bundle-manifest.json")}
+            "manifest_sha256": manifest_sha256}
 
 
 def main():
@@ -373,13 +428,17 @@ def main():
                         help="Verified portable Windows Tesseract runtime and language models")
     parser.add_argument("--ocr-source-archive", type=Path,
                         help="Corresponding-source archive pinned by the OCR runtime manifest")
+    parser.add_argument("--audio-dir", type=Path,
+                        help="Optional hash-verified private Windows FFmpeg runtime with notices")
     parser.add_argument("--native-launcher", type=Path,
-                        help="Optional exact Windows-tested ResearchLibrary.exe; its SHA256 is source-pinned")
+                        help="Optional unsigned private ResearchLibrary.exe built from current native launcher sources")
+    parser.add_argument("--native-launcher-evidence", type=Path,
+                        help="Exact source/toolchain/PE build-evidence.json for the selected launcher")
     args = parser.parse_args()
     print(json.dumps(build_bundle(args.wheel, args.wheelhouse, args.lock, args.output,
                                   args.python_archive, args.model_dir, args.model_manifest,
                                   args.sbom, args.source_commit, args.ocr_dir, args.ocr_source_archive,
-                                  args.native_launcher)))
+                                  args.audio_dir, args.native_launcher, args.native_launcher_evidence)))
 
 
 if __name__ == "__main__":

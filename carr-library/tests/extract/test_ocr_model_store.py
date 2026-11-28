@@ -82,6 +82,19 @@ def test_official_catalogue_aliases_and_complete_licenses():
                 assert (row.size, row.blob_sha1) == (target.size, target.blob_sha1)
 
 
+def test_managed_install_cannot_mutate_a_sealed_runtime(synthetic, tmp_path):
+    sealed = tmp_path / 'sealed runtime'
+    sealed.mkdir()
+    marker = sealed / 'ocr-manifest.json'
+    marker.write_bytes(b'synthetic sealed inventory marker; never executed')
+    before = marker.read_bytes()
+    store = store_module.OcrModelStore(sealed / 'user models')
+    with pytest.raises(store_module.ModelStoreError, match='outside the sealed'):
+        store.install('fast', synthetic.source, ('eng',))
+    assert marker.read_bytes() == before
+    assert list(sealed.iterdir()) == [marker]
+
+
 def test_actual_official_english_install_selection_and_inference(tmp_path):
     executable = shutil.which('tesseract')
     if executable is None:

@@ -8,6 +8,7 @@ from time import monotonic
 import pytest
 
 from carr_library.application import LibraryApp
+from carr_library.audio import engines
 from carr_library.ingest import worker
 
 
@@ -98,16 +99,19 @@ def test_cancel_inside_revocation_transaction_preserves_prior_review(pdf_result,
 
 def test_cancel_stops_running_isolated_renderer(pdf_result, monkeypatch):
     app, workspace, hit = pdf_result
-    original = subprocess.Popen
+    original = engines._start_process
     children = []
 
     def delayed_renderer(command, *args, **kwargs):
-        child = original([sys.executable, '-I', '-c', 'import time; time.sleep(30)'],
+        # Preserve unrelated launches through the existing owned-process API.
+        if command[0] != sys.executable:
+            return original(command, *args, **kwargs)
+        child = original([sys.executable, '-I', '-B', '-c', 'import time; time.sleep(30)'],
                          *args, **kwargs)
         children.append(child)
         return child
 
-    monkeypatch.setattr(worker.subprocess, 'Popen', delayed_renderer)
+    monkeypatch.setattr(engines, '_start_process', delayed_renderer)
     started = monotonic()
     with pytest.raises(InterruptedError, match='cancelled'):
         app.review_pdf_page(workspace, hit.ref, hit.revision, 'Synthetic reviewer',

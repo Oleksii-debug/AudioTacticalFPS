@@ -252,7 +252,53 @@ def _opc(archive, primary, budget):
         budget.warnings.add('embedded_media_not_read')
 
 
+def _odf_disabled_page_region(element, budget):
+    """Recognize inert print labels; never evaluate their cached field text."""
+    if (element.attrib != {STYLE + 'display': 'false'}
+            or (element.text or '').strip() or (element.tail or '').strip()):
+        return False
+    # This bounded grammar is the actual LibreOffice XLS print-label shape:
+    # paragraphs of literal spans and cached sheet-name/page-number leaves.
+    # Unknown markup, attributes, direct paragraph text and active fields
+    # remain unsupported. These labels are not document body records.
+    for paragraph in element:
+        budget.check()
+        if (paragraph.tag != TEXT + 'p' or paragraph.attrib
+                or (paragraph.text or '').strip() or (paragraph.tail or '').strip()):
+            return False
+        for span in paragraph:
+            budget.check()
+            if (span.tag != TEXT + 'span'
+                    or set(span.attrib) - {TEXT + 'style-name'}
+                    or (span.tail or '').strip()):
+                return False
+            for field in span:
+                budget.check()
+                if (field.tag not in (TEXT + 'sheet-name', TEXT + 'page-number')
+                        or field.attrib or len(field) or (field.tail or '').strip()):
+                    return False
+    return True
+
+
 def _check_odf_visibility(root, budget):
+    # ODF 1.3 section 19.475 uses style:display for page headers/footers,
+    # independently of body text visibility. Admit only reviewed inert
+    # print-region grammar at the exact styles.xml master-page structure.
+    # The full traversal below still checks every descendant; no subtree
+    # is skipped, rendered or treated as a body-text source.
+    disabled_page_regions = set()
+    page_region_tags = {STYLE + name for name in (
+        'header', 'header-first', 'header-left',
+        'footer', 'footer-first', 'footer-left')}
+    if root.tag == OFFICE + 'document-styles':
+        for master_styles in root.findall(OFFICE + 'master-styles'):
+            for master_page in master_styles.findall(STYLE + 'master-page'):
+                for element in master_page:
+                    budget.check()
+                    if (element.tag in page_region_tags
+                            and element.get(STYLE + 'display') == 'false'
+                            and _odf_disabled_page_region(element, budget)):
+                        disabled_page_regions.add(element)
     blocked = {TEXT + name for name in ('tracked-changes', 'change', 'change-start',
         'change-end', 'hidden-text', 'hidden-paragraph', 'conditional-text',
         'script', 'execute-macro')}
@@ -262,8 +308,11 @@ def _check_odf_visibility(root, budget):
             raise ValueError('Conditional, changed or active document text requires review.')
         if (element.get(TEXT + 'display') in ('none', 'false')
                 or element.get(FO + 'visibility') in ('hidden', 'collapse')
-                or element.get(STYLE + 'display') == 'false'):
+                or (element.get(STYLE + 'display') == 'false'
+                    and element not in disabled_page_regions)):
             raise ValueError('Hidden document text requires review.')
+        if element in disabled_page_regions:
+            budget.warnings.add('disabled_page_regions_not_read')
 
 
 def _odf_text(element, budget):
@@ -301,6 +350,26 @@ def _odf_text(element, budget):
 
 def _odf_blocks(element, budget, locator, path=()):
     budget.check()
+    if element.tag == OFFICE + 'forms':
+        # LibreOffice writes this empty container for ordinary binary Word
+        # imports. Populated controls and event listeners remain unsupported.
+        form = '{urn:oasis:names:tc:opendocument:xmlns:form:1.0}'
+        if (len(element) or (element.text or '').strip()
+                or set(element.attrib) - {form + 'automatic-focus', form + 'apply-design-mode'}
+                or any(value not in ('true', 'false') for value in element.attrib.values())):
+            raise ValueError('Active or populated document forms require review.')
+        return
+    if element.tag == DRAW + 'enhanced-geometry':
+        # Geometry equations describe vector shapes; they are not reading
+        # text. Accept only this documented inert subtree, never arbitrary
+        # descendants that could silently hide an unsupported text object.
+        if ((element.text or '').strip()
+                or any(child.tag not in (DRAW + 'equation', DRAW + 'handle')
+                       or len(child) or (child.text or '').strip()
+                       or (child.tail or '').strip() for child in element)):
+            raise ValueError('Unsupported vector shape content requires review.')
+        budget.warnings.add('vector_geometry_not_read')
+        return
     if element.tag in (TEXT + 'p', TEXT + 'h'):
         budget.add(_odf_text(element, budget), {**locator, 'path': list(path)})
         return

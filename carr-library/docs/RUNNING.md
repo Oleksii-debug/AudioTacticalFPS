@@ -1,4 +1,20 @@
-# Universal Research Library
+# Resonance — run and install
+
+For current menus, shortcuts and installation choices, start with
+[START_UK.txt](START_UK.txt). The [current requirement/evidence matrix](V3_RELEASE_READINESS.md)
+separates the integrated development build from model, human-accessibility and
+distribution qualification.
+
+If your supplied artifact is `Resonance-Setup-….exe`, run that standard
+installer, follow its named native controls and subsequently launch the Start
+menu entry. Save open work and close the previous application before an ordinary
+manual update. User libraries remain separate from program generations. The
+[standard-update contract](STANDARD_SIGNED_UPDATES.md) describes explicit
+maintenance, managed activation, recovery and their exact qualification limits.
+
+The archive instructions below are the supported compatibility installation
+path for an artifact supplied with `Install.cmd`; they are not instructions to
+unpack or run an Inno setup as an archive.
 
 An offline desktop research library with separate workspaces, books and
 collections, literal and thematic search, source context, saved evidence, notes,
@@ -11,7 +27,7 @@ The prepared Windows bundle is for your private installation. Its Microsoft
 runtime terms are included; publishing or redistributing that binary package
 requires the applicable Microsoft redistribution grant.
 
-## Windows offline package
+## Windows offline archive package
 
 The Windows x64 package targets CPython 3.11. The complete package includes its
 own Python runtime. Extract the complete package into a new folder, then open
@@ -53,29 +69,31 @@ library data and backup/restore destinations inside that folder, including paths
 that resolve there through an alias or junction. Existing saved library locations
 use the same check. Choose a separate location for your research and backups.
 
+### Prepare local audio separately
+
+The package also includes `SetupLocalAudio.cmd`. Open it to read the exact
+FFmpeg archive version, download address, size, checksum and proposed local
+destination. This first step only shows a plan. Obtain that archive separately,
+then run the command with your chosen archive and library location:
+
+```console
+SetupLocalAudio.cmd --archive "C:\Downloads\ffmpeg-pinned.zip" --destination "C:\LocalRuntimes\audio-new" --library-root "C:\Research\Library" --interactive
+```
+
+Read the plan and type `YES` to prepare and verify the runtime. Choose a new
+folder outside the application and your library. Preparation checks the archive,
+the extracted files and the actual Windows executables. After success, select
+the printed FFmpeg and FFprobe paths in the library's engine settings. This
+command does not change those settings automatically. Keep research data in its
+existing location. See [local audio preparation](LOCAL_AUDIO_SETUP.md) in the
+source documentation for the non-interactive command and evidence boundaries.
+
 To uninstall, close the application and check your selected library, backup and
 export locations first. Earlier builds may have allowed research or backups
 inside the extracted program folder. Copy any such personal files to a separate
 location and verify the copy before deleting that program folder. Never delete
 a folder containing your only research copy. The application does not silently
 move existing data. The installer refuses to replace an existing environment.
-
-## Optional local audio setup
-
-The transferable library archive excludes the reviewed FFmpeg binary runtime.
-Windows voice reading and WAV synthesis remain available. Audio Studio needs
-local FFmpeg and ffprobe. After installing the library, open `SetupLocalAudio.cmd`
-to review and explicitly confirm acquisition of the three pinned public inputs.
-Without confirmation the helper only displays its plan. It prepares a fresh
-folder outside the program installation; it does not modify the bundle seal,
-select engines, download voices or download models.
-
-In **Local audio, voice and music engines**, use **Choose FFmpeg executable**
-and **Choose FFprobe executable** to select the two paths printed by setup.
-Reopen the studio after saving those choices. Existing intentionally installed
-tools may be selected through the same controls. The preparation helper checks
-integrity, not audio quality or a redistribution grant. New delivery archives
-must continue to exclude these locally prepared audio payloads.
 
 ## Installation from a source checkout
 
@@ -217,12 +235,9 @@ be restored into a new folder and upgraded on opening.
 
 Choose **Library, Back up all libraries** to save all libraries, including archived ones,
 their registered originals, immutable source revisions, research evidence,
-notes, topics, tags, saved queries and academic references. The current common
-backup format is 4; it also includes the supported typed application state and
-pending-import recovery records. Catalog schema 5 retains the transaction-owned
-import publication receipts. Reading state, introduced in backup format 3,
-includes page bookmarks and resume positions in `reading-state.json`. If no
-reading state has been saved, the manifest records its absence explicitly.
+notes, topics, tags, saved queries and academic references. Backup format 3 also
+includes the existing page bookmarks and resume positions in `reading-state.json`.
+If no reading state has been saved, the manifest records its absence explicitly.
 
 The database and reading state are captured under the same library writer lock.
 Each included file is bound by size and SHA256, and saved reading places are
@@ -239,14 +254,10 @@ does not overwrite or merge an existing library. Formats 1 and 2 remain
 compatible but do not contain reading state. Their separately exported reading
 bookmarks can be imported after restoring the matching library.
 
-Format 4 additionally preserves its supported application settings, reading
-copies, audio projects, assistant job state and pending-import journals under
-explicit typed sidecar rules. Restored work is not started automatically;
-process-specific worker attempt hints are discarded before an explicit resume.
-Audio exported outside the library data directory needs its own copy. Model
-installations outside that directory and Windows Credential Manager secrets
-are not transferred as ordinary application state. Historical backup formats
-remain readable only with the data that their own manifests declared.
+This format includes only its documented database, original files and reading
+sidecar. It does not collect arbitrary settings, API credentials, audio projects,
+generated audio, model files or pending import journals. Those V3 recovery
+components require their own implemented and validated formats.
 
 ## Review the source catalog
 
@@ -279,6 +290,32 @@ See [catalog insights](ACADEMIC_CATALOG_INSIGHTS.md) for report limits and
 interchange details.
 
 ## Research from the keyboard
+
+### Save work and prepare a reading copy
+
+**File, Save current changes**, or **Ctrl+S**, saves a pending research note.
+**Ctrl+Shift+S** saves all main-window changes. Dialogs keep their own contextual
+Save commands. The application reports an unsuccessful save and retains the
+draft instead of reporting completion.
+
+**File, New reading copy** opens an editable text project. Use **Import text as
+a reading copy** for a UTF-8 text file or **Open saved reading copy** to continue
+saved work. In the full-source reader, **Create editable reading copy** starts
+a separate project from the displayed page or segment. Its original text,
+source identity and revision are preserved. Normalization and pronunciation
+replacements require preview and explicit application; edited reading text is
+never approved as a quotation. See [reading copies](READING_COPIES.md).
+
+**Options, Keyboard shortcuts** changes main-window assignments and checks
+conflicts. **List current keyboard shortcuts** shows the active assignments;
+the guide below describes defaults. Preferences can be reset, exported and
+imported. See [keyboard settings](KEYBOARD_SETTINGS.md).
+
+Complete backups now include page bookmarks, resume positions, saved reading
+projects and recovery drafts, OCR language presets and keyboard settings when
+present. The manifest checks each file and its source bindings before restore.
+See [complete backup](COMPLETE_BACKUP.md) for the exact included state and the
+remaining exclusions.
 
 ### Search several libraries and manage saved criteria
 

@@ -1,0 +1,2234 @@
+{
+  "schema": "carr-canonical-test-disposition/v1",
+  "status": "SOURCE_ASSERTION_MAPPING_WITH_RUNTIME_PENDING_COMPONENTS",
+  "observed_at_utc": "2026-11-27 18:07:19 UTC",
+  "canonical": {
+    "commit": "e5c64a5245583f8f8b404a0f042f6ca438c24d7f",
+    "tree": "344567db5c0d99f5d6d7ad24c105645ea75b65e8",
+    "prior_commit": "e3cf74c243d4ef930b526b5648ca9003c0900057",
+    "assigned_blobs_equal_to_prior": true
+  },
+  "current_baseline": {
+    "commit": "5070b0e9808e1242936fac314bab9a8d9f20213a",
+    "tree": "66231ae8ebc92073e63bf5998be75a786f7973de"
+  },
+  "scope": {
+    "paths": 16,
+    "test_function_definitions": 83,
+    "parameter_expanded_cases_not_inferred": true
+  },
+  "method": [
+    "Read each assigned canonical file and current referenced owner/test source; bind exact Git blobs.",
+    "Verify every canonical test function is included in at least one assertion group and every referenced current test exists in the stated source.",
+    "Distinguish current contracts, explicit retired API/policy differences, added regression coverage, product corrections and pending runtime qualification.",
+    "No local Python executor was available. JavaScript source/counter inspection is not Python compilation or test execution."
+  ],
+  "repairs": [
+    {
+      "component": "61adc656bc863db40e2ea2f8487eb0c74eb6526e",
+      "gap": "Completed speech returned at a cancellation boundary was discarded before its reusable checkpoint.",
+      "cases": 10,
+      "baseline_integrated": true,
+      "runtime": "NOT_RUN_IN_THIS_AUDIT"
+    },
+    {
+      "component": "7f901654c2257cc1d4796bcab2e54d038a916186",
+      "gap": "Canonical actual-child process bounds and concrete signal measurements lacked direct current-family regressions.",
+      "cases": 15,
+      "baseline_integrated": true,
+      "runtime": "NOT_RUN_IN_THIS_AUDIT"
+    },
+    {
+      "component": "e0ba9cfe516eaa2533db752e7db28b94bff7d5b8",
+      "gap": "Full canonical producer-created presentation fixture was absent from current relationship-order coverage.",
+      "cases": 1,
+      "baseline_integrated": false,
+      "runtime": "NOT_RUN_IN_THIS_AUDIT"
+    },
+    {
+      "component": "ba68cf6b94d19b4b5dbcec22772258d864cb0602",
+      "gap": "Closed/stale Studio callbacks did not settle their captured shared progress; DSP cancellation was not recognized alongside speech cancellation.",
+      "cases": 8,
+      "baseline_integrated": false,
+      "runtime": "NOT_RUN_IN_THIS_AUDIT"
+    },
+    {
+      "component": "6e6d2599f76b489b8081f3d453afbe8c1e477f9a",
+      "owner": "capacity_measurements",
+      "gap": "Compatibility SAPI host selection did not enforce the exact architecture-specific serviced OS path.",
+      "cases": 34,
+      "baseline_integrated": false,
+      "review": "BOUNDED_SOURCE_GO",
+      "runtime": "NOT_RUN_IN_THIS_AUDIT"
+    }
+  ],
+  "disposition_limits": [
+    "An absent retired Python module or helper is not automatically a missing user feature. This ledger names the current API and concrete tests instead of importing an alternate process, job or backup framework.",
+    "The old external ffprobe/full-file publication helper and exact 4-to-32-MiB subprocess budget population were not executed here; current measured PCM, cache, admission and publication assertions are individually mapped.",
+    "Whole-score duration and disk budget participate in current typed checkpoint/run identities. Cross-duration same-destination resume and same-completed-run identity after a budget change are not claimed.",
+    "Keyboard semantic routes use the current command identities; an old literal nine-item inventory/default ordering is not claimed unchanged.",
+    "The parent composition and its actual Windows source, installed and native receipts remain the acceptance authority. Component source review cannot supply a missing runtime PASS."
+  ],
+  "entries": [
+    {
+      "canonical_path": "carr-library/tests/audio/test_audio_process.py",
+      "canonical_git_blob": "8a1cbc082a9fcb1cd1647e5b658c48a5810587db",
+      "bytes": 4523,
+      "canonical_functions": [
+        "test_fast_stdout_overflow_is_detected_after_child_exit",
+        "test_fast_stderr_overflow_is_detected_after_child_exit",
+        "test_real_timeout_terminates_worker_promptly",
+        "test_cancel_before_spawn_prevents_side_effect",
+        "test_output_disk_budget_is_enforced_even_on_fast_exit",
+        "test_all_worker_staging_files_count_against_disk_budget",
+        "test_staging_entry_count_is_bounded",
+        "test_nonzero_exit_is_not_success",
+        "test_progress_is_streamed_to_caller_without_waiting_for_full_buffer",
+        "test_executable_must_be_resolved_and_no_shell_is_accepted",
+        "test_publication_does_not_overwrite_or_publish_on_cancellation",
+        "test_audio_publication_flushes_a_writable_handle"
+      ],
+      "current_owners": [
+        {
+          "path": "src/carr_library/audio/recording_process.py",
+          "git_blob": "d1f78ee864868f6d12cc9d19b567744ee22f745e"
+        },
+        {
+          "path": "src/carr_library/audio/engines.py",
+          "git_blob": "13bd4832ef2c962e2e9cef2ea1153f25824398e0"
+        },
+        {
+          "path": "src/carr_library/audio/windows_process.py",
+          "git_blob": "2dd7caa0300fe9a9c28583cdc0cdd25867c45c92"
+        },
+        {
+          "path": "src/carr_library/audio/cleanup.py",
+          "git_blob": "647374f2fbca142799ded772cb4ce15c0b0b2ce6"
+        },
+        {
+          "path": "src/carr_library/audio/jobs.py",
+          "git_blob": "f903172a16ac537f6f29adf213a1174ac737a69a"
+        }
+      ],
+      "groups": [
+        {
+          "canonical_functions": [
+            "test_fast_stdout_overflow_is_detected_after_child_exit",
+            "test_fast_stderr_overflow_is_detected_after_child_exit"
+          ],
+          "assertions": "An actually exited child cannot bypass either diagnostic stream cap.",
+          "current_tests": [
+            {
+              "path": "tests/audio/test_canonical_process_signal.py",
+              "function": "test_fast_owned_diagnostic_overflow_is_rejected_after_actual_exit",
+              "git_blob": "f37f108ffac81756a347e67d02b489f4e9b6f1b2",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            }
+          ],
+          "status": "new_regression_runtime_pending",
+          "notes": []
+        },
+        {
+          "canonical_functions": [
+            "test_real_timeout_terminates_worker_promptly",
+            "test_cancel_before_spawn_prevents_side_effect"
+          ],
+          "assertions": "Bounded timeout settles the exact child; pre-start cancellation prevents launch and side effects.",
+          "current_tests": [
+            {
+              "path": "tests/audio/test_canonical_process_signal.py",
+              "function": "test_owned_process_timeout_terminates_actual_child_promptly",
+              "git_blob": "f37f108ffac81756a347e67d02b489f4e9b6f1b2",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            },
+            {
+              "path": "tests/audio/test_canonical_process_signal.py",
+              "function": "test_prestart_cancel_prevents_child_side_effects",
+              "git_blob": "f37f108ffac81756a347e67d02b489f4e9b6f1b2",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            }
+          ],
+          "status": "new_regression_runtime_pending",
+          "notes": []
+        },
+        {
+          "canonical_functions": [
+            "test_output_disk_budget_is_enforced_even_on_fast_exit",
+            "test_all_worker_staging_files_count_against_disk_budget",
+            "test_staging_entry_count_is_bounded"
+          ],
+          "assertions": "Fast completion still checks a single output, aggregate outputs, and entry count.",
+          "current_tests": [
+            {
+              "path": "tests/audio/test_canonical_process_signal.py",
+              "function": "test_completed_worker_staging_is_checked_after_actual_exit",
+              "git_blob": "f37f108ffac81756a347e67d02b489f4e9b6f1b2",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            }
+          ],
+          "status": "new_regression_runtime_pending",
+          "notes": []
+        },
+        {
+          "canonical_functions": [
+            "test_nonzero_exit_is_not_success",
+            "test_progress_is_streamed_to_caller_without_waiting_for_full_buffer",
+            "test_executable_must_be_resolved_and_no_shell_is_accepted"
+          ],
+          "assertions": "Nonzero exit fails, progress arrives on the caller thread while the child is alive, and shell/unresolved vectors cannot launch.",
+          "current_tests": [
+            {
+              "path": "tests/audio/test_canonical_process_signal.py",
+              "function": "test_nonzero_owned_child_is_not_reported_as_success",
+              "git_blob": "f37f108ffac81756a347e67d02b489f4e9b6f1b2",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            },
+            {
+              "path": "tests/audio/test_canonical_process_signal.py",
+              "function": "test_progress_reaches_caller_while_actual_child_is_still_running",
+              "git_blob": "f37f108ffac81756a347e67d02b489f4e9b6f1b2",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            },
+            {
+              "path": "tests/audio/test_canonical_process_signal.py",
+              "function": "test_argument_admission_refuses_shell_text_and_unresolved_executable",
+              "git_blob": "f37f108ffac81756a347e67d02b489f4e9b6f1b2",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            }
+          ],
+          "status": "new_regression_runtime_pending",
+          "notes": []
+        },
+        {
+          "canonical_functions": [
+            "test_publication_does_not_overwrite_or_publish_on_cancellation",
+            "test_audio_publication_flushes_a_writable_handle"
+          ],
+          "assertions": "Publication preserves foreign destinations, honors pre-move cancellation and flushes a writable descriptor.",
+          "current_tests": [
+            {
+              "path": "tests/audio/test_ffmpeg.py",
+              "function": "test_publication_loses_race_without_overwrite",
+              "git_blob": "8b8ba73d8cdad13e2cb7be8fb393b25c56d612c5",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            },
+            {
+              "path": "tests/audio/test_ffmpeg.py",
+              "function": "test_cancel_does_not_publish_partial",
+              "git_blob": "8b8ba73d8cdad13e2cb7be8fb393b25c56d612c5",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            },
+            {
+              "path": "tests/audio/test_audio_publication.py",
+              "function": "test_publication_flushes_with_a_writable_handle",
+              "git_blob": "dcc0e6e97463d53e711787add095dc752bedf4af",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            },
+            {
+              "path": "tests/audio/test_audio_publication.py",
+              "function": "test_cancellation_during_actual_file_flush_does_not_publish",
+              "git_blob": "dcc0e6e97463d53e711787add095dc752bedf4af",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            }
+          ],
+          "status": "mapped_to_current_contract",
+          "notes": []
+        }
+      ],
+      "notes": [
+        "The old audio.process module is not imported or reintroduced. Current capture/converter work retains the engine launcher and CleanupOwner. The FFmpeg file-log runner separately retains test_ffmpeg_process_boundaries."
+      ]
+    },
+    {
+      "canonical_path": "carr-library/tests/audio/test_bundled_runtime_settings.py",
+      "canonical_git_blob": "1e48791b33ae256ff5ede4ac7c24dd64afb78beb",
+      "bytes": 3853,
+      "canonical_functions": [
+        "test_studio_selects_verified_bundle_tools_and_preserves_explicit_settings",
+        "test_voice_discovery_receives_the_same_verified_ffmpeg",
+        "test_invalid_sealed_runtime_never_falls_back_to_an_unverified_tool",
+        "test_installation_without_bundled_audio_keeps_existing_local_discovery"
+      ],
+      "current_owners": [
+        {
+          "path": "src/carr_library/audio/runtime.py",
+          "git_blob": "4b8dd520d74375e3d9e43303fe971d5236ed44e6"
+        },
+        {
+          "path": "src/carr_library/runtime_settings.py",
+          "git_blob": "6c75d02505089dea46cd72c1d13bac54914e04e4"
+        },
+        {
+          "path": "src/carr_library/ui/audio_studio.py",
+          "git_blob": "e85f80f650e4a16a1866757e5a21e7ce38e2387e"
+        }
+      ],
+      "groups": [
+        {
+          "canonical_functions": [
+            "test_studio_selects_verified_bundle_tools_and_preserves_explicit_settings",
+            "test_voice_discovery_receives_the_same_verified_ffmpeg"
+          ],
+          "assertions": "Explicit current selection precedes the verified bundle; Studio discovery receives the resolved FFmpeg without changing persisted settings.",
+          "current_tests": [
+            {
+              "path": "tests/audio/test_audio_runtime.py",
+              "function": "test_explicit_and_environment_discovery_do_not_execute_or_fall_back",
+              "git_blob": "8b2bf7a6d83db5a4b978dcee7f2d8942a8bd6c78",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            },
+            {
+              "path": "tests/audio/test_audio_runtime.py",
+              "function": "test_bundle_discovery_uses_install_root_not_working_directory",
+              "git_blob": "8b2bf7a6d83db5a4b978dcee7f2d8942a8bd6c78",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            },
+            {
+              "path": "tests/ui/test_audio_studio.py",
+              "function": "test_selecting_ffmpeg_refreshes_only_owned_runtime_registry",
+              "git_blob": "1373c010f23f7a78cf3f9b5e1c7ee3b473494ba2",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            }
+          ],
+          "status": "mapped_to_current_contract",
+          "notes": []
+        },
+        {
+          "canonical_functions": [
+            "test_invalid_sealed_runtime_never_falls_back_to_an_unverified_tool",
+            "test_installation_without_bundled_audio_keeps_existing_local_discovery"
+          ],
+          "assertions": "Invalid bundles fail closed; absent bundles permit bounded absolute PATH discovery without current-directory fallback.",
+          "current_tests": [
+            {
+              "path": "tests/audio/test_audio_runtime.py",
+              "function": "test_invalid_windows_bundle_is_not_silently_replaced_by_path",
+              "git_blob": "8b2bf7a6d83db5a4b978dcee7f2d8942a8bd6c78",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            },
+            {
+              "path": "tests/audio/test_audio_runtime.py",
+              "function": "test_discovery_refuses_working_directory_and_relative_path_entries",
+              "git_blob": "8b2bf7a6d83db5a4b978dcee7f2d8942a8bd6c78",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            },
+            {
+              "path": "tests/audio/test_audio_runtime.py",
+              "function": "test_invalid_bundle_fails_before_execution",
+              "git_blob": "8b2bf7a6d83db5a4b978dcee7f2d8942a8bd6c78",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            }
+          ],
+          "status": "mapped_to_current_contract",
+          "notes": []
+        }
+      ],
+      "notes": [
+        "The old audio_runtime()/voice_registry() factories and ffprobe settings field are replaced by current runtime selection and typed engine profiles. Their old signatures and persisted executable paths are not claimed active. Current EngineProfileStore preserves legacy settings as inert bytes."
+      ]
+    },
+    {
+      "canonical_path": "carr-library/tests/audio/test_dsp.py",
+      "canonical_git_blob": "8522fa552beba8910aa2e749c19369eb4f90e09a",
+      "bytes": 14277,
+      "canonical_functions": [
+        "test_actual_pan_timing_frames_and_source_unchanged",
+        "test_music_is_actually_ducked_under_speech",
+        "test_equalizer_measures_frequency_selective_gain",
+        "test_gate_reduces_quiet_tone_without_muting_loud_tone",
+        "test_compression_reduces_dynamic_range_and_limiter_prevents_clipping",
+        "test_echo_and_room_reflections_have_measured_impulse_timing",
+        "test_time_stretch_preserves_pitch_and_pitch_control_preserves_duration",
+        "test_true_peak_loudness_meter_and_measured_normalization",
+        "test_silence_measurement_is_not_fabricated_loudness",
+        "test_invalid_controls_fail_before_output",
+        "test_unicode_quotes_and_many_scene_join_preserve_exact_frames",
+        "test_incompatible_scene_rates_are_rejected",
+        "test_no_overwrite_and_input_or_output_escape",
+        "test_untrusted_playlist_cannot_select_external_inputs",
+        "test_ancestor_links_and_unc_roots_are_rejected",
+        "test_oversized_finite_duration_is_refused_by_resource_budget",
+        "test_cancellation_during_actual_render_removes_partial_output",
+        "test_disk_allowance_is_checked_before_render",
+        "test_trim_does_not_invent_samples_and_final_stereo_is_preserved",
+        "test_effect_bypass_preserves_signal_and_controls_have_units",
+        "test_actual_installed_codecs"
+      ],
+      "current_owners": [
+        {
+          "path": "src/carr_library/audio/ffmpeg.py",
+          "git_blob": "3944a816c93482629c53430373f40275ef701833"
+        },
+        {
+          "path": "src/carr_library/audio/models.py",
+          "git_blob": "9f57f54b1596dd532f7d1cacfea374003eb33579"
+        },
+        {
+          "path": "src/carr_library/audio/clip_audio.py",
+          "git_blob": "2ccc7d5cf1bd18bee0f693d54866b4b43f4957ec"
+        },
+        {
+          "path": "src/carr_library/audio/music.py",
+          "git_blob": "4f87c0254f05636c28441290f1d583bcd226cfba"
+        },
+        {
+          "path": "src/carr_library/audio/jobs.py",
+          "git_blob": "f903172a16ac537f6f29adf213a1174ac737a69a"
+        }
+      ],
+      "groups": [
+        {
+          "canonical_functions": [
+            "test_actual_pan_timing_frames_and_source_unchanged"
+          ],
+          "assertions": "Actual stereo placement, silence, limiter, duration and unchanged source.",
+          "current_tests": [
+            {
+              "path": "tests/audio/test_ffmpeg.py",
+              "function": "test_actual_left_right_pan_and_limiter",
+              "git_blob": "8b8ba73d8cdad13e2cb7be8fb393b25c56d612c5",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            },
+            {
+              "path": "tests/audio/test_ffmpeg.py",
+              "function": "test_streaming_concat_exact_frames_and_no_overwrite",
+              "git_blob": "8b8ba73d8cdad13e2cb7be8fb393b25c56d612c5",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            },
+            {
+              "path": "tests/audio/test_production.py",
+              "function": "test_real_ffmpeg_multiscene_output_stems_subtitles_and_cached_resume",
+              "git_blob": "d4db2b25773e6b6202d7c035fbe695df3ea8da38",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            }
+          ],
+          "status": "mapped_to_current_contract",
+          "notes": []
+        },
+        {
+          "canonical_functions": [
+            "test_music_is_actually_ducked_under_speech"
+          ],
+          "assertions": "Measured music-only channel ducking and recovery, exact frames and unchanged inputs.",
+          "current_tests": [
+            {
+              "path": "tests/audio/test_audio_signal_measurements.py",
+              "function": "test_actual_music_is_ducked_under_voice_with_exact_frames_and_unchanged_inputs",
+              "git_blob": "82c5afcb1455fe69cbc3d69ec2598e2e43d6b305",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            }
+          ],
+          "status": "mapped_to_current_contract",
+          "notes": []
+        },
+        {
+          "canonical_functions": [
+            "test_equalizer_measures_frequency_selective_gain"
+          ],
+          "assertions": "Canonical +6 dB center / less than 0.2 dB off-frequency EQ tolerances.",
+          "current_tests": [
+            {
+              "path": "tests/audio/test_canonical_process_signal.py",
+              "function": "test_actual_equalizer_preserves_canonical_selective_gain_tolerances",
+              "git_blob": "f37f108ffac81756a347e67d02b489f4e9b6f1b2",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            }
+          ],
+          "status": "new_regression_runtime_pending",
+          "notes": []
+        },
+        {
+          "canonical_functions": [
+            "test_gate_reduces_quiet_tone_without_muting_loud_tone",
+            "test_compression_reduces_dynamic_range_and_limiter_prevents_clipping"
+          ],
+          "assertions": "Gate/compression distinguish quiet and loud input; limiter ceiling is measured.",
+          "current_tests": [
+            {
+              "path": "tests/audio/test_audio_signal_measurements.py",
+              "function": "test_actual_gate_reduces_quiet_signal_and_compressor_reduces_loud_signal",
+              "git_blob": "82c5afcb1455fe69cbc3d69ec2598e2e43d6b305",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            },
+            {
+              "path": "tests/audio/test_extended_effects.py",
+              "function": "test_actual_selectable_loudness_and_limiter_are_measured",
+              "git_blob": "f476a9865ca0fa0bbc115e4cc54d9e1f251c3c9f",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            }
+          ],
+          "status": "mapped_to_current_contract",
+          "notes": []
+        },
+        {
+          "canonical_functions": [
+            "test_echo_and_room_reflections_have_measured_impulse_timing"
+          ],
+          "assertions": "Delay and room reflection preserve exact millisecond sample offsets and preceding silence.",
+          "current_tests": [
+            {
+              "path": "tests/audio/test_canonical_process_signal.py",
+              "function": "test_actual_reflection_impulse_positions_keep_declared_millisecond_units",
+              "git_blob": "f37f108ffac81756a347e67d02b489f4e9b6f1b2",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            }
+          ],
+          "status": "new_regression_runtime_pending",
+          "notes": []
+        },
+        {
+          "canonical_functions": [
+            "test_time_stretch_preserves_pitch_and_pitch_control_preserves_duration"
+          ],
+          "assertions": "Actual tempo changes duration without transposition; pitch changes frequency while preserving duration.",
+          "current_tests": [
+            {
+              "path": "tests/audio/test_extended_effects.py",
+              "function": "test_actual_tempo_changes_duration_without_transposing",
+              "git_blob": "f476a9865ca0fa0bbc115e4cc54d9e1f251c3c9f",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            },
+            {
+              "path": "tests/audio/test_extended_effects.py",
+              "function": "test_actual_pitch_uses_input_rate_and_preserves_duration",
+              "git_blob": "f476a9865ca0fa0bbc115e4cc54d9e1f251c3c9f",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            }
+          ],
+          "status": "mapped_to_current_contract",
+          "notes": []
+        },
+        {
+          "canonical_functions": [
+            "test_true_peak_loudness_meter_and_measured_normalization"
+          ],
+          "assertions": "Actual loudness/gain and a selected limiter ceiling remain measured.",
+          "current_tests": [
+            {
+              "path": "tests/audio/test_audio_signal_measurements.py",
+              "function": "test_actual_loudness_measurement_reports_expected_gain_difference",
+              "git_blob": "82c5afcb1455fe69cbc3d69ec2598e2e43d6b305",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            },
+            {
+              "path": "tests/audio/test_extended_effects.py",
+              "function": "test_actual_selectable_loudness_and_limiter_are_measured",
+              "git_blob": "f476a9865ca0fa0bbc115e4cc54d9e1f251c3c9f",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            }
+          ],
+          "status": "mapped_to_current_contract",
+          "notes": []
+        },
+        {
+          "canonical_functions": [
+            "test_silence_measurement_is_not_fabricated_loudness"
+          ],
+          "assertions": "Actual silence has no fabricated finite integrated LUFS or true peak.",
+          "current_tests": [
+            {
+              "path": "tests/audio/test_canonical_process_signal.py",
+              "function": "test_actual_silence_has_no_fabricated_finite_loudness_or_peak",
+              "git_blob": "f37f108ffac81756a347e67d02b489f4e9b6f1b2",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            }
+          ],
+          "status": "new_regression_runtime_pending",
+          "notes": []
+        },
+        {
+          "canonical_functions": [
+            "test_invalid_controls_fail_before_output",
+            "test_incompatible_scene_rates_are_rejected",
+            "test_no_overwrite_and_input_or_output_escape",
+            "test_untrusted_playlist_cannot_select_external_inputs",
+            "test_ancestor_links_and_unc_roots_are_rejected",
+            "test_oversized_finite_duration_is_refused_by_resource_budget",
+            "test_disk_allowance_is_checked_before_render"
+          ],
+          "assertions": "Typed controls/rates, bounded local assets, no-clobber publication and explicit storage limits reject unsafe requests before accepted output.",
+          "current_tests": [
+            {
+              "path": "tests/audio/test_extended_effects.py",
+              "function": "test_unsafe_or_out_of_range_controls_are_rejected_even_when_bypassed",
+              "git_blob": "f476a9865ca0fa0bbc115e4cc54d9e1f251c3c9f",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            },
+            {
+              "path": "tests/audio/test_extended_effects.py",
+              "function": "test_new_frequency_controls_refuse_nyquist_and_above",
+              "git_blob": "f476a9865ca0fa0bbc115e4cc54d9e1f251c3c9f",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            },
+            {
+              "path": "tests/audio/test_extended_effects.py",
+              "function": "test_codec_rate_constraint_is_visible_before_rendering",
+              "git_blob": "f476a9865ca0fa0bbc115e4cc54d9e1f251c3c9f",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            },
+            {
+              "path": "tests/audio/test_audio_boundaries.py",
+              "function": "test_local_input_boundary_rejects_network_and_alternate_stream_paths",
+              "git_blob": "f61bdd9d3f2409d784db0caee3ceeb52ee7e3f06",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            },
+            {
+              "path": "tests/audio/test_audio_boundaries.py",
+              "function": "test_windows_device_and_alias_filenames_are_rejected_on_every_platform",
+              "git_blob": "f61bdd9d3f2409d784db0caee3ceeb52ee7e3f06",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            },
+            {
+              "path": "tests/audio/test_production.py",
+              "function": "test_symlink_project_rejected",
+              "git_blob": "d4db2b25773e6b6202d7c035fbe695df3ea8da38",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            },
+            {
+              "path": "tests/audio/test_production.py",
+              "function": "test_untrusted_completion_output_path_is_not_returned",
+              "git_blob": "d4db2b25773e6b6202d7c035fbe695df3ea8da38",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            },
+            {
+              "path": "tests/audio/test_chunk_cache_budget.py",
+              "function": "test_large_staged_companion_fails_before_any_cache_publication",
+              "git_blob": "badfb714576adbf1d5ecbbbf1d640e08447986c5",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            },
+            {
+              "path": "tests/audio/test_chunk_cache_budget.py",
+              "function": "test_invalid_budget_is_rejected_before_creating_cache",
+              "git_blob": "badfb714576adbf1d5ecbbbf1d640e08447986c5",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            }
+          ],
+          "status": "mapped_to_current_contract",
+          "notes": []
+        },
+        {
+          "canonical_functions": [
+            "test_unicode_quotes_and_many_scene_join_preserve_exact_frames"
+          ],
+          "assertions": "Unicode/quoted paths and concatenation preserve source and sample ordering.",
+          "current_tests": [
+            {
+              "path": "tests/audio/test_music.py",
+              "function": "test_actual_graph_file_handles_unicode_and_spaces_without_leaving_temporary_input",
+              "git_blob": "603a477ecd261fbf3db49becabf25a09034dcd47",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            },
+            {
+              "path": "tests/audio/test_ffmpeg.py",
+              "function": "test_streaming_concat_exact_frames_and_no_overwrite",
+              "git_blob": "8b8ba73d8cdad13e2cb7be8fb393b25c56d612c5",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            },
+            {
+              "path": "tests/audio/test_production.py",
+              "function": "test_real_ffmpeg_multiscene_output_stems_subtitles_and_cached_resume",
+              "git_blob": "d4db2b25773e6b6202d7c035fbe695df3ea8da38",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            }
+          ],
+          "status": "mapped_to_current_contract",
+          "notes": []
+        },
+        {
+          "canonical_functions": [
+            "test_cancellation_during_actual_render_removes_partial_output"
+          ],
+          "assertions": "A real FFmpeg child is stopped by cancellation and partial output cannot publish.",
+          "current_tests": [
+            {
+              "path": "tests/audio/test_audio_signal_measurements.py",
+              "function": "test_actual_running_ffmpeg_process_is_terminated_by_cancellation",
+              "git_blob": "82c5afcb1455fe69cbc3d69ec2598e2e43d6b305",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            },
+            {
+              "path": "tests/audio/test_publication_fsync.py",
+              "function": "test_real_pcm_silence_cannot_publish_after_final_flush_cancellation",
+              "git_blob": "28703b8bf31ddc787f5d754ff14a57740e8d095b",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            }
+          ],
+          "status": "mapped_to_current_contract",
+          "notes": []
+        },
+        {
+          "canonical_functions": [
+            "test_trim_does_not_invent_samples_and_final_stereo_is_preserved"
+          ],
+          "assertions": "Trim cannot invent source samples; actual pan/gain/fades use exact PCM and stereo placement.",
+          "current_tests": [
+            {
+              "path": "tests/audio/test_clips.py",
+              "function": "test_clip_count_and_sample_trim_bounds_are_not_silent_clamps",
+              "git_blob": "96d98782cf6671d92f4fe83252a587ef98bcaac6",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            },
+            {
+              "path": "tests/audio/test_clip_render.py",
+              "function": "test_real_trim_pan_gain_and_fades_keep_exact_pcm_samples",
+              "git_blob": "9b59aee69df12d18aa80dd48547b982874a48a82",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            }
+          ],
+          "status": "mapped_to_current_contract",
+          "notes": []
+        },
+        {
+          "canonical_functions": [
+            "test_effect_bypass_preserves_signal_and_controls_have_units"
+          ],
+          "assertions": "Bypass preserves signal while explicit effect order and units remain typed.",
+          "current_tests": [
+            {
+              "path": "tests/audio/test_extended_effects.py",
+              "function": "test_effect_descriptions_are_copies_and_typed_plans_round_trip",
+              "git_blob": "f476a9865ca0fa0bbc115e4cc54d9e1f251c3c9f",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            },
+            {
+              "path": "tests/audio/test_extended_effects.py",
+              "function": "test_script_bypass_and_order_change_reach_actual_signal_path",
+              "git_blob": "f476a9865ca0fa0bbc115e4cc54d9e1f251c3c9f",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            }
+          ],
+          "status": "mapped_to_current_contract",
+          "notes": []
+        },
+        {
+          "canonical_functions": [
+            "test_actual_installed_codecs"
+          ],
+          "assertions": "Current codecs execute real encoding/decoding with declared rate constraints and no overwrite.",
+          "current_tests": [
+            {
+              "path": "tests/audio/test_extended_effects.py",
+              "function": "test_added_formats_encode_and_decode_real_audio_without_overwriting",
+              "git_blob": "f476a9865ca0fa0bbc115e4cc54d9e1f251c3c9f",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            },
+            {
+              "path": "tests/audio/test_extended_effects.py",
+              "function": "test_codec_rate_constraint_is_visible_before_rendering",
+              "git_blob": "f476a9865ca0fa0bbc115e4cc54d9e1f251c3c9f",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            }
+          ],
+          "status": "mapped_to_current_contract",
+          "notes": []
+        }
+      ],
+      "notes": [
+        "Current Effect stores validated parameter tuples. Old DSP adapter signatures are not claimed compatible; the current product still owns bounded filter graphs and native workers."
+      ]
+    },
+    {
+      "canonical_path": "carr-library/tests/audio_acceptance/__init__.py",
+      "canonical_git_blob": "0d40b5d7b4211ff87600e42ad634e576f53aa403",
+      "bytes": 82,
+      "canonical_functions": [],
+      "current_owners": [],
+      "groups": [],
+      "notes": [
+        "This 82-byte package marker has no test or product behavior. It is not recreated as a second test framework."
+      ]
+    },
+    {
+      "canonical_path": "carr-library/tests/audio_acceptance/oracle.py",
+      "canonical_git_blob": "2b3b7e80a1da81324a21f0895bc344006f0c89cf",
+      "bytes": 8502,
+      "canonical_functions": [],
+      "current_owners": [
+        {
+          "path": "src/carr_library/audio/ffmpeg.py",
+          "git_blob": "3944a816c93482629c53430373f40275ef701833"
+        },
+        {
+          "path": "src/carr_library/audio/production.py",
+          "git_blob": "6caab04e011162b8b339f92abd409796030c1e1e"
+        },
+        {
+          "path": "src/carr_library/audio/media_conversion.py",
+          "git_blob": "0585ec493a00bf048f15fb140111d364ec46f25e"
+        }
+      ],
+      "groups": [
+        {
+          "canonical_functions": [],
+          "assertions": "Independent PCM byte/sample comparisons and actual codec execution are retained in current test owners.",
+          "current_tests": [
+            {
+              "path": "tests/audio/test_book_duration.py",
+              "function": "test_actual_wav_parts_rejoin_to_exact_accepted_pcm_without_any_resynthesis",
+              "git_blob": "259a5f6d77b5d12d33c3c7dd8f564ded9348d8b3",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            },
+            {
+              "path": "tests/audio/test_book_duration.py",
+              "function": "test_each_existing_format_is_really_encoded_and_decoded_from_reviewed_intervals",
+              "git_blob": "259a5f6d77b5d12d33c3c7dd8f564ded9348d8b3",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            },
+            {
+              "path": "tests/audio/test_master_effects.py",
+              "function": "test_real_master_delay_crosses_chapters_once_and_partitions_are_byte_exact",
+              "git_blob": "a318d75f62e0ee13333e7f542ecef77406878734",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            },
+            {
+              "path": "tests/audio/test_master_effects.py",
+              "function": "test_real_render_master_only_edit_reuses_speech_and_keeps_premaster_stems",
+              "git_blob": "a318d75f62e0ee13333e7f542ecef77406878734",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            }
+          ],
+          "status": "test_helper_replaced",
+          "notes": []
+        }
+      ],
+      "notes": [
+        "Canonical helpers file_sha256/probe_pcm/decode_pcm/sequence_pcm/verify_publication are test utilities, not shipped APIs. The old ffprobe rational-time-base and complete external-decoder helper are not claimed byte-for-byte equivalent or rerun here; current assertions and their limits are listed independently."
+      ]
+    },
+    {
+      "canonical_path": "carr-library/tests/audio_acceptance/test_primary_publication_budget.py",
+      "canonical_git_blob": "405552e3ef7f5494678a7a583b42cf0eb84cf9a4",
+      "bytes": 15662,
+      "canonical_functions": [
+        "test_actual_total_budget_retains_verified_nodes_and_completed_verification_is_cancellable",
+        "test_service_closes_only_owned_registry_once_and_rejects_reuse",
+        "test_actual_publication_preserves_destination_reserve_and_resumes_without_rewriting"
+      ],
+      "current_owners": [
+        {
+          "path": "src/carr_library/audio/jobs.py",
+          "git_blob": "f903172a16ac537f6f29adf213a1174ac737a69a"
+        },
+        {
+          "path": "src/carr_library/audio/production.py",
+          "git_blob": "6caab04e011162b8b339f92abd409796030c1e1e"
+        },
+        {
+          "path": "src/carr_library/ui/audio_studio.py",
+          "git_blob": "e85f80f650e4a16a1866757e5a21e7ce38e2387e"
+        },
+        {
+          "path": "src/carr_library/operations/admission.py",
+          "git_blob": "873fd6cf4bb8c455a890b1723c3fb63b34049cdd"
+        }
+      ],
+      "groups": [
+        {
+          "canonical_functions": [
+            "test_actual_total_budget_retains_verified_nodes_and_completed_verification_is_cancellable"
+          ],
+          "assertions": "Whole-project storage, metadata and quarantine count toward quota; accepted chunks survive failure and are reused, while completed artifacts are reverified with cancellation.",
+          "current_tests": [
+            {
+              "path": "tests/audio/test_chunk_cache_budget.py",
+              "function": "test_restart_never_releases_quarantined_payload_budget",
+              "git_blob": "badfb714576adbf1d5ecbbbf1d640e08447986c5",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            },
+            {
+              "path": "tests/audio/test_chunk_cache_budget.py",
+              "function": "test_metadata_and_both_companions_have_an_exact_prepublication_budget",
+              "git_blob": "badfb714576adbf1d5ecbbbf1d640e08447986c5",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            },
+            {
+              "path": "tests/audio/test_chunk_cache_budget.py",
+              "function": "test_corrupt_companion_remains_accounted_and_valid_replacement_can_resume",
+              "git_blob": "badfb714576adbf1d5ecbbbf1d640e08447986c5",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            },
+            {
+              "path": "tests/audio/test_production.py",
+              "function": "test_cancel_then_restart_reuses_sealed_speech",
+              "git_blob": "d4db2b25773e6b6202d7c035fbe695df3ea8da38",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            },
+            {
+              "path": "tests/audio/test_production.py",
+              "function": "test_corrupted_speech_checkpoint_is_regenerated",
+              "git_blob": "d4db2b25773e6b6202d7c035fbe695df3ea8da38",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            },
+            {
+              "path": "tests/audio/test_production_integrity.py",
+              "function": "test_existing_project_storage_is_counted_before_render",
+              "git_blob": "7da2c5720fe004f957d755f08ebee7d9cb2c75c7",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            }
+          ],
+          "status": "current_policy_and_tests_split",
+          "notes": []
+        },
+        {
+          "canonical_functions": [
+            "test_service_closes_only_owned_registry_once_and_rejects_reuse"
+          ],
+          "assertions": "Resource lifetime belongs to current subprocess, device and window owners; injected registries are not silently replaced.",
+          "current_tests": [
+            {
+              "path": "tests/ui/test_audio_studio.py",
+              "function": "test_selecting_ffmpeg_refreshes_only_owned_runtime_registry",
+              "git_blob": "1373c010f23f7a78cf3f9b5e1c7ee3b473494ba2",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            },
+            {
+              "path": "tests/ui/test_audio_playback_controls.py",
+              "function": "test_failed_playback_cleanup_cannot_start_a_render_or_leave_the_ui_busy",
+              "git_blob": "f402b07861a760cf8c5144bb0fd37088efc1e0f9",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            },
+            {
+              "path": "tests/ui/test_audio_playback_controls.py",
+              "function": "test_failed_close_keeps_dialog_and_recovery_timer_available",
+              "git_blob": "f402b07861a760cf8c5144bb0fd37088efc1e0f9",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            },
+            {
+              "path": "tests/audio/test_recording_process.py",
+              "function": "test_actual_capture_pending_cleanup_keeps_owned_child_until_confirmation",
+              "git_blob": "f0b5711ea14db77cd066d78afa2a77e2319f426b",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            }
+          ],
+          "status": "old_service_owner_replaced",
+          "notes": []
+        },
+        {
+          "canonical_functions": [
+            "test_actual_publication_preserves_destination_reserve_and_resumes_without_rewriting"
+          ],
+          "assertions": "Admission includes destination reserve and derived storage; exact completed replay needs no new resource capacity and cannot rewrite accepted output.",
+          "current_tests": [
+            {
+              "path": "tests/operations/test_heavy_admission.py",
+              "function": "test_audio_estimate_keeps_stems_music_and_selected_encoding",
+              "git_blob": "dadbf7a51e5ad40b8f1dafe15c8a35ed365023fd",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            },
+            {
+              "path": "tests/operations/test_heavy_admission.py",
+              "function": "test_audio_lease_spans_renderer_and_releases_after_its_cleanup",
+              "git_blob": "dadbf7a51e5ad40b8f1dafe15c8a35ed365023fd",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            },
+            {
+              "path": "tests/e2e/test_audio_cli_resources.py",
+              "function": "test_actual_cli_replays_only_verified_output_while_selected_library_is_busy",
+              "git_blob": "b29cc52aa4b1775bd1c67cad1b18240ccc085dc9",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            },
+            {
+              "path": "tests/audio/test_book_duration.py",
+              "function": "test_cumulative_derived_parts_cannot_overrun_the_reserved_disk_budget",
+              "git_blob": "259a5f6d77b5d12d33c3c7dd8f564ded9348d8b3",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            },
+            {
+              "path": "tests/audio/test_book_duration.py",
+              "function": "test_same_complete_review_reuses_verified_outputs_without_encoder_or_voice",
+              "git_blob": "259a5f6d77b5d12d33c3c7dd8f564ded9348d8b3",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            }
+          ],
+          "status": "current_policy_and_tests_split",
+          "notes": []
+        }
+      ],
+      "notes": [
+        "The old three subprocess scripts are not counted as three executed current cases. Their exact 4→32 MiB and ffprobe/full-FLAC oracle populations have not been replayed here.",
+        "Current disk_budget_bytes is a typed ProductionPlan field and therefore part of the exact run identity. Raising it preserves shared content-addressed chunks, but changing it is not advertised as the same completed run; resource saturation replay keeps the exact plan.",
+        "The retired ProductionService.close API is not emulated. Current VoiceRegistry has no persistent native process to close; current _run/recording_process, playback and UI executor lifetimes own their actual resources."
+      ]
+    },
+    {
+      "canonical_path": "carr-library/tests/conversion/fixtures/ordered_slides.pptx",
+      "canonical_git_blob": "58b0d7cce78a50883ed4bcf1e73cbbcc40675d44",
+      "bytes": 29150,
+      "canonical_functions": [],
+      "current_owners": [
+        {
+          "path": "src/carr_library/conversion/service.py",
+          "git_blob": "05ec96d9d73eb6f2f2efe6715139f6f648617f6c"
+        },
+        {
+          "path": "src/carr_library/conversion/worker.py",
+          "git_blob": "b634a8db762bab0615ac9b6c2e8fe8135257af9e"
+        },
+        {
+          "path": "src/carr_library/extract/document_formats_xml.py",
+          "git_blob": "a09bc00a438e14ee631978498884961e8e396f00"
+        }
+      ],
+      "groups": [
+        {
+          "canonical_functions": [],
+          "assertions": "Exact 29150-byte canonical producer-generated ZIP is reused unchanged; the current isolated worker must return Earlier before Later, two segments, unchanged source and bound reading provenance.",
+          "current_tests": [
+            {
+              "path": "tests/conversion/test_canonical_presentation.py",
+              "function": "test_complete_canonical_presentation_uses_relationship_order_in_actual_worker",
+              "git_blob": "43c7deca244c7b484c2ef8b060139140b272314a",
+              "source_commit": "e0ba9cfe516eaa2533db752e7db28b94bff7d5b8"
+            }
+          ],
+          "status": "exact_fixture_port_runtime_pending",
+          "notes": []
+        },
+        {
+          "canonical_functions": [],
+          "assertions": "Existing minimal XML tests independently keep presentation relationship order, hidden-slide handling and strict external-link rejection.",
+          "current_tests": [
+            {
+              "path": "tests/extract/test_document_formats_xml.py",
+              "function": "test_real_supported_document_order_source_hash_and_unverified_locators",
+              "git_blob": "c7328eb9c810e179bd6b9fa9759d1a48fd2767ae",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            },
+            {
+              "path": "tests/extract/test_document_formats_xml.py",
+              "function": "test_pptx_hidden_slides_are_omitted_and_stored_slide_order_retained",
+              "git_blob": "c7328eb9c810e179bd6b9fa9759d1a48fd2767ae",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            },
+            {
+              "path": "tests/extract/test_document_formats_xml.py",
+              "function": "test_pptx_external_primary_slide_is_not_loaded",
+              "git_blob": "c7328eb9c810e179bd6b9fa9759d1a48fd2767ae",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            }
+          ],
+          "status": "mapped_to_current_contract",
+          "notes": []
+        }
+      ],
+      "notes": [
+        "Canonical usage is tests/conversion/test_conversion.py::test_presentation_order_uses_relationship_order, blob e8cae855b1d64bc85fe06b945f840976f07c67a3.",
+        "Component e0ba9cfe copies the existing canonical Git blob rather than regenerating it or asserting the minimal ZIP is byte-equivalent. Installed test staging must include this binary fixture."
+      ]
+    },
+    {
+      "canonical_path": "carr-library/tests/operations/test_production_admission.py",
+      "canonical_git_blob": "ad7403a7e65033c8777a8804988d474a8776c948",
+      "bytes": 8502,
+      "canonical_functions": [
+        "test_actual_studio_admits_threads_releases_and_completed_job_needs_no_capacity",
+        "test_gpu_policy_checked_before_model_execution_and_failed_probe_releases",
+        "test_total_disk_budget_failure_releases_lease_and_resume_preserves_accepted_audio",
+        "test_saved_production_admission_is_a_bounded_passive_backup_record"
+      ],
+      "current_owners": [
+        {
+          "path": "src/carr_library/operations/admission.py",
+          "git_blob": "873fd6cf4bb8c455a890b1723c3fb63b34049cdd"
+        },
+        {
+          "path": "src/carr_library/audio/production.py",
+          "git_blob": "6caab04e011162b8b339f92abd409796030c1e1e"
+        },
+        {
+          "path": "src/carr_library/audio_cli.py",
+          "git_blob": "111f95d4c92b79f9eff49e6fb37e96dd5547de18"
+        },
+        {
+          "path": "src/carr_library/audio/backup.py",
+          "git_blob": "91408c3078f7d7b716b26cf8233121afa06f0367"
+        }
+      ],
+      "groups": [
+        {
+          "canonical_functions": [
+            "test_actual_studio_admits_threads_releases_and_completed_job_needs_no_capacity"
+          ],
+          "assertions": "The selected library broker covers native work; waiting cancellation leaves foreign leases intact and verified replay needs no fresh capacity.",
+          "current_tests": [
+            {
+              "path": "tests/operations/test_heavy_admission.py",
+              "function": "test_audio_lease_spans_renderer_and_releases_after_its_cleanup",
+              "git_blob": "dadbf7a51e5ad40b8f1dafe15c8a35ed365023fd",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            },
+            {
+              "path": "tests/operations/test_heavy_admission.py",
+              "function": "test_audio_cancelled_while_waiting_invokes_no_renderer",
+              "git_blob": "dadbf7a51e5ad40b8f1dafe15c8a35ed365023fd",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            },
+            {
+              "path": "tests/e2e/test_audio_cli_resources.py",
+              "function": "test_actual_cli_replays_only_verified_output_while_selected_library_is_busy",
+              "git_blob": "b29cc52aa4b1775bd1c67cad1b18240ccc085dc9",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            },
+            {
+              "path": "tests/e2e/test_audio_cli_resources.py",
+              "function": "test_fresh_cli_waits_on_selected_library_and_cancel_preserves_the_other_lease",
+              "git_blob": "b29cc52aa4b1775bd1c67cad1b18240ccc085dc9",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            }
+          ],
+          "status": "mapped_to_current_contract",
+          "notes": []
+        },
+        {
+          "canonical_functions": [
+            "test_gpu_policy_checked_before_model_execution_and_failed_probe_releases"
+          ],
+          "assertions": "GPU/model authority is resolved before execution and rechecked after waiting; failures release only the owned lease.",
+          "current_tests": [
+            {
+              "path": "tests/operations/test_heavy_admission.py",
+              "function": "test_music_gpu_is_checked_before_any_renderer",
+              "git_blob": "dadbf7a51e5ad40b8f1dafe15c8a35ed365023fd",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            },
+            {
+              "path": "tests/operations/test_heavy_admission.py",
+              "function": "test_music_selection_is_bound_again_after_waiting",
+              "git_blob": "dadbf7a51e5ad40b8f1dafe15c8a35ed365023fd",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            },
+            {
+              "path": "tests/operations/test_heavy_admission.py",
+              "function": "test_audio_unknown_device_never_becomes_cpu",
+              "git_blob": "dadbf7a51e5ad40b8f1dafe15c8a35ed365023fd",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            },
+            {
+              "path": "tests/e2e/test_audio_cli_resources.py",
+              "function": "test_failed_cli_renderer_releases_its_admission_after_cleanup_without_releasing_another",
+              "git_blob": "b29cc52aa4b1775bd1c67cad1b18240ccc085dc9",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            },
+            {
+              "path": "tests/e2e/test_audio_cli_resources.py",
+              "function": "test_cli_music_uses_only_selected_library_profile_and_rechecks_its_manifest_after_wait",
+              "git_blob": "b29cc52aa4b1775bd1c67cad1b18240ccc085dc9",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            }
+          ],
+          "status": "mapped_to_current_contract",
+          "notes": []
+        },
+        {
+          "canonical_functions": [
+            "test_total_disk_budget_failure_releases_lease_and_resume_preserves_accepted_audio"
+          ],
+          "assertions": "Storage rejection preserves verified cache and cleanup precedes release; resume uses retained content.",
+          "current_tests": [
+            {
+              "path": "tests/audio/test_chunk_cache_budget.py",
+              "function": "test_large_staged_companion_fails_before_any_cache_publication",
+              "git_blob": "badfb714576adbf1d5ecbbbf1d640e08447986c5",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            },
+            {
+              "path": "tests/audio/test_chunk_cache_budget.py",
+              "function": "test_corrupt_companion_remains_accounted_and_valid_replacement_can_resume",
+              "git_blob": "badfb714576adbf1d5ecbbbf1d640e08447986c5",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            },
+            {
+              "path": "tests/operations/test_heavy_admission.py",
+              "function": "test_audio_lease_spans_renderer_and_releases_after_its_cleanup",
+              "git_blob": "dadbf7a51e5ad40b8f1dafe15c8a35ed365023fd",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            }
+          ],
+          "status": "mapped_to_current_contract",
+          "notes": []
+        },
+        {
+          "canonical_functions": [
+            "test_saved_production_admission_is_a_bounded_passive_backup_record"
+          ],
+          "assertions": "Backup validates passive project/source state and excludes machine executable/model authority.",
+          "current_tests": [
+            {
+              "path": "tests/audio/test_project_backup.py",
+              "function": "test_checksums_and_unknown_archive_extras_reject_before_publication",
+              "git_blob": "5cf164f9e6a82ec4709216bbe2c4177da93fe4ce",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            },
+            {
+              "path": "tests/audio/test_project_backup.py",
+              "function": "test_snapshot_after_real_render_restores_checked_outputs_without_new_synthesis",
+              "git_blob": "5cf164f9e6a82ec4709216bbe2c4177da93fe4ce",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            },
+            {
+              "path": "tests/audio/test_engine_profiles.py",
+              "function": "test_machine_engine_registrations_are_excluded_from_complete_backup",
+              "git_blob": "778b3d443e441b94d1cb6d035690609facc24e3c",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            },
+            {
+              "path": "tests/audio/test_engine_profiles.py",
+              "function": "test_portable_project_cannot_register_its_own_executable_installation",
+              "git_blob": "778b3d443e441b94d1cb6d035690609facc24e3c",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            }
+          ],
+          "status": "mapped_to_current_contract",
+          "notes": []
+        }
+      ],
+      "notes": [
+        "No canonical saved admission document becomes a live current ResourceLease; current broker/project/backup schemas remain authoritative."
+      ]
+    },
+    {
+      "canonical_path": "carr-library/tests/studio/test_music_scheduling.py",
+      "canonical_git_blob": "f60561a823a3c6757c84aad83b40cfa67b53f3a0",
+      "bytes": 1158,
+      "canonical_functions": [
+        "test_long_scores_have_bounded_independent_chunks_and_exact_total_frames",
+        "test_unchanged_prefix_survives_extension_for_checkpoint_reuse"
+      ],
+      "current_owners": [
+        {
+          "path": "src/carr_library/audio/music.py",
+          "git_blob": "4f87c0254f05636c28441290f1d583bcd226cfba"
+        },
+        {
+          "path": "src/carr_library/audio/production.py",
+          "git_blob": "6caab04e011162b8b339f92abd409796030c1e1e"
+        },
+        {
+          "path": "src/carr_library/audio/models.py",
+          "git_blob": "9f57f54b1596dd532f7d1cacfea374003eb33579"
+        }
+      ],
+      "groups": [
+        {
+          "canonical_functions": [
+            "test_long_scores_have_bounded_independent_chunks_and_exact_total_frames"
+          ],
+          "assertions": "Globally rounded integer start/stop boundaries and engine-specific bounded chunks retain exact total frames without a ten-minute project ceiling.",
+          "current_tests": [
+            {
+              "path": "tests/audio/test_music.py",
+              "function": "test_actual_more_than_ten_minutes_has_no_total_duration_ceiling",
+              "git_blob": "603a477ecd261fbf3db49becabf25a09034dcd47",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            },
+            {
+              "path": "tests/audio/test_music.py",
+              "function": "test_actual_procedural_score_is_exact_reproducible_audio_with_midi",
+              "git_blob": "603a477ecd261fbf3db49becabf25a09034dcd47",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            },
+            {
+              "path": "tests/audio/test_music.py",
+              "function": "test_actual_cancel_resume_reuses_verified_chunk_and_recovers_corruption",
+              "git_blob": "603a477ecd261fbf3db49becabf25a09034dcd47",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            }
+          ],
+          "status": "mapped_to_current_contract",
+          "notes": []
+        },
+        {
+          "canonical_functions": [
+            "test_unchanged_prefix_survives_extension_for_checkpoint_reuse"
+          ],
+          "assertions": "Per-bar and per-chunk seed/start decisions stay stable for unchanged complete intervals; same-score resume verifies hashes before reuse.",
+          "current_tests": [
+            {
+              "path": "tests/audio/test_music.py",
+              "function": "test_actual_cancel_resume_reuses_verified_chunk_and_recovers_corruption",
+              "git_blob": "603a477ecd261fbf3db49becabf25a09034dcd47",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            },
+            {
+              "path": "tests/audio/test_music.py",
+              "function": "test_changed_checkpoint_settings_need_new_destination",
+              "git_blob": "603a477ecd261fbf3db49becabf25a09034dcd47",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            },
+            {
+              "path": "tests/audio/test_production.py",
+              "function": "test_music_cancellation_retains_engine_chunks_for_next_run",
+              "git_blob": "d4db2b25773e6b6202d7c035fbe695df3ea8da38",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            }
+          ],
+          "status": "explicit_current_checkpoint_policy",
+          "notes": []
+        }
+      ],
+      "notes": [
+        "The old music_segments(MusicSpec, rate, 30) generator is absent. Procedural/FluidSynth uses four-bar chunks, MusicGen 25 seconds plus context, ACE-Step its reviewed chunk_seconds.",
+        "Current checkpoint settings bind whole-score frames. Changed duration requires a new destination; cross-duration checkpoint reuse is not claimed from the old pure-generator prefix test. No neural inference/quality claim follows."
+      ]
+    },
+    {
+      "canonical_path": "carr-library/tests/studio/test_production.py",
+      "canonical_git_blob": "2036c36cab2fe931d72014ad75eabaf8381bcd6c",
+      "bytes": 15992,
+      "canonical_functions": [
+        "test_actual_three_role_music_chapters_stems_and_text_invariance",
+        "test_actual_left_center_right_routing_and_two_second_pause",
+        "test_measured_line_subtitles_and_music_stem_alignment",
+        "test_actual_music_ducking_recovers_during_deliberate_silence",
+        "test_completed_operation_is_idempotent_and_outputs_are_reverified",
+        "test_pause_restart_and_one_corrupt_speech_chunk_repaired",
+        "test_edit_one_scene_reuses_unchanged_speech_and_source_original",
+        "test_completed_output_tampering_is_not_silently_overwritten",
+        "test_corrupt_receipt_is_recoverable_like_corrupt_audio",
+        "test_actual_selected_local_sfx_routing_and_source_audio_invariance",
+        "test_unselected_cue_directory_is_denied_before_publication"
+      ],
+      "current_owners": [
+        {
+          "path": "src/carr_library/audio/production.py",
+          "git_blob": "6caab04e011162b8b339f92abd409796030c1e1e"
+        },
+        {
+          "path": "src/carr_library/audio/models.py",
+          "git_blob": "9f57f54b1596dd532f7d1cacfea374003eb33579"
+        },
+        {
+          "path": "src/carr_library/audio/jobs.py",
+          "git_blob": "f903172a16ac537f6f29adf213a1174ac737a69a"
+        },
+        {
+          "path": "src/carr_library/audio/ffmpeg.py",
+          "git_blob": "3944a816c93482629c53430373f40275ef701833"
+        },
+        {
+          "path": "src/carr_library/audio/clip_audio.py",
+          "git_blob": "2ccc7d5cf1bd18bee0f693d54866b4b43f4957ec"
+        }
+      ],
+      "groups": [
+        {
+          "canonical_functions": [
+            "test_actual_three_role_music_chapters_stems_and_text_invariance",
+            "test_actual_left_center_right_routing_and_two_second_pause",
+            "test_measured_line_subtitles_and_music_stem_alignment"
+          ],
+          "assertions": "Real multi-role production keeps immutable script, stereo placement, pauses, chapters/stems, measured line subtitles and source hashes.",
+          "current_tests": [
+            {
+              "path": "tests/audio/test_production.py",
+              "function": "test_round_trip_preserves_source_and_typed_directives",
+              "git_blob": "d4db2b25773e6b6202d7c035fbe695df3ea8da38",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            },
+            {
+              "path": "tests/audio/test_production.py",
+              "function": "test_real_ffmpeg_multiscene_output_stems_subtitles_and_cached_resume",
+              "git_blob": "d4db2b25773e6b6202d7c035fbe695df3ea8da38",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            },
+            {
+              "path": "tests/audio/test_production.py",
+              "function": "test_long_line_uses_bounded_cached_requests_and_complete_subtitle",
+              "git_blob": "d4db2b25773e6b6202d7c035fbe695df3ea8da38",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            },
+            {
+              "path": "tests/audio/test_ffmpeg.py",
+              "function": "test_actual_left_right_pan_and_limiter",
+              "git_blob": "8b8ba73d8cdad13e2cb7be8fb393b25c56d612c5",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            }
+          ],
+          "status": "mapped_to_current_contract",
+          "notes": []
+        },
+        {
+          "canonical_functions": [
+            "test_actual_music_ducking_recovers_during_deliberate_silence"
+          ],
+          "assertions": "Music ducking/recovery are measured in a channel without speech contamination.",
+          "current_tests": [
+            {
+              "path": "tests/audio/test_audio_signal_measurements.py",
+              "function": "test_actual_music_is_ducked_under_voice_with_exact_frames_and_unchanged_inputs",
+              "git_blob": "82c5afcb1455fe69cbc3d69ec2598e2e43d6b305",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            }
+          ],
+          "status": "mapped_to_current_contract",
+          "notes": []
+        },
+        {
+          "canonical_functions": [
+            "test_completed_operation_is_idempotent_and_outputs_are_reverified"
+          ],
+          "assertions": "Exact completed work is checksum-verified and idempotent; forged/currently changed plan bindings cannot adopt old output.",
+          "current_tests": [
+            {
+              "path": "tests/audio/test_production.py",
+              "function": "test_real_ffmpeg_multiscene_output_stems_subtitles_and_cached_resume",
+              "git_blob": "d4db2b25773e6b6202d7c035fbe695df3ea8da38",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            },
+            {
+              "path": "tests/audio/test_publication.py",
+              "function": "test_conflicting_complete_plan_binding_is_never_silently_repaired",
+              "git_blob": "132b0c08a8ceedd8d435f50d52e518e095abaa0b",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            },
+            {
+              "path": "tests/audio/test_publication.py",
+              "function": "test_current_studio_rejects_an_old_render_after_same_source_settings_change",
+              "git_blob": "132b0c08a8ceedd8d435f50d52e518e095abaa0b",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            }
+          ],
+          "status": "mapped_to_current_contract",
+          "notes": []
+        },
+        {
+          "canonical_functions": [
+            "test_pause_restart_and_one_corrupt_speech_chunk_repaired",
+            "test_edit_one_scene_reuses_unchanged_speech_and_source_original",
+            "test_corrupt_receipt_is_recoverable_like_corrupt_audio"
+          ],
+          "assertions": "Cancellation, changed scenes and corrupt audio/receipts reuse only verified unaffected chunks while retaining original source and prior outputs.",
+          "current_tests": [
+            {
+              "path": "tests/audio/test_production.py",
+              "function": "test_cancel_then_restart_reuses_sealed_speech",
+              "git_blob": "d4db2b25773e6b6202d7c035fbe695df3ea8da38",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            },
+            {
+              "path": "tests/audio/test_production.py",
+              "function": "test_only_changed_scene_speech_is_regenerated",
+              "git_blob": "d4db2b25773e6b6202d7c035fbe695df3ea8da38",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            },
+            {
+              "path": "tests/audio/test_production.py",
+              "function": "test_corrupted_speech_checkpoint_is_regenerated",
+              "git_blob": "d4db2b25773e6b6202d7c035fbe695df3ea8da38",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            },
+            {
+              "path": "tests/audio/test_chunk_cache_budget.py",
+              "function": "test_corrupt_companion_remains_accounted_and_valid_replacement_can_resume",
+              "git_blob": "badfb714576adbf1d5ecbbbf1d640e08447986c5",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            },
+            {
+              "path": "tests/audio/test_chunk_cache_budget.py",
+              "function": "test_growing_corruption_is_counted_before_regeneration",
+              "git_blob": "badfb714576adbf1d5ecbbbf1d640e08447986c5",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            }
+          ],
+          "status": "mapped_to_current_contract",
+          "notes": []
+        },
+        {
+          "canonical_functions": [
+            "test_completed_output_tampering_is_not_silently_overwritten"
+          ],
+          "assertions": "Modified completed artifacts are not silently treated as successful or overwritten as authoritative originals.",
+          "current_tests": [
+            {
+              "path": "tests/audio/test_production.py",
+              "function": "test_output_corruption_is_not_returned_as_success",
+              "git_blob": "d4db2b25773e6b6202d7c035fbe695df3ea8da38",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            },
+            {
+              "path": "tests/audio/test_production_integrity.py",
+              "function": "test_editing_export_cannot_damage_sealed_scene",
+              "git_blob": "7da2c5720fe004f957d755f08ebee7d9cb2c75c7",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            }
+          ],
+          "status": "mapped_to_current_contract",
+          "notes": []
+        },
+        {
+          "canonical_functions": [
+            "test_actual_selected_local_sfx_routing_and_source_audio_invariance",
+            "test_unselected_cue_directory_is_denied_before_publication"
+          ],
+          "assertions": "Selected retained sound assets keep exact sample/source identity and scopes; foreign cue authority cannot enter a project.",
+          "current_tests": [
+            {
+              "path": "tests/audio/test_clip_render.py",
+              "function": "test_real_trim_pan_gain_and_fades_keep_exact_pcm_samples",
+              "git_blob": "9b59aee69df12d18aa80dd48547b982874a48a82",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            },
+            {
+              "path": "tests/audio/test_clip_render.py",
+              "function": "test_real_clip_render_resume_stems_and_publication_sample_graph",
+              "git_blob": "9b59aee69df12d18aa80dd48547b982874a48a82",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            },
+            {
+              "path": "tests/audio/test_canonical_project_import.py",
+              "function": "test_cue_requires_selected_scope_and_is_copied_with_all_controls",
+              "git_blob": "349d6464c726dce08862cf9d92b0f37be95d74b6",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            },
+            {
+              "path": "tests/audio/test_canonical_project_import.py",
+              "function": "test_foreign_saved_cue_path_needs_explicit_current_file_selection",
+              "git_blob": "349d6464c726dce08862cf9d92b0f37be95d74b6",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            },
+            {
+              "path": "tests/audio/test_production.py",
+              "function": "test_changed_sound_asset_invalidates_completed_render",
+              "git_blob": "d4db2b25773e6b6202d7c035fbe695df3ea8da38",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            }
+          ],
+          "status": "mapped_to_current_contract",
+          "notes": []
+        }
+      ],
+      "notes": [
+        "Current run_key/complete.json/render-journal.json replace the old ProductionService node schema. Old enum/receipt layouts are not claimed identical; exact current-plan/source hashes are authoritative."
+      ]
+    },
+    {
+      "canonical_path": "carr-library/tests/studio/test_production_cancellation_outcomes.py",
+      "canonical_git_blob": "1ce1d7a0852158c3a59f8fa071867930369cbbd1",
+      "bytes": 5526,
+      "canonical_functions": [
+        "test_late_stop_does_not_hide_error_after_verified_outputs",
+        "test_actual_dsp_cancellation_retains_typed_paused_or_cancelled_receipt",
+        "test_stop_during_staged_master_validation_prevents_publication_and_resumes"
+      ],
+      "current_owners": [
+        {
+          "path": "src/carr_library/audio/production.py",
+          "git_blob": "6caab04e011162b8b339f92abd409796030c1e1e"
+        },
+        {
+          "path": "src/carr_library/audio/jobs.py",
+          "git_blob": "f903172a16ac537f6f29adf213a1174ac737a69a"
+        },
+        {
+          "path": "src/carr_library/ui/audio_studio.py",
+          "git_blob": "e85f80f650e4a16a1866757e5a21e7ce38e2387e"
+        },
+        {
+          "path": "src/carr_library/progress.py",
+          "git_blob": "f5443f7591dbc5598aa1d70c9cc26319e81c01d2"
+        }
+      ],
+      "groups": [
+        {
+          "canonical_functions": [
+            "test_late_stop_does_not_hide_error_after_verified_outputs"
+          ],
+          "assertions": "A real publication/service failure remains failure even when a stop arrives late; retained artifacts are not erased by observer failure.",
+          "current_tests": [
+            {
+              "path": "tests/ui/test_audio_studio.py",
+              "function": "test_studio_failure_observer_cannot_replace_the_real_worker_error",
+              "git_blob": "1373c010f23f7a78cf3f9b5e1c7ee3b473494ba2",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            },
+            {
+              "path": "tests/ui/test_progress_view.py",
+              "function": "test_actual_returned_commit_survives_late_cancel_and_late_ui_failure",
+              "git_blob": "f1b683759810ab5609e0aca05d694aed7ea8efba",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            },
+            {
+              "path": "tests/audio/test_audio_publication.py",
+              "function": "test_publication_does_not_suppress_a_real_flush_failure",
+              "git_blob": "dcc0e6e97463d53e711787add095dc752bedf4af",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            }
+          ],
+          "status": "mapped_to_current_contract",
+          "notes": []
+        },
+        {
+          "canonical_functions": [
+            "test_actual_dsp_cancellation_retains_typed_paused_or_cancelled_receipt"
+          ],
+          "assertions": "Current explicit speech/DSP interruption types remain cancellation outcomes, with verified chunks reusable.",
+          "current_tests": [
+            {
+              "path": "tests/ui/test_audio_studio.py",
+              "function": "test_live_studio_uses_explicit_speech_and_dsp_cancellation_types",
+              "git_blob": "99f2a4e5ee82926e12c78a9023b8f076915494f6",
+              "source_commit": "ba68cf6b94d19b4b5dbcec22772258d864cb0602"
+            },
+            {
+              "path": "tests/audio/test_production.py",
+              "function": "test_cancel_then_restart_reuses_sealed_speech",
+              "git_blob": "d4db2b25773e6b6202d7c035fbe695df3ea8da38",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            }
+          ],
+          "status": "current_type_gap_fixed_runtime_pending",
+          "notes": []
+        },
+        {
+          "canonical_functions": [
+            "test_stop_during_staged_master_validation_prevents_publication_and_resumes"
+          ],
+          "assertions": "Stop during final staged validation prevents publication; after the actual directory move, durable completion remains complete.",
+          "current_tests": [
+            {
+              "path": "tests/audio/test_production_integrity.py",
+              "function": "test_stop_at_final_publication_boundary_retains_chunks_and_resumes",
+              "git_blob": "7da2c5720fe004f957d755f08ebee7d9cb2c75c7",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            },
+            {
+              "path": "tests/audio/test_production_integrity.py",
+              "function": "test_stop_after_complete_directory_move_keeps_completed_result",
+              "git_blob": "7da2c5720fe004f957d755f08ebee7d9cb2c75c7",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            }
+          ],
+          "status": "mapped_to_current_contract",
+          "notes": []
+        }
+      ],
+      "notes": [
+        "Current render-journal uses cancelled, and shared progress uses cancelled/paused/complete/failed; old service pause-vs-cancel enum fields are not claimed structurally identical. Exact typed outcomes, retained chunks and publication point remain authoritative."
+      ]
+    },
+    {
+      "canonical_path": "carr-library/tests/studio/test_production_hardening.py",
+      "canonical_git_blob": "79fda93171f594bb0554a6a48096201c1c734d4d",
+      "bytes": 4916,
+      "canonical_functions": [
+        "test_completed_actual_speech_is_receipted_before_cancellation",
+        "test_speech_publication_flush_uses_writable_descriptor",
+        "test_serviced_windows_powershell_host_allows_only_its_exact_hardlink",
+        "test_system_host_exception_still_rejects_a_canonical_symlink"
+      ],
+      "current_owners": [
+        {
+          "path": "src/carr_library/audio/production.py",
+          "git_blob": "6caab04e011162b8b339f92abd409796030c1e1e"
+        },
+        {
+          "path": "src/carr_library/audio/jobs.py",
+          "git_blob": "f903172a16ac537f6f29adf213a1174ac737a69a"
+        },
+        {
+          "path": "src/carr_library/audio/engines.py",
+          "git_blob": "13bd4832ef2c962e2e9cef2ea1153f25824398e0"
+        }
+      ],
+      "groups": [
+        {
+          "canonical_functions": [
+            "test_completed_actual_speech_is_receipted_before_cancellation"
+          ],
+          "assertions": "Actually returned, valid raw speech is sealed before acknowledging a late stop; resume cannot synthesize it again. Corrupt/hardlinked/unverified returns remain rejected.",
+          "current_tests": [
+            {
+              "path": "tests/audio/test_completed_speech_checkpoint.py",
+              "function": "test_actual_completed_speech_is_sealed_before_stop_and_never_synthesized_again",
+              "git_blob": "4b73cf16de398cf4893b3fed69a645c2749268c3",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            },
+            {
+              "path": "tests/audio/test_completed_speech_checkpoint.py",
+              "function": "test_late_stop_never_receipts_corrupt_or_aliased_engine_output",
+              "git_blob": "4b73cf16de398cf4893b3fed69a645c2749268c3",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            },
+            {
+              "path": "tests/audio/test_completed_speech_checkpoint.py",
+              "function": "test_completed_speech_cancel_deferral_has_a_bounded_deadline_and_restores_callback",
+              "git_blob": "4b73cf16de398cf4893b3fed69a645c2749268c3",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            },
+            {
+              "path": "tests/audio/test_completed_speech_checkpoint.py",
+              "function": "test_cache_copy_must_match_the_hash_recorded_before_publication",
+              "git_blob": "4b73cf16de398cf4893b3fed69a645c2749268c3",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            }
+          ],
+          "status": "product_gap_fixed_runtime_pending",
+          "notes": []
+        },
+        {
+          "canonical_functions": [
+            "test_speech_publication_flush_uses_writable_descriptor"
+          ],
+          "assertions": "Actual publication flushes a writable descriptor and does not suppress a real durability failure.",
+          "current_tests": [
+            {
+              "path": "tests/audio/test_audio_publication.py",
+              "function": "test_publication_flushes_with_a_writable_handle",
+              "git_blob": "dcc0e6e97463d53e711787add095dc752bedf4af",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            },
+            {
+              "path": "tests/audio/test_audio_publication.py",
+              "function": "test_publication_does_not_suppress_a_real_flush_failure",
+              "git_blob": "dcc0e6e97463d53e711787add095dc752bedf4af",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            }
+          ],
+          "status": "mapped_to_current_contract",
+          "notes": []
+        },
+        {
+          "canonical_functions": [
+            "test_serviced_windows_powershell_host_allows_only_its_exact_hardlink",
+            "test_system_host_exception_still_rejects_a_canonical_symlink"
+          ],
+          "assertions": "Explicit SAPI compatibility admits only the real OS-directory-derived architecture path; serviced hardlinks there are allowed, wrong/foreign paths and reparse/symlink ancestors are refused.",
+          "current_tests": [
+            {
+              "path": "tests/audio/test_sapi_host_admission.py",
+              "function": "test_serviced_hardlink_is_allowed_only_at_selected_system_host",
+              "git_blob": "2b19c8d118ba60748096f48b5e447a02c73533cf",
+              "source_commit": "6e6d2599f76b489b8081f3d453afbe8c1e477f9a"
+            },
+            {
+              "path": "tests/audio/test_sapi_host_admission.py",
+              "function": "test_foreign_or_wrong_architecture_path_is_never_a_system_host",
+              "git_blob": "2b19c8d118ba60748096f48b5e447a02c73533cf",
+              "source_commit": "6e6d2599f76b489b8081f3d453afbe8c1e477f9a"
+            },
+            {
+              "path": "tests/audio/test_sapi_host_admission.py",
+              "function": "test_linked_system_host_is_rejected_before_execution",
+              "git_blob": "2b19c8d118ba60748096f48b5e447a02c73533cf",
+              "source_commit": "6e6d2599f76b489b8081f3d453afbe8c1e477f9a"
+            },
+            {
+              "path": "tests/audio/test_sapi_host_admission.py",
+              "function": "test_default_and_lazy_selection_ignore_spoofed_systemroot",
+              "git_blob": "2b19c8d118ba60748096f48b5e447a02c73533cf",
+              "source_commit": "6e6d2599f76b489b8081f3d453afbe8c1e477f9a"
+            },
+            {
+              "path": "tests/audio/test_sapi_host_admission.py",
+              "function": "test_host_path_is_checked_again_before_each_request",
+              "git_blob": "2b19c8d118ba60748096f48b5e447a02c73533cf",
+              "source_commit": "6e6d2599f76b489b8081f3d453afbe8c1e477f9a"
+            }
+          ],
+          "status": "peer_component_source_go_runtime_pending",
+          "notes": []
+        }
+      ],
+      "notes": [
+        "Completed-speech component61adc is already in source5070. Compatibility-host component6e6d2599 is separately source-reviewed; its new engine blob4c4c318b is not falsely represented as present in baseline5070 blob13bd4832.",
+        "Native COM remains the ordinary 64-bit SAPI owner; the explicit PowerShell compatibility host has its own narrow path exception. General engine/model path policy is unchanged."
+      ]
+    },
+    {
+      "canonical_path": "carr-library/tests/studio/test_studio_controller.py",
+      "canonical_git_blob": "5182c9804d169e1a64a77dd8dbd2b96b073616d4",
+      "bytes": 3283,
+      "canonical_functions": [
+        "test_plain_prose_colons_are_not_silently_removed_in_faithful_mode",
+        "test_save_reopen_revision_and_noop_preserve_project_identity",
+        "test_role_custom_voice_pan_gain_rate_volume_and_language_survive_save",
+        "test_invalid_script_draft_survives_without_replacing_valid_project",
+        "test_project_edit_detects_stale_revision",
+        "test_music_plan_rejects_values_not_supported_by_runtime"
+      ],
+      "current_owners": [
+        {
+          "path": "src/carr_library/ui/audio_studio.py",
+          "git_blob": "e85f80f650e4a16a1866757e5a21e7ce38e2387e"
+        },
+        {
+          "path": "src/carr_library/audio/managed.py",
+          "git_blob": "b574fc7cfbffbd88d7705b325ff471486956d5a6"
+        },
+        {
+          "path": "src/carr_library/audio/models.py",
+          "git_blob": "9f57f54b1596dd532f7d1cacfea374003eb33579"
+        },
+        {
+          "path": "src/carr_library/audio/legacy_project.py",
+          "git_blob": "eb7d5a5858c63273e629461e40441a2f243d34d2"
+        }
+      ],
+      "groups": [
+        {
+          "canonical_functions": [
+            "test_plain_prose_colons_are_not_silently_removed_in_faithful_mode"
+          ],
+          "assertions": "Literal source punctuation survives faithful mode and saved interpretation is explicit.",
+          "current_tests": [
+            {
+              "path": "tests/ui/test_audio_studio.py",
+              "function": "test_literal_mode_preserves_source_that_looks_like_script",
+              "git_blob": "1373c010f23f7a78cf3f9b5e1c7ee3b473494ba2",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            },
+            {
+              "path": "tests/ui/test_audio_studio.py",
+              "function": "test_saved_interpretation_and_legacy_projects_are_unambiguous",
+              "git_blob": "1373c010f23f7a78cf3f9b5e1c7ee3b473494ba2",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            }
+          ],
+          "status": "mapped_to_current_contract",
+          "notes": []
+        },
+        {
+          "canonical_functions": [
+            "test_save_reopen_revision_and_noop_preserve_project_identity",
+            "test_role_custom_voice_pan_gain_rate_volume_and_language_survive_save"
+          ],
+          "assertions": "Save/reopen retains source identity and typed role, voice, pan, gain, rate, volume and language controls; canonical import captures controls without executing them.",
+          "current_tests": [
+            {
+              "path": "tests/ui/test_audio_studio.py",
+              "function": "test_save_open_preserves_immutable_source_and_derivative_and_dirty_state",
+              "git_blob": "1373c010f23f7a78cf3f9b5e1c7ee3b473494ba2",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            },
+            {
+              "path": "tests/audio/test_canonical_project_import.py",
+              "function": "test_review_captures_controls_without_creating_a_project_or_running_an_engine",
+              "git_blob": "349d6464c726dce08862cf9d92b0f37be95d74b6",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            },
+            {
+              "path": "tests/audio/test_canonical_project_import.py",
+              "function": "test_import_creates_an_independent_editable_project_with_exact_original_bytes",
+              "git_blob": "349d6464c726dce08862cf9d92b0f37be95d74b6",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            },
+            {
+              "path": "tests/audio/test_canonical_project_import.py",
+              "function": "test_cue_requires_selected_scope_and_is_copied_with_all_controls",
+              "git_blob": "349d6464c726dce08862cf9d92b0f37be95d74b6",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            }
+          ],
+          "status": "mapped_to_current_contract",
+          "notes": []
+        },
+        {
+          "canonical_functions": [
+            "test_invalid_script_draft_survives_without_replacing_valid_project",
+            "test_project_edit_detects_stale_revision"
+          ],
+          "assertions": "Invalid drafts and stale external revisions cannot replace committed project bytes; recovery is bound to the exact saved base.",
+          "current_tests": [
+            {
+              "path": "tests/ui/test_audio_studio.py",
+              "function": "test_invalid_new_project_does_not_replace_current_draft",
+              "git_blob": "1373c010f23f7a78cf3f9b5e1c7ee3b473494ba2",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            },
+            {
+              "path": "tests/ui/test_audio_studio.py",
+              "function": "test_save_conflict_disk_failure_cancel_preserve_old_project",
+              "git_blob": "1373c010f23f7a78cf3f9b5e1c7ee3b473494ba2",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            },
+            {
+              "path": "tests/ui/test_audio_studio.py",
+              "function": "test_recovery_is_bound_to_exact_saved_base_and_does_not_claim_commit",
+              "git_blob": "1373c010f23f7a78cf3f9b5e1c7ee3b473494ba2",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            },
+            {
+              "path": "tests/audio/test_managed_projects.py",
+              "function": "test_external_modification_and_cross_project_paths_are_rejected",
+              "git_blob": "1b1a676074c12d268af41ce2a647017fba4b4f6d",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            }
+          ],
+          "status": "mapped_to_current_contract",
+          "notes": []
+        },
+        {
+          "canonical_functions": [
+            "test_music_plan_rejects_values_not_supported_by_runtime"
+          ],
+          "assertions": "Unsupported music controls, model choices and nonfinite plan values are refused before generation.",
+          "current_tests": [
+            {
+              "path": "tests/audio/test_music.py",
+              "function": "test_untrusted_scene_settings_cannot_become_filters",
+              "git_blob": "603a477ecd261fbf3db49becabf25a09034dcd47",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            },
+            {
+              "path": "tests/audio/test_music.py",
+              "function": "test_models_and_disk_budgets_fail_before_generation",
+              "git_blob": "603a477ecd261fbf3db49becabf25a09034dcd47",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            },
+            {
+              "path": "tests/audio/test_production.py",
+              "function": "test_rejects_plan_nan_bool_ranges_and_unknown_fields",
+              "git_blob": "d4db2b25773e6b6202d7c035fbe695df3ea8da38",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            }
+          ],
+          "status": "mapped_to_current_contract",
+          "notes": []
+        }
+      ],
+      "notes": [
+        "The canonical ProjectStore/controller layout is replaced by the current managed JSON/CAS service plus explicit legacy-project import. This is a behavior mapping, not an assertion that retired callable signatures or serialized documents are byte-compatible."
+      ]
+    },
+    {
+      "canonical_path": "carr-library/tests/ui/test_studio_keyboard_registration.py",
+      "canonical_git_blob": "49a5178e9627b1766eebc7485a3855f87bb443a3",
+      "bytes": 2989,
+      "canonical_functions": [
+        "test_studio_queues_named_commands_before_final_keyboard_install"
+      ],
+      "current_owners": [
+        {
+          "path": "src/carr_library/ui/audio_studio.py",
+          "git_blob": "e85f80f650e4a16a1866757e5a21e7ce38e2387e"
+        },
+        {
+          "path": "src/carr_library/ui/builtin_keyboard_commands.py",
+          "git_blob": "3d1e5a6c7e394a4896a9701afb77ff917a5d3e78"
+        },
+        {
+          "path": "src/carr_library/ui/keyboard_settings.py",
+          "git_blob": "c1de6b91d4345fb9c8e43d5adfd047bb76d61619"
+        }
+      ],
+      "groups": [
+        {
+          "canonical_functions": [
+            "test_studio_queues_named_commands_before_final_keyboard_install"
+          ],
+          "assertions": "Current Studio and prepare-book menu actions receive semantic registrations after native attachment; saved overrides survive startup/late registration and native caption/ID changes.",
+          "current_tests": [
+            {
+              "path": "tests/ui/test_audio_studio_keyboard.py",
+              "function": "test_startup_studio_semantics_bind_the_existing_actions_and_defaults",
+              "git_blob": "dcdea78e43597709cbc244832d032aa3e89c6d18",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            },
+            {
+              "path": "tests/ui/test_audio_studio_keyboard.py",
+              "function": "test_saved_studio_keys_survive_startup_and_late_real_manager_registration",
+              "git_blob": "dcdea78e43597709cbc244832d032aa3e89c6d18",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            },
+            {
+              "path": "tests/ui/test_audio_studio_keyboard.py",
+              "function": "test_studio_semantic_binding_survives_caption_and_native_menu_id_changes",
+              "git_blob": "dcdea78e43597709cbc244832d032aa3e89c6d18",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            }
+          ],
+          "status": "restored_current_routes_runtime_pending",
+          "notes": [
+            "The current routes are audio.studio and audio.prepare_book. The old nine-menu literal inventory, voice.book/reader identities, ordering and default key set are not asserted identical; their functionality lives in the current reader, narration, playback and Studio surfaces."
+          ]
+        }
+      ],
+      "notes": [
+        "Source component 104bf86e1ea5900c316758ae19c60b9d15d64905 is integrated at the 5070 baseline. Four parameter-expanded cases are authored in the current keyboard module."
+      ]
+    },
+    {
+      "canonical_path": "carr-library/tests/ui/test_studio_progress_isolation.py",
+      "canonical_git_blob": "aa28e07dad812e94e4c5d2f53fb029fd308f3747",
+      "bytes": 11887,
+      "canonical_functions": [
+        "test_feedback_failure_cannot_reverse_publication_or_hide_callback_output",
+        "test_observer_failure_does_not_hide_executor_failure_or_leave_busy",
+        "test_late_cancel_cannot_relabel_real_worker_failure_as_pause",
+        "test_publication_callback_failure_is_not_hidden_by_complete_receipt_and_late_cancel",
+        "test_explicit_speech_and_dsp_interruptions_keep_saved_pause_or_cancel",
+        "test_queued_old_phase_cannot_overwrite_completed_output_report",
+        "test_begin_failure_never_finalizes_callback_started_new_operation",
+        "test_studio_close_retains_parent_observer_when_device_and_local_feedback_both_fail"
+      ],
+      "current_owners": [
+        {
+          "path": "src/carr_library/ui/audio_studio.py",
+          "git_blob": "e85f80f650e4a16a1866757e5a21e7ce38e2387e"
+        },
+        {
+          "path": "src/carr_library/ui/operation_progress.py",
+          "git_blob": "184bafc318e701f4001e5d3d45c558292541efe2"
+        },
+        {
+          "path": "src/carr_library/progress.py",
+          "git_blob": "f5443f7591dbc5598aa1d70c9cc26319e81c01d2"
+        }
+      ],
+      "groups": [
+        {
+          "canonical_functions": [
+            "test_feedback_failure_cannot_reverse_publication_or_hide_callback_output",
+            "test_observer_failure_does_not_hide_executor_failure_or_leave_busy"
+          ],
+          "assertions": "Feedback failure cannot replace a real committed result or an executor rejection, and controls are restored after failed submission.",
+          "current_tests": [
+            {
+              "path": "tests/ui/test_audio_studio.py",
+              "function": "test_studio_observer_failure_does_not_lose_or_retry_a_real_committed_result",
+              "git_blob": "1373c010f23f7a78cf3f9b5e1c7ee3b473494ba2",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            },
+            {
+              "path": "tests/ui/test_audio_studio.py",
+              "function": "test_studio_real_executor_rejection_restores_controls_and_preserves_admission_error",
+              "git_blob": "1373c010f23f7a78cf3f9b5e1c7ee3b473494ba2",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            }
+          ],
+          "status": "mapped_to_current_contract",
+          "notes": []
+        },
+        {
+          "canonical_functions": [
+            "test_late_cancel_cannot_relabel_real_worker_failure_as_pause",
+            "test_publication_callback_failure_is_not_hidden_by_complete_receipt_and_late_cancel"
+          ],
+          "assertions": "The actual worker exception remains authoritative after late cancellation or observer failure, including completion after the dialog has closed.",
+          "current_tests": [
+            {
+              "path": "tests/ui/test_audio_studio.py",
+              "function": "test_studio_failure_observer_cannot_replace_the_real_worker_error",
+              "git_blob": "1373c010f23f7a78cf3f9b5e1c7ee3b473494ba2",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            },
+            {
+              "path": "tests/ui/test_progress_view.py",
+              "function": "test_actual_returned_commit_survives_late_cancel_and_late_ui_failure",
+              "git_blob": "f1b683759810ab5609e0aca05d694aed7ea8efba",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            },
+            {
+              "path": "tests/ui/test_progress_view.py",
+              "function": "test_observer_failure_cannot_retry_or_undo_the_returned_result",
+              "git_blob": "f1b683759810ab5609e0aca05d694aed7ea8efba",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            },
+            {
+              "path": "tests/ui/test_audio_studio.py",
+              "function": "test_closed_studio_settles_exact_shared_task_without_touching_dead_controls",
+              "git_blob": "99f2a4e5ee82926e12c78a9023b8f076915494f6",
+              "source_commit": "ba68cf6b94d19b4b5dbcec22772258d864cb0602"
+            }
+          ],
+          "status": "mapped_plus_detached_completion_repair_pending",
+          "notes": []
+        },
+        {
+          "canonical_functions": [
+            "test_explicit_speech_and_dsp_interruptions_keep_saved_pause_or_cancel"
+          ],
+          "assertions": "Explicit speech and DSP interruption types settle a cancelled/paused task without turning an unrelated failure into cancellation.",
+          "current_tests": [
+            {
+              "path": "tests/ui/test_audio_studio.py",
+              "function": "test_live_studio_uses_explicit_speech_and_dsp_cancellation_types",
+              "git_blob": "99f2a4e5ee82926e12c78a9023b8f076915494f6",
+              "source_commit": "ba68cf6b94d19b4b5dbcec22772258d864cb0602"
+            },
+            {
+              "path": "tests/ui/test_audio_studio.py",
+              "function": "test_closed_studio_settles_exact_shared_task_without_touching_dead_controls",
+              "git_blob": "99f2a4e5ee82926e12c78a9023b8f076915494f6",
+              "source_commit": "ba68cf6b94d19b4b5dbcec22772258d864cb0602"
+            }
+          ],
+          "status": "repaired_component_runtime_pending",
+          "notes": []
+        },
+        {
+          "canonical_functions": [
+            "test_queued_old_phase_cannot_overwrite_completed_output_report",
+            "test_begin_failure_never_finalizes_callback_started_new_operation"
+          ],
+          "assertions": "Old operation callbacks cannot replace a new task, and a stale future settles only its captured shared reporter.",
+          "current_tests": [
+            {
+              "path": "tests/ui/test_operation_progress.py",
+              "function": "test_old_operation_callbacks_and_notices_cannot_change_new_work",
+              "git_blob": "c604c6112f5c40a172e1c8622acdfc4412f8bc1e",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            },
+            {
+              "path": "tests/ui/test_audio_studio.py",
+              "function": "test_stale_studio_completion_settles_old_task_without_relabeling_new_work",
+              "git_blob": "99f2a4e5ee82926e12c78a9023b8f076915494f6",
+              "source_commit": "ba68cf6b94d19b4b5dbcec22772258d864cb0602"
+            }
+          ],
+          "status": "mapped_plus_detached_completion_repair_pending",
+          "notes": []
+        },
+        {
+          "canonical_functions": [
+            "test_studio_close_retains_parent_observer_when_device_and_local_feedback_both_fail"
+          ],
+          "assertions": "A failed playback shutdown retains the dialog and recovery timer, and failed cleanup cannot start new rendering or leave the UI busy.",
+          "current_tests": [
+            {
+              "path": "tests/ui/test_audio_playback_controls.py",
+              "function": "test_failed_close_keeps_dialog_and_recovery_timer_available",
+              "git_blob": "f402b07861a760cf8c5144bb0fd37088efc1e0f9",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            },
+            {
+              "path": "tests/ui/test_audio_playback_controls.py",
+              "function": "test_failed_playback_cleanup_cannot_start_a_render_or_leave_the_ui_busy",
+              "git_blob": "f402b07861a760cf8c5144bb0fd37088efc1e0f9",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            }
+          ],
+          "status": "mapped_to_current_contract",
+          "notes": []
+        }
+      ],
+      "notes": [
+        "The ba68cf6b94d19b4b5dbcec22772258d864cb0602 successor is separate from the 5070 source baseline. Its captured ProgressReporter settlement avoids touching destroyed controls or a replacement task; it has not been executed in this audit."
+      ]
+    },
+    {
+      "canonical_path": "carr-library/tests/ui/test_studio_progress_results.py",
+      "canonical_git_blob": "54684fa708f027d8e7c5e456186ec2874f27b956",
+      "bytes": 5084,
+      "canonical_functions": [
+        "test_studio_uses_durable_receipt_and_never_announces_partial_completion",
+        "test_interruption_uses_saved_job_outcome_including_late_cancel",
+        "test_closed_dialog_still_finishes_shared_task_without_touching_controls",
+        "test_executor_rejection_does_not_leave_work_running"
+      ],
+      "current_owners": [
+        {
+          "path": "src/carr_library/ui/audio_studio.py",
+          "git_blob": "e85f80f650e4a16a1866757e5a21e7ce38e2387e"
+        },
+        {
+          "path": "src/carr_library/ui/operation_progress.py",
+          "git_blob": "184bafc318e701f4001e5d3d45c558292541efe2"
+        },
+        {
+          "path": "src/carr_library/progress.py",
+          "git_blob": "f5443f7591dbc5598aa1d70c9cc26319e81c01d2"
+        }
+      ],
+      "groups": [
+        {
+          "canonical_functions": [
+            "test_studio_uses_durable_receipt_and_never_announces_partial_completion"
+          ],
+          "assertions": "Incomplete or failed service results do not announce completion or set the progress gauge to 100%.",
+          "current_tests": [
+            {
+              "path": "tests/ui/test_audio_studio.py",
+              "function": "test_controller_rejects_incomplete_service_and_concurrent_render",
+              "git_blob": "1373c010f23f7a78cf3f9b5e1c7ee3b473494ba2",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            },
+            {
+              "path": "tests/ui/test_progress_view.py",
+              "function": "test_existing_service_pending_outcomes_do_not_announce_completion",
+              "git_blob": "f1b683759810ab5609e0aca05d694aed7ea8efba",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            },
+            {
+              "path": "tests/ui/test_progress_view.py",
+              "function": "test_explicit_failed_service_result_is_not_labeled_complete",
+              "git_blob": "f1b683759810ab5609e0aca05d694aed7ea8efba",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            },
+            {
+              "path": "tests/ui/test_operation_progress.py",
+              "function": "test_known_gauge_never_reaches_100_before_actual_completion",
+              "git_blob": "c604c6112f5c40a172e1c8622acdfc4412f8bc1e",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            }
+          ],
+          "status": "mapped_to_current_contract",
+          "notes": []
+        },
+        {
+          "canonical_functions": [
+            "test_interruption_uses_saved_job_outcome_including_late_cancel"
+          ],
+          "assertions": "Durable committed outcomes survive late cancellation; explicit DSP/speech interruptions remain typed instead of becoming a generic failure.",
+          "current_tests": [
+            {
+              "path": "tests/ui/test_operation_progress.py",
+              "function": "test_late_cancel_does_not_erase_a_committed_typed_result",
+              "git_blob": "c604c6112f5c40a172e1c8622acdfc4412f8bc1e",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            },
+            {
+              "path": "tests/ui/test_audio_studio.py",
+              "function": "test_live_studio_uses_explicit_speech_and_dsp_cancellation_types",
+              "git_blob": "99f2a4e5ee82926e12c78a9023b8f076915494f6",
+              "source_commit": "ba68cf6b94d19b4b5dbcec22772258d864cb0602"
+            }
+          ],
+          "status": "mapped_plus_typed_cancellation_repair_pending",
+          "notes": []
+        },
+        {
+          "canonical_functions": [
+            "test_closed_dialog_still_finishes_shared_task_without_touching_controls"
+          ],
+          "assertions": "A completed future finalizes its original shared progress even if the dialog is closed or a later operation is active, without touching dead controls.",
+          "current_tests": [
+            {
+              "path": "tests/ui/test_audio_studio.py",
+              "function": "test_closed_studio_settles_exact_shared_task_without_touching_dead_controls",
+              "git_blob": "99f2a4e5ee82926e12c78a9023b8f076915494f6",
+              "source_commit": "ba68cf6b94d19b4b5dbcec22772258d864cb0602"
+            },
+            {
+              "path": "tests/ui/test_audio_studio.py",
+              "function": "test_stale_studio_completion_settles_old_task_without_relabeling_new_work",
+              "git_blob": "99f2a4e5ee82926e12c78a9023b8f076915494f6",
+              "source_commit": "ba68cf6b94d19b4b5dbcec22772258d864cb0602"
+            }
+          ],
+          "status": "repaired_component_runtime_pending",
+          "notes": []
+        },
+        {
+          "canonical_functions": [
+            "test_executor_rejection_does_not_leave_work_running"
+          ],
+          "assertions": "Actual ThreadPoolExecutor submission rejection restores controls and preserves the admission error.",
+          "current_tests": [
+            {
+              "path": "tests/ui/test_audio_studio.py",
+              "function": "test_studio_real_executor_rejection_restores_controls_and_preserves_admission_error",
+              "git_blob": "1373c010f23f7a78cf3f9b5e1c7ee3b473494ba2",
+              "source_commit": "5070b0e9808e1242936fac314bab9a8d9f20213a"
+            }
+          ],
+          "status": "mapped_to_current_contract",
+          "notes": []
+        }
+      ],
+      "notes": [
+        "The original dropped closed-dialog canonical regression revealed a real current gap. The ba68 successor fixes the existing completion callback and adds eight parameter-expanded cases; no runtime PASS is inferred from source review."
+      ]
+    }
+  ]
+}

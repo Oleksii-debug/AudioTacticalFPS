@@ -1,0 +1,165 @@
+name: CARR r6 observed Windows regressions
+
+on:
+  push:
+    branches: ['carr/v3-regression-r6-*']
+    paths:
+      - carr-library/**
+      - .github/workflows/carr-r6-regressions.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: carr-r6-regressions-${{ github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  exact-regressions:
+    name: Windows / exact ${{ matrix.group }} regression
+    runs-on: windows-2022
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        group: [contracts, word]
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: carr-library
+    env:
+      PYTHONUTF8: '1'
+      PYTHONUNBUFFERED: '1'
+      HF_HUB_OFFLINE: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      DO_NOT_TRACK: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+          architecture: x64
+      - name: Install the exact pinned integrated package
+        run: |
+          New-Item -ItemType Directory -Force ci-results | Out-Null
+          python -m pip install --only-binary=:all: --require-hashes -r packaging/windows-integrated-cp311.lock
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m pip install --only-binary=:all: --require-hashes -r packaging/windows-sync-test-cp311.lock
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m pip install --no-deps .
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          git rev-parse HEAD | Set-Content ci-results/tested-commit.txt
+          git rev-parse 'HEAD^{tree}' | Set-Content ci-results/tested-tree.txt
+          $program = python -I -c "import sys; print(sys.executable)"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          "CARR_PYTHON=$($program.Trim())" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          Set-NetFirewallProfile -Profile Domain,Private,Public -Enabled True -ErrorAction Stop
+          New-NetFirewallRule -Name 'carr-r6-regressions-offline' -DisplayName 'CARR regression offline probe' -Direction Outbound -Action Block -Profile Any -Program $program.Trim() -Enabled True -ErrorAction Stop | Out-Null
+          $rule = Get-NetFirewallRule -PolicyStore ActiveStore -Name 'carr-r6-regressions-offline' -ErrorAction Stop
+          if ($rule.Enabled -ne 'True' -or $rule.Direction -ne 'Outbound' -or $rule.Action -ne 'Block') { throw 'Actual regression offline firewall rule unavailable.' }
+      - name: Require every selected source case without skips
+        timeout-minutes: 32
+        run: |
+          [string[]]$suites = @(if ('${{ matrix.group }}' -eq 'word') {
+            @('tests/citations/test_word_com.py')
+          } else {
+            @('tests/operations/test_resources.py',
+              'tests/packaging/test_component_notices.py',
+              'tests/ui/test_about_dialog.py',
+              'tests/security/test_domain_admission.py',
+              'tests/packaging/test_ci_check.py',
+              'tests/storage/test_legacy_state_portability.py')
+          })
+          python scripts/ci_check.py --jobs 2 @suites 2>&1 | Tee-Object ci-results/exact-regressions.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          @'
+          import json,pathlib,re,sys
+          expected = {'tests/citations/test_word_com.py':36} if sys.argv[1]=='word' else {
+              'tests/operations/test_resources.py':20,
+              'tests/packaging/test_component_notices.py':27,
+              'tests/ui/test_about_dialog.py':14,
+              'tests/security/test_domain_admission.py':40,
+              'tests/packaging/test_ci_check.py':43,
+              'tests/storage/test_legacy_state_portability.py':27}
+          raw=pathlib.Path('ci-results/exact-regressions.txt').read_text(encoding='utf-8-sig')
+          observed={}
+          for verdict,path,count,failed,skipped,code in re.findall(r'(PASS|FAIL): (\S+): junit_passed=(\d+), failed=(\d+), skipped=(\d+), pytest_exit=(\d+)',raw):
+              assert path not in observed, path
+              assert verdict=='PASS' and failed==skipped==code=='0',(path,verdict,failed,skipped,code)
+              observed[path]=int(count)
+          assert observed==expected,(observed,expected)
+          report=dict(status='PASS',group=sys.argv[1],required_cases=observed,
+              passed=sum(observed.values()),failed=0,skipped=0,
+              source_commit=pathlib.Path('ci-results/tested-commit.txt').read_text(encoding='utf-8-sig').strip(),
+              source_tree=pathlib.Path('ci-results/tested-tree.txt').read_text(encoding='utf-8-sig').strip(),
+              actual_windows=True,actual_offline_firewall=True,
+              office_automation='NOT_RUN',nvda='NOT_RUN')
+          pathlib.Path('ci-results/exact-regressions.json').write_text(json.dumps(report,sort_keys=True)+'\n',encoding='utf-8')
+          print(json.dumps(report,sort_keys=True))
+          '@ | python -I -B - '${{ matrix.group }}'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Exercise installed search continuation with actual native keys and retained sources
+        if: matrix.group == 'contracts'
+        timeout-minutes: 4
+        run: |
+          & $env:CARR_PYTHON -I -B tests/ui/probe_search_continuation_native.py --native 2>&1 | Tee-Object 'ci-results/search-pagination-native.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          @'
+          from collections import Counter
+          from hashlib import sha256
+          import json,pathlib,sys
+          raw=pathlib.Path(sys.argv[1]).read_text(encoding='utf-8-sig')
+          report=[json.loads(line) for line in raw.splitlines() if line.lstrip().startswith('{')][-1]
+          oracle=json.loads(pathlib.Path('scripts/v3_acceptance_oracles.json').read_text(encoding='utf-8'))['native_search_pagination']
+          assert report['result']=='PASS' and len(report['checks'])==oracle['expected_check_count']
+          assert Counter(report['checks'])==Counter(oracle['oracle'])
+          assert all(report[name] is True for name in oracle['true_flags'])
+          assert all(report[name]==value for name,value in oracle['required_statuses'].items())
+          assert set(report['module_origins'])==set(oracle['module_origins'])
+          for name,record in report['module_origins'].items():
+              path=pathlib.Path(record['path']).resolve()
+              assert path.is_relative_to(pathlib.Path(sys.prefix).resolve()), str(path)
+              source=pathlib.Path('src')/pathlib.Path(*name.split('.')).with_suffix('.py')
+              assert record['sha256']==sha256(path.read_bytes()).hexdigest()==sha256(source.read_bytes()).hexdigest(), name
+          report['source_commit']=pathlib.Path('ci-results/tested-commit.txt').read_text(encoding='utf-8-sig').strip()
+          report['installed_package']=True
+          pathlib.Path(sys.argv[2]).write_text(json.dumps(report,sort_keys=True)+'\n',encoding='utf-8')
+          print(json.dumps(report,sort_keys=True))
+          '@ | & $env:CARR_PYTHON -I -B - ci-results/search-pagination-native.txt ci-results/search-pagination-native-proof.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Exercise installed signed-client controls with a synthetic authority
+        if: matrix.group == 'contracts'
+        timeout-minutes: 3
+        run: |
+          & $env:CARR_PYTHON -I -B tests/ui/native_trust_status_smoke.py --native 2>&1 | Tee-Object 'ci-results/trust-native.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          @'
+          from collections import Counter
+          import json,pathlib,sys
+          raw=pathlib.Path(sys.argv[1]).read_text(encoding='utf-8-sig')
+          reports=[json.loads(line) for line in raw.splitlines() if line.lstrip().startswith('{')]
+          report=reports[-1]
+          oracle=json.loads(pathlib.Path('scripts/v3_acceptance_oracles.json').read_text(encoding='utf-8'))
+          assert report['status']=='PASS' and Counter(report['checks'])==Counter(oracle['native_trust']) and len(report['checks'])==15
+          assert report['nvda']=='NOT_RUN' and report['production_authority']=='NOT_CONFIGURED' and report['production_installer_upgrade']=='NOT_RUN'
+          for name in ('ui_module','polling_module'):
+              assert pathlib.Path(report[name]).resolve().is_relative_to(pathlib.Path(sys.prefix).resolve()), report[name]
+          report['source_commit']=pathlib.Path('ci-results/tested-commit.txt').read_text(encoding='utf-8-sig').strip()
+          pathlib.Path(sys.argv[2]).write_text(json.dumps(report,sort_keys=True)+'\n',encoding='utf-8')
+          print(json.dumps(report,sort_keys=True))
+          '@ | & $env:CARR_PYTHON -I -B - ci-results/trust-native.txt ci-results/trust-native-proof.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Preserve exact runtime evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: carr-r6-regressions-${{ matrix.group }}-${{ github.sha }}-${{ github.run_attempt }}
+          path: carr-library/ci-results/
+          if-no-files-found: error
+          retention-days: 7

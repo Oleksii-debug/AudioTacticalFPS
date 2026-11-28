@@ -11,9 +11,32 @@ Import folder "C:/Books" / Імпортуй папку "C:/Books"
 Search "railway transport" / Знайди "залізничний транспорт"
 List books / Покажи книги
 List libraries / Покажи бібліотеки
+List topics / Покажи теми
+Create topic "Research" / Створи тему "Дослідження"
+Create topic "Child" under "@0" / Створи тему "Підтема" у "@0"
+Export topic "TOPIC_ID" as "evidence.md" / Експортуй тему "TOPIC_ID" як "evidence.md"
+Topic @N refers to the zero-based index of an earlier topic.create step in this plan.
+Topic exports use saved verified evidence at execution, with source origins and notes kept separate.
+They require a selected output folder and a new filename; existing files are never replaced.
 Extract "EDITION_ID" as "reading.txt" / Експортуй текст "EDITION_ID" як "reading.txt"
 Backup "backup-name" / Резервна копія "backup-name"
+Convert "C:/Books/source.docx" as "reading.txt" / Конвертуй "C:/Books/source.docx" як "reading.txt"
+Effects "C:/Scripts/source.txt" as "edited.txt" for "Narrator": [{"op":"add","effect":{"kind":"gain","parameters":[["gain_db",-3]],"enabled":true}}]
+Use "master" as the effects target for an explicit master chain or dry/wet mix.
+File derivatives need selected input/output folders, a source checksum and two new output files.
+Conversion uses the existing local readers. Optional converter/OCR selections remain in Document conversion.
+Native reader.control/player.control plans are prepared from the assistant action inside the selected reader.
+Their receipts describe observed commands; playback start does not claim that the whole book was read.
+Transcribe "C:/Audio/source.wav" as "transcript" / Транскрибуй "C:/Audio/source.wav" як "транскрипт"
+An optional colon followed by a JSON settings object selects the existing worker settings, for example:
+Transcribe "C:/Audio/source.wav" as "transcript": {"model":"small","language":"uk","output_srt":true,"output_vtt":true,"output_json":true}
+Transcription needs an explicitly selected current supplied-whisper profile outside the plan.
+The source checksum and every effective setting are shown before Run. One source per step is retained
+by the existing local ASR service; exports publish to one new directory with separate provenance.
+Interrupted unbound preparation/inference requires a new reviewed plan. Accepted output is never rerun.
 Produce audio: [script text] / Озвуч: [текст сценарію]
+Audio prose is literal narration. Only an explicit JSON audio.produce step with input_kind="script"
+or a typed script object interprets role/music/pause directions.
 Paths must be inside your selected input/output folders. No delete, shell or remote tools are available.'''
 
 
@@ -51,6 +74,45 @@ def preview(value, scope):
             continue
         if re.fullmatch(r'(?:list\s+books|покажи\s+книги)\.?', line, re.IGNORECASE):
             steps.append(Step('library.catalog'))
+            continue
+        if re.fullmatch(r'(?:list\s+topics|покажи\s+теми)\.?', line, re.IGNORECASE):
+            steps.append(Step('topic.list'))
+            continue
+        match = re.fullmatch(r'(?:create\s+topic|створи\s+тему)\s+"([^"]+)"(?:\s+(?:under|у)\s+"([^"]+)")?\.?', line, re.IGNORECASE)
+        if match:
+            args = {'name': match.group(1)}
+            if match.group(2) is not None:
+                args['parent'] = match.group(2)
+            steps.append(Step('topic.create', args))
+            continue
+        match = re.fullmatch(r'(?:export\s+topic|експортуй\s+тему)\s+"([^"]+)"\s+(?:as|як)\s+"([^"]+)"\.?', line, re.IGNORECASE)
+        if match:
+            steps.append(Step('topic.export', {'topic': match.group(1), 'name': match.group(2)}))
+            continue
+        match = re.fullmatch(r'(?:transcribe|транскрибуй)\s+"([^"]+)"\s+(?:as|як)\s+"([^"]+)"(?:\s*:\s*(\{.*\}))?\.?', line, re.IGNORECASE)
+        if match:
+            from .transcription_tools import capture_source
+            source, captured = capture_source(match.group(1), scope)
+            args = {'path': str(source), 'source_sha256': captured['sha256'], 'name': match.group(2)}
+            if match.group(3) is not None:
+                from .validation import decode_state_json
+                args['settings'] = decode_state_json(match.group(3))
+            steps.append(Step('audio.transcribe', args))
+            continue
+        match = re.fullmatch(r'(?:convert|конвертуй)\s+"([^"]+)"\s+(?:as|як)\s+"([^"]+)"\.?', line, re.IGNORECASE)
+        if match:
+            from .derived_tools import capture_source
+            source, record = capture_source(match.group(1), scope)
+            steps.append(Step('document.convert', {'path': str(source),
+                'source_sha256': record['sha256'], 'name': match.group(2)}))
+            continue
+        match = re.fullmatch(r'(?:effects|ефекти)\s+"([^"]+)"\s+(?:as|як)\s+"([^"]+)"\s+(?:for|для)\s+"([^"]+)"\s*:\s*(.+)', line, re.IGNORECASE)
+        if match:
+            from .derived_tools import capture_source, MAX_SCRIPT
+            source, record = capture_source(match.group(1), scope, maximum=MAX_SCRIPT)
+            target = None if match.group(3).casefold() in ('master', 'майстер') else match.group(3)
+            steps.append(Step('audio.effects', {'path': str(source), 'source_sha256': record['sha256'],
+                'name': match.group(2), 'target': target, 'changes': json.loads(match.group(4))}))
             continue
         match = re.fullmatch(r'(?:extract|експортуй\s+текст)\s+"([^"]+)"\s+(?:as|як)\s+"([^"]+)"\.?', line, re.IGNORECASE)
         if match:

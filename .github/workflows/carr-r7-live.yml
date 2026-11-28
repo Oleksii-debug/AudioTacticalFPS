@@ -1,0 +1,177 @@
+name: CARR r7 live reading regression
+
+on:
+  push:
+    branches: ['carr/v3-live-r7-*', 'carr/v3-acceptance-*']
+    paths:
+      - carr-library/**
+      - .github/workflows/carr-r7-live.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: carr-r7-live-${{ github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  live-reading:
+    name: Windows / source installed and native live reading
+    runs-on: windows-2022
+    timeout-minutes: 40
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: carr-library
+    env:
+      PYTHONUTF8: '1'
+      PYTHONUNBUFFERED: '1'
+      PIP_DISABLE_PIP_VERSION_CHECK: '1'
+      HF_HUB_OFFLINE: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      DO_NOT_TRACK: '1'
+      PYTEST_DISABLE_PLUGIN_AUTOLOAD: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+          architecture: x64
+      - name: Install exact pinned profile and candidate package
+        run: |
+          New-Item -ItemType Directory -Force live-results | Out-Null
+          python -m compileall -q src tests scripts packaging
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m pip install --only-binary=:all: --require-hashes -r packaging/windows-integrated-cp311.lock
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m pip install --only-binary=:all: --require-hashes -r packaging/windows-sync-test-cp311.lock
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m pip install --no-compile --no-deps .
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          git rev-parse HEAD | Set-Content live-results/tested-commit.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          git rev-parse 'HEAD^{tree}' | Set-Content live-results/tested-tree.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Require exact source cases without skips
+        timeout-minutes: 15
+        run: |
+          $oracle = Get-Content -LiteralPath scripts/r7_live_gate_oracle.json -Raw | ConvertFrom-Json
+          [string[]]$suites = @($oracle.suites)
+          python scripts/ci_check.py --jobs 2 @suites 2>&1 | Tee-Object live-results/source.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          @'
+          import json,pathlib,re
+          oracle=json.loads(pathlib.Path('scripts/r7_live_gate_oracle.json').read_text(encoding='utf-8'))
+          raw=pathlib.Path('live-results/source.txt').read_text(encoding='utf-8-sig')
+          expected={name.replace('.','/')+'.py':sum(functions.values()) for name,functions in oracle['functions'].items()}
+          observed={}
+          for verdict,path,count,failed,skipped,code in re.findall(r'(PASS|FAIL): (\S+): junit_passed=(\d+), failed=(\d+), skipped=(\d+), pytest_exit=(\d+)',raw):
+              assert path not in observed, path
+              assert verdict=='PASS' and failed==skipped==code=='0',(path,verdict,failed,skipped,code)
+              observed[path]=int(count)
+          assert observed==expected,(observed,expected)
+          report=dict(status='PASS',cases=observed,passed=sum(observed.values()),failed=0,skipped=0)
+          pathlib.Path('live-results/source-proof.json').write_text(json.dumps(report,sort_keys=True)+'\n',encoding='utf-8')
+          print(json.dumps(report,sort_keys=True))
+          '@ | python -I -B -
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Require exact isolated installed source and every regression case
+        timeout-minutes: 15
+        run: |
+          @'
+          from collections import Counter
+          from hashlib import sha256
+          import importlib,json,pathlib,sys,xml.etree.ElementTree as E
+          import pytest
+          assert sys.platform=='win32' and sys.flags.isolated
+          root=pathlib.Path.cwd().resolve()
+          oracle=json.loads((root/'scripts/r7_live_gate_oracle.json').read_text(encoding='utf-8'))
+          origins={}
+          for name in oracle['origins']:
+              path=pathlib.Path(importlib.import_module(name).__file__).resolve()
+              expected=root/'src'/pathlib.Path(*name.split('.')).with_suffix('.py')
+              assert path.is_relative_to(pathlib.Path(sys.prefix).resolve()),name
+              digest=sha256(path.read_bytes()).hexdigest()
+              assert digest==sha256(expected.read_bytes()).hexdigest(),name
+              origins[name]=dict(path=str(path),sha256=digest)
+          code=pytest.main(['-q','-o','addopts=','-o','pythonpath=','-o','xfail_strict=true','--import-mode=importlib','--junitxml=live-results/installed.xml',*oracle['suites']])
+          if code: raise SystemExit(code)
+          cases=list(E.parse('live-results/installed.xml').iter('testcase'))
+          observed={}
+          for name,functions in oracle['functions'].items():
+              selected=[c for c in cases if c.get('classname')==name]
+              assert all(not any(c.find(t) is not None for t in ('failure','error','skipped')) for c in selected),name
+              counts=Counter(c.get('name','').split('[',1)[0] for c in selected)
+              assert counts==Counter(functions),(name,counts,functions)
+              observed[name]=len(selected)
+          assert len(cases)==sum(observed.values()),'unaccounted cases'
+          for record in origins.values():
+              assert sha256(pathlib.Path(record['path']).read_bytes()).hexdigest()==record['sha256']
+          report=dict(status='PASS',source_commit=(root/'live-results/tested-commit.txt').read_text(encoding='utf-8-sig').strip(),source_tree=(root/'live-results/tested-tree.txt').read_text(encoding='utf-8-sig').strip(),actual_windows=True,installed_package=True,isolated=True,module_origins=origins,cases=observed,passed=len(cases),failed=0,skipped=0,nvda='NOT_RUN',sealed_installer='NOT_RUN',full_platform='NOT_CLAIMED')
+          (root/'live-results/installed-proof.json').write_text(json.dumps(report,sort_keys=True)+'\n',encoding='utf-8')
+          print(json.dumps(report,sort_keys=True))
+          '@ | python -I -B - 2>&1 | Tee-Object live-results/installed.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Require actual installed native live reading and SAPI preparation
+        timeout-minutes: 5
+        run: |
+          @'
+          from hashlib import sha256
+          import importlib,json,pathlib,runpy,sys
+          assert sys.platform=='win32' and sys.flags.isolated
+          root=pathlib.Path.cwd().resolve()
+          oracle=json.loads((root/'scripts/live_reading_acceptance_oracle.json').read_text(encoding='utf-8'))['native']
+          origins={}
+          for name in oracle['require_installed_modules']:
+              path=pathlib.Path(importlib.import_module(name).__file__).resolve()
+              expected=root/'src'/pathlib.Path(*name.split('.')).with_suffix('.py')
+              assert path.is_relative_to(pathlib.Path(sys.prefix).resolve()),name
+              digest=sha256(path.read_bytes()).hexdigest()
+              assert digest==sha256(expected.read_bytes()).hexdigest(),name
+              origins[name]=dict(path=str(path),sha256=digest)
+          probe=root/'scripts/windows_live_reading_smoke.py'
+          print(json.dumps(dict(status='ORIGINS',actual_windows=True,installed_package=True,isolated=True,module_origins=origins,probe_sha256=sha256(probe.read_bytes()).hexdigest())),flush=True)
+          namespace=runpy.run_path(str(probe),run_name='carr_live_reading_native_probe')
+          raise SystemExit(namespace['main']())
+          '@ | python -I -B - --native 2>&1 | Tee-Object live-results/native.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          @'
+          from collections import Counter
+          from hashlib import sha256
+          import json,pathlib,re
+          oracle=json.loads(pathlib.Path('scripts/live_reading_acceptance_oracle.json').read_text(encoding='utf-8'))['native']
+          raw=pathlib.Path('live-results/native.txt').read_text(encoding='utf-8-sig')
+          records=[json.loads(line) for line in raw.splitlines() if line.lstrip().startswith('{')]
+          origins=[record for record in records if record.get('status')=='ORIGINS']
+          results=[record for record in records if record.get('status') in ('PASS','FAIL','NOT_RUN')]
+          assert len(origins)==len(results)==1,(origins,results)
+          origin,report=origins[0],results[0]
+          assert all(origin[key] is True for key in ('actual_windows','installed_package','isolated'))
+          assert set(origin['module_origins'])==set(oracle['require_installed_modules'])
+          for key in ('status','native_controls','physical_playback','nvda','word_alignment','language_quality'):
+              assert report[key]==oracle[key],key
+          expected=Counter(oracle['required_static_labels'])
+          expected.update(oracle['unicode_label_prefix']+str(offset) for offset in (0,7,8,11,38,78))
+          assert Counter(report['checks'])==expected and len(report['checks'])==oracle['expected_checks']==26
+          metrics=report['actual_sapi_pcm']
+          assert all(type(metrics[key]) is int and metrics[key]>0 for key in ('frames','sample_rate'))
+          assert all(re.fullmatch('[0-9a-f]{64}',metrics[key]) for key in ('pcm_sha256','source_sha256'))
+          source='Prefix 😀.\r\nSelected source sentence 🦉. Second source sentence.\nLast paragraph.'
+          assert metrics['source_sha256']==sha256(source.encode('utf-8')).hexdigest()
+          report.update(source_commit=pathlib.Path('live-results/tested-commit.txt').read_text(encoding='utf-8-sig').strip(),source_tree=pathlib.Path('live-results/tested-tree.txt').read_text(encoding='utf-8-sig').strip(),module_origins=origin['module_origins'],probe_sha256=origin['probe_sha256'],actual_windows=True,installed_package=True,isolated=True,full_platform='NOT_CLAIMED')
+          pathlib.Path('live-results/native-proof.json').write_text(json.dumps(report,sort_keys=True)+'\n',encoding='utf-8')
+          print(json.dumps(report,sort_keys=True))
+          '@ | python -I -B -
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Retain exact source logs and installed receipts
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: carr-r7-live-${{ github.sha }}-${{ github.run_attempt }}
+          path: carr-library/live-results/
+          if-no-files-found: warn
+          retention-days: 7

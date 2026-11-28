@@ -9,7 +9,7 @@ from pathlib import Path
 import wx
 
 from ..research.export_file import write_export, export_completion
-from .export_destination import confirm_export_destination
+from .export_destination import approve_export_destination
 
 
 REPORT_MAX_CHARACTERS = 500_000
@@ -251,7 +251,7 @@ class LibraryToolsDialog(wx.Dialog):
                 button.SetFocus()
                 return False
             path = Path(dialog.GetPath())
-            approval = confirm_export_destination(self, path, private_root=self.private_root, wx_module=wx)
+            approval = approve_export_destination(self, path, private_root=self.private_root)
             if approval is None:
                 self.status.SetValue('Export cancelled. No file was written.')
                 button.SetFocus()

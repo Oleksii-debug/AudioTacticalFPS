@@ -1,0 +1,99 @@
+name: CARR native component notices
+
+on:
+  push:
+    branches: ['carr/v3-about-native-*']
+    paths:
+      - carr-library/**
+      - .github/workflows/carr-about-native.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: carr-about-native-${{ github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  native-component-notices:
+    name: Windows / installed ${{ matrix.profile }} / actual About keyboard
+    runs-on: windows-2022
+    timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      matrix:
+        profile: [core, integrated]
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: carr-library
+    env:
+      PYTHONUTF8: '1'
+      PYTHONUNBUFFERED: '1'
+      HF_HUB_OFFLINE: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      DO_NOT_TRACK: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+          architecture: x64
+      - name: Install the exact pinned profile and current source wheel
+        run: |
+          New-Item -ItemType Directory -Force about-native-results | Out-Null
+          $lock = if ('${{ matrix.profile }}' -eq 'integrated') { 'packaging/windows-integrated-cp311.lock' } else { 'packaging/windows-cp311.lock' }
+          python -m pip install --only-binary=:all: --require-hashes -r $lock
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m pip install --no-deps .
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          git rev-parse HEAD | Set-Content about-native-results/tested-commit.txt
+          git rev-parse 'HEAD^{tree}' | Set-Content about-native-results/tested-tree.txt
+          $program = python -I -c "import sys; print(sys.executable)"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Set-NetFirewallProfile -Profile Domain,Private,Public -Enabled True -ErrorAction Stop
+          New-NetFirewallRule -Name 'carr-about-native-offline' -DisplayName 'CARR native About offline probe' -Direction Outbound -Action Block -Profile Any -Program $program.Trim() -Enabled True -ErrorAction Stop | Out-Null
+          $rule = Get-NetFirewallRule -PolicyStore ActiveStore -Name 'carr-about-native-offline' -ErrorAction Stop
+          if ($rule.Enabled -ne 'True' -or $rule.Direction -ne 'Outbound' -or $rule.Action -ne 'Block') { throw 'Actual About offline firewall rule unavailable.' }
+      - name: Exercise actual menu, choice, modal notice and close keys
+        timeout-minutes: 4
+        run: |
+          python -I -B tests/ui/probe_about_native.py --native 2>&1 | Tee-Object about-native-results/native.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          @'
+          from collections import Counter
+          from hashlib import sha256
+          import json,pathlib,sys
+          raw=pathlib.Path('about-native-results/native.txt').read_text(encoding='utf-8-sig')
+          report=[json.loads(line) for line in raw.splitlines() if line.lstrip().startswith('{')][-1]
+          oracle=json.loads(pathlib.Path('scripts/about_native_oracle.json').read_text(encoding='utf-8'))
+          assert report['status']=='PASS' and report['check_count']==oracle['expected_check_count']
+          assert Counter(report['checks'])==Counter(oracle['checks'])
+          assert all(report[name] is True for name in oracle['required_true'])
+          assert all(report[name]==value for name,value in oracle['statuses'].items())
+          assert set(report['module_origins'])==set(oracle['module_origins'])
+          for name,record in report['module_origins'].items():
+              path=pathlib.Path(record['path']).resolve()
+              assert path.is_relative_to(pathlib.Path(sys.prefix).resolve()), str(path)
+              source=pathlib.Path('src')/pathlib.Path(*name.split('.')).with_suffix('.py')
+              assert record['sha256']==sha256(path.read_bytes()).hexdigest()==sha256(source.read_bytes()).hexdigest(), name
+          report['source_commit']=pathlib.Path('about-native-results/tested-commit.txt').read_text(encoding='utf-8-sig').strip()
+          report['source_tree']=pathlib.Path('about-native-results/tested-tree.txt').read_text(encoding='utf-8-sig').strip()
+          report['profile']=sys.argv[1]
+          report['actual_offline_firewall']=True
+          pathlib.Path('about-native-results/native-proof.json').write_text(json.dumps(report,sort_keys=True)+'\n',encoding='utf-8')
+          print(json.dumps(report,sort_keys=True))
+          '@ | python -I -B - '${{ matrix.profile }}'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Retain fixed synthetic qualification evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: carr-about-native-${{ matrix.profile }}-${{ github.sha }}
+          path: carr-library/about-native-results/
+          retention-days: 14
+          if-no-files-found: warn

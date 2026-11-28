@@ -1,0 +1,71 @@
+{
+  "schema": 1,
+  "recorded_utc": "2026-11-27 15:31:07 UTC",
+  "feature": "Selected CHM inert reading",
+  "observed": {
+    "head": "86d95379488426ded6fded1923dea53794a7adb3",
+    "run_id": 46011777532,
+    "job_id": 140548843389,
+    "status": "FAIL",
+    "native_source": {
+      "cases": 4,
+      "passed": 3,
+      "failed": 1
+    },
+    "native_installed": "NOT_RUN",
+    "member": {
+      "name": "cmdline/commands/bench.htm",
+      "bytes": 8169,
+      "sha256": "c6256370355d3b20841d67369aa11f000103bcb58fe9a611cb8efa2ed5bb7ddc"
+    },
+    "parser": {
+      "stage": "end",
+      "tag": "p",
+      "position": [
+        171,
+        0
+      ],
+      "open_elements": [
+        "html",
+        "body"
+      ],
+      "error": "HTML element nesting is malformed."
+    },
+    "artifact": {
+      "id": 15212180417,
+      "bytes": 2376264,
+      "sha256": "7e9cd868d15961a86b4b85626a9d7567456fe4c428898bc119b447ac855d784c"
+    }
+  },
+  "evidence": {
+    "completed_job_log_read": true,
+    "artifact_metadata_read": true,
+    "independent_archive_read": false
+  },
+  "repair": {
+    "scope": "Only CHM members with one of the four existing recognized legacy HTML PUBLIC declarations.",
+    "operation": "Use the existing bounded inert preview parser to identify an unmatched closing p while body is open. Insert its missing empty start-p token, preserve all source characters and then reparse through unchanged extract_document.",
+    "parser_reuse": "extract.document_formats_text._HTMLPreview, _Budget, strict declared-character decoding, node/token/depth/text/deadline checks",
+    "untouched": "The general HTML reader and its malformed end-tag policy, source/member/runtime identities, stage budgets, no-clobber publication, active/hidden-content omission and unverified quotation status.",
+    "provenance": "Original member SHA256 and normalized parser-input SHA256 are both retained. A specific normalization warning is recorded.",
+    "regressions": {
+      "new_cases": 10,
+      "existing_worker_case_extended_to_check_exact_original_and_parsed_member_hashes": true,
+      "portable_cases_per_mode": 173,
+      "legacy_boundary_module_cases": 86,
+      "native_chm_cases_per_mode": 4
+    },
+    "qualification": ".chm remains NOT_QUALIFIED until actual successor native source and installed populations pass.",
+    "runtime_status": "NOT_RUN at authoring"
+  },
+  "primary_references": [
+    {
+      "url": "https://html.spec.whatwg.org/multipage/parsing.html#parsing-main-inbody",
+      "relevance": "The end-p rule inserts a missing p element before closing when no p is in button scope. The adapter applies only its narrower body-open/no-open-p case and preserves its other stricter nesting requirements."
+    },
+    {
+      "url": "https://github.com/python/cpython/blob/v3.11.9/Lib/html/parser.py",
+      "relevance": "The standard parser's callbacks distinguish raw-text script/style content from actual end-tag tokens. The CHM normalizer uses these existing callbacks and refuses non-simple closing-p token spellings."
+    }
+  ]
+}

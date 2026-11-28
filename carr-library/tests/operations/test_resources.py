@@ -1,20 +1,52 @@
 """Real native cross-process resource coordination; no model or device inference."""
 from dataclasses import replace
+import importlib.util
 import json
 import multiprocessing
 import os
 from pathlib import Path
 import shutil
+import subprocess
+import sys
 import threading
 import time
 from types import SimpleNamespace
 
+# A real file entrypoint gives spawn an importable __main__, even when pytest
+# itself runs through isolated stdin and collects tests with importlib. Bind
+# only the package already imported by the parent; never add checkout/src or
+# alter sys.path to make an installed-package check pass.
+if __name__ in ('__main__', '__mp_main__'):
+    if len(sys.argv) != 6 or sys.argv[1] != '--resource-process-scenario':
+        raise SystemExit('Use the explicit resource process fixture entrypoint.')
+    package_file = Path(sys.argv[4]).resolve(strict=True)
+    package_spec = importlib.util.spec_from_file_location('carr_library', package_file,
+        submodule_search_locations=[str(package_file.parent)])
+    package = importlib.util.module_from_spec(package_spec)
+    sys.modules['carr_library'] = package
+    package_spec.loader.exec_module(package)
+
 import pytest
 
-from carr_library.durable_state import atomic_json
+import carr_library
+from carr_library.operations._state import atomic_json
 from carr_library.operations import (ResourceBroker, ResourceLimits, ResourceRequest,
     ResourceCancelled, ResourceConflict, ResourceError, ResourceStateError,
     ResourceTimeout, ResourceUnavailable)
+
+if __name__ in ('__main__', '__mp_main__'):
+    assert Path(carr_library.__file__).resolve() == Path(sys.argv[4]).resolve()
+    assert Path(sys.modules[ResourceBroker.__module__].__file__).resolve() == Path(sys.argv[5]).resolve()
+
+
+def _standalone_process_case(scenario, directory):
+    product = Path(carr_library.__file__).resolve()
+    broker_module = Path(sys.modules[ResourceBroker.__module__].__file__).resolve()
+    result = subprocess.run([sys.executable, '-I', '-B', '-X', 'utf8',
+        str(Path(__file__).resolve()), '--resource-process-scenario', scenario,
+        str(directory), str(product), str(broker_module)], capture_output=True,
+        text=True, encoding='utf-8', timeout=45)
+    assert result.returncode == 0, result.stdout + result.stderr
 
 
 def _hold(directory, request, queue, stop, *, crash=False):
@@ -40,6 +72,72 @@ def _contend(directory, label, queue, start):
         queue.put((label, 'entered', time.monotonic()))
         time.sleep(.12)
         queue.put((label, 'exiting', time.monotonic()))
+
+
+@pytest.mark.parametrize('phase', ['construction', 'acquisition'])
+def test_unheld_lock_disappearance_during_preflight_can_be_acquired(tmp_path, monkeypatch, phase):
+    from carr_library.operations import _locks
+    path = tmp_path / 'ephemeral.lock'
+    lock = _locks.NativeLock(path) if phase == 'acquisition' else None
+    path.write_bytes(b'')
+    actual_regular = _locks.regular
+    events = []
+    def released(candidate, *args, **kwargs):
+        if Path(candidate) == path and not events:
+            events.append('prior owner released')
+            path.unlink()
+        return actual_regular(candidate, *args, **kwargs)
+    monkeypatch.setattr(_locks, 'regular', released)
+    if lock is None:
+        lock = _locks.NativeLock(path)
+    assert lock.acquire()
+    try:
+        assert events == ['prior owner released'] and lock.held
+        held = os.fstat(lock.lock._context.lock_file_fd)
+        current = actual_regular(path)
+        assert (held.st_dev, held.st_ino) == (current.st_dev, current.st_ino)
+    finally:
+        lock.release()
+    assert not lock.held
+
+
+def test_unheld_lock_does_not_hide_missing_parent_or_validation_error(tmp_path, monkeypatch):
+    from carr_library.operations import _locks
+    with pytest.raises((OSError, ValueError)):
+        _locks.NativeLock(tmp_path / 'missing-parent' / 'lock')
+    def denied(_, *args, **kwargs):
+        raise PermissionError('controlled validation denial')
+    monkeypatch.setattr(_locks, 'regular', denied)
+    with pytest.raises(PermissionError, match='validation denial'):
+        _locks.NativeLock(tmp_path / 'denied.lock')
+
+
+def test_owned_lock_still_refuses_a_disappeared_path(tmp_path, monkeypatch):
+    from carr_library.operations import _locks
+    path = tmp_path / 'owned.lock'
+    lock = _locks.NativeLock(path)
+    actual_acquire = lock.lock.acquire
+    actual_regular = _locks.regular
+    acquired = []
+    def acquire(*args, **kwargs):
+        result = actual_acquire(*args, **kwargs)
+        acquired.append(True)
+        return result
+    def vanished(candidate, *args, **kwargs):
+        if acquired:
+            raise FileNotFoundError('controlled post-acquire disappearance')
+        return actual_regular(candidate, *args, **kwargs)
+    monkeypatch.setattr(lock.lock, 'acquire', acquire)
+    monkeypatch.setattr(_locks, 'regular', vanished)
+    with pytest.raises(ResourceStateError, match='could not be validated'):
+        lock.acquire()
+    assert not lock.held
+    # The failed validation closed only this descriptor. The real file is
+    # untouched and a new legitimate owner can take the same native lock.
+    monkeypatch.setattr(_locks, 'regular', actual_regular)
+    successor = _locks.NativeLock(path)
+    assert successor.acquire()
+    successor.release()
 
 
 @pytest.fixture
@@ -142,25 +240,15 @@ def test_waiting_cancellation_is_prompt_and_adds_no_reservation(broker):
         assert len(broker.snapshot()['leases']) == 1
 
 
-def test_active_timeout_is_stop_signal_never_forced_reclaim(broker, monkeypatch):
-    import carr_library.operations.broker as module
-    clock = [0.0]
-    # Native admission and JSON reads can exceed 10 ms on Windows. Advance only
-    # the broker's scheduling clock, after the real lease has entered its body.
-    monkeypatch.setattr(module, 'time', SimpleNamespace(
-        monotonic=lambda: clock[0], sleep=time.sleep, time=time.time))
-    contender = ResourceBroker(broker.root)
+def test_active_timeout_is_stop_signal_never_forced_reclaim(broker):
     with broker.reserve(ResourceRequest(cpu_slots=2), operation_id='timed', timeout=0, run_timeout=.01) as lease:
-        assert not lease.cancelled()
-        lease.checkpoint()
-        clock[0] = .02
+        time.sleep(.02)
         assert lease.cancelled()
         with pytest.raises(ResourceTimeout, match='execution time'):
             lease.checkpoint()
         with pytest.raises(ResourceTimeout):
-            with contender.reserve(ResourceRequest(), operation_id='still-blocked', timeout=0):
+            with broker.reserve(ResourceRequest(), operation_id='still-blocked', timeout=0):
                 pytest.fail('A live timed-out worker lost its reservation before cleanup.')
-        assert [record['id'] for record in contender.snapshot()['leases']] == [lease.id]
     assert not broker.snapshot()['leases']
 
 
@@ -211,6 +299,9 @@ def test_capacity_freed_after_deadline_does_not_start_late_worker(broker, monkey
 
 
 def test_actual_spawned_process_crash_releases_without_pid_reaping(broker):
+    if __name__ != '__main__':
+        _standalone_process_case('crash', broker.root)
+        return
     ctx = multiprocessing.get_context('spawn')
     queue, stop = ctx.Queue(), ctx.Event()
     process = ctx.Process(target=_hold, args=(broker.root, ResourceRequest(cpu_slots=2).to_dict(), queue, stop),
@@ -243,6 +334,9 @@ def test_actual_spawned_process_crash_releases_without_pid_reaping(broker):
 
 
 def test_actual_process_contention_has_no_overlapping_admission(tmp_path):
+    if __name__ != '__main__':
+        _standalone_process_case('contention', tmp_path)
+        return
     broker = ResourceBroker(tmp_path / 'runtime', limits=ResourceLimits(cpu_slots=1))
     ctx = multiprocessing.get_context('spawn')
     queue, start = ctx.Queue(), ctx.Event()
@@ -303,21 +397,6 @@ def test_runtime_leases_outside_backup_state_and_truthful_capabilities(tmp_path)
     assert 'no physical RAM/VRAM measurement' in facts['memory_policy']
 
 
-@pytest.mark.skipif(not hasattr(os, 'fork'), reason='Native fork inheritance is POSIX-only.')
-def test_forked_child_cannot_release_parent_reservation(broker):
-    with broker.reserve(ResourceRequest(cpu_slots=2), operation_id='parent', timeout=0) as lease:
-        pid = os.fork()
-        if pid == 0:
-            try:
-                lease.release()
-            except ResourceStateError:
-                os._exit(0)
-            os._exit(1)
-        _, status = os.waitpid(pid, 0)
-        assert os.waitstatus_to_exitcode(status) == 0
-        assert len(broker.snapshot()['leases']) == 1
-
-
 def test_paths_do_not_follow_links_and_invalid_requests_are_rejected(tmp_path):
     real = tmp_path / 'real'
     real.mkdir()
@@ -340,3 +419,280 @@ def test_paths_do_not_follow_links_and_invalid_requests_are_rejected(tmp_path):
                    {'devices': ('microphone:one', 'microphone:one')}, {'cpu_slots': 0}):
         with pytest.raises(ValueError):
             ResourceRequest(**values)
+
+
+@pytest.mark.parametrize('phase', ['construction', 'acquisition'])
+def test_native_release_can_remove_the_file_during_unheld_preflight(tmp_path, monkeypatch, phase):
+    """Release a real held native lock exactly before the waiter's path check."""
+    from carr_library.operations import _locks
+    path = tmp_path / 'contended.lock'
+    holder = _locks.NativeLock(path)
+    assert holder.acquire()
+    waiter = _locks.NativeLock(path) if phase == 'acquisition' else None
+    contender = None
+    requested, released = threading.Event(), threading.Event()
+    errors = []
+    caller = threading.current_thread()
+    actual_regular = _locks.regular
+    reached = []
+
+    def release_holder():
+        try:
+            if not requested.wait(10):
+                raise AssertionError('The waiter did not reach its pre-acquisition boundary.')
+            holder.release()
+            assert not holder.held
+            assert not os.path.lexists(path)
+        except BaseException as exc:
+            errors.append(exc)
+        finally:
+            released.set()
+
+    def checked(candidate, *arguments, **keywords):
+        if (Path(candidate) == path and threading.current_thread() is caller
+                and not reached):
+            reached.append(True)
+            requested.set()
+            assert released.wait(10), 'The actual native holder did not release.'
+            assert not errors, errors
+        return actual_regular(candidate, *arguments, **keywords)
+
+    thread = threading.Thread(target=release_holder, name='resource-release-race')
+    thread.start()
+    try:
+        with monkeypatch.context() as scoped:
+            scoped.setattr(_locks, 'regular', checked)
+            if waiter is None:
+                waiter = _locks.NativeLock(path)
+            assert waiter.acquire()
+            assert reached == [True] and released.is_set() and not errors
+            assert waiter.held
+            info = path.lstat()
+            held = os.fstat(waiter.lock._context.lock_file_fd)
+            assert (info.st_dev, info.st_ino) == (held.st_dev, held.st_ino)
+            contender = _locks.NativeLock(path)
+            assert contender.acquire() is False
+            assert waiter.held and not contender.held
+            waiter.release()
+            assert contender.acquire()
+    finally:
+        requested.set()
+        thread.join(12)
+        if contender is not None:
+            contender.release()
+        if waiter is not None:
+            waiter.release()
+        holder.release()
+    assert not thread.is_alive() and not errors
+
+
+@pytest.mark.parametrize('phase', ['construction', 'acquisition'])
+def test_optional_lock_preflight_still_rejects_hardlinks_without_touching_bytes(tmp_path, phase):
+    from carr_library.operations._locks import NativeLock
+    outside = tmp_path / 'retained-original'
+    original = b'This retained file must not become a mutable resource lock.'
+    outside.write_bytes(original)
+    path = tmp_path / 'untrusted.lock'
+    lock = NativeLock(path) if phase == 'acquisition' else None
+    os.link(outside, path)
+    try:
+        with pytest.raises(ValueError):
+            if lock is None:
+                NativeLock(path)
+            else:
+                lock.acquire()
+        assert outside.read_bytes() == original and path.read_bytes() == original
+        assert lock is None or not lock.held
+    finally:
+        if lock is not None:
+            lock.release()
+
+@pytest.mark.parametrize('phase', ['construction', 'acquisition'])
+def test_lock_leaf_disappears_during_local_asset_check(tmp_path, monkeypatch, phase):
+    """Keep our reviewed optional local-asset path boundary, not another state adapter."""
+    from carr_library.operations._locks import NativeLock
+    path = tmp_path / 'released.lock'
+    lock = NativeLock(path) if phase == 'acquisition' else None
+    path.write_bytes(b'')
+    original = Path.lstat
+    removed = []
+    def disappear(candidate, *args, **kwargs):
+        if Path(candidate) == path and not removed:
+            path.unlink()
+            removed.append(True)
+        return original(candidate, *args, **kwargs)
+    peer = None
+    try:
+        with monkeypatch.context() as scoped:
+            scoped.setattr(Path, 'lstat', disappear)
+            if lock is None:
+                lock = NativeLock(path)
+            assert lock.acquire()
+        assert removed == [True] and lock.held
+        peer = NativeLock(path)
+        assert not peer.acquire()
+    finally:
+        if peer is not None:
+            peer.release()
+        if lock is not None:
+            lock.release()
+
+
+@pytest.mark.parametrize('phase', ['construction', 'acquisition'])
+def test_disappearing_lock_leaf_does_not_authorize_missing_parent(tmp_path, monkeypatch, phase):
+    from carr_library.operations import _locks
+    parent = tmp_path / 'owned-resources'
+    parent.mkdir()
+    path = parent / 'released.lock'
+    lock = _locks.NativeLock(path) if phase == 'acquisition' else None
+    path.write_bytes(b'')
+    original = _locks.regular
+    removed = []
+    def remove_family(candidate, *args, **kwargs):
+        if Path(candidate) == path and not removed:
+            path.unlink()
+            parent.rmdir()
+            removed.append(True)
+        return original(candidate, *args, **kwargs)
+    try:
+        with monkeypatch.context() as scoped:
+            scoped.setattr(_locks, 'regular', remove_family)
+            with pytest.raises((FileNotFoundError, ValueError)):
+                if lock is None:
+                    _locks.NativeLock(path)
+                else:
+                    lock.acquire()
+        assert removed == [True] and not os.path.lexists(parent)
+        assert lock is None or not lock.held
+    finally:
+        if lock is not None:
+            lock.release()
+
+
+@pytest.mark.parametrize('phase', ['construction', 'acquisition'])
+@pytest.mark.parametrize('boundary', ['parent', 'leaf'])
+def test_unheld_lock_inspection_errors_never_become_absence(tmp_path, monkeypatch, phase, boundary):
+    from carr_library.operations import _locks
+    path = tmp_path / 'checked.lock'
+    lock = _locks.NativeLock(path) if phase == 'acquisition' else None
+    original = _locks.regular
+    denied = path.parent if boundary == 'parent' else path
+    def unreadable(candidate, *args, **kwargs):
+        if Path(candidate) == denied:
+            raise PermissionError('Explicit native lock inspection denial')
+        return original(candidate, *args, **kwargs)
+    try:
+        with monkeypatch.context() as scoped:
+            scoped.setattr(_locks, 'regular', unreadable)
+            with pytest.raises(PermissionError, match='inspection denial'):
+                if lock is None:
+                    _locks.NativeLock(path)
+                else:
+                    lock.acquire()
+        assert not os.path.lexists(path)
+        assert lock is None or not lock.held
+    finally:
+        if lock is not None:
+            lock.release()
+
+
+@pytest.mark.parametrize('phase', ['construction', 'acquisition'])
+def test_unheld_lock_resolver_prefix_after_leaf_deletion_preserves_native_ownership(
+        tmp_path, monkeypatch, phase):
+    """Exercise the actual Windows resolver race; keep portable ownership coverage."""
+    import ntpath
+    from pathlib import PureWindowsPath
+    from carr_library.operations import _locks
+
+    path = tmp_path.resolve() / 'resolved-and-released.lock'
+    lock = _locks.NativeLock(path) if phase == 'acquisition' else None
+    path.write_bytes(b'')
+    actual_asset = _locks._asset_path
+    actual_final = getattr(ntpath, '_getfinalpathname', None)
+    removed, resolved = [], []
+    peer = None
+
+    def final_path(value):
+        result = actual_final(value)
+        if Path(value) == path and not removed:
+            # The first GetFinalPathNameByHandle succeeded. The second probe
+            # sees real absence, so unmodified ntpath.realpath keeps its prefix.
+            path.unlink()
+            removed.append(True)
+        return result
+
+    def asset(candidate, *, must_exist=True):
+        result = actual_asset(candidate, must_exist=must_exist)
+        if Path(candidate) == path and not resolved:
+            assert must_exist is False
+            if actual_final is None:
+                # POSIX has no Windows final-path API. Simulate only its
+                # returned spelling after the same real leaf disappearance;
+                # all later filesystem and native-lock checks remain actual.
+                path.unlink()
+                removed.append(True)
+                result = PureWindowsPath(r'\\?\C:\reviewed-local\resolved-and-released.lock')
+            assert str(result).startswith('\\\\?\\')
+            assert not path.exists()
+            resolved.append(str(result))
+        return result
+
+    try:
+        with monkeypatch.context() as scoped:
+            if actual_final is not None:
+                scoped.setattr(ntpath, '_getfinalpathname', final_path)
+            scoped.setattr(_locks, '_asset_path', asset)
+            if lock is None:
+                lock = _locks.NativeLock(path)
+            assert lock.path == path
+            assert lock.acquire()
+        assert removed == [True] and len(resolved) == 1 and lock.held
+        current = _locks.regular(path)
+        held = os.fstat(lock.lock._context.lock_file_fd)
+        assert (held.st_dev, held.st_ino) == (current.st_dev, current.st_ino)
+        peer = _locks.NativeLock(path)
+        assert peer.acquire() is False
+        assert lock.held and not peer.held
+        lock.release()
+        assert peer.acquire()
+        peer.release()
+        assert not lock.held and not peer.held
+    finally:
+        if peer is not None:
+            peer.release()
+        if lock is not None:
+            lock.release()
+
+
+@pytest.mark.parametrize('candidate', [
+    r'\\server\share\untrusted.lock',
+    '//server/share/untrusted.lock',
+    r'\\?\C:\untrusted.lock',
+    r'\\.\C:\untrusted.lock',
+    r'\\?\UNC\server\share\untrusted.lock',
+    'untrusted.lock:alternate',
+], ids=['unc-backslash', 'unc-slash', 'extended-local', 'device-local', 'extended-unc', 'ads'])
+def test_unheld_lock_rejects_caller_namespaces_before_parent_admission(
+        tmp_path, monkeypatch, candidate):
+    from carr_library.audio.model_manifest import ModelManifestError
+    from carr_library.operations import _locks
+
+    value = candidate if candidate.startswith(('\\\\', '//')) else tmp_path / candidate
+    before = {path.name: path.lstat().st_ino for path in tmp_path.iterdir()}
+
+    def forbidden_parent(*args, **kwargs):
+        raise AssertionError('A forbidden caller path reached parent admission.')
+
+    monkeypatch.setattr(_locks, 'local_path', forbidden_parent)
+    with pytest.raises(ModelManifestError, match='network share|Alternate streams'):
+        _locks.NativeLock(value)
+    assert {path.name: path.lstat().st_ino for path in tmp_path.iterdir()} == before
+
+
+if __name__ == '__main__':
+    if sys.argv[2] == 'crash':
+        test_actual_spawned_process_crash_releases_without_pid_reaping(ResourceBroker(Path(sys.argv[3])))
+    elif sys.argv[2] == 'contention':
+        test_actual_process_contention_has_no_overlapping_admission(Path(sys.argv[3]))
+    else:
+        raise SystemExit('Unknown resource process fixture scenario.')

@@ -6,7 +6,8 @@ The dialog never approves, edits or exports extracted text as a quotation.
 """
 import sqlite3
 
-from ..reader.ebook import EbookSection, list_ebooks, read_ebook_section
+from ..reader.ebook import EbookSection, list_ebooks_page, read_ebook_section
+from .search_paging import PageHistory
 from ..research.topic_tree import TopicTree
 from .research_actions import NativeDialogs
 
@@ -177,19 +178,34 @@ class EbookReaderActions:
                 return (not frame._closing and frame.library is library and frame.active == scope
                         and _authorized_scope(library, workspace, topic))
 
-            def chosen(books):
+            history = PageHistory()
+
+            def chosen(page, direction, requested):
+                books = page.books
                 if not current_scope() or frame.cancel_event.is_set():
                     return
                 if not books:
                     frame.report('This library has no imported EPUB books. Choose Library, Import books first.')
                     return
-                index = self.dialogs.choose(frame, 'Read EPUB book', 'Choose a book to read by section.',
-                    [f'{i}. {book.title} — {book.author}' + (f' — {book.edition}' if book.edition else '')
-                     for i, book in enumerate(books, 1)])
+                history.accept(direction, requested, page.next_cursor, page.page_number)
+                choices = [f'{i}. {book.title} — {book.author}' + (f' — {book.edition}' if book.edition else '')
+                           for i, book in enumerate(books, 1)]
+                navigation = {}
+                if history.can_previous:
+                    navigation[len(choices)] = 'previous'
+                    choices.append('Previous page of EPUB books')
+                if history.can_next:
+                    navigation[len(choices)] = 'next'
+                    choices.append('Next page of EPUB books')
+                index = self.dialogs.choose(frame, 'Read EPUB book',
+                    f'Page {page.page_number}. Choose a book to read by section.' + history.history_notice, choices)
                 if index is None or not current_scope():
                     return
-                if type(index) is not int or not 0 <= index < len(books):
+                if type(index) is not int or not 0 <= index < len(choices):
                     raise ValueError('Choose an EPUB book from the list.')
+                if index in navigation:
+                    list_page(navigation[index])
+                    return
                 book = books[index]
 
                 def load(position):
@@ -207,8 +223,19 @@ class EbookReaderActions:
 
                 frame.run_job('Opening EPUB book', lambda: load(1), opened)
 
-            frame.run_job('Listing EPUB books', lambda: list_ebooks(library, workspace,
-                authorized_topic=topic, cancelled=frame.cancel_event.is_set), chosen)
+            def list_page(direction):
+                if not current_scope() or frame.cancel_event.is_set():
+                    return
+                requested = history.request(direction)
+
+                def listing():
+                    return list_ebooks_page(library, workspace, authorized_topic=topic,
+                        cursor=requested, cancelled=frame.cancel_event.is_set)
+
+                frame.run_job('Listing EPUB books', listing,
+                    lambda page: chosen(page, direction, requested))
+
+            list_page('first')
         except Exception as exc:
             frame.report(f'EPUB reader: {exc}')
 

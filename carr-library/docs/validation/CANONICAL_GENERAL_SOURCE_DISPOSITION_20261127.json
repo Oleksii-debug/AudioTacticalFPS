@@ -1,0 +1,1040 @@
+{
+  "schema": 1,
+  "kind": "finite-canonical-general-source-disposition",
+  "status": "SOURCE_REVIEWED",
+  "canonical_commit": "e5c64a5245583f8f8b404a0f042f6ca438c24d7f",
+  "canonical_tree": "344567db5c0d99f5d6d7ad24c105645ea75b65e8",
+  "current_commit": "1ea95e02acf514078142501040836b57f780a4da",
+  "current_tree": "5d394c4e5fd17a4e7fb8b27a1d42e806fdcb0c75",
+  "source_paths": 52,
+  "execution_claim": "NONE. These source mappings do not transfer canonical test results or qualify the current complete build.",
+  "entries": [
+    {
+      "path": "carr-library/src/carr_library/__main__.py",
+      "canonical_blob": "1a668e92de24009bed30cbd52bca3ceac44e6d86",
+      "current_blob": "df0c144258141fb7768dabf3e9d05e4db9e28974",
+      "disposition": "CURRENT_SHARED_OWNER_WITH_EXPLICIT_COMPATIBILITY_BOUNDARY",
+      "group": "application_entrypoints"
+    },
+    {
+      "path": "carr-library/src/carr_library/application.py",
+      "canonical_blob": "b9dc0ffe1c1c8e3b6d465282c3eb45f8e0f41aa0",
+      "current_blob": "f38c7b02abc0bd0a9fbbfe5c494a5a5f60633a34",
+      "disposition": "CURRENT_SHARED_OWNER_WITH_EXPLICIT_COMPATIBILITY_BOUNDARY",
+      "group": "application_entrypoints"
+    },
+    {
+      "path": "carr-library/src/carr_library/catalog/read_views.py",
+      "canonical_blob": "84b9a28698f3b65f69c880fc3a10de11cdb3c864",
+      "current_blob": "741de693f305998afc7180b399bd5bf4c52d5ec6",
+      "disposition": "CURRENT_SHARED_OWNER_WITH_EXPLICIT_COMPATIBILITY_BOUNDARY",
+      "group": "catalog_read_views"
+    },
+    {
+      "path": "carr-library/src/carr_library/conversion/__init__.py",
+      "canonical_blob": "1a8682019ba188a87b68f3b695231320ce7e32dd",
+      "current_blob": "50d168925c3f9548ec6b72a234e152301ccea7e6",
+      "disposition": "CURRENT_SHARED_OWNER_WITH_EXPLICIT_COMPATIBILITY_BOUNDARY",
+      "group": "conversion_protocol"
+    },
+    {
+      "path": "carr-library/src/carr_library/conversion/models.py",
+      "canonical_blob": "8b1a6611082e157f8b864ee004310ad89b473e60",
+      "current_blob": "c65bafb0b229ed840697ce5228eafcdf6c2a93d3",
+      "disposition": "CURRENT_SHARED_OWNER_WITH_EXPLICIT_COMPATIBILITY_BOUNDARY",
+      "group": "conversion_protocol"
+    },
+    {
+      "path": "carr-library/src/carr_library/conversion/service.py",
+      "canonical_blob": "63c754ef00bb1cd5e0dd56077078e5e1408d623c",
+      "current_blob": "3f283ab3f26430156c1253252d556e6bde6999ac",
+      "disposition": "CURRENT_SHARED_OWNER_WITH_EXPLICIT_COMPATIBILITY_BOUNDARY",
+      "group": "conversion_protocol"
+    },
+    {
+      "path": "carr-library/src/carr_library/conversion/worker.py",
+      "canonical_blob": "db0ef1a4e617f2001e2f78e0d073bb1b15f1baf1",
+      "current_blob": "e12850d3c0d66fe2c2bd11a6a527210b51091aef",
+      "disposition": "CURRENT_SHARED_OWNER_WITH_EXPLICIT_COMPATIBILITY_BOUNDARY",
+      "group": "conversion_protocol"
+    },
+    {
+      "path": "carr-library/src/carr_library/delivery_contract.py",
+      "canonical_blob": "90163967acd50760bf15e8a98b74e0bd76aa63f2",
+      "current_blob": "dbba328488f5d17daf27ef87aa140411052a375a",
+      "disposition": "CURRENT_SHARED_OWNER_WITH_EXPLICIT_COMPATIBILITY_BOUNDARY",
+      "group": "delivery_boundary"
+    },
+    {
+      "path": "carr-library/src/carr_library/durable_state.py",
+      "canonical_blob": "030ecb184c76c17bc0913758d7ac81de284661b2",
+      "current_blob": "5e5d5123c0b7f54a19fae6bef52b92ab15afb8cb",
+      "disposition": "CURRENT_SHARED_OWNER_WITH_EXPLICIT_COMPATIBILITY_BOUNDARY",
+      "group": "atomic_state"
+    },
+    {
+      "path": "carr-library/src/carr_library/extract/document_formats_xml.py",
+      "canonical_blob": "2b198b0c24414d483c054f2f21c9dd5ebb81b649",
+      "current_blob": "21fd297a9554ab70bac71cc22a86491183a0307e",
+      "disposition": "CURRENT_SHARED_OWNER_WITH_EXPLICIT_COMPATIBILITY_BOUNDARY",
+      "group": "document_xml"
+    },
+    {
+      "path": "carr-library/src/carr_library/extract/language_manager.py",
+      "canonical_blob": "4cdc67ffb0436e5fd9dd6304b76bfd375ae509ee",
+      "current_blob": "55c8c158c898a948e4930e11ec33359f0f8eec01",
+      "disposition": "CURRENT_SHARED_OWNER_WITH_EXPLICIT_COMPATIBILITY_BOUNDARY",
+      "group": "ocr_catalog_and_packs"
+    },
+    {
+      "path": "carr-library/src/carr_library/extract/ocr_languages.py",
+      "canonical_blob": "09694edd4654025344e179276eaba8b8cb5c64af",
+      "current_blob": "6ec75fa30d04303da85ffff37d56fa8c29aaf191",
+      "disposition": "CURRENT_SHARED_OWNER_WITH_EXPLICIT_COMPATIBILITY_BOUNDARY",
+      "group": "ocr_catalog_and_packs"
+    },
+    {
+      "path": "carr-library/src/carr_library/extract/ocr_model_catalog.py",
+      "canonical_blob": "9cf184d758c2185aa31eb91d38ae1ab073191b20",
+      "current_blob": "2e50c806140e0ee13b00091709497d31cbc99778",
+      "disposition": "CURRENT_SHARED_OWNER_WITH_EXPLICIT_COMPATIBILITY_BOUNDARY",
+      "group": "ocr_catalog_and_packs"
+    },
+    {
+      "path": "carr-library/src/carr_library/extract/ocr_model_store.py",
+      "canonical_blob": "971c58ea5ed36ed2c57cb7840d19e64144f85854",
+      "current_blob": "a77d6d5e3042c0f2ddd2b7b5b8831dc6d5e8a79d",
+      "disposition": "CURRENT_SHARED_OWNER_WITH_EXPLICIT_COMPATIBILITY_BOUNDARY",
+      "group": "ocr_catalog_and_packs"
+    },
+    {
+      "path": "carr-library/src/carr_library/extract/ocr_orientation_bridge.py",
+      "canonical_blob": "b94e0ae3d70f1221d3f46ca264c20faa2aaadc32",
+      "current_blob": "3ae514b057dfd1ddf080cfda98b429692a8cbdb6",
+      "disposition": "CURRENT_SHARED_OWNER_WITH_EXPLICIT_COMPATIBILITY_BOUNDARY",
+      "group": "ocr_execution_identity"
+    },
+    {
+      "path": "carr-library/src/carr_library/extract/ocr_process.py",
+      "canonical_blob": "87047f288f626ec161be979043aac431167fb890",
+      "current_blob": "feeab7290f06927bbdf9021eff93ebb5ecd0b2c8",
+      "disposition": "CURRENT_SHARED_OWNER_WITH_EXPLICIT_COMPATIBILITY_BOUNDARY",
+      "group": "ocr_execution_identity"
+    },
+    {
+      "path": "carr-library/src/carr_library/extract/ocr_runtime.py",
+      "canonical_blob": "6612ca069be280f6d64f3a77633bdc9434da3c4f",
+      "current_blob": "511e571ea2cecdba3882769be6364f2055f14f42",
+      "disposition": "CURRENT_SHARED_OWNER_WITH_EXPLICIT_COMPATIBILITY_BOUNDARY",
+      "group": "ocr_execution_identity"
+    },
+    {
+      "path": "carr-library/src/carr_library/extract/page_ocr.py",
+      "canonical_blob": "b57a0c5754045e8a78a025ee7916c83c38bff772",
+      "current_blob": "b4b7876061e665457cb28a004ac7bebe69693356",
+      "disposition": "CURRENT_SHARED_OWNER_WITH_EXPLICIT_COMPATIBILITY_BOUNDARY",
+      "group": "ocr_execution_identity"
+    },
+    {
+      "path": "carr-library/src/carr_library/extract/runtime_identity.py",
+      "canonical_blob": "1a09f372be59f0921c98c641c884cc7463288179",
+      "current_blob": "0d9d9263ac6fc010f03c07a3db882fdfcbfaca8b",
+      "disposition": "CURRENT_SHARED_OWNER_WITH_EXPLICIT_COMPATIBILITY_BOUNDARY",
+      "group": "ocr_execution_identity"
+    },
+    {
+      "path": "carr-library/src/carr_library/ingest/asset_copy.py",
+      "canonical_blob": "0e5df593a191b43983ad332a327d33151837709a",
+      "current_blob": "713092fe5235d9398f9f3b7ecaadaf2b09409a45",
+      "disposition": "CURRENT_SHARED_OWNER_WITH_EXPLICIT_COMPATIBILITY_BOUNDARY",
+      "group": "retained_originals"
+    },
+    {
+      "path": "carr-library/src/carr_library/ingest/batch_scan.py",
+      "canonical_blob": "c1022c232123bfbd004bebd13d9c67822d771dc7",
+      "current_blob": "6ba1e219ba7502c7ad6f25bffde34c66264f16ab",
+      "disposition": "CURRENT_SHARED_OWNER_WITH_EXPLICIT_COMPATIBILITY_BOUNDARY",
+      "group": "ingest_lifecycle"
+    },
+    {
+      "path": "carr-library/src/carr_library/ingest/batches.py",
+      "canonical_blob": "f7f9aeb4d71fd88fca35d366da15af863aa83585",
+      "current_blob": "8a1c06ab0828ee4519511d62c2c0ab1e2c7b9f82",
+      "disposition": "CURRENT_SHARED_OWNER_WITH_EXPLICIT_COMPATIBILITY_BOUNDARY",
+      "group": "ingest_lifecycle"
+    },
+    {
+      "path": "carr-library/src/carr_library/ingest/catalog_asset_copy.py",
+      "canonical_blob": "2af8a72cba5ced234664d8cd38549a47f518aeef",
+      "current_blob": "4ff5b16b9dd5c44a0edf4043f0c8a29f4dc782fd",
+      "disposition": "CURRENT_SHARED_OWNER_WITH_EXPLICIT_COMPATIBILITY_BOUNDARY",
+      "group": "retained_originals"
+    },
+    {
+      "path": "carr-library/src/carr_library/ingest/pipeline.py",
+      "canonical_blob": "26a89507b7ba4dcb61a986753b17bd07a3a8591e",
+      "current_blob": "dcffac2c252b445fb187112834dd83ba145732d9",
+      "disposition": "CURRENT_SHARED_OWNER_WITH_EXPLICIT_COMPATIBILITY_BOUNDARY",
+      "group": "ingest_lifecycle"
+    },
+    {
+      "path": "carr-library/src/carr_library/ingest/retained_assets.py",
+      "canonical_blob": "c0df95c1e062c7ac8891805354e95a1e00f07c57",
+      "current_blob": "4415ae29843a9f3728a4c68d2726efd6138288f5",
+      "disposition": "CURRENT_SHARED_OWNER_WITH_EXPLICIT_COMPATIBILITY_BOUNDARY",
+      "group": "retained_originals"
+    },
+    {
+      "path": "carr-library/src/carr_library/ingest/worker.py",
+      "canonical_blob": "74cf8fd6e1554c8cb4f7d5d08c8d97eabbde3de4",
+      "current_blob": "22ea65b3ed5b6c218cd660d15b78e90aa05de338",
+      "disposition": "CURRENT_SHARED_OWNER_WITH_EXPLICIT_COMPATIBILITY_BOUNDARY",
+      "group": "ingest_lifecycle"
+    },
+    {
+      "path": "carr-library/src/carr_library/keyboard_preferences.py",
+      "canonical_blob": "ea77248e902f2974bcfcda5912a4a179c623786e",
+      "current_blob": "6d2b28b2a5c9704d0b4ea99ffb107d0937523aa4",
+      "disposition": "CURRENT_SHARED_OWNER_WITH_EXPLICIT_COMPATIBILITY_BOUNDARY",
+      "group": "keyboard_persistence"
+    },
+    {
+      "path": "carr-library/src/carr_library/language_qualification/catalog.py",
+      "canonical_blob": "bad9aa5c644573ed18fdb83527733dd99a738ade",
+      "current_blob": "f6c94e01d61b82959209e64b9e78bd59692c74cd",
+      "disposition": "CURRENT_SHARED_OWNER_WITH_EXPLICIT_COMPATIBILITY_BOUNDARY",
+      "group": "language_target"
+    },
+    {
+      "path": "carr-library/src/carr_library/native_checks.py",
+      "canonical_blob": "f852cfb3748f20cb279de98b41d8750093af8e43",
+      "current_blob": "4134e1c8ec1271cf6876e8afea8a56c5a8471117",
+      "disposition": "CURRENT_SHARED_OWNER_WITH_EXPLICIT_COMPATIBILITY_BOUNDARY",
+      "group": "native_inventory"
+    },
+    {
+      "path": "carr-library/src/carr_library/operations/__init__.py",
+      "canonical_blob": "618d53c90f9586156fa7b0d84d11483d16d6d04b",
+      "current_blob": "93c56c0e9a9ed0ce87f9ff8a4a1f46fc1fca05f7",
+      "disposition": "CURRENT_SHARED_OWNER_WITH_EXPLICIT_COMPATIBILITY_BOUNDARY",
+      "group": "resource_admission"
+    },
+    {
+      "path": "carr-library/src/carr_library/operations/_locks.py",
+      "canonical_blob": "fcf6872d1b5b8a131bf33edd2e42fd0163b9afd9",
+      "current_blob": "28f87df67da626ea153f44e03b5625d6a6789a77",
+      "disposition": "CURRENT_SHARED_OWNER_WITH_EXPLICIT_COMPATIBILITY_BOUNDARY",
+      "group": "resource_admission"
+    },
+    {
+      "path": "carr-library/src/carr_library/operations/broker.py",
+      "canonical_blob": "6a8854e18316521939848bd1719e9ab0484c0746",
+      "current_blob": "7a472bcc07a8f0de289e0f278fd9f7747728a3da",
+      "disposition": "CURRENT_SHARED_OWNER_WITH_EXPLICIT_COMPATIBILITY_BOUNDARY",
+      "group": "resource_admission"
+    },
+    {
+      "path": "carr-library/src/carr_library/operations/facade.py",
+      "canonical_blob": "4eaf0157b171b4ae4fdd9c2a8e4da06b6700cd48",
+      "current_blob": "0b7df17c0c7ab7ea60b5bf0e9bd0df120a7a0219",
+      "disposition": "CURRENT_SHARED_OWNER_WITH_EXPLICIT_COMPATIBILITY_BOUNDARY",
+      "group": "operation_views"
+    },
+    {
+      "path": "carr-library/src/carr_library/operations_cli.py",
+      "canonical_blob": "b03cf6a4668e88757193b7a8e94fe6c5557124ea",
+      "current_blob": "0ff177983859a801cf100a9fd8548a7586004f97",
+      "disposition": "CURRENT_SHARED_OWNER_WITH_EXPLICIT_COMPATIBILITY_BOUNDARY",
+      "group": "operation_views"
+    },
+    {
+      "path": "carr-library/src/carr_library/pending_backup.py",
+      "canonical_blob": "2a15b362f3b25cefeefdfa5f6edcb8527cd35e43",
+      "current_blob": "40dc27d9e22a86ba8a714a981bf2d5048dedc913",
+      "disposition": "CURRENT_SHARED_OWNER_WITH_EXPLICIT_COMPATIBILITY_BOUNDARY",
+      "group": "pending_backup"
+    },
+    {
+      "path": "carr-library/src/carr_library/progress.py",
+      "canonical_blob": "f19da8bd57cb73307359a03db236c5f60ede44b7",
+      "current_blob": "f5443f7591dbc5598aa1d70c9cc26319e81c01d2",
+      "disposition": "CURRENT_SHARED_OWNER_WITH_EXPLICIT_COMPATIBILITY_BOUNDARY",
+      "group": "progress"
+    },
+    {
+      "path": "carr-library/src/carr_library/reader/ebook.py",
+      "canonical_blob": "014a056ddaaa2a671d09b169d3b6ea7f6ee59634",
+      "current_blob": "2f6b6ee6003c30ef29e70fe22b93c8a7726fe7b4",
+      "disposition": "CURRENT_SHARED_OWNER_WITH_EXPLICIT_COMPATIBILITY_BOUNDARY",
+      "group": "reader_sources"
+    },
+    {
+      "path": "carr-library/src/carr_library/reader/reading_state.py",
+      "canonical_blob": "1ffa53da163b74e06bf2fcf7f705fbfc479a5ca5",
+      "current_blob": "45264b0e8367a8cd36c0fc5bee0bf6562e26c749",
+      "disposition": "CURRENT_SHARED_OWNER_WITH_EXPLICIT_COMPATIBILITY_BOUNDARY",
+      "group": "reader_sources"
+    },
+    {
+      "path": "carr-library/src/carr_library/reader/source_file.py",
+      "canonical_blob": "1aa43a4360f3284b9c0abf13dd08d1a0a4c448ac",
+      "current_blob": "1483c4ddbb6fde1446639c2e786da2fc86df61ad",
+      "disposition": "CURRENT_SHARED_OWNER_WITH_EXPLICIT_COMPATIBILITY_BOUNDARY",
+      "group": "reader_sources"
+    },
+    {
+      "path": "carr-library/src/carr_library/runtime_settings.py",
+      "canonical_blob": "a83e4b5020aa3779b93e6169928607194677769c",
+      "current_blob": "6c75d02505089dea46cd72c1d13bac54914e04e4",
+      "disposition": "CURRENT_SHARED_OWNER_WITH_EXPLICIT_COMPATIBILITY_BOUNDARY",
+      "group": "engine_profiles"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/builtin_keyboard_commands.py",
+      "canonical_blob": "9d15cee9c441cd8127733e4dbec93313ed411ab8",
+      "current_blob": "3d1e5a6c7e394a4896a9701afb77ff917a5d3e78",
+      "disposition": "CURRENT_SHARED_OWNER_WITH_EXPLICIT_COMPATIBILITY_BOUNDARY",
+      "group": "keyboard_persistence"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/desktop_app.py",
+      "canonical_blob": "c264eb3cf2f47d0ade514234cbf3eba13512d9bd",
+      "current_blob": "94fde0a14c7243983e3b1fa0ee1362bc014e2100",
+      "disposition": "CURRENT_SHARED_OWNER_WITH_EXPLICIT_COMPATIBILITY_BOUNDARY",
+      "group": "desktop_and_evidence"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/desktop_evidence_panel.py",
+      "canonical_blob": "5140395fbc211900a8dd9289877c6de4b3a96d44",
+      "current_blob": "1043da325fb6b7de3c7855dcf468e20f351032aa",
+      "disposition": "CURRENT_SHARED_OWNER_WITH_EXPLICIT_COMPATIBILITY_BOUNDARY",
+      "group": "desktop_and_evidence"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/ebook_reader.py",
+      "canonical_blob": "1091b6359b90f85a094537e4f96f239785f37b92",
+      "current_blob": "d42215174b7c764cda36b6a835bb0f7e7b01c193",
+      "disposition": "CURRENT_SHARED_OWNER_WITH_EXPLICIT_COMPATIBILITY_BOUNDARY",
+      "group": "reading_and_import_ui"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/import_center.py",
+      "canonical_blob": "bde66d23bebe46a05a79e27418984bc5d612011c",
+      "current_blob": "064ee4bb6c4db0001d64760910c777237f18596f",
+      "disposition": "CURRENT_SHARED_OWNER_WITH_EXPLICIT_COMPATIBILITY_BOUNDARY",
+      "group": "reading_and_import_ui"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/keyboard_settings.py",
+      "canonical_blob": "cd455654455e872ba0792f14d07c27f65be23121",
+      "current_blob": "58912be85954a059c680783ccda66769757ec491",
+      "disposition": "CURRENT_SHARED_OWNER_WITH_EXPLICIT_COMPATIBILITY_BOUNDARY",
+      "group": "keyboard_persistence"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/language_matrix.py",
+      "canonical_blob": "ba8a105cad8b021bd35625e005ffc01b1e8c578e",
+      "current_blob": "69429f88081aa5195db6d517727ef188e6431d15",
+      "disposition": "CURRENT_SHARED_OWNER_WITH_EXPLICIT_COMPATIBILITY_BOUNDARY",
+      "group": "language_target"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/ocr_model_manager.py",
+      "canonical_blob": "8ef8d43aeddc1d65b745dc58cc8a2d1fcde80463",
+      "current_blob": "d87272c912134074be2254b0fe34a9dd000783af",
+      "disposition": "CURRENT_SHARED_OWNER_WITH_EXPLICIT_COMPATIBILITY_BOUNDARY",
+      "group": "ocr_ui"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/ocr_options.py",
+      "canonical_blob": "c172e351ea910fddf9aebd99dc7c7cbf8a202738",
+      "current_blob": "23872c178f45f6e8f5ba6d62dc3e1b0ae2bdc1ec",
+      "disposition": "CURRENT_SHARED_OWNER_WITH_EXPLICIT_COMPATIBILITY_BOUNDARY",
+      "group": "ocr_ui"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/ocr_selection.py",
+      "canonical_blob": "d1eaabefb1ea68d7c1bb4c0211e168241fcd8858",
+      "current_blob": "4b284b6991779e7a234926d65db036f78387de5d",
+      "disposition": "CURRENT_SHARED_OWNER_WITH_EXPLICIT_COMPATIBILITY_BOUNDARY",
+      "group": "ocr_ui"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/operations_dialog.py",
+      "canonical_blob": "7e687b9480dea4da3e232f561b1bfb919dc43223",
+      "current_blob": "4a4186460bda976e574482a8e4acd3dc8f9e6301",
+      "disposition": "CURRENT_SHARED_OWNER_WITH_EXPLICIT_COMPATIBILITY_BOUNDARY",
+      "group": "operation_views"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/reading_desk.py",
+      "canonical_blob": "c15a3930c781743a307302b23fcddc99a616bb8e",
+      "current_blob": "19a0d6fc34a32de00a77e6bf20f98f84250207be",
+      "disposition": "CURRENT_SHARED_OWNER_WITH_EXPLICIT_COMPATIBILITY_BOUNDARY",
+      "group": "reading_and_import_ui"
+    }
+  ],
+  "related": [
+    "docs/validation/CANONICAL_FINAL_INPUT_INVENTORY_20261127.json",
+    "docs/validation/CANONICAL_GENERAL_TEST_DISPOSITION_20261127.json",
+    "docs/validation/CANONICAL_SHARED_CONTRACT_PRESERVATION_20261127.json"
+  ],
+  "limits": [
+    "A source path mapping is not whole Python API, CLI, parameterized case or data-schema equivalence.",
+    "Current-only implementations and the other87 canonical domain source paths have separate component/domain reviews.",
+    "Exact source/installed/native runs retain their own SHA, dependency and artifact identity.",
+    "The 135-language target, private model quality, manual NVDA and distribution clearance are independent pending dimensions."
+  ],
+  "groups": {
+    "application_entrypoints": {
+      "contract": "Retain the existing application and command dispatch as the domain entrypoints, with installed-generation lifetime and trust context, continuation and scoped transcription services. The current backup method and command grammar are explicit current interfaces; removed keyword arguments or historical CLI spellings are not compatibility aliases.",
+      "tests": [
+        {
+          "path": "carr-library/tests/e2e/test_operations_cli.py",
+          "blob": "37376fa60a18324ab7419d9ddb106adfdbf81a2d",
+          "selected_in_full_source": true,
+          "selected_in_full_installed": true
+        },
+        {
+          "path": "carr-library/tests/transcription/test_profile_cli.py",
+          "blob": "632120dea2a81a137a36b0a80fb1a462ace24bb5",
+          "selected_in_full_source": true,
+          "selected_in_full_installed": true
+        },
+        {
+          "path": "carr-library/tests/e2e/test_audio_cli_resources.py",
+          "blob": "b29cc52aa4b1775bd1c67cad1b18240ccc085dc9",
+          "selected_in_full_source": true,
+          "selected_in_full_installed": true
+        },
+        {
+          "path": "carr-library/tests/e2e/test_extended_document_workflows.py",
+          "blob": "1e74957ac863b86d97b69243a102607aee45ab7e",
+          "selected_in_full_source": true,
+          "selected_in_full_installed": false
+        }
+      ],
+      "current_documentation": [
+        "docs/TASKS_AND_RESOURCES.md",
+        "docs/TRANSCRIPTION_HOST_INTEGRATION.md",
+        "docs/COMPLETE_BACKUP.md"
+      ]
+    },
+    "catalog_read_views": {
+      "contract": "Preserve read-only workspace/topic-scoped edition metadata and immutable source identifiers through the existing catalog. Current streaming source types and bounded views extend this owner without a second catalog or schema authority.",
+      "tests": [
+        {
+          "path": "carr-library/tests/catalog/test_read_views.py",
+          "blob": "21cce0614ef41d8e4223f405424174fb4572bca0",
+          "selected_in_full_source": false,
+          "selected_in_full_installed": false
+        },
+        {
+          "path": "carr-library/tests/catalog/test_read_views_v2_integration.py",
+          "blob": "52b200a0dc67d89ffdfd8b019488ffa72d165690",
+          "selected_in_full_source": false,
+          "selected_in_full_installed": false
+        }
+      ],
+      "current_documentation": [
+        "docs/ACADEMIC_CATALOG_INSIGHTS.md"
+      ]
+    },
+    "conversion_protocol": {
+      "contract": "Use one bounded conversion dispatcher and worker protocol, explicit selected encodings and actual qualified optional capabilities. Preserve the MIME Subject only as bounded passive metadata, separate from body and catalog/quotation authority; reject unknown metadata and invalid controls. The exact sixteen EML regressions and dedicated ordinary legacy adapter gate remain selected.",
+      "tests": [
+        {
+          "path": "carr-library/tests/conversion/test_conversion.py",
+          "blob": "24d6d8e1009d2fcd3eff729c36d721ef88ba783c",
+          "selected_in_full_source": true,
+          "selected_in_full_installed": true
+        },
+        {
+          "path": "carr-library/tests/conversion/test_explicit_text_encoding.py",
+          "blob": "2114a377ce926df9cfdaf1e3e9c79f81c11574dc",
+          "selected_in_full_source": true,
+          "selected_in_full_installed": true
+        },
+        {
+          "path": "carr-library/tests/conversion/test_email_metadata.py",
+          "blob": "05e8c53e5be360f9e2cc4efd0feb0000725a6658",
+          "selected_in_full_source": true,
+          "selected_in_full_installed": true
+        },
+        {
+          "path": "carr-library/tests/conversion/test_legacy_adapters.py",
+          "blob": "abedb953a2b51c9645b96763153724ac32fb8aaf",
+          "selected_in_full_source": true,
+          "selected_in_full_installed": true
+        }
+      ],
+      "current_documentation": [
+        "docs/DOCUMENT_CONVERSION.md",
+        "docs/LEGACY_DOCUMENT_CONVERSION.md"
+      ]
+    },
+    "delivery_boundary": {
+      "contract": "Retain the neutral external delivery boundary and reserved user-data actions, adding bounded pure scheduling records. Provider declarations, refresh plans and displayed update offers are not cryptographic authority. The current trusted-client and standard transaction own actual verification; absent production services do not acquire release status.",
+      "tests": [
+        {
+          "path": "carr-library/tests/test_delivery_contract.py",
+          "blob": "0072001867029aa950515865572d22d2a6b8288a",
+          "selected_in_full_source": true,
+          "selected_in_full_installed": true
+        },
+        {
+          "path": "carr-library/tests/security/test_current_host_adoption.py",
+          "blob": "60681bacd488f966e3e4478af3f251aba40b3925",
+          "selected_in_full_source": true,
+          "selected_in_full_installed": true
+        },
+        {
+          "path": "carr-library/tests/security/test_standard_update.py",
+          "blob": "d050c44ae86d1812b231f1c6874469480ae68eaf",
+          "selected_in_full_source": true,
+          "selected_in_full_installed": true
+        }
+      ],
+      "current_documentation": [
+        "docs/DELIVERY_INTEGRATION_CONTRACT.md",
+        "docs/TRUSTED_CLIENT.md"
+      ]
+    },
+    "atomic_state": {
+      "contract": "Keep canonical typed state publication and no-clobber/recovery intent through the reviewed current publication helpers. The explicitly restored canonical atomic-state cases cover the retained boundary; successful publication and later notification failures remain distinct.",
+      "tests": [
+        {
+          "path": "carr-library/tests/storage/test_atomic_state_publication.py",
+          "blob": "a37e4c377f5baa5c85d16ad9ea8912d695089451",
+          "selected_in_full_source": true,
+          "selected_in_full_installed": true
+        },
+        {
+          "path": "carr-library/tests/operations/test_state.py",
+          "blob": "af10085a69c699d58b750cadc80c8c7a575caa06",
+          "selected_in_full_source": true,
+          "selected_in_full_installed": true
+        }
+      ],
+      "current_documentation": [
+        "docs/PORTABLE_SNAPSHOTS.md"
+      ]
+    },
+    "document_xml": {
+      "contract": "Preserve source-text extraction and active/hidden-content refusal. Accept only the finite inert disabled page-header/footer grammar observed in the selected Office converter; do not skip a subtree or evaluate print labels. Retain the 55 positive and negative layout cases and explicit omission warnings.",
+      "tests": [
+        {
+          "path": "carr-library/tests/extract/test_document_formats_xml.py",
+          "blob": "c7328eb9c810e179bd6b9fa9759d1a48fd2767ae",
+          "selected_in_full_source": true,
+          "selected_in_full_installed": true
+        },
+        {
+          "path": "carr-library/tests/extract/test_odf_print_layout.py",
+          "blob": "3c3faa6a0eb043f8478752e2a373ef0923ed103a",
+          "selected_in_full_source": true,
+          "selected_in_full_installed": true
+        }
+      ],
+      "current_documentation": [
+        "docs/DOCUMENT_FORMATS_V3.md",
+        "docs/DOCUMENT_CONVERSION.md"
+      ]
+    },
+    "ocr_catalog_and_packs": {
+      "contract": "Keep one safe language/script identifier catalog, bounded actual runtime inventory, explicit model/preset selection and exact manifest/model publication. Current VerifiedModelPack and managed-store interfaces supersede the older helper classes; old class/argument spellings are not asserted equivalent. Restored manifest-substitution and strict-JSON regressions cover actual approved-byte binding.",
+      "tests": [
+        {
+          "path": "carr-library/tests/extract/test_ocr_languages.py",
+          "blob": "42afbd950d5ba03fd5807c86f857e697a725bc51",
+          "selected_in_full_source": true,
+          "selected_in_full_installed": true
+        },
+        {
+          "path": "carr-library/tests/extract/test_ocr_model_catalog.py",
+          "blob": "fa51924e3cf36adbb46a6b78ee465bcd3969195a",
+          "selected_in_full_source": true,
+          "selected_in_full_installed": true
+        },
+        {
+          "path": "carr-library/tests/extract/test_ocr_model_store.py",
+          "blob": "d1db430a5798cf869feafb8fc517e01367f56424",
+          "selected_in_full_source": true,
+          "selected_in_full_installed": true
+        },
+        {
+          "path": "carr-library/tests/extract/test_ocr_packs.py",
+          "blob": "b4264d87cefc74f8ef06ee78814157b01ba622c7",
+          "selected_in_full_source": true,
+          "selected_in_full_installed": true
+        },
+        {
+          "path": "carr-library/tests/extract/test_model_pack_manifest_identity.py",
+          "blob": "8b0e6495fd066ce23262365753d7ac529cd9b376",
+          "selected_in_full_source": true,
+          "selected_in_full_installed": true
+        }
+      ],
+      "current_documentation": [
+        "docs/OCR_LANGUAGE_MANAGER.md",
+        "docs/OCR_MODEL_MANAGER.md"
+      ]
+    },
+    "ocr_execution_identity": {
+      "contract": "Retain owned bounded OCR execution, cancellation, exact original snapshots and reviewed runtime/model identity. Current external-pack binding and Windows script-separator normalization do not admit unsealed models or reinterpret arbitrary paths. Actual inference and language quality remain separate from catalog or source validation.",
+      "tests": [
+        {
+          "path": "carr-library/tests/extract/test_ocr_runtime.py",
+          "blob": "18b3225e588f081529be4f13c1d88323d03bf502",
+          "selected_in_full_source": true,
+          "selected_in_full_installed": true
+        },
+        {
+          "path": "carr-library/tests/extract/test_runtime_identity.py",
+          "blob": "0966e46b65db3bbac9e5f28db2760a1dca4c5a11",
+          "selected_in_full_source": true,
+          "selected_in_full_installed": false
+        },
+        {
+          "path": "carr-library/tests/extract/test_ocr_packs.py",
+          "blob": "b4264d87cefc74f8ef06ee78814157b01ba622c7",
+          "selected_in_full_source": true,
+          "selected_in_full_installed": true
+        },
+        {
+          "path": "carr-library/tests/extract/test_ocr_languages.py",
+          "blob": "42afbd950d5ba03fd5807c86f857e697a725bc51",
+          "selected_in_full_source": true,
+          "selected_in_full_installed": true
+        }
+      ],
+      "current_documentation": [
+        "docs/OCR_MODELS.md",
+        "docs/OCR_MODEL_ACCEPTANCE.md"
+      ]
+    },
+    "retained_originals": {
+      "contract": "Retain immutable original bytes and exact catalog/source binding while using streamed file assets for the reviewed large-PDF/text profiles. Copy and verify operations preserve cancellation and owned staging; completed imports are not accepted merely from an old result label.",
+      "tests": [
+        {
+          "path": "carr-library/tests/ingest/test_retained_assets.py",
+          "blob": "edd45add5f532d08788b4c799695a47556ea7bce",
+          "selected_in_full_source": false,
+          "selected_in_full_installed": false
+        },
+        {
+          "path": "carr-library/tests/ingest/test_retained_assets_recovery.py",
+          "blob": "a3faf4702b45ea2986c2fc0ee429677d8434f7d0",
+          "selected_in_full_source": false,
+          "selected_in_full_installed": false
+        },
+        {
+          "path": "carr-library/tests/storage/test_pending_completion_binding.py",
+          "blob": "2f282ebf6623f94b6c9279fe2bc8e8973eb82e3e",
+          "selected_in_full_source": true,
+          "selected_in_full_installed": true
+        }
+      ],
+      "current_documentation": [
+        "docs/LARGE_PDF_STREAMING.md",
+        "docs/STREAMED_TEXT_IMPORT.md"
+      ]
+    },
+    "ingest_lifecycle": {
+      "contract": "Retain the existing import journals, bounded scan/continuation, source identities, metadata fields, worker ownership and post-publication outcome. Restore the finite canonical worker metadata/watermark checks through the current schema, including backup/recovery, without copying a second ingest service.",
+      "tests": [
+        {
+          "path": "carr-library/tests/ingest/test_batch_scan.py",
+          "blob": "3e6077556541e0cf8234fbb909c936c321b7345f",
+          "selected_in_full_source": true,
+          "selected_in_full_installed": true
+        },
+        {
+          "path": "carr-library/tests/ingest/test_scan_continuation.py",
+          "blob": "b3cc6b515f46eb84b35de0c6c106c3d3b477a284",
+          "selected_in_full_source": true,
+          "selected_in_full_installed": true
+        },
+        {
+          "path": "carr-library/tests/ingest/test_canonical_worker_backup.py",
+          "blob": "15393dee1c9064b3220c96d7ff7bc37f5c9d789c",
+          "selected_in_full_source": true,
+          "selected_in_full_installed": true
+        },
+        {
+          "path": "carr-library/tests/ingest/test_worker_publication_boundary.py",
+          "blob": "21b9d3afd915f75d6bc11a2f8ae5ce33cf63be85",
+          "selected_in_full_source": true,
+          "selected_in_full_installed": true
+        },
+        {
+          "path": "carr-library/tests/ingest/test_import_publication_point.py",
+          "blob": "8cdbbd19ec125fa1256262d4a1d70cb814b2cb1b",
+          "selected_in_full_source": true,
+          "selected_in_full_installed": true
+        }
+      ],
+      "current_documentation": [
+        "docs/IMPORT_AND_EPUB_CONTINUATION.md",
+        "docs/IMPORT_CENTER.md"
+      ]
+    },
+    "keyboard_persistence": {
+      "contract": "Preserve one validated command registry and durable keymap, fallback-unassigned registration compatibility and explicit legacy-ID migration. Export approval binds the exact chosen destination; refusal keeps prior bytes. Current command registration and approval APIs remain explicit rather than pretending all old private signatures survived.",
+      "tests": [
+        {
+          "path": "carr-library/tests/ui/test_keyboard_manager.py",
+          "blob": "13a3dc0865c1619ad3c525f7c721284c852ca62f",
+          "selected_in_full_source": true,
+          "selected_in_full_installed": false
+        },
+        {
+          "path": "carr-library/tests/ui/test_keyboard_registration_compatibility.py",
+          "blob": "8db72a6cecbe5e090f1f0b820bb5f9189d14b92b",
+          "selected_in_full_source": true,
+          "selected_in_full_installed": true
+        },
+        {
+          "path": "carr-library/tests/ui/test_canonical_export_import_choices.py",
+          "blob": "3916b0d1bfee83fd8faa74cb427e71c60b78102e",
+          "selected_in_full_source": true,
+          "selected_in_full_installed": true
+        },
+        {
+          "path": "carr-library/tests/ui/test_export_destination_approval.py",
+          "blob": "0e047df3557f0374797b97bdde843f865923a1ed",
+          "selected_in_full_source": true,
+          "selected_in_full_installed": true
+        }
+      ],
+      "current_documentation": [
+        "docs/KEYBOARD_SETTINGS.md",
+        "docs/KEYBOARD_SHORTCUTS.md"
+      ]
+    },
+    "language_target": {
+      "contract": "Keep the canonical 135-entry target and capability-specific evidence states. An entry, catalog label or installed voice is not all-language speech/ASR/OCR/translation/UI qualification; native and human quality evidence remain required.",
+      "tests": [
+        {
+          "path": "carr-library/tests/language_qualification/test_catalog.py",
+          "blob": "df1151479d9e5e81178d04f0e4cac02dea210141",
+          "selected_in_full_source": false,
+          "selected_in_full_installed": false
+        },
+        {
+          "path": "carr-library/tests/language_qualification/test_ui.py",
+          "blob": "11364b15ab8b24a8c07cd75729c2620c3239a23c",
+          "selected_in_full_source": false,
+          "selected_in_full_installed": false
+        }
+      ],
+      "current_documentation": [
+        "docs/language_qualification.md"
+      ]
+    },
+    "native_inventory": {
+      "contract": "Retain manifest-aware installed component checks, origin validation and actual optional runtime observations. Exact current package inventories are not relabelled as historical 17/53-pin closures; synthetic self-test success does not certify real model or hardware quality.",
+      "tests": [
+        {
+          "path": "carr-library/tests/packaging/test_native_checks.py",
+          "blob": "e69c293c9325f395a447ffdba500ac223830eb77",
+          "selected_in_full_source": true,
+          "selected_in_full_installed": true
+        },
+        {
+          "path": "carr-library/tests/packaging/test_native_checks_manifest.py",
+          "blob": "05e2c92925d9df1002bd6cbd4786d887b34af5b7",
+          "selected_in_full_source": true,
+          "selected_in_full_installed": true
+        }
+      ],
+      "current_documentation": [
+        "docs/OFFLINE_VALIDATION.md"
+      ]
+    },
+    "resource_admission": {
+      "contract": "Keep one cooperating CPU/memory/disk/device broker and bounded filesystem locks. Current state helpers, fork ownership and crash/cancel release preserve reservation identity until owned work settles; declared estimates are not measured platform capacity.",
+      "tests": [
+        {
+          "path": "carr-library/tests/operations/test_resources.py",
+          "blob": "e9052925a507e1b0347a7be446c58a190cf453e6",
+          "selected_in_full_source": true,
+          "selected_in_full_installed": true
+        },
+        {
+          "path": "carr-library/tests/operations/test_heavy_admission.py",
+          "blob": "dadbf7a51e5ad40b8f1dafe15c8a35ed365023fd",
+          "selected_in_full_source": true,
+          "selected_in_full_installed": true
+        },
+        {
+          "path": "carr-library/tests/operations/test_resource_fork.py",
+          "blob": "fee8afbe640e7528244d1c822e6069c347ada142",
+          "selected_in_full_source": false,
+          "selected_in_full_installed": false
+        },
+        {
+          "path": "carr-library/tests/operations/test_state.py",
+          "blob": "af10085a69c699d58b750cadc80c8c7a575caa06",
+          "selected_in_full_source": true,
+          "selected_in_full_installed": true
+        }
+      ],
+      "current_documentation": [
+        "docs/TASKS_AND_RESOURCES.md",
+        "docs/OPTIONAL_OPERATION_ADMISSION.md"
+      ]
+    },
+    "operation_views": {
+      "contract": "Use bounded metadata views over current assistant, ASR, Studio, document, batch and translation journals. Stored completion is explicitly unverified; absence of a broker lease is not process-death proof. Controls are limited to the actual owning service; no fabricated shared pause/resume protocol or duplicate queue is introduced. Old store schemas remain historical and are recovered by their explicit domain adapters.",
+      "tests": [
+        {
+          "path": "carr-library/tests/operations/test_facade.py",
+          "blob": "d961ae8d0bd6411bcd9b8f2917a68ae3524fc2ef",
+          "selected_in_full_source": true,
+          "selected_in_full_installed": true
+        },
+        {
+          "path": "carr-library/tests/operations/test_audio_batch_facade.py",
+          "blob": "3a583c02f2c9486ce224ac5e41f3fc737e0ad721",
+          "selected_in_full_source": true,
+          "selected_in_full_installed": true
+        },
+        {
+          "path": "carr-library/tests/e2e/test_operations_cli.py",
+          "blob": "37376fa60a18324ab7419d9ddb106adfdbf81a2d",
+          "selected_in_full_source": true,
+          "selected_in_full_installed": true
+        },
+        {
+          "path": "carr-library/tests/ui/test_operations_dialog.py",
+          "blob": "a17142e19dc485df540fccf5c2ea3da6f9c3b2d3",
+          "selected_in_full_source": true,
+          "selected_in_full_installed": true
+        },
+        {
+          "path": "carr-library/tests/ui/test_operations_policy.py",
+          "blob": "f033b76f132c457f6ff1533fbff96a1a84e699c5",
+          "selected_in_full_source": true,
+          "selected_in_full_installed": true
+        }
+      ],
+      "current_documentation": [
+        "docs/TASKS_AND_RESOURCES.md"
+      ]
+    },
+    "pending_backup": {
+      "contract": "Preserve typed pending originals, worker checkpoints and committed import identities through the complete-backup owner, including streamed source profiles. The current validator rejects malformed watermarks and incomplete or mismatched completion bindings; archive restore does not authorize resuming external work.",
+      "tests": [
+        {
+          "path": "carr-library/tests/storage/test_pending_backup.py",
+          "blob": "db182166ee69f0a126718d1e09fc3db1b93331f0",
+          "selected_in_full_source": true,
+          "selected_in_full_installed": true
+        },
+        {
+          "path": "carr-library/tests/storage/test_pending_completion_binding.py",
+          "blob": "2f282ebf6623f94b6c9279fe2bc8e8973eb82e3e",
+          "selected_in_full_source": true,
+          "selected_in_full_installed": true
+        },
+        {
+          "path": "carr-library/tests/ingest/test_canonical_worker_backup.py",
+          "blob": "15393dee1c9064b3220c96d7ff7bc37f5c9d789c",
+          "selected_in_full_source": true,
+          "selected_in_full_installed": true
+        },
+        {
+          "path": "carr-library/tests/storage/test_streamed_source_backup.py",
+          "blob": "bdc4ee9b5a5a88d55a78a9bd96efe98523e21314",
+          "selected_in_full_source": true,
+          "selected_in_full_installed": true
+        }
+      ],
+      "current_documentation": [
+        "docs/PENDING_BACKUP_INTEGRATION.md",
+        "docs/STREAMED_TEXT_BACKUP_COMPOSITION.md"
+      ]
+    },
+    "progress": {
+      "contract": "Preserve finite measured units, changing-total notices and below-complete progress until durable producer completion. Invalid/nonfinite/oversized counts fail before publication; observer/voice feedback remains separate from successful operation publication.",
+      "tests": [
+        {
+          "path": "carr-library/tests/ui/test_operation_progress.py",
+          "blob": "c604c6112f5c40a172e1c8622acdfc4412f8bc1e",
+          "selected_in_full_source": true,
+          "selected_in_full_installed": true
+        },
+        {
+          "path": "carr-library/tests/ui/test_progress_numeric_limits.py",
+          "blob": "08acb02b9b0b6d20f75e8696a948768cef1ee564",
+          "selected_in_full_source": true,
+          "selected_in_full_installed": true
+        },
+        {
+          "path": "carr-library/tests/ui/test_progress_concurrency.py",
+          "blob": "b6871cef08447daca749912549c16ad53f870e95",
+          "selected_in_full_source": true,
+          "selected_in_full_installed": true
+        }
+      ],
+      "current_documentation": [
+        "docs/SHARED_PROGRESS.md",
+        "docs/SHARED_NATIVE_PROGRESS.md"
+      ]
+    },
+    "reader_sources": {
+      "contract": "Keep source identity, reading-order versus printed-page distinction, reader state snapshots and exact original validation. Add bounded pagination and streamed source access through the same owner; editable reading copies and resume state never become verified quotations.",
+      "tests": [
+        {
+          "path": "carr-library/tests/reader/test_ebook_reader.py",
+          "blob": "1f9e8be4bd03dfc15b55e4d76858d0e29f8f4e84",
+          "selected_in_full_source": true,
+          "selected_in_full_installed": false
+        },
+        {
+          "path": "carr-library/tests/reader/test_reading_state.py",
+          "blob": "21a233670e6d4152b526b0564e84aa61e3e686ac",
+          "selected_in_full_source": true,
+          "selected_in_full_installed": false
+        },
+        {
+          "path": "carr-library/tests/e2e/test_source_file.py",
+          "blob": "e8515978aaac2c423bc736d32f19478a6ee08508",
+          "selected_in_full_source": true,
+          "selected_in_full_installed": false
+        },
+        {
+          "path": "carr-library/tests/storage/test_backup_reading_state.py",
+          "blob": "53a6f2551aff20ec2e949f843f3c28130b3ceb50",
+          "selected_in_full_source": true,
+          "selected_in_full_installed": true
+        }
+      ],
+      "current_documentation": [
+        "docs/READING_DESK.md",
+        "docs/EPUB_READING.md"
+      ]
+    },
+    "engine_profiles": {
+      "contract": "Use the current reviewed manifest/profile store and one VoiceRegistry for explicit speech/music/ASR selections. Retain legacy declarations passively and require review before activation; no old installed runtime path or saved voice name grants trust. Current protocol support, owner-specific adapter presence and actual acoustic qualification are separate dispositions.",
+      "tests": [
+        {
+          "path": "carr-library/tests/audio/test_engine_profiles.py",
+          "blob": "778b3d443e441b94d1cb6d035690609facc24e3c",
+          "selected_in_full_source": true,
+          "selected_in_full_installed": true
+        },
+        {
+          "path": "carr-library/tests/ui/test_engine_settings.py",
+          "blob": "71f4f7e721f7b13d4174027e4572a1702ca8ec62",
+          "selected_in_full_source": true,
+          "selected_in_full_installed": true
+        },
+        {
+          "path": "carr-library/tests/audio/test_local_voice_helper.py",
+          "blob": "43896c8fa9a0b43596da3b056a530e5c52b2f3dd",
+          "selected_in_full_source": true,
+          "selected_in_full_installed": true
+        }
+      ],
+      "current_documentation": [
+        "docs/LOCAL_ENGINE_PROFILES.md",
+        "docs/LOCAL_VOICE_HELPER_CONTRACT.md"
+      ]
+    },
+    "desktop_and_evidence": {
+      "contract": "Keep native command routing, resource/trust admission, current library identity, saved evidence drafts and post-commit completion semantics. Current menu labels and handler expectations are reconciled, including the actual Settings mnemonic and canonical Save behavior. Automated wx execution is not manual NVDA acceptance.",
+      "tests": [
+        {
+          "path": "carr-library/tests/ui/test_desktop_handlers.py",
+          "blob": "61f7fdd37282f91e36925b2fee3deb913d44e85f",
+          "selected_in_full_source": true,
+          "selected_in_full_installed": true
+        },
+        {
+          "path": "carr-library/tests/ui/test_evidence_draft_recovery.py",
+          "blob": "909dfdbe61d9154631a22733e35ee1ca799f4f3f",
+          "selected_in_full_source": true,
+          "selected_in_full_installed": true
+        },
+        {
+          "path": "carr-library/tests/ui/test_save_all_current_drafts.py",
+          "blob": "c3ca05388704e699ec04ad44475fe108237e9df1",
+          "selected_in_full_source": true,
+          "selected_in_full_installed": true
+        }
+      ],
+      "current_documentation": [
+        "docs/SAVE_ALL_CONTRACT.md",
+        "docs/EVIDENCE_DRAFT_RECOVERY.md"
+      ]
+    },
+    "reading_and_import_ui": {
+      "contract": "Keep native source/ebook navigation and import selection through current services, source revision checks and cancellable background work. Recheck the current library after modal OCR choices and preserve explicit no-clobber export consent; source text and edited derivatives remain distinct.",
+      "tests": [
+        {
+          "path": "carr-library/tests/ui/test_ebook_reader.py",
+          "blob": "253d0d85c450b5fcc9faa7b8a8dd95080262b0cd",
+          "selected_in_full_source": true,
+          "selected_in_full_installed": true
+        },
+        {
+          "path": "carr-library/tests/ui/test_import_center.py",
+          "blob": "f9c8a7736aa163bc5f6165024a362890575be71f",
+          "selected_in_full_source": true,
+          "selected_in_full_installed": true
+        },
+        {
+          "path": "carr-library/tests/ui/test_canonical_export_import_choices.py",
+          "blob": "3916b0d1bfee83fd8faa74cb427e71c60b78102e",
+          "selected_in_full_source": true,
+          "selected_in_full_installed": true
+        },
+        {
+          "path": "carr-library/tests/reader/test_reading_desk.py",
+          "blob": "d30dbfcfba614c65c4c30da7ec7c65baa9c9b55d",
+          "selected_in_full_source": true,
+          "selected_in_full_installed": true
+        }
+      ],
+      "current_documentation": [
+        "docs/READING_DESK.md",
+        "docs/IMPORT_CENTER.md"
+      ]
+    },
+    "ocr_ui": {
+      "contract": "Expose actual selected model packs and languages through the existing native controls, with background work, cancellation and explicit review. Missing or changed runtime/model identity is visible; the UI does not silently substitute a language or recover authority from a stale modal result.",
+      "tests": [
+        {
+          "path": "carr-library/tests/ui/test_ocr_model_manager.py",
+          "blob": "522aa34b08bc57fa2bb57454444cdfdba4c3916b",
+          "selected_in_full_source": true,
+          "selected_in_full_installed": true
+        },
+        {
+          "path": "carr-library/tests/ui/test_ocr_selection.py",
+          "blob": "61b38491499b5254780d688b6e34e2b24960a293",
+          "selected_in_full_source": true,
+          "selected_in_full_installed": true
+        },
+        {
+          "path": "carr-library/tests/ui/test_ocr_language_dialog.py",
+          "blob": "ca4e38828a4b4e5d934805fe5b472cb5bfc2a634",
+          "selected_in_full_source": true,
+          "selected_in_full_installed": true
+        },
+        {
+          "path": "carr-library/tests/ui/test_canonical_export_import_choices.py",
+          "blob": "3916b0d1bfee83fd8faa74cb427e71c60b78102e",
+          "selected_in_full_source": true,
+          "selected_in_full_installed": true
+        }
+      ],
+      "current_documentation": [
+        "docs/OCR_MODEL_MANAGER.md",
+        "docs/OCR_LANGUAGE_MANAGER.md"
+      ]
+    }
+  }
+}

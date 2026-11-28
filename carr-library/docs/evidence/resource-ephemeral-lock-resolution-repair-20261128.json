@@ -1,0 +1,107 @@
+{
+  "schema": "carr-resource-ephemeral-lock-resolution-repair/1",
+  "status": "SOURCE_REVIEWED_RUNTIME_NOT_RUN",
+  "base_source": "014b128f13d47a900008f8970de4d0024ff0047d",
+  "base_tree": "b084ad222fcc966c8fd4d9a6b6d8257f1ee5102b",
+  "observed": {
+    "run_id": 46089514448,
+    "job_id": 140806885393,
+    "run_attempt": 1,
+    "source_commit": "014b128f13d47a900008f8970de4d0024ff0047d",
+    "outcome": "FAIL",
+    "module": "tests/operations/test_resources.py",
+    "passed": 31,
+    "failed": 1,
+    "skipped": 0,
+    "failing_test": "test_actual_process_contention_has_no_overlapping_admission",
+    "decoded_job_log_utf8_bytes": 4740173,
+    "decoded_job_log_sha256": "1a1decd5250c4c2535748cc407d58548afe5491cd92d482c2c13fdebfc7bb01f",
+    "artifact": {
+      "id": 15242629034,
+      "bytes": 304113,
+      "sha256": "96deebbd3952c15beaa4faa93c0f70d89e85c704245f225338575bfca3f4205c",
+      "independently_opened": false
+    },
+    "trace": [
+      "ResourceLease.release",
+      "ResourceBroker._gate",
+      "NativeLock.__init__",
+      "_unheld_path: local_path(path.parent, exists=True)",
+      "operations._state.local_path",
+      "audio.model_manifest.local_path: raw input namespace refusal"
+    ],
+    "intermediate_path_captured": false
+  },
+  "primary_source": {
+    "repository": "python/cpython",
+    "ref": "v3.11.9",
+    "path": "Lib/ntpath.py",
+    "blob": "0246419485da0d41292b76b6965b58930318623b",
+    "url": "https://github.com/python/cpython/blob/v3.11.9/Lib/ntpath.py",
+    "finding": "After the first _getfinalpathname succeeds, initial_winerror is zero. If the prefix-stripped verification call fails because the leaf disappeared, its different WinError leaves the internally generated extended-length prefix intact. The failed main source subprocess used CPython3.11.9.",
+    "limit": "This source mechanism explains the recorded boundary. The failed run did not capture its intermediate resolved spelling or individual native calls, so the exact syscall interleaving is inferred, not claimed observed.",
+    "also_reviewed": {
+      "ref": "v3.11.18",
+      "path": "Lib/ntpath.py",
+      "blob": "8a71f29a32f287438ad057efdf80742ba1e7d521",
+      "realpath_matches_3119": false,
+      "prefix_retention_branch_matches_3119": true
+    }
+  },
+  "correction": {
+    "owner": "carr-library/src/carr_library/operations/_locks.py",
+    "before_blob": "28f87df67da626ea153f44e03b5625d6a6789a77",
+    "after_sha256": "96801a918c668c9f27c856c6b35b92575d77d0fb2131b58dad016e69504af36f",
+    "scope": "Materialize the original caller spelling once, retain its complete existing local-asset validation, then derive the ephemeral lock from the independently validated existing lexical parent and original validated leaf name. Do not propagate the ephemeral resolver's presentation into authority.",
+    "preserved": [
+      "Raw UNC, extended/device namespace and ADS refusal",
+      "Existing filename, ancestor, symbolic-link, reparse, mapped-drive and hard-link checks",
+      "Missing, inaccessible, redirected or non-directory parent refusal",
+      "Real filelock3.29.0 native backend and nonblocking admission",
+      "Owned descriptor/path inode equality, fork guards and safe descriptor-only close",
+      "Resource lease/release semantics and real cross-process contention assertions"
+    ],
+    "unchanged_product_paths": [
+      "carr-library/src/carr_library/audio/model_manifest.py",
+      "carr-library/src/carr_library/audio/jobs.py",
+      "carr-library/src/carr_library/operations/_state.py",
+      "carr-library/src/carr_library/operations/broker.py"
+    ]
+  },
+  "regression": {
+    "path": "carr-library/tests/operations/test_resources.py",
+    "before_blob": "e9052925a507e1b0347a7be446c58a190cf453e6",
+    "after_sha256": "24ce1eb615dd4be2fbde07207ff20ee201b6438801e5d20aa997120d16038b67",
+    "retained_cases": 32,
+    "added_cases": 8,
+    "total_cases": 40,
+    "added_function_counts": {
+      "test_unheld_lock_resolver_prefix_after_leaf_deletion_preserves_native_ownership": 2,
+      "test_unheld_lock_rejects_caller_namespaces_before_parent_admission": 6
+    },
+    "windows_control": "The first actual native _getfinalpathname result for the owned leaf is retained while that real leaf is unlinked; unmodified ntpath produces the retained prefix. The existing lock API then acquires an actual native descriptor, proves the matching inode, excludes a peer and transfers admission after release.",
+    "portable_limit": "Where Windows _getfinalpathname does not exist, only its extended-path return is simulated after real deletion. Actual filesystem/native-lock ownership still runs; this is not a Windows execution claim.",
+    "negative_controls": [
+      "Caller backslash UNC",
+      "Caller slash UNC",
+      "Caller extended local namespace",
+      "Caller device local namespace",
+      "Caller extended UNC",
+      "Alternate data stream"
+    ],
+    "old_case_bytes_retained": true,
+    "sibling_test_dependencies_added": [],
+    "native_case_population_changed": false,
+    "aggregate_oracles": "Root-owned integration must add the exact8 cases to both source/installed resources populations. No protected Counter or workflow is modified by this isolated component."
+  },
+  "verification": {
+    "source_only": true,
+    "inverse_hunks_reconstruct_exact_parent": true,
+    "repository_code_not_executed": true,
+    "tests_executed": false,
+    "compile_executed": false,
+    "refs_changed": false,
+    "canonical_or_pr_changed": false,
+    "limits": "Actual successor Windows/source/installed results are pending. The failed014 result remains a failure; no PASS is transferred."
+  }
+}
