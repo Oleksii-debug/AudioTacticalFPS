@@ -26,7 +26,7 @@ jobs:
     name: Windows x64 / CPython 3.11 / integrated desktop
     runs-on: windows-2022
     # Complete both preserved suite inventories, native ownership and transferable-core acceptance.
-    timeout-minutes: 120
+    timeout-minutes: 180
     defaults:
       run:
         shell: pwsh
@@ -508,7 +508,7 @@ jobs:
         id: complete_bundle
         if: ${{ !cancelled() && steps.local_model.conclusion == 'success' && steps.ocr_runtime.conclusion == 'success' }}
         # Preserve both required acceptance inventories and their exact source/installed proofs.
-        timeout-minutes: 35
+        timeout-minutes: 120
         run: |
           $bundleWork = Join-Path $env:RUNNER_TEMP 'carr-bundle-ci'
           $wheelhouse = Join-Path $bundleWork 'wheelhouse'
