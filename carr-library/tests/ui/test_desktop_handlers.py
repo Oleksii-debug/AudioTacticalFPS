@@ -140,7 +140,10 @@ def test_combined_menus_keep_import_and_academic_actions_without_shortcut_collis
     monkeypatch.setitem(sys.modules, 'carr_library.ui.ebook_reader',
                         SimpleNamespace(install_ebook_reader=ebook))
     new_installers = []
-    for module, installer in [('speech_dialog', 'install_speech_actions'),
+    for module, installer in [('about_dialog', 'install_about_actions'),
+                              ('diagnostics_dialog', 'install_diagnostics_actions'),
+                              ('research_merge_dialog', 'install_research_merge_actions'),
+                              ('speech_dialog', 'install_speech_actions'),
                               ('language_matrix', 'install_language_actions'),
                               ('translation_dialog', 'install_translation_actions'),
                               ('transcription_dialog', 'install_transcription_actions'),
@@ -151,6 +154,7 @@ def test_combined_menus_keep_import_and_academic_actions_without_shortcut_collis
                               ('citation_formatting', 'install_citation_actions'),
                               ('operations_dialog', 'install_operations_actions'),
                               ('save_actions', 'install_save_actions'),
+                              ('backup_incremental_dialog', 'install_incremental_backup_actions'),
                               ('portable_sync', 'install_portable_sync_actions'),
                               ('trust_status', 'install_trust_actions')]:
         callback = Mock()
