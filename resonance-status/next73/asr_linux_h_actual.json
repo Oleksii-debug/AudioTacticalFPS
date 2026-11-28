@@ -1,0 +1,966 @@
+{
+  "schema": "carr-local-transcription-actual/1",
+  "status": "FAIL",
+  "observed_utc": "2026-11-28 10:38:40 UTC",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "head": "becba92dbb68df16654112847d29ec7af0c905d0",
+  "tree": "cd339ad7cdfb97d2b60065b02f1fce42b9dddc92",
+  "run": {
+    "id": 46135458144,
+    "event": "pull_request",
+    "api_head_sha": "becba92dbb68df16654112847d29ec7af0c905d0",
+    "other_platform_status": "Windows is separately queued or running; this receipt covers only the closed Linux job."
+  },
+  "job": {
+    "id": 140949658176,
+    "name": "protocol (ubuntu-24.04)",
+    "status": "completed",
+    "conclusion": "failure",
+    "started_at": "2026-11-28T10:32:36Z",
+    "completed_at": "2026-11-28T10:34:38Z",
+    "steps": [
+      {
+        "number": 1,
+        "name": "Set up job",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-28T10:32:37Z",
+        "completed_at": "2026-11-28T10:32:38Z"
+      },
+      {
+        "number": 2,
+        "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-28T10:32:38Z",
+        "completed_at": "2026-11-28T10:32:40Z"
+      },
+      {
+        "number": 3,
+        "name": "Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-28T10:32:40Z",
+        "completed_at": "2026-11-28T10:32:40Z"
+      },
+      {
+        "number": 4,
+        "name": "Install the actual source package and test dependencies",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-28T10:32:40Z",
+        "completed_at": "2026-11-28T10:32:56Z"
+      },
+      {
+        "number": 5,
+        "name": "Verify retained inputs, actual child protocol, recovery and CLI",
+        "status": "completed",
+        "conclusion": "failure",
+        "started_at": "2026-11-28T10:32:56Z",
+        "completed_at": "2026-11-28T10:34:34Z"
+      },
+      {
+        "number": 6,
+        "name": "Verify the same whole suites against the installed package",
+        "status": "completed",
+        "conclusion": "skipped",
+        "started_at": "2026-11-28T10:34:34Z",
+        "completed_at": "2026-11-28T10:34:34Z"
+      },
+      {
+        "number": 7,
+        "name": "Install actual native desktop controls",
+        "status": "completed",
+        "conclusion": "skipped",
+        "started_at": "2026-11-28T10:34:34Z",
+        "completed_at": "2026-11-28T10:34:34Z"
+      },
+      {
+        "number": 8,
+        "name": "Exercise actual native controls and shared background operation",
+        "status": "completed",
+        "conclusion": "skipped",
+        "started_at": "2026-11-28T10:34:34Z",
+        "completed_at": "2026-11-28T10:34:34Z"
+      },
+      {
+        "number": 9,
+        "name": "Retain exact-source synthetic transcription evidence",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-28T10:34:34Z",
+        "completed_at": "2026-11-28T10:34:36Z"
+      },
+      {
+        "number": 17,
+        "name": "Post Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+        "status": "completed",
+        "conclusion": "skipped",
+        "started_at": "2026-11-28T10:34:36Z",
+        "completed_at": "2026-11-28T10:34:36Z"
+      },
+      {
+        "number": 18,
+        "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-28T10:34:36Z",
+        "completed_at": "2026-11-28T10:34:36Z"
+      },
+      {
+        "number": 19,
+        "name": "Complete job",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-28T10:34:36Z",
+        "completed_at": "2026-11-28T10:34:36Z"
+      }
+    ]
+  },
+  "actual_checkout": {
+    "commit": "becba92dbb68df16654112847d29ec7af0c905d0",
+    "mode": "DIRECT_HEAD_NOT_SYNTHETIC_MERGE",
+    "checkout_ref_line": 37,
+    "git_log_command_line": 140,
+    "git_log_output_line": 141
+  },
+  "workflow": {
+    "path": ".github/workflows/carr-transcription-bridge.yml",
+    "blob": "28da3567fed054331d003bf02aa35b30fed91f1e"
+  },
+  "source": {
+    "whole_modules": 17,
+    "whole_passed": 16,
+    "whole_failed": 1,
+    "cases": 514,
+    "passed": 510,
+    "failed": 4,
+    "skipped": 0,
+    "strict_rows": [
+      {
+        "line": 1517,
+        "status": "PASS",
+        "path": "tests/transcription/test_supplied_worker_bridge.py",
+        "passed": 62,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "line": 1518,
+        "status": "PASS",
+        "path": "tests/transcription/test_v5_worker_profile.py",
+        "passed": 41,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "line": 1519,
+        "status": "PASS",
+        "path": "tests/transcription/test_runtime_interpreter.py",
+        "passed": 3,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "line": 1520,
+        "status": "PASS",
+        "path": "tests/operations/test_transcription_admission.py",
+        "passed": 10,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "line": 1521,
+        "status": "PASS",
+        "path": "tests/assistant/test_supplied_transcription.py",
+        "passed": 32,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "line": 1522,
+        "status": "PASS",
+        "path": "tests/ui/test_progress_job_review.py",
+        "passed": 48,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "line": 1523,
+        "status": "PASS",
+        "path": "tests/transcription/test_protocol_fixture.py",
+        "passed": 9,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "line": 1524,
+        "status": "PASS",
+        "path": "tests/transcription/test_service.py",
+        "passed": 28,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "line": 1525,
+        "status": "FAIL",
+        "path": "tests/transcription/test_admission_boundaries.py",
+        "passed": 36,
+        "failed": 4,
+        "skipped": 0,
+        "exit": 1
+      },
+      {
+        "line": 1526,
+        "status": "PASS",
+        "path": "tests/transcription/test_runtime_admission.py",
+        "passed": 13,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "line": 1527,
+        "status": "PASS",
+        "path": "tests/transcription/test_restore.py",
+        "passed": 1,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "line": 1528,
+        "status": "PASS",
+        "path": "tests/storage/test_transcription_backup.py",
+        "passed": 143,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "line": 1529,
+        "status": "PASS",
+        "path": "tests/ui/test_transcription_dialog.py",
+        "passed": 40,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "line": 1530,
+        "status": "PASS",
+        "path": "tests/e2e/test_transcription_cli.py",
+        "passed": 4,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "line": 1531,
+        "status": "PASS",
+        "path": "tests/transcription/test_unified_authority.py",
+        "passed": 24,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "line": 1532,
+        "status": "PASS",
+        "path": "tests/transcription/test_export_publication.py",
+        "passed": 14,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "line": 1533,
+        "status": "PASS",
+        "path": "tests/transcription/test_native_profiles_fixture.py",
+        "passed": 2,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      }
+    ],
+    "admission": {
+      "path": "tests/transcription/test_admission_boundaries.py",
+      "blob": "aa4e03e782fbb34c19344e2b1911af38c9fac65e",
+      "cases": 40,
+      "passed": 36,
+      "failed": 4,
+      "skipped": 0,
+      "pytest_seconds": 70.04,
+      "summary_line": 1464,
+      "failed_cases": [
+        "tests/transcription/test_admission_boundaries.py::test_runtime_change_rejects_attempt_without_resurrecting_cache[False-before_commit]",
+        "tests/transcription/test_admission_boundaries.py::test_runtime_change_rejects_attempt_without_resurrecting_cache[False-after_commit]",
+        "tests/transcription/test_admission_boundaries.py::test_runtime_change_rejects_attempt_without_resurrecting_cache[True-before_commit]",
+        "tests/transcription/test_admission_boundaries.py::test_runtime_change_rejects_attempt_without_resurrecting_cache[True-after_commit]"
+      ]
+    }
+  },
+  "installed": "NOT_RUN_AFTER_SOURCE_FAILURE",
+  "windows_native": "NOT_APPLICABLE_TO_THIS_LINUX_JOB",
+  "observed_failure": {
+    "type": "TypeError",
+    "message": "LocalFileJobProtocol.resume() got an unexpected keyword argument 'timeout'",
+    "test_line": 393,
+    "call": "resumed = service.resume(state['id'], timeout=30)",
+    "explanation": "The H fixture adds an unsupported keyword to the existing public resume method. All four parametrized runtime-change cases reach the clean-recovery call after their actual rejection/cache/archive assertions, then fail before continuation/run and final clean-recovery assertions. This is a concrete test API mismatch, not evidence of a new product timeout.",
+    "product_api": {
+      "path": "carr-library/src/carr_library/integrations/transcription_protocol.py",
+      "blob": "e1f49c8ba5e928234dd80de9157403de31eacb1e",
+      "resume_signature": "resume(self, identity, *, progress=None, cancel=None)",
+      "resume_body": [
+        "self.continue_job(identity)",
+        "return self.run(identity, progress=progress, cancel=cancel)"
+      ],
+      "run_signature": "run(self, identity, *, progress=None, cancel=None, timeout=None)",
+      "product_unchanged_from_G": true
+    }
+  },
+  "decoded_log": {
+    "sha256": "32f8e3cd95a3b802c118df480ba31a929842d6703b1f6d4acdbc4f0d579305ce",
+    "bytes": 189230,
+    "lines": 1587
+  },
+  "artifact": {
+    "id": 15260095004,
+    "name": "carr-asr-ubuntu-24.04-becba92dbb68df16654112847d29ec7af0c905d0-1",
+    "bytes": 12557,
+    "digest": "sha256:548c7435db72b8141aa23a4b084396e1cb88f1c0fb2412973695f8d881541707",
+    "head": "becba92dbb68df16654112847d29ec7af0c905d0",
+    "expired": false,
+    "archive_inspected": false
+  },
+  "excerpts": {
+    "actual_checkout": {
+      "start_line": 135,
+      "end_line": 142,
+      "lines": [
+        {
+          "line": 135,
+          "text": "",
+          "truncated": false,
+          "original_characters": 0
+        },
+        {
+          "line": 136,
+          "text": "Turn off this advice by setting config variable advice.detachedHead to false",
+          "truncated": false,
+          "original_characters": 76
+        },
+        {
+          "line": 137,
+          "text": "",
+          "truncated": false,
+          "original_characters": 0
+        },
+        {
+          "line": 138,
+          "text": "HEAD is now at becba92 Fix publication cursor lifetime and observed Windows regression contracts",
+          "truncated": false,
+          "original_characters": 96
+        },
+        {
+          "line": 139,
+          "text": "##[endgroup]",
+          "truncated": false,
+          "original_characters": 12
+        },
+        {
+          "line": 140,
+          "text": "[command]/usr/bin/git log -1 --format=%H",
+          "truncated": false,
+          "original_characters": 40
+        },
+        {
+          "line": 141,
+          "text": "becba92dbb68df16654112847d29ec7af0c905d0",
+          "truncated": false,
+          "original_characters": 40
+        },
+        {
+          "line": 142,
+          "text": "##[group]Removing auth",
+          "truncated": false,
+          "original_characters": 22
+        }
+      ]
+    },
+    "first_failure": {
+      "start_line": 1186,
+      "end_line": 1253,
+      "lines": [
+        {
+          "line": 1186,
+          "text": "_ test_runtime_change_rejects_attempt_without_resurrecting_cache[False-before_commit] _",
+          "truncated": false,
+          "original_characters": 87
+        },
+        {
+          "line": 1187,
+          "text": "",
+          "truncated": false,
+          "original_characters": 0
+        },
+        {
+          "line": 1188,
+          "text": "setup = (<carr_library.integrations.transcription_protocol.LocalFileJobProtocol object at 0x7f99bccd3490>, namespace(root=Posi..._change_rejects_at0/first.wav'), PosixPath('/tmp/carr-ci-hj3cd56o/pytest/test_runtime_change_rejects_at0/second.wav')])",
+          "truncated": false,
+          "original_characters": 248
+        },
+        {
+          "line": 1189,
+          "text": "monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7f99bccd2990>",
+          "truncated": false,
+          "original_characters": 72
+        },
+        {
+          "line": 1190,
+          "text": "timing = 'before_commit', historical = False",
+          "truncated": false,
+          "original_characters": 44
+        },
+        {
+          "line": 1191,
+          "text": "",
+          "truncated": false,
+          "original_characters": 0
+        },
+        {
+          "line": 1192,
+          "text": "    @pytest.mark.parametrize('timing', ['before_commit', 'after_commit'])",
+          "truncated": false,
+          "original_characters": 73
+        },
+        {
+          "line": 1193,
+          "text": "    @pytest.mark.parametrize('historical', [False, True])",
+          "truncated": false,
+          "original_characters": 57
+        },
+        {
+          "line": 1194,
+          "text": "    def test_runtime_change_rejects_attempt_without_resurrecting_cache(setup, monkeypatch, timing, historical):",
+          "truncated": false,
+          "original_characters": 111
+        },
+        {
+          "line": 1195,
+          "text": "        service, runtime, profile, sources = setup",
+          "truncated": false,
+          "original_characters": 50
+        },
+        {
+          "line": 1196,
+          "text": "        state = historical_job(setup) if historical else service.create_job(profile['id'], sources[:1])",
+          "truncated": false,
+          "original_characters": 103
+        },
+        {
+          "line": 1197,
+          "text": "        previous = list(state['results'])",
+          "truncated": false,
+          "original_characters": 41
+        },
+        {
+          "line": 1198,
+          "text": "        before_starts = starts(runtime)",
+          "truncated": false,
+          "original_characters": 39
+        },
+        {
+          "line": 1199,
+          "text": "        model = runtime.model / 'model.bin'",
+          "truncated": false,
+          "original_characters": 43
+        },
+        {
+          "line": 1200,
+          "text": "        original_model = model.read_bytes()",
+          "truncated": false,
+          "original_characters": 43
+        },
+        {
+          "line": 1201,
+          "text": "        publish, process = service._publish_result, module.run_process",
+          "truncated": false,
+          "original_characters": 70
+        },
+        {
+          "line": 1202,
+          "text": "        archive = getattr(service, '_archive_worker', None)",
+          "truncated": false,
+          "original_characters": 59
+        },
+        {
+          "line": 1203,
+          "text": "        active, mutated, archived, committed = [False], [False], [], []",
+          "truncated": false,
+          "original_characters": 71
+        },
+        {
+          "line": 1204,
+          "text": "    ",
+          "truncated": false,
+          "original_characters": 4
+        },
+        {
+          "line": 1205,
+          "text": "        def actual_child(*args, **kwargs):",
+          "truncated": false,
+          "original_characters": 42
+        },
+        {
+          "line": 1206,
+          "text": "            active[0] = True",
+          "truncated": false,
+          "original_characters": 28
+        },
+        {
+          "line": 1207,
+          "text": "            try:",
+          "truncated": false,
+          "original_characters": 16
+        },
+        {
+          "line": 1208,
+          "text": "                return process(*args, **kwargs)",
+          "truncated": false,
+          "original_characters": 47
+        },
+        {
+          "line": 1209,
+          "text": "            finally:",
+          "truncated": false,
+          "original_characters": 20
+        },
+        {
+          "line": 1210,
+          "text": "                active[0] = False  # Underlying runner already closed child/readers.",
+          "truncated": false,
+          "original_characters": 84
+        },
+        {
+          "line": 1211,
+          "text": "    ",
+          "truncated": false,
+          "original_characters": 4
+        },
+        {
+          "line": 1212,
+          "text": "        def mutate():",
+          "truncated": false,
+          "original_characters": 21
+        },
+        {
+          "line": 1213,
+          "text": "            model.write_bytes(original_model + b' changed during current attempt')",
+          "truncated": false,
+          "original_characters": 82
+        },
+        {
+          "line": 1214,
+          "text": "            mutated[0] = True",
+          "truncated": false,
+          "original_characters": 29
+        },
+        {
+          "line": 1215,
+          "text": "    ",
+          "truncated": false,
+          "original_characters": 4
+        },
+        {
+          "line": 1216,
+          "text": "        def publication(state, source, result, provenance, **kwargs):",
+          "truncated": false,
+          "original_characters": 69
+        },
+        {
+          "line": 1217,
+          "text": "            if not mutated[0] and timing == 'before_commit':",
+          "truncated": false,
+          "original_characters": 60
+        },
+        {
+          "line": 1218,
+          "text": "                mutate()",
+          "truncated": false,
+          "original_characters": 24
+        },
+        {
+          "line": 1219,
+          "text": "            publish(state, source, result, provenance, **kwargs)",
+          "truncated": false,
+          "original_characters": 64
+        },
+        {
+          "line": 1220,
+          "text": "            committed.append(source['id'])",
+          "truncated": false,
+          "original_characters": 42
+        },
+        {
+          "line": 1221,
+          "text": "            if not mutated[0]:",
+          "truncated": false,
+          "original_characters": 30
+        },
+        {
+          "line": 1222,
+          "text": "                mutate()",
+          "truncated": false,
+          "original_characters": 24
+        },
+        {
+          "line": 1223,
+          "text": "    ",
+          "truncated": false,
+          "original_characters": 4
+        },
+        {
+          "line": 1224,
+          "text": "        def inactive_archive(state, profile_id):",
+          "truncated": false,
+          "original_characters": 48
+        },
+        {
+          "line": 1225,
+          "text": "            assert not active[0], 'A live worker workspace was moved.'",
+          "truncated": false,
+          "original_characters": 70
+        },
+        {
+          "line": 1226,
+          "text": "            assert not ResourceBroker.for_app(service.library_root).snapshot()['leases']",
+          "truncated": false,
+          "original_characters": 88
+        },
+        {
+          "line": 1227,
+          "text": "            archived.append(True)",
+          "truncated": false,
+          "original_characters": 33
+        },
+        {
+          "line": 1228,
+          "text": "            return archive(state, profile_id)",
+          "truncated": false,
+          "original_characters": 45
+        },
+        {
+          "line": 1229,
+          "text": "    ",
+          "truncated": false,
+          "original_characters": 4
+        },
+        {
+          "line": 1230,
+          "text": "        monkeypatch.setattr(module, 'run_process', actual_child)",
+          "truncated": false,
+          "original_characters": 64
+        },
+        {
+          "line": 1231,
+          "text": "        monkeypatch.setattr(service, '_publish_result', publication)",
+          "truncated": false,
+          "original_characters": 68
+        },
+        {
+          "line": 1232,
+          "text": "        monkeypatch.setattr(service, '_archive_worker', inactive_archive, raising=False)",
+          "truncated": false,
+          "original_characters": 88
+        },
+        {
+          "line": 1233,
+          "text": "        rejected = service.resume(state['id'])",
+          "truncated": false,
+          "original_characters": 46
+        },
+        {
+          "line": 1234,
+          "text": "        assert rejected['status'] == ('partial' if historical else 'failed'), rejected",
+          "truncated": false,
+          "original_characters": 86
+        },
+        {
+          "line": 1235,
+          "text": "        assert rejected['results'] == previous and rejected['done'] == len(previous)",
+          "truncated": false,
+          "original_characters": 84
+        },
+        {
+          "line": 1236,
+          "text": "        assert mutated[0] and archived == [True]",
+          "truncated": false,
+          "original_characters": 48
+        },
+        {
+          "line": 1237,
+          "text": "        assert bool(committed) is (timing == 'after_commit')",
+          "truncated": false,
+          "original_characters": 60
+        },
+        {
+          "line": 1238,
+          "text": "        assert 'New results from this attempt were rejected' in rejected['error']",
+          "truncated": false,
+          "original_characters": 81
+        },
+        {
+          "line": 1239,
+          "text": "        root = service._job_root(state['id'])",
+          "truncated": false,
+          "original_characters": 45
+        },
+        {
+          "line": 1240,
+          "text": "        assert list((root / 'worker-history').glob('*/logs/cache/**/*.cache.json'))",
+          "truncated": false,
+          "original_characters": 83
+        },
+        {
+          "line": 1241,
+          "text": "        assert list((root / 'artifacts').glob('*/*/receipt.json')), 'Physical result evidence was removed.'",
+          "truncated": false,
+          "original_characters": 107
+        },
+        {
+          "line": 1242,
+          "text": "        if previous:",
+          "truncated": false,
+          "original_characters": 20
+        },
+        {
+          "line": 1243,
+          "text": "            assert service.read_transcript(state['id'], previous[0]['source_id'])['text']",
+          "truncated": false,
+          "original_characters": 89
+        },
+        {
+          "line": 1244,
+          "text": "        else:",
+          "truncated": false,
+          "original_characters": 13
+        },
+        {
+          "line": 1245,
+          "text": "            destination = runtime.root / 'rejected-export'; destination.mkdir()",
+          "truncated": false,
+          "original_characters": 79
+        },
+        {
+          "line": 1246,
+          "text": "            with pytest.raises(ValueError, match='No verified'):",
+          "truncated": false,
+          "original_characters": 64
+        },
+        {
+          "line": 1247,
+          "text": "                service.export(state['id'], destination)",
+          "truncated": false,
+          "original_characters": 56
+        },
+        {
+          "line": 1248,
+          "text": "        model.write_bytes(original_model)",
+          "truncated": false,
+          "original_characters": 41
+        },
+        {
+          "line": 1249,
+          "text": ">       resumed = service.resume(state['id'], timeout=30)",
+          "truncated": false,
+          "original_characters": 57
+        },
+        {
+          "line": 1250,
+          "text": "                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^",
+          "truncated": false,
+          "original_characters": 57
+        },
+        {
+          "line": 1251,
+          "text": "E       TypeError: LocalFileJobProtocol.resume() got an unexpected keyword argument 'timeout'",
+          "truncated": false,
+          "original_characters": 93
+        },
+        {
+          "line": 1252,
+          "text": "",
+          "truncated": false,
+          "original_characters": 0
+        },
+        {
+          "line": 1253,
+          "text": "tests/transcription/test_admission_boundaries.py:393: TypeError",
+          "truncated": false,
+          "original_characters": 63
+        }
+      ]
+    },
+    "all_failure_names_and_whole_summary": {
+      "start_line": 1460,
+      "end_line": 1464,
+      "lines": [
+        {
+          "line": 1460,
+          "text": "FAILED tests/transcription/test_admission_boundaries.py::test_runtime_change_rejects_attempt_without_resurrecting_cache[False-before_commit] - TypeError: LocalFileJobProtocol.resume() got an unexpected keyword argument 'timeout'",
+          "truncated": false,
+          "original_characters": 228
+        },
+        {
+          "line": 1461,
+          "text": "FAILED tests/transcription/test_admission_boundaries.py::test_runtime_change_rejects_attempt_without_resurrecting_cache[False-after_commit] - TypeError: LocalFileJobProtocol.resume() got an unexpected keyword argument 'timeout'",
+          "truncated": false,
+          "original_characters": 227
+        },
+        {
+          "line": 1462,
+          "text": "FAILED tests/transcription/test_admission_boundaries.py::test_runtime_change_rejects_attempt_without_resurrecting_cache[True-before_commit] - TypeError: LocalFileJobProtocol.resume() got an unexpected keyword argument 'timeout'",
+          "truncated": false,
+          "original_characters": 227
+        },
+        {
+          "line": 1463,
+          "text": "FAILED tests/transcription/test_admission_boundaries.py::test_runtime_change_rejects_attempt_without_resurrecting_cache[True-after_commit] - TypeError: LocalFileJobProtocol.resume() got an unexpected keyword argument 'timeout'",
+          "truncated": false,
+          "original_characters": 226
+        },
+        {
+          "line": 1464,
+          "text": "=================== 4 failed, 36 passed in 70.04s (0:01:10) ====================",
+          "truncated": false,
+          "original_characters": 80
+        }
+      ]
+    },
+    "strict_complete_source_summary": {
+      "start_line": 1517,
+      "end_line": 1534,
+      "lines": [
+        {
+          "line": 1517,
+          "text": "PASS: tests/transcription/test_supplied_worker_bridge.py: junit_passed=62, failed=0, skipped=0, pytest_exit=0",
+          "truncated": false,
+          "original_characters": 109
+        },
+        {
+          "line": 1518,
+          "text": "PASS: tests/transcription/test_v5_worker_profile.py: junit_passed=41, failed=0, skipped=0, pytest_exit=0",
+          "truncated": false,
+          "original_characters": 104
+        },
+        {
+          "line": 1519,
+          "text": "PASS: tests/transcription/test_runtime_interpreter.py: junit_passed=3, failed=0, skipped=0, pytest_exit=0",
+          "truncated": false,
+          "original_characters": 105
+        },
+        {
+          "line": 1520,
+          "text": "PASS: tests/operations/test_transcription_admission.py: junit_passed=10, failed=0, skipped=0, pytest_exit=0",
+          "truncated": false,
+          "original_characters": 107
+        },
+        {
+          "line": 1521,
+          "text": "PASS: tests/assistant/test_supplied_transcription.py: junit_passed=32, failed=0, skipped=0, pytest_exit=0",
+          "truncated": false,
+          "original_characters": 105
+        },
+        {
+          "line": 1522,
+          "text": "PASS: tests/ui/test_progress_job_review.py: junit_passed=48, failed=0, skipped=0, pytest_exit=0",
+          "truncated": false,
+          "original_characters": 95
+        },
+        {
+          "line": 1523,
+          "text": "PASS: tests/transcription/test_protocol_fixture.py: junit_passed=9, failed=0, skipped=0, pytest_exit=0",
+          "truncated": false,
+          "original_characters": 102
+        },
+        {
+          "line": 1524,
+          "text": "PASS: tests/transcription/test_service.py: junit_passed=28, failed=0, skipped=0, pytest_exit=0",
+          "truncated": false,
+          "original_characters": 94
+        },
+        {
+          "line": 1525,
+          "text": "FAIL: tests/transcription/test_admission_boundaries.py: junit_passed=36, failed=4, skipped=0, pytest_exit=1",
+          "truncated": false,
+          "original_characters": 107
+        },
+        {
+          "line": 1526,
+          "text": "PASS: tests/transcription/test_runtime_admission.py: junit_passed=13, failed=0, skipped=0, pytest_exit=0",
+          "truncated": false,
+          "original_characters": 104
+        },
+        {
+          "line": 1527,
+          "text": "PASS: tests/transcription/test_restore.py: junit_passed=1, failed=0, skipped=0, pytest_exit=0",
+          "truncated": false,
+          "original_characters": 93
+        },
+        {
+          "line": 1528,
+          "text": "PASS: tests/storage/test_transcription_backup.py: junit_passed=143, failed=0, skipped=0, pytest_exit=0",
+          "truncated": false,
+          "original_characters": 102
+        },
+        {
+          "line": 1529,
+          "text": "PASS: tests/ui/test_transcription_dialog.py: junit_passed=40, failed=0, skipped=0, pytest_exit=0",
+          "truncated": false,
+          "original_characters": 96
+        },
+        {
+          "line": 1530,
+          "text": "PASS: tests/e2e/test_transcription_cli.py: junit_passed=4, failed=0, skipped=0, pytest_exit=0",
+          "truncated": false,
+          "original_characters": 93
+        },
+        {
+          "line": 1531,
+          "text": "PASS: tests/transcription/test_unified_authority.py: junit_passed=24, failed=0, skipped=0, pytest_exit=0",
+          "truncated": false,
+          "original_characters": 104
+        },
+        {
+          "line": 1532,
+          "text": "PASS: tests/transcription/test_export_publication.py: junit_passed=14, failed=0, skipped=0, pytest_exit=0",
+          "truncated": false,
+          "original_characters": 105
+        },
+        {
+          "line": 1533,
+          "text": "PASS: tests/transcription/test_native_profiles_fixture.py: junit_passed=2, failed=0, skipped=0, pytest_exit=0",
+          "truncated": false,
+          "original_characters": 109
+        },
+        {
+          "line": 1534,
+          "text": "Required suites complete: 17; passed=16; failed=1",
+          "truncated": false,
+          "original_characters": 49
+        }
+      ]
+    }
+  },
+  "qualification": "Closed Linux source failure only. The source result remains FAIL; no installed/native or acoustic/model/manual qualification is transferred from earlier G, B or A3 jobs. The candidate test-only API correction is not executed by this H receipt."
+}

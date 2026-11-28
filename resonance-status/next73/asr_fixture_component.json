@@ -1,0 +1,214 @@
+{
+  "schema": "carr-asr-fixture-correction-component/1",
+  "status": "PEER_ACCEPTED_STATIC_NOT_RUN",
+  "created_utc": "2026-11-28 10:39:43 UTC",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "base": {
+    "commit": "becba92dbb68df16654112847d29ec7af0c905d0",
+    "tree": "cd339ad7cdfb97d2b60065b02f1fce42b9dddc92"
+  },
+  "purpose": "Correct the unsupported timeout keyword at one positive clean-recovery fixture call while preserving the actual resume continuation semantics and the already reviewed per-attempt30-second allowance.",
+  "actual_failure": {
+    "receipt": "79a3606b12983da206d1f24e48942ab8d0537959",
+    "run": 46135458144,
+    "job": 140949658176,
+    "platform": "ubuntu-24.04",
+    "source_whole": {
+      "cases": 40,
+      "passed": 36,
+      "failed": 4,
+      "skipped": 0,
+      "seconds": 70.04
+    },
+    "source_overall": {
+      "whole_modules": 17,
+      "passed": 510,
+      "failed": 4,
+      "skipped": 0
+    },
+    "message": "LocalFileJobProtocol.resume() got an unexpected keyword argument 'timeout'",
+    "test_line": 393,
+    "installed": "NOT_RUN_AFTER_SOURCE_FAILURE",
+    "cause": "H's test-only allowance edit used run's keyword at the existing resume wrapper. The product API is unchanged and this fixture mistake is retained in the historical H actual receipt."
+  },
+  "files": [
+    {
+      "path": "carr-library/tests/transcription/test_admission_boundaries.py",
+      "preimage": "aa4e03e782fbb34c19344e2b1911af38c9fac65e",
+      "blob": "3768984773a1ae4bc8e1814e996e828f8647529c",
+      "mode": "100644",
+      "utf8": {
+        "sha256": "a9057464d2a1de7c7a104387416063409425fed310bc75c1c793dbb6a5559c12",
+        "bytes": 28821
+      },
+      "operation": {
+        "old": "    resumed = service.resume(state['id'], timeout=30)",
+        "replacement": "    # Keep resume's real continuation step, then use run's per-attempt allowance.\n    service.continue_job(state['id'])\n    resumed = service.run(state['id'], timeout=30)"
+      },
+      "forward_exact": true,
+      "inverse_exact": true,
+      "readback": true
+    },
+    {
+      "path": "carr-library/scripts/ci_installed_failure_contracts.py",
+      "preimage": "4bd9331163cc3c342674aef37ee2ea8d5c74099f",
+      "blob": "078230c418f246a5157335bc664dc2826d1c0312",
+      "mode": "100644",
+      "utf8": {
+        "sha256": "f1f8d9cd321673d0e2b3874c81ce9ae2df36fe77d6edb94ef0a75f53d17184d3",
+        "bytes": 34604
+      },
+      "operation": {
+        "old": "aa4e03e782fbb34c19344e2b1911af38c9fac65e",
+        "replacement": "3768984773a1ae4bc8e1814e996e828f8647529c"
+      },
+      "forward_exact": true,
+      "inverse_exact": true,
+      "readback": true
+    },
+    {
+      "path": ".github/workflows/carr-installed-failure-contracts.yml",
+      "preimage": "40b349eddaab341e56802674942f8b2dc9d2e6d3",
+      "blob": "cae8a73f18ab2595a72688ea330d8b810430b6ca",
+      "mode": "100644",
+      "utf8": {
+        "sha256": "c6dc244828943635b3ef7fc55f8391b45f063c0c069b5ce4b9399a3c7315b3ee",
+        "bytes": 12796
+      },
+      "operation": {
+        "old": "4bd9331163cc3c342674aef37ee2ea8d5c74099f",
+        "replacement": "078230c418f246a5157335bc664dc2826d1c0312"
+      },
+      "forward_exact": true,
+      "inverse_exact": true,
+      "readback": true
+    }
+  ],
+  "actual_api": {
+    "path": "carr-library/src/carr_library/integrations/transcription_protocol.py",
+    "blob": "e1f49c8ba5e928234dd80de9157403de31eacb1e",
+    "continue_job_lines": [
+      531,
+      552
+    ],
+    "resume_lines": [
+      554,
+      556
+    ],
+    "run_lines": [
+      723,
+      725
+    ],
+    "resume_body": [
+      "self.continue_job(identity)",
+      "return self.run(identity, progress=progress, cancel=cancel)"
+    ],
+    "preserved_continuation": [
+      "Fresh scope and active/recovery-review checks under the real run lock.",
+      "Actual control.json action=run and deletion of prior owned pause/stop/status files.",
+      "Pending/error state update before the actual run."
+    ],
+    "replacement_sequence": [
+      "service.continue_job(state['id'])",
+      "resumed = service.run(state['id'], timeout=30)"
+    ],
+    "equivalence": "The existing resume wrapper has exactly these two method operations in this order. The fixture passes no progress/cancel callbacks, so their default None values are unchanged. The real run method already accepts timeout and derives a local replaced AudioBudget; no shared fixture budget or product API is widened."
+  },
+  "inventory_and_pin_audit": {
+    "all_gate_count": 63,
+    "all_repository_pins": 957,
+    "all_bad": [],
+    "raw_stale_changed_preimages": [],
+    "suites": {
+      "tests/studio/test_book_batch.py": 29,
+      "tests/assistant/test_translation_documents.py": 20,
+      "tests/transcription/test_admission_boundaries.py": 40,
+      "tests/speech/test_voice_preferences.py": 23
+    },
+    "whole_cases": 112,
+    "functions": 66,
+    "helper_pins": 60,
+    "test_names": [
+      "test_export_rejects_changed_payload_before_external_publication",
+      "test_export_receipt_verification_observes_cancellation",
+      "test_export_payload_is_bounded_and_interruptible",
+      "test_saved_receipt_decodes_only_verified_bytes",
+      "test_saved_receipt_corruption_blocks_external_export",
+      "test_verified_json_preserves_strict_state_parsing",
+      "test_edited_copy_decodes_only_the_bytes_it_verifies",
+      "test_edited_copy_export_uses_the_captured_revision",
+      "test_edited_copy_rejects_changed_bytes_and_observes_cancel",
+      "test_stop_interrupts_admission_hash_and_reaches_child_cleanup",
+      "test_runtime_change_rejects_attempt_without_resurrecting_cache",
+      "test_failed_archive_keeps_durable_cache_rejection_until_retry",
+      "test_idle_inventory_is_cancellable_without_rehashing_runtime",
+      "test_actual_child_import_never_writes_or_replaces_python_bytecode",
+      "test_known_runtime_rejection_takes_precedence_over_simultaneous_stop",
+      "test_cancelled_post_admission_check_preserves_committed_valid_receipt",
+      "test_stop_during_historical_receipt_hash_preserves_durable_results",
+      "test_terminal_only_status_policy_keeps_real_child_checkpoint_progress",
+      "test_terminal_status_retains_strict_schema_and_exact_budget"
+    ],
+    "test_function_count": 19,
+    "unchanged_assertion_param_lines": 112,
+    "forward_inverse_exact": true,
+    "methods": {
+      "protocol_blob": "e1f49c8ba5e928234dd80de9157403de31eacb1e",
+      "continuation_before_run_preserved": true,
+      "real_public_resume_mutation_attempt_unchanged": true,
+      "positive_run_timeout": 30,
+      "shared_budget": 5,
+      "product_edits": false
+    }
+  },
+  "limits": {
+    "test_cases": 40,
+    "test_functions": 19,
+    "all_original_assertion_and_parametrization_lines_unchanged": 112,
+    "diagnostic_source": 112,
+    "diagnostic_installed": 112,
+    "diagnostic_functions": 66,
+    "helper_pins": 60,
+    "origins": 42,
+    "companions": 5,
+    "ordinary_whole_seconds": 600,
+    "admission_whole_seconds": 900,
+    "shared_fixture_budget_seconds": 5,
+    "service_fixture_budget_seconds": 5,
+    "positive_allowance_seconds": 30,
+    "negative_timeout_stop_rejection_attempts": "BYTE_IDENTICAL_H",
+    "other_five_positive_call_allowances": "BYTE_IDENTICAL_H",
+    "products": "ALL470_PRODUCT_FILES_UNCHANGED",
+    "refs_changed": false
+  },
+  "peer": {
+    "status": "ACCEPTED_STATIC_NOT_RUN",
+    "reviewer": "locate_project",
+    "blob": "8eff3468588c4224ed9e10eb1ae82cfa71c27132",
+    "readback": true,
+    "scope": "Actual continuation/run API and default callback equivalence, all19 functions and112 assertion/param lines, complete three-file inverses and literal pin cascade."
+  },
+  "composition": {
+    "overlap_with_root_cursor_fixture": "NONE",
+    "root_cursor_paths": "The separate intake test and cursor workflow remain root-owned; this three-file component does not edit either.",
+    "full_gate_count_or_function_updates": "NONE",
+    "raw_pin_callers": [
+      {
+        "path": "carr-library/scripts/ci_installed_failure_contracts.py",
+        "test_pin_replacements": 1
+      },
+      {
+        "path": ".github/workflows/carr-installed-failure-contracts.yml",
+        "helper_pin_replacements": 1
+      }
+    ],
+    "all63_gate_scan": {
+      "repository_pins": 957,
+      "bad": 0,
+      "stale_changed_preimages": 0,
+      "scope": "H plus this exact three-file component; root combines the separately reviewed cursor corrections."
+    }
+  },
+  "historical_component": "0e407e223178cfd6dd3c11c8343127b473be1d05",
+  "qualification": "Not executed. This is a test-only API correction over the actual H failure, with unchanged live product code, individual/outer deadlines, selectors and strict no-skip/result assertions. It does not establish ASR acoustic quality, native output or any successful I test result."
+}

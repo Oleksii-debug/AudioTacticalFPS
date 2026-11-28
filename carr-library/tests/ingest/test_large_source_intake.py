@@ -302,8 +302,10 @@ def test_interrupted_publication_read_releases_lock_with_retained_traceback(tmp_
     source.write_text('First exact page.\fSecond exact page.\fThird exact page.', encoding='utf-8')
     app = LibraryApp(tmp_path / 'library')
     workspace = app.create_workspace('Interrupted receipt')
-    result = app.import_file(workspace, source, timeout=60, **metadata())
-    assert result['state'] == 'complete' and result['completed'] == 3, result
+    # Small TXT is normally inline; this regression needs a real durable request.
+    result = worker.run_request(app.root, workspace, source, metadata(), Config(),
+                                timeout=60)
+    assert result['state'] == 'complete' and result['completed'] == 3 and result['isolated'], result
     request = worker.load_request(app.root, result['request_id'])
     candidate = request['publication_candidate']
     assert candidate['revision'] == result['id']

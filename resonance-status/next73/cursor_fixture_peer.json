@@ -1,0 +1,69 @@
+{
+  "schema": "carr-bounded-static-peer/1",
+  "reviewer": "canonical_regression",
+  "verdict": "ACCEPTED_STATIC_NOT_RUN",
+  "source_base": "becba92dbb68df16654112847d29ec7af0c905d0",
+  "source_tree": "cd339ad7cdfb97d2b60065b02f1fce42b9dddc92",
+  "actual_failure_receipt": "f13e0ccdfd6cb3e755ea3742695dfc84e737e587",
+  "files": [
+    {
+      "path": "carr-library/tests/ingest/test_large_source_intake.py",
+      "preimage": "6f5f116cf54d3183d1edfc36bd58acc4e1de5c38",
+      "blob": "8eeda3a069d0d57769b0ded1b373deec6e978e58",
+      "inverse": [
+        {
+          "oldLine": 305,
+          "newLine": 305,
+          "before": [
+            "    result = app.import_file(workspace, source, timeout=60, **metadata())",
+            "    assert result['state'] == 'complete' and result['completed'] == 3, result"
+          ],
+          "after": [
+            "    # Small TXT is normally inline; this regression needs a real durable request.",
+            "    result = worker.run_request(app.root, workspace, source, metadata(), Config(),",
+            "                                timeout=60)",
+            "    assert result['state'] == 'complete' and result['completed'] == 3 and result['isolated'], result"
+          ]
+        }
+      ]
+    },
+    {
+      "path": ".github/workflows/carr-publication-cursor.yml",
+      "preimage": "ffb211d36e4eb4ca49a480b160b720e50b44dae6",
+      "blob": "99b455fac3401613d34e037162d34a88fcf12765",
+      "inverse": [
+        {
+          "oldLine": 64,
+          "newLine": 64,
+          "before": [
+            "              'tests/ingest/test_large_source_intake.py': '6f5f116cf54d3183d1edfc36bd58acc4e1de5c38',"
+          ],
+          "after": [
+            "              'tests/ingest/test_large_source_intake.py': '8eeda3a069d0d57769b0ded1b373deec6e978e58',"
+          ]
+        }
+      ]
+    }
+  ],
+  "checks": [
+    "The single existing setup hunk and sole workflow test pin independently invert byte-for-byte to complete H predecessors.",
+    "Actual Application82af intentionally routes small TXT inline; worker.run_request is the existing supported path that creates/persists a durable request and exposes request_id/publication_candidate.",
+    "The fixture now calls that exact existing worker API with its already imported Config and complete existing metadata(), same60s timeout. Actual broker/request lock and source-bound isolated child remain intact; no synthesized record or threshold/launcher override.",
+    "Existing complete/three-page assertion is strengthened with isolated. Current host producer assigns isolated=True after actual invocation/reconciliation.",
+    "The entire old six-case test prefix and every remaining new-regression line are exact: retained TimeoutError/traceback/cursor, SQLtrace injection, separate timeout0 writer.commit, new LibraryApp and exact pages/receipt checks.",
+    "Whole remains7 cases/6 functions. All11 workflow pins match H plus only this fixture. Both180s control bounds,8min execution step,45min job, exact old SQLite failing-line requirement, copy inventories, policy, retention and twoOS stay byte-identical."
+  ],
+  "API_sources": {
+    "application": "82af31743ca5cc6557477f6492c08b912751f4a4",
+    "worker": "532cd6d0e0bdbeb55675eeb813aa1e39239df022",
+    "old_worker": "8ab4334be7f7728de84839a6a35cfae5a1347830"
+  },
+  "qualification": {
+    "runtime": "NOT_RUN",
+    "expected_preimage_SQLite_failure": "PENDING_ACTUAL",
+    "corrected_immediate_writer": "PENDING_ACTUAL",
+    "complete_whole7": "NOT_RUN",
+    "installed": "NOT_RUN"
+  },
+  "scope_note": "The H wrong-cause failure remains recorded; this static correction does not transfer a PASS or prove the cursor causal control."
+}

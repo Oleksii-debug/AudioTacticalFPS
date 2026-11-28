@@ -390,7 +390,9 @@ def test_runtime_change_rejects_attempt_without_resurrecting_cache(setup, monkey
         with pytest.raises(ValueError, match='No verified'):
             service.export(state['id'], destination)
     model.write_bytes(original_model)
-    resumed = service.resume(state['id'], timeout=30)
+    # Keep resume's real continuation step, then use run's per-attempt allowance.
+    service.continue_job(state['id'])
+    resumed = service.run(state['id'], timeout=30)
     assert resumed['status'] == 'complete', resumed['error']
     assert starts(runtime) == before_starts + 2, 'A rejected raw checkpoint was resurrected instead of rerunning.'
     assert resumed['results'][:len(previous)] == previous

@@ -1,0 +1,94 @@
+{
+  "schema": "carr-actual-publication-cursor-control-failure/1",
+  "recorded_utc": "2026-11-28 10:35:10 UTC",
+  "source_commit": "becba92dbb68df16654112847d29ec7af0c905d0",
+  "source_tree": "cd339ad7cdfb97d2b60065b02f1fce42b9dddc92",
+  "source_tree_files": 2083,
+  "run_id": 46135428474,
+  "job_id": 140949563767,
+  "job_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46135428474/job/140949563767",
+  "platform": "windows-2022",
+  "job_conclusion": "FAILURE",
+  "workflow": "ffb211d36e4eb4ca49a480b160b720e50b44dae6",
+  "source_preflight": "PASS: actual source head and eleven correction/dependency pins",
+  "control": {
+    "current_worker": "532cd6d0e0bdbeb55675eeb813aa1e39239df022",
+    "preimage_head": "fc84f903dfe068b4eb816e5395cdbd3bf7aa7ad2",
+    "preimage_worker": "8ab4334be7f7728de84839a6a35cfae5a1347830",
+    "test": "carr-library/tests/ingest/test_large_source_intake.py",
+    "test_blob": "6f5f116cf54d3183d1edfc36bd58acc4e1de5c38",
+    "node": "test_interrupted_publication_read_releases_lock_with_retained_traceback",
+    "preimage": "FAILED_WRONG_CAUSE",
+    "expected_old_sqlite_failure": "NOT_REACHED",
+    "postimage": "NOT_RUN",
+    "full_seven_case_whole": "NOT_RUN",
+    "installed": "NOT_RUN",
+    "source_copy_after_verification": "NOT_REACHED"
+  },
+  "failure": {
+    "type": "KeyError",
+    "key": "request_id",
+    "line": 307,
+    "operation": "worker.load_request(app.root, result['request_id']) after a successful real small three-page TXT import.",
+    "prior_assertion": "result['state']=='complete' and result['completed']==3 passed before the missing-key read.",
+    "bounded_trace": [
+      "AssertionError: tmp_path = WindowsPath('C:/Users/runneradmin/AppData/Local/Temp/carr-publication-cursor-tezan5x8/preimage-pytest/test_interrupted_publication_r0')",
+      "",
+      "    def test_interrupted_publication_read_releases_lock_with_retained_traceback(tmp_path):",
+      "        from carr_library.ingest.publication import _read_database",
+      "        from carr_library.pending_backup import MAX_PAYLOAD",
+      "    ",
+      "        source = tmp_path / 'three-pages.txt'",
+      "        source.write_text('First exact page.\\fSecond exact page.\\fThird exact page.', encoding='utf-8')",
+      "        app = LibraryApp(tmp_path / 'library')",
+      "        workspace = app.create_workspace('Interrupted receipt')",
+      "        result = app.import_file(workspace, source, timeout=60, **metadata())",
+      "        assert result['state'] == 'complete' and result['completed'] == 3, result",
+      ">       request = worker.load_request(app.root, result['request_id'])",
+      "                                                ^^^^^^^^^^^^^^^^^^^^",
+      "E       KeyError: 'request_id'",
+      "",
+      "C:\\Users\\runneradmin\\AppData\\Local\\Temp\\carr-publication-cursor-tezan5x8\\preimage\\tests\\ingest\\test_large_source_intake.py:307: KeyError",
+      "Exception: D:\\a\\_temp\\ec4098e3-1b06-40ff-a470-3cf832274cdb.ps1:123"
+    ],
+    "actual_contract": "LibraryApp.import_file intentionally routes small TXT inline. Only isolated suffixes or TXT larger than MAX_SOURCE_BYTES use existing worker.run_request and receive a durable request_id/publication_candidate.",
+    "source_binding": {
+      "application": "82af31743ca5cc6557477f6492c08b912751f4a4",
+      "worker": "532cd6d0e0bdbeb55675eeb813aa1e39239df022"
+    },
+    "correction_scope": "Fixture should call the existing real worker.run_request(..., Config(), timeout=60) and require isolated=True; retain all exact cursor/retained-exception/immediate-writer/receipt assertions. Root owns the successor."
+  },
+  "artifact": {
+    "id": 15259222418,
+    "name": "publication-cursor-windows-2022-becba92dbb68df16654112847d29ec7af0c905d0-1",
+    "size_in_bytes": 2192,
+    "sha256": "a5c2c3404cea74674b78ea1cfc047fa3b905d80213448aa4656fb99de2dfebba",
+    "created_at": "2026-11-28T10:31:59Z",
+    "head_sha": "becba92dbb68df16654112847d29ec7af0c905d0"
+  },
+  "retained_output": {
+    "actual_files": 3,
+    "expected_names": [
+      "preimage.txt",
+      "preimage.xml",
+      "preimage-origins.json"
+    ],
+    "basis": "The first control failed before postimage creation; upload says3 files. Exact archived member bytes have not been separately inspected."
+  },
+  "decoded_log_utf8": {
+    "sha256": "185588852c5db44963698ef3e0ad0d33f80e18d79aa16bf4a5aeaf77c48eedee",
+    "bytes": 217289
+  },
+  "artifact_upload_log_matches_api": true,
+  "review_followup": {
+    "prior_source_peer": "2d29f2fac705cc1553e32c7d76f970ca77593777",
+    "prior_workflow_peer": "4d5b96f0e67af78709aedffbfed7cd041d631bcb",
+    "scope": "The source/test static review missed the small-TXT public routing contract. The workflow correctly refused this unrelated preimage failure instead of reporting the intended SQLite reproduction."
+  },
+  "qualification": "NOT_PASS: neither the expected old lock failure nor corrected immediate commit has been observed by this focused run.",
+  "limits": [
+    "The cursor-closing source change is not disproved by this unexecuted boundary, but remains unqualified by this failed control.",
+    "This receipt reports only the closed Windows job; queued Linux control remains separate.",
+    "No product behavior, case count, deadline or active run was changed."
+  ]
+}

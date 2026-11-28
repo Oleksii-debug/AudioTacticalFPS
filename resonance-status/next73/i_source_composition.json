@@ -1,0 +1,473 @@
+{
+  "schema": "carr-observed-fixture-correction-composition/1",
+  "status": "STATIC_REVIEWED_EXECUTION_PENDING",
+  "source_base": {
+    "commit": "becba92dbb68df16654112847d29ec7af0c905d0",
+    "tree": "cd339ad7cdfb97d2b60065b02f1fce42b9dddc92",
+    "parent": "fc84f903dfe068b4eb816e5395cdbd3bf7aa7ad2",
+    "anchor": "carr/integration-h-20261128-5a9e",
+    "files": 2083,
+    "changes": 61,
+    "live_changes": 18,
+    "evidence_records": 43,
+    "manifest": "bfb127bcb0f8fa1c09c159cc43d3cc4b255419b9",
+    "independent_peer": "765cfd3cab393c12d875ed1252a7e73f30c34d78",
+    "pins": 957,
+    "gates": 63,
+    "full_tree_equal": true,
+    "commit_ref_readback": true,
+    "pr_head": "becba92dbb68df16654112847d29ec7af0c905d0",
+    "execution": "ACTUAL_RUNS_REQUESTED_NO_VERDICT",
+    "branch": "carr/resonance-final-integration-20261127-5a9e",
+    "previous_pr_head": "fc84f903dfe068b4eb816e5395cdbd3bf7aa7ad2",
+    "ref_head": "becba92dbb68df16654112847d29ec7af0c905d0",
+    "pr_metadata_pending": false
+  },
+  "purpose": "Repair two real H fixture API mismatches without altering product source, reducing coverage or weakening assertions. Product admission budgets and existing workflow deadlines are unchanged.",
+  "files": [
+    {
+      "path": "carr-library/tests/ingest/test_large_source_intake.py",
+      "preimage": "6f5f116cf54d3183d1edfc36bd58acc4e1de5c38",
+      "blob": "8eeda3a069d0d57769b0ded1b373deec6e978e58",
+      "mode": "100644",
+      "hunks": [
+        {
+          "old": "    result = app.import_file(workspace, source, timeout=60, **metadata())\n    assert result['state'] == 'complete' and result['completed'] == 3, result\n",
+          "replacement": "    # Small TXT is normally inline; this regression needs a real durable request.\n    result = worker.run_request(app.root, workspace, source, metadata(), Config(),\n                                timeout=60)\n    assert result['state'] == 'complete' and result['completed'] == 3 and result['isolated'], result\n",
+          "offset": 15700
+        }
+      ]
+    },
+    {
+      "path": ".github/workflows/carr-publication-cursor.yml",
+      "preimage": "ffb211d36e4eb4ca49a480b160b720e50b44dae6",
+      "blob": "99b455fac3401613d34e037162d34a88fcf12765",
+      "mode": "100644",
+      "hunks": [
+        {
+          "old": "6f5f116cf54d3183d1edfc36bd58acc4e1de5c38",
+          "replacement": "8eeda3a069d0d57769b0ded1b373deec6e978e58",
+          "offset": 2107
+        }
+      ]
+    },
+    {
+      "path": "carr-library/tests/transcription/test_admission_boundaries.py",
+      "preimage": "aa4e03e782fbb34c19344e2b1911af38c9fac65e",
+      "blob": "3768984773a1ae4bc8e1814e996e828f8647529c",
+      "mode": "100644",
+      "hunks": [
+        {
+          "old_line": 393,
+          "new_line": 393,
+          "removed": [
+            "    resumed = service.resume(state['id'], timeout=30)"
+          ],
+          "added": [
+            "    # Keep resume's real continuation step, then use run's per-attempt allowance.",
+            "    service.continue_job(state['id'])",
+            "    resumed = service.run(state['id'], timeout=30)"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "carr-library/scripts/ci_installed_failure_contracts.py",
+      "preimage": "4bd9331163cc3c342674aef37ee2ea8d5c74099f",
+      "blob": "078230c418f246a5157335bc664dc2826d1c0312",
+      "mode": "100644",
+      "hunks": [
+        {
+          "old_line": 109,
+          "new_line": 109,
+          "removed": [
+            "    \"tests/transcription/test_admission_boundaries.py\": \"aa4e03e782fbb34c19344e2b1911af38c9fac65e\","
+          ],
+          "added": [
+            "    \"tests/transcription/test_admission_boundaries.py\": \"3768984773a1ae4bc8e1814e996e828f8647529c\","
+          ]
+        }
+      ]
+    },
+    {
+      "path": ".github/workflows/carr-installed-failure-contracts.yml",
+      "preimage": "40b349eddaab341e56802674942f8b2dc9d2e6d3",
+      "blob": "cae8a73f18ab2595a72688ea330d8b810430b6ca",
+      "mode": "100644",
+      "hunks": [
+        {
+          "old_line": 56,
+          "new_line": 56,
+          "removed": [
+            "          pins = {\"scripts/ci_installed_failure_contracts.py\":\"4bd9331163cc3c342674aef37ee2ea8d5c74099f\",\"packaging/windows-cp311.lock\":\"8dad99c0ea80470b7253873aee78e08857affec6\",\"packaging/windows-sync-cp311.lock\":\"cd9c18a24d7a7ac203d81cf6a8d82d8bcb8f8ab3\",\"packaging/trusted-client.lock\":\"6c4b48ac09572dc259d62d0d801057ab47c04583\",\"packaging/windows-sync-test-cp311.lock\":\"e3f6eda5976e867abe7267c04e0b867b1fd16f7a\",\"packaging/linux-sync-core-cp311.lock\":\"08f945066be748972a10d5b0ce46480fff722959\",\"packaging/prepare_windows_audio.py\":\"65b172ac432f28e865200aed2f8e610dda1ac7cf\",\"packaging/windows-audio.lock.json\":\"2bc706ffc6208f5596a10abee61d3da33f20e6c6\"}"
+          ],
+          "added": [
+            "          pins = {\"scripts/ci_installed_failure_contracts.py\":\"078230c418f246a5157335bc664dc2826d1c0312\",\"packaging/windows-cp311.lock\":\"8dad99c0ea80470b7253873aee78e08857affec6\",\"packaging/windows-sync-cp311.lock\":\"cd9c18a24d7a7ac203d81cf6a8d82d8bcb8f8ab3\",\"packaging/trusted-client.lock\":\"6c4b48ac09572dc259d62d0d801057ab47c04583\",\"packaging/windows-sync-test-cp311.lock\":\"e3f6eda5976e867abe7267c04e0b867b1fd16f7a\",\"packaging/linux-sync-core-cp311.lock\":\"08f945066be748972a10d5b0ce46480fff722959\",\"packaging/prepare_windows_audio.py\":\"65b172ac432f28e865200aed2f8e610dda1ac7cf\",\"packaging/windows-audio.lock.json\":\"2bc706ffc6208f5596a10abee61d3da33f20e6c6\"}"
+          ]
+        }
+      ]
+    }
+  ],
+  "independent_peers": {
+    "cursor": "05ea187e7aae0156323d8a947452da865760dfa6",
+    "asr": "8eff3468588c4224ed9e10eb1ae82cfa71c27132"
+  },
+  "observed_H_failures": {
+    "cursor_windows": "f13e0ccdfd6cb3e755ea3742695dfc84e737e587",
+    "cursor_linux": "7c92f2e898a4413b9100efaaf0cd8f9b07b8acf3",
+    "asr_linux": "79a3606b12983da206d1f24e48942ab8d0537959"
+  },
+  "asr_component": "38dda8044771c37712f438a1ab3fa633aae1e7dd",
+  "root_review": [
+    "Full five-file inverse to H; no undeclared live-file differences.",
+    "The real resume API calls continue_job then run; candidate executes these in that order and passes the existing per-attempt allowance only to run.",
+    "The real worker.run_request creates the durable request required by the retained-traceback regression; small public TXT import intentionally does not.",
+    "Only three literal raw pins change; full repository audit resolves all957 pins across63 gates.",
+    "All product source bytes,7-case intake/40-case admission inventories, original rejection checks,5-second base budget, ordinary whole600/ASR900 and workflow bounds remain identical to H.",
+    "The cursor setup strengthens its complete/three-page check with isolated=True; its remaining checks are unchanged. The ASR correction leaves all original assert/raises and parametrization lines unchanged."
+  ],
+  "live_before_evidence": {
+    "files": 2083,
+    "sorted_path_mode_sha_utf8": {
+      "bytes": 209792,
+      "sha256": "3bcf4c983069e16e2ca323f2462a6a149892b4f157acc4fe9733f4b3a4dd6444"
+    },
+    "changed_paths": 5,
+    "product_src_changes": 0,
+    "unchanged_files": 2078
+  },
+  "pin_audit": {
+    "gates": 63,
+    "total_pins": 957,
+    "bad": [],
+    "missing": [],
+    "details": [
+      {
+        "path": ".github/workflows/carr-academic-reconciliation.yml",
+        "sha": "d4fd97c03ff8f7663b2fcd184c1752dc8726915f",
+        "pins": 0
+      },
+      {
+        "path": ".github/workflows/carr-bibliography.yml",
+        "sha": "6d0ee34dfcbc71c8570711e34c81dca65c4eea70",
+        "pins": 0
+      },
+      {
+        "path": ".github/workflows/carr-ci-diagnostics.yml",
+        "sha": "b13c293cf376cbbe56c03d49a98052b22ccdf8fc",
+        "pins": 0
+      },
+      {
+        "path": ".github/workflows/carr-configured-update.yml",
+        "sha": "859d697d9a37abd522964f9c7e29dfc84fa4c845",
+        "pins": 12
+      },
+      {
+        "path": ".github/workflows/carr-corpus-profile.yml",
+        "sha": "7a7ee04513ffb6e3522c6312e89864729c4eaf04",
+        "pins": 38
+      },
+      {
+        "path": ".github/workflows/carr-flite.yml",
+        "sha": "2e0191c47c34f8a2e2deb138860d6ee2501a6229",
+        "pins": 0
+      },
+      {
+        "path": ".github/workflows/carr-integrated-source-shard.yml",
+        "sha": "dd3bdcc80cd55745508cdb6d249c34ea9e44ae73",
+        "pins": 0
+      },
+      {
+        "path": ".github/workflows/carr-managed-backends.yml",
+        "sha": "e5f95f0b47cf49c735e5745228d3a020b4e45b5b",
+        "pins": 16
+      },
+      {
+        "path": ".github/workflows/carr-managed-update.yml",
+        "sha": "1cb0cc8f68a03e695c874ae942744907d9f83372",
+        "pins": 0
+      },
+      {
+        "path": ".github/workflows/carr-native-launcher.yml",
+        "sha": "f8263b911e1bf209dd61859653cf84b3fb36534d",
+        "pins": 0
+      },
+      {
+        "path": ".github/workflows/carr-native-reading-publication.yml",
+        "sha": "f21146358d08de0d0dae0f3445bc714845bf6a95",
+        "pins": 7
+      },
+      {
+        "path": ".github/workflows/carr-native-saved-audio-cleanup.yml",
+        "sha": "f7a5c66669baa11f1b044e84ac0e75e86cd7ac61",
+        "pins": 7
+      },
+      {
+        "path": ".github/workflows/carr-next11-capacity-repair.yml",
+        "sha": "7177e036eb40a2c9cafbeed1649a7063f49f99ef",
+        "pins": 8
+      },
+      {
+        "path": ".github/workflows/carr-next12-book.yml",
+        "sha": "eeefe88ed2943c240025cb608b4685f64774f4bb",
+        "pins": 7
+      },
+      {
+        "path": ".github/workflows/carr-next13-partition.yml",
+        "sha": "3da5fa4ae3e7c8a20d2fab72222ff2f3f6b3e698",
+        "pins": 28
+      },
+      {
+        "path": ".github/workflows/carr-next14-native-dialog.yml",
+        "sha": "830cea1c5f50f9e13c90b7fde3c7bf8dceef44e7",
+        "pins": 2
+      },
+      {
+        "path": ".github/workflows/carr-next15-conversion.yml",
+        "sha": "7f50a1975a00f826874b0fef3c6884ca6aaf3619",
+        "pins": 24
+      },
+      {
+        "path": ".github/workflows/carr-next8-source-verification.yml",
+        "sha": "5b048c2482c20ef419cc13fb34d95187464fafb3",
+        "pins": 0
+      },
+      {
+        "path": ".github/workflows/carr-next9-capacity.yml",
+        "sha": "9773b0a937c98401865b8e06464998d02d7c302f",
+        "pins": 22
+      },
+      {
+        "path": ".github/workflows/carr-next9-edit-docx.yml",
+        "sha": "8c590761d7963a0ef37f0ab4e6a31633d8a50ace",
+        "pins": 0
+      },
+      {
+        "path": ".github/workflows/carr-next9-final-source.yml",
+        "sha": "6e3788f45af909d00d250658f49c6b38e33bf162",
+        "pins": 97
+      },
+      {
+        "path": ".github/workflows/carr-next9-headless.yml",
+        "sha": "77371ce11bf8174bb7fe873f684a4d6f10045525",
+        "pins": 0
+      },
+      {
+        "path": ".github/workflows/carr-next9-word-refresh.yml",
+        "sha": "ba3c85502a9a983c0ec15866fab9167ac157ab25",
+        "pins": 0
+      },
+      {
+        "path": ".github/workflows/carr-owner-voice-api.yml",
+        "sha": "600729a372aac81e9929c08e5c07d24e0eca36a6",
+        "pins": 0
+      },
+      {
+        "path": ".github/workflows/carr-remote-stt.yml",
+        "sha": "33cc9467fa89ba01b84f89c636a7d7f40d2f40a6",
+        "pins": 0
+      },
+      {
+        "path": ".github/workflows/carr-sync.yml",
+        "sha": "b6e588d0d2fe1a3eb051acc9183e2941c5d88c7a",
+        "pins": 0
+      },
+      {
+        "path": ".github/workflows/carr-transcription-bridge.yml",
+        "sha": "28da3567fed054331d003bf02aa35b30fed91f1e",
+        "pins": 0
+      },
+      {
+        "path": ".github/workflows/carr-trusted-client.yml",
+        "sha": "25cd944dc1a9dd9147dbd377a67c22b746d6dca3",
+        "pins": 0
+      },
+      {
+        "path": ".github/workflows/carr-v3.yml",
+        "sha": "5740472c341920ac29d3d1716796662bc51a289a",
+        "pins": 0
+      },
+      {
+        "path": ".github/workflows/carr-voice-management.yml",
+        "sha": "411b42e3c3c48ae48c655a3f1d3799e772aba62e",
+        "pins": 20
+      },
+      {
+        "path": ".github/workflows/carr-voice-windows-profile.yml",
+        "sha": "061e10c86b1cdde6b43c95da3f6ee2516de3a0bd",
+        "pins": 9
+      },
+      {
+        "path": ".github/workflows/carr-windows.yml",
+        "sha": "8724a4036ec50037e44179e2dba939758ca1ebfb",
+        "pins": 0
+      },
+      {
+        "path": "carr-library/scripts/ci_book_measured_contracts.py",
+        "sha": "b815896b93fd71ec4b890ad0baf64e79c2398d04",
+        "pins": 44
+      },
+      {
+        "path": "carr-library/scripts/ci_capacity_contracts.py",
+        "sha": "ea386e787ccfeea325a4c88c22b4232b4fcb01d9",
+        "pins": 33
+      },
+      {
+        "path": "carr-library/scripts/ci_check.py",
+        "sha": "6ad3055cfcd7c6a1b1af8544ae462c5d51adb473",
+        "pins": 0
+      },
+      {
+        "path": "carr-library/scripts/ci_configured_update_contracts.py",
+        "sha": "5f188cd9645bdfccbc98b244f806723c884c2a44",
+        "pins": 53
+      },
+      {
+        "path": "carr-library/scripts/ci_managed_backend_contracts.py",
+        "sha": "c2762bc188e4156548c436c1512a2d07c350037e",
+        "pins": 71
+      },
+      {
+        "path": "carr-library/scripts/ci_native_saved_audio_cleanup.py",
+        "sha": "40d59532384bf877f92293475bcb29fa3b695360",
+        "pins": 25
+      },
+      {
+        "path": "carr-library/scripts/ci_owner_voice_api_smoke.py",
+        "sha": "e22c226ef24cf48957d04c32f25cb472e48c764e",
+        "pins": 0
+      },
+      {
+        "path": "carr-library/scripts/ci_reading_publication_contracts.py",
+        "sha": "af1fbc37e37d875d03d1c7eac2ec05e29e888ca4",
+        "pins": 33
+      },
+      {
+        "path": "carr-library/scripts/ci_selected_conversion_contracts.py",
+        "sha": "31eaef849aa2836ffd44d7a75090eb5245f1918c",
+        "pins": 30
+      },
+      {
+        "path": "carr-library/scripts/ci_transcription_remote_contracts.py",
+        "sha": "46c643f10171b0d8404db3dd4bd2e15baf7d7ee3",
+        "pins": 47
+      },
+      {
+        "path": "carr-library/scripts/ci_voice_management_contracts.py",
+        "sha": "63bb13715248fae83bcac87c1a403af534532aa6",
+        "pins": 67
+      },
+      {
+        "path": "carr-library/scripts/ci_voice_management_owner_smoke.py",
+        "sha": "14bc8f48cd5c5fc4ffeca5a37a973c7860f7efef",
+        "pins": 0
+      },
+      {
+        "path": "carr-library/scripts/ci_voice_windows_profile.py",
+        "sha": "ba360c132a2a5daa1cb63a8e162e56ad08fcd1f6",
+        "pins": 0
+      },
+      {
+        "path": "carr-library/scripts/ci_update_https_contracts.py",
+        "sha": "d56854984eb138ec15232ac8901e019f9b3a49ba",
+        "pins": 29
+      },
+      {
+        "path": ".github/workflows/carr-configured-update-native.yml",
+        "sha": "14517f2e4018942a2a0a4c56ce6c59f38de861a4",
+        "pins": 6
+      },
+      {
+        "path": "carr-library/scripts/check_integrated_source_shard.ps1",
+        "sha": "dba0ffd3d3d8e0c5b695cbf7273b391f889ea138",
+        "pins": 0
+      },
+      {
+        "path": "carr-library/scripts/check_installed_bundle.py",
+        "sha": "3b4981beac7d036d183eff16efd6f3adb26ae458",
+        "pins": 0
+      },
+      {
+        "path": "carr-library/scripts/ci_studio_timeline_contracts.py",
+        "sha": "630525a564b352eecee1822caeba3b3fa0badd1b",
+        "pins": 54
+      },
+      {
+        "path": ".github/workflows/carr-studio-timeline.yml",
+        "sha": "4bde8f89c9297dfba3dd874ddb429b1f429f8167",
+        "pins": 9
+      },
+      {
+        "path": "carr-library/scripts/ci_native_library_workflow.py",
+        "sha": "8ffc5598f8ed0bcbf570b3bd676f86a14f30c16c",
+        "pins": 12
+      },
+      {
+        "path": ".github/workflows/carr-native-library-workflow.yml",
+        "sha": "b50202409935cd0a8ca6816313fb641b5f4e600b",
+        "pins": 13
+      },
+      {
+        "path": "carr-library/scripts/ci_updater_case_contracts.json",
+        "sha": "0680e817d062f563ea5b9c429da2cd7716310f4d",
+        "pins": 0
+      },
+      {
+        "path": ".github/workflows/carr-installed-failure-contracts.yml",
+        "sha": "cae8a73f18ab2595a72688ea330d8b810430b6ca",
+        "pins": 8
+      },
+      {
+        "path": "carr-library/scripts/ci_installed_failure_contracts.py",
+        "sha": "078230c418f246a5157335bc664dc2826d1c0312",
+        "pins": 60
+      },
+      {
+        "path": "carr-library/scripts/ci_v3_feature_case_contracts.json",
+        "sha": "b8f6c288b53cb14a6a5339d28d7e50843f15a438",
+        "pins": 0
+      },
+      {
+        "path": "carr-library/scripts/ci_language_evidence_cases.json",
+        "sha": "6797df44d708230f38ba999760bbfd3cb8581e40",
+        "pins": 0
+      },
+      {
+        "path": "carr-library/scripts/ci_language_evidence_contracts.py",
+        "sha": "9a75188ec6a583aade9a5970dc548d3d35724b9d",
+        "pins": 48
+      },
+      {
+        "path": ".github/workflows/carr-language-evidence.yml",
+        "sha": "29bf8a261151818ed9b45695ef5cf356f8fc552d",
+        "pins": 7
+      },
+      {
+        "path": "carr-library/scripts/windows_language_evidence_smoke.py",
+        "sha": "1a0358e96abb435b6b944c8a69046e8f3f178c1b",
+        "pins": 0
+      },
+      {
+        "path": ".github/workflows/carr-c3-capacity-evidence.yml",
+        "sha": "f551f2906d4df2689825ad41d7915ad1fd641f82",
+        "pins": 0
+      },
+      {
+        "path": ".github/workflows/carr-publication-cursor.yml",
+        "sha": "99b455fac3401613d34e037162d34a88fcf12765",
+        "pins": 11
+      }
+    ]
+  },
+  "execution": {
+    "candidate": "NOT_RUN",
+    "old_cursor_causal_failure": "NOT_YET_PROVEN",
+    "fixed_cursor": "NOT_YET_PROVEN",
+    "asr_complete": "NOT_YET_PROVEN",
+    "plan": "Publish isolated immutable source and run the existing two-OS cursor control plus the existing focused installed-failure contract job before any aggregate conclusion; retain H jobs and their truthful source attribution. Do not advance the PR until the cursor control meaningfully runs."
+  },
+  "scope_limits": [
+    "No release, merge, external communication, hardware qualification, private-model execution or production qualification.",
+    "Historical H failures remain durable and are not erased or relabelled by this source correction."
+  ]
+}

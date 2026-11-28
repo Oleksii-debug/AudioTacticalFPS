@@ -1,0 +1,110 @@
+{
+  "schema": "carr-I-asr-resume-fixture-peer/1",
+  "verdict": "ACCEPTED_STATIC_NOT_RUN",
+  "reviewer": "locate_project",
+  "created_utc": "2026-11-28 10:38:50 UTC",
+  "base": {
+    "commit": "becba92dbb68df16654112847d29ec7af0c905d0",
+    "source_api_unchanged": true
+  },
+  "scope": "Exact public continuation/run equivalence, test-only correction and two literal dependent pins.",
+  "files": [
+    {
+      "path": "carr-library/tests/transcription/test_admission_boundaries.py",
+      "preimage": "aa4e03e782fbb34c19344e2b1911af38c9fac65e",
+      "candidate": "3768984773a1ae4bc8e1814e996e828f8647529c",
+      "hunks": [
+        {
+          "old_line": 393,
+          "new_line": 393,
+          "removed": [
+            "    resumed = service.resume(state['id'], timeout=30)"
+          ],
+          "added": [
+            "    # Keep resume's real continuation step, then use run's per-attempt allowance.",
+            "    service.continue_job(state['id'])",
+            "    resumed = service.run(state['id'], timeout=30)"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "carr-library/scripts/ci_installed_failure_contracts.py",
+      "preimage": "4bd9331163cc3c342674aef37ee2ea8d5c74099f",
+      "candidate": "078230c418f246a5157335bc664dc2826d1c0312",
+      "hunks": [
+        {
+          "old_line": 109,
+          "new_line": 109,
+          "removed": [
+            "    \"tests/transcription/test_admission_boundaries.py\": \"aa4e03e782fbb34c19344e2b1911af38c9fac65e\","
+          ],
+          "added": [
+            "    \"tests/transcription/test_admission_boundaries.py\": \"3768984773a1ae4bc8e1814e996e828f8647529c\","
+          ]
+        }
+      ]
+    },
+    {
+      "path": ".github/workflows/carr-installed-failure-contracts.yml",
+      "preimage": "40b349eddaab341e56802674942f8b2dc9d2e6d3",
+      "candidate": "cae8a73f18ab2595a72688ea330d8b810430b6ca",
+      "hunks": [
+        {
+          "old_line": 56,
+          "new_line": 56,
+          "removed": [
+            "          pins = {\"scripts/ci_installed_failure_contracts.py\":\"4bd9331163cc3c342674aef37ee2ea8d5c74099f\",\"packaging/windows-cp311.lock\":\"8dad99c0ea80470b7253873aee78e08857affec6\",\"packaging/windows-sync-cp311.lock\":\"cd9c18a24d7a7ac203d81cf6a8d82d8bcb8f8ab3\",\"packaging/trusted-client.lock\":\"6c4b48ac09572dc259d62d0d801057ab47c04583\",\"packaging/windows-sync-test-cp311.lock\":\"e3f6eda5976e867abe7267c04e0b867b1fd16f7a\",\"packaging/linux-sync-core-cp311.lock\":\"08f945066be748972a10d5b0ce46480fff722959\",\"packaging/prepare_windows_audio.py\":\"65b172ac432f28e865200aed2f8e610dda1ac7cf\",\"packaging/windows-audio.lock.json\":\"2bc706ffc6208f5596a10abee61d3da33f20e6c6\"}"
+          ],
+          "added": [
+            "          pins = {\"scripts/ci_installed_failure_contracts.py\":\"078230c418f246a5157335bc664dc2826d1c0312\",\"packaging/windows-cp311.lock\":\"8dad99c0ea80470b7253873aee78e08857affec6\",\"packaging/windows-sync-cp311.lock\":\"cd9c18a24d7a7ac203d81cf6a8d82d8bcb8f8ab3\",\"packaging/trusted-client.lock\":\"6c4b48ac09572dc259d62d0d801057ab47c04583\",\"packaging/windows-sync-test-cp311.lock\":\"e3f6eda5976e867abe7267c04e0b867b1fd16f7a\",\"packaging/linux-sync-core-cp311.lock\":\"08f945066be748972a10d5b0ce46480fff722959\",\"packaging/prepare_windows_audio.py\":\"65b172ac432f28e865200aed2f8e610dda1ac7cf\",\"packaging/windows-audio.lock.json\":\"2bc706ffc6208f5596a10abee61d3da33f20e6c6\"}"
+          ]
+        }
+      ]
+    }
+  ],
+  "source_bindings": [
+    {
+      "path": "carr-library/src/carr_library/integrations/transcription_protocol.py",
+      "git_blob": "e1f49c8ba5e928234dd80de9157403de31eacb1e",
+      "observed": "LocalFileJobProtocol.resume(identity, *, progress=None, cancel=None) calls self.continue_job(identity), then self.run(identity, progress=progress, cancel=cancel). It has no timeout keyword. run(identity, *, progress=None, cancel=None, timeout=None) is the actual public per-attempt timeout owner."
+    },
+    {
+      "path": "carr-library/tests/transcription/fixture_runtime.py",
+      "git_blob": "b4168929226bbe224e75a29f9899b3c63f237eda",
+      "observed": "make_service constructs the actual LibraryApp/TranscriptionService and returns host._local_protocol(); it does not provide a resume timeout adapter."
+    }
+  ],
+  "proof": {
+    "inverses": {
+      "test": true,
+      "helper": true,
+      "workflow": true
+    },
+    "all_function_names_equal": true,
+    "function_count": 19,
+    "all_assert_and_raises_lines_equal": true,
+    "all_five_second_controls_equal": true,
+    "five_second_controls": [
+      "        budget=AudioBudget(timeout=5, reserve_disk_bytes=0), stop_grace=.1)"
+    ],
+    "parameter_decorators_equal": true
+  },
+  "conclusions": [
+    "The sole fixture hunk executes the same two real operations and order as resume, with unchanged default progress/cancel semantics, then supplies30 to the actual run timeout API.",
+    "continue_job retains its current scope checks, real state lock, active/recovery refusal, durable run control, worker flag removal and pending-state transition.",
+    "The call remains before the original completion, rerun-count and historical-results assertions. No product method, child, lock, process or cleanup function is replaced.",
+    "All19 test function names, decorators and assert/raises lines are byte-identical; the required whole40 inventory is retained. This is source inventory review, not executed collection.",
+    "All explicit5-second negative controls are byte-identical. Original whole600/ASR900 and every workflow deadline are unchanged.",
+    "The helper has exactly one test-pin replacement and the workflow exactly one helper-pin replacement. Both complete predecessors reconstruct byte-for-byte. Four112-case/66-function diagnostic inventory and all60 source pins retain the same cardinality."
+  ],
+  "evidence_boundary": {
+    "author_reported_H_job": 140949658176,
+    "reported_result": "36PASS/4FAIL from invalid resume timeout keyword; source review independently confirms that signature mismatch.",
+    "closed_log_fetched_by_this_peer": false,
+    "new_test_execution": "NOT_RUN",
+    "parser_execution": "NOT_RUN",
+    "real_recognition_or_acoustic_qualification": "NOT_RUN",
+    "source_or_ref_mutation": "NONE_BY_REVIEWER"
+  }
+}

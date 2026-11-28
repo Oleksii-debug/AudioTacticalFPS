@@ -1,0 +1,94 @@
+{
+  "schema": "carr-static-composition-peer/1",
+  "status": "ACCEPTED_STATIC_NOT_RUN",
+  "reviewer": "progress_completion",
+  "created_utc": "2026-11-28 10:42:54 UTC",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "review_input": "d3f427b1d136b2ce0ea30476f9cdda959da9fa57",
+  "review_input_utf8": {
+    "sha256": "8025c5c3dadcd7c7f37dca4ced7fb5c493b017b98587040a9f55b926b6cef804",
+    "bytes": 18207
+  },
+  "base": {
+    "commit": "becba92dbb68df16654112847d29ec7af0c905d0",
+    "tree": "cd339ad7cdfb97d2b60065b02f1fce42b9dddc92"
+  },
+  "source_peers": {
+    "cursor": "05ea187e7aae0156323d8a947452da865760dfa6",
+    "asr": "8eff3468588c4224ed9e10eb1ae82cfa71c27132"
+  },
+  "observed_H_failures": {
+    "cursor_windows": "f13e0ccdfd6cb3e755ea3742695dfc84e737e587",
+    "cursor_linux": "7c92f2e898a4413b9100efaaf0cd8f9b07b8acf3",
+    "asr_linux": "79a3606b12983da206d1f24e48942ab8d0537959"
+  },
+  "composition": {
+    "files": [
+      {
+        "path": "carr-library/tests/ingest/test_large_source_intake.py",
+        "preimage": "6f5f116cf54d3183d1edfc36bd58acc4e1de5c38",
+        "blob": "8eeda3a069d0d57769b0ded1b373deec6e978e58",
+        "forward_exact": true,
+        "inverse_exact": true
+      },
+      {
+        "path": ".github/workflows/carr-publication-cursor.yml",
+        "preimage": "ffb211d36e4eb4ca49a480b160b720e50b44dae6",
+        "blob": "99b455fac3401613d34e037162d34a88fcf12765",
+        "forward_exact": true,
+        "inverse_exact": true
+      },
+      {
+        "path": "carr-library/tests/transcription/test_admission_boundaries.py",
+        "preimage": "aa4e03e782fbb34c19344e2b1911af38c9fac65e",
+        "blob": "3768984773a1ae4bc8e1814e996e828f8647529c",
+        "forward_exact": true,
+        "inverse_exact": true
+      },
+      {
+        "path": "carr-library/scripts/ci_installed_failure_contracts.py",
+        "preimage": "4bd9331163cc3c342674aef37ee2ea8d5c74099f",
+        "blob": "078230c418f246a5157335bc664dc2826d1c0312",
+        "forward_exact": true,
+        "inverse_exact": true
+      },
+      {
+        "path": ".github/workflows/carr-installed-failure-contracts.yml",
+        "preimage": "40b349eddaab341e56802674942f8b2dc9d2e6d3",
+        "blob": "cae8a73f18ab2595a72688ea330d8b810430b6ca",
+        "forward_exact": true,
+        "inverse_exact": true
+      }
+    ],
+    "live_files": 2083,
+    "unchanged_files": 2078,
+    "live_map_digest": {
+      "sha256": "3bcf4c983069e16e2ca323f2462a6a149892b4f157acc4fe9733f4b3a4dd6444",
+      "bytes": 209792
+    },
+    "product_files": 470,
+    "product_changes": [],
+    "gate_files": 63,
+    "pins": 957,
+    "bad": [],
+    "stale": [],
+    "all_whole_count_function_and_timeout_declarations": "BYTE_IDENTICAL_H_AFTER_ONLY_THREE_HASH_REPLACEMENTS",
+    "source_wholes": 493,
+    "intake_cases": 7,
+    "intake_functions": 6,
+    "admission_cases": 40,
+    "admission_functions": 19,
+    "diagnostic_source": 112,
+    "diagnostic_installed": 112
+  },
+  "checked_compatibility": [
+    "All five successor blobs were checked against the exact published H path/preimage bindings. Every complete forward/reverse hunk reconstructs its full predecessor/successor, including both root cursor files and all three ASR files.",
+    "The2083-file pre-evidence map is the published H tree with exactly five replacements and2078 unchanged paths. Sorted path-NUL-mode-NUL-SHA-LF digest is3bcf4c98…/209792 bytes, matching the composition.",
+    "All470 product-source files retain H bytes. The changes are two existing test modules, one existing helper, and two existing workflows; no new source path, selector, case or test function is added.",
+    "Cursor7/6 and admission40/19 remain. Cursor setup additionally requires its real result to be isolated; all later retained-traceback/writer/rejection controls remain. ASR retains all112 assertion/parametrization lines and both real continuation/run operations in the original order.",
+    "The two cursor paths and three ASR paths are disjoint. Only three raw source/helper pins change. A complete63-gate scan resolves all957 repository pins, with zero mismatches, missing paths or stale changed preimages.",
+    "Existing full-source493, focused112+112, all case/function data, shared/service5-second fixtures, positive30-second allowance,600/900 whole limits and all existing workflow/native/firewall/cleanup bodies are unchanged.",
+    "The d3f metadata-only successor precisely says assertions are not weakened and records the strengthened isolated prerequisite. Compared with unpublished65b75, only purpose, one explanatory root-review note, and the focused execution plan changed."
+  ],
+  "qualification": "Static composition and compatibility review only. The separate cursor peer05ea187e and ASR peer8eff3468 cover their source/API seams. The original H failures remain durable and no corrected cursor, ASR, full-suite or current I runtime PASS is asserted. Publication evidence records may be added separately from this exact pre-evidence map. No ref or product source was changed by this review."
+}

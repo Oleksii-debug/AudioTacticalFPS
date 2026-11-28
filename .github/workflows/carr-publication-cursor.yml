@@ -61,7 +61,7 @@ jobs:
           pins = {
               'src/carr_library/ingest/worker.py': '532cd6d0e0bdbeb55675eeb813aa1e39239df022',
               'src/carr_library/ingest/publication.py': 'a2b8c3a1f4ce5be17567b8bcd8cda743d73e7fb5',
-              'tests/ingest/test_large_source_intake.py': '6f5f116cf54d3183d1edfc36bd58acc4e1de5c38',
+              'tests/ingest/test_large_source_intake.py': '8eeda3a069d0d57769b0ded1b373deec6e978e58',
               'tests/ingest/large_source_fixtures.py': '7d59170c1d372d9b1bbdfa672dfd2d80021a26df',
               'scripts/ci_check.py': '6ad3055cfcd7c6a1b1af8544ae462c5d51adb473',
               'pyproject.toml': '0e691bab81b90bf9b1543b454014c47b987f11ce',
