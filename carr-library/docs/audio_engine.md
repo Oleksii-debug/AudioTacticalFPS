@@ -79,6 +79,32 @@ Dynamic loudness normalization is followed by actual output measurement.
 Requested targets and measured values are distinct. Very short, silent or
 strongly constrained signals need not reach a selected integrated target.
 
+## Повторне прослуховування збереженого кліпу
+
+У **Audio Studio → Edit scene audio clips...** виберіть проєкт, сцену й
+кліп. Збережіть потрібний діапазон через **Save clip settings**, потім
+явно натисніть **Preview saved clip** або **Preview without clip effects**.
+Для повторення натисніть **Loop current preview**. Кнопка працює й після
+природного завершення цього перегляду; перший запуск або відкриття проєкту
+не вмикає повтор автоматично.
+
+**Disable preview loop** припиняє повторення після поточного відтворення.
+**Stop playback** скасовує перегляд. Після Stop, зміни проєкту, вибраного
+кліпу, бібліотеки чи сеансу відтворення потрібний новий явний **Preview**.
+**Close** зупиняє звук; помилка підтвердження закриття відображається,
+щоб можна було повторити Stop або Close.
+
+Поле **Clip loop preview status** показує стан і кількість повторів.
+Автоматичний повтор зберігає фокус та проходить ту саму перевірку тиші
+власних повідомлень про поступ, що й звичайний запуск. Оригінальні файли
+й збережений проєкт не змінюються. Це повтор готового локального перегляду,
+без заяви про безшовне зациклення або обробку ефектів у реальному часі.
+Коротка клавіатурна інструкція є в [START_UK.txt](START_UK.txt).
+
+Цю зміну перевірено на рівні вихідного коду; її нові автоматизовані й
+нативні сценарії ще не виконано (**NOT_RUN**). Якість прослуховування,
+фізичні пристрої та NVDA потребують окремої перевірки.
+
 ## Local music and sound effects
 
 The default `procedural` engine produces real PCM using a deterministic note

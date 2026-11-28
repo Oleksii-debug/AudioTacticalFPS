@@ -641,6 +641,7 @@ jobs:
             'tests/speech/test_voice_preferences.py',
             'tests/ui/test_voice_preferences_dialog.py',
             'tests/ui/test_reader_synthesis.py',
+            'tests/speech/test_synthesis_admission.py',
             'tests/speech/test_session.py',
             'tests/storage/test_reader_synthesis_backup.py',
             'tests/storage/test_voice_preferences_backup.py',
@@ -1086,8 +1087,22 @@ jobs:
       - name: Require installed native scene clip controls and measured PCM effects
         if: ${{ !cancelled() && steps.desktop_dependencies.outcome == 'success' && steps.audio_runtime.outcome == 'success' }}
         timeout-minutes: 5
+        env:
+          CARR_REQUIRE_CLIP_LOOP: ${{ github.event_name == 'push' && github.repository == 'Oleksii-debug/AudioTacticalFPS' && github.ref == 'refs/heads/carr/ci-endpoint-evaluation-20261127' }}
         run: |
-          & $env:CARR_PYTHON -I -B -X utf8 scripts/windows_clip_editor_smoke.py 2>&1 | Tee-Object 'ci-results/installed-scene-clip-editor.txt'
+          $loopArguments = @()
+          if ($env:CARR_REQUIRE_CLIP_LOOP -eq 'true') {
+            $inventory = & $env:CARR_PYTHON -I -B -c "import json; from carr_library.speech.output_devices import output_devices; print(json.dumps([{'index': d.index, 'name': d.name, 'identity': d.identity} for d in output_devices()]))"
+            if ($LASTEXITCODE -ne 0) { throw 'The installed clip-loop output inventory failed.' }
+            $inventory | Set-Content 'ci-results/clip-loop-output-inventory.json'
+            $outputs = @($inventory | ConvertFrom-Json)
+            # The same exact secondary endpoint used by the existing reader gate.
+            $selected = @($outputs | Where-Object { $_.name -ceq 'CABLE In 16 Ch (VB-Audio Virtua' })
+            if ($selected.Count -ne 1) { throw 'The explicitly reviewed clip-loop output is missing or ambiguous.' }
+            $loopArguments = @('--loop-output-device', [string][int]$selected[0].index,
+                               '--loop-output-identity', [string]$selected[0].identity)
+          }
+          & $env:CARR_PYTHON -I -B -X utf8 scripts/windows_clip_editor_smoke.py @loopArguments 2>&1 | Tee-Object 'ci-results/installed-scene-clip-editor.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Require source and installed native reading tabs and visual focus
@@ -1676,6 +1691,7 @@ jobs:
             'tests/speech/test_voice_preferences.py',
             'tests/ui/test_voice_preferences_dialog.py',
             'tests/ui/test_reader_synthesis.py',
+            'tests/speech/test_synthesis_admission.py',
             'tests/speech/test_session.py',
             'tests/storage/test_reader_synthesis_backup.py',
             'tests/storage/test_voice_preferences_backup.py',

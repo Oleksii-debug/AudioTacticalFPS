@@ -145,6 +145,7 @@ jobs:
             'tests/studio/test_production_cancellation_outcomes.py',
             'tests/studio/test_production.py',
             'tests/studio/test_production_hardening.py',
+            'tests/studio/test_clip_dialog.py',
             'tests/studio/test_book_audio.py',
             'tests/storage/test_production_operation_backup.py',
             'tests/ui/test_studio_output_settings.py',
@@ -164,6 +165,14 @@ jobs:
             'tests/packaging/test_standard_installer.py',
             'tests/packaging/test_managed_launch_boundary.py',
             'tests/operations/test_resources.py',
+            'tests/operations/test_facade.py',
+            'tests/operations/test_production_admission.py',
+            'tests/e2e/test_operations_cli.py',
+            'tests/e2e/test_import_worker_publication.py',
+            'tests/ui/test_operations_policy.py',
+            'tests/speech/test_synthesis_admission.py',
+            'tests/speech/test_registered_studio_voices.py',
+            'tests/audio/test_model_voices.py',
             'tests/storage/test_backup_book_plan_bindings.py',
             'tests/ui/test_book_audio_dialog.py',
             'tests/speech/test_python_helper.py',
@@ -174,6 +183,7 @@ jobs:
             'tests/audio/test_audio_process.py',
             'tests/audio/test_process_deadline.py',
             'tests/audio/test_capture_access_diagnostic.py',
+            'tests/audio/test_recording_windows_process.py',
             'tests/ui/test_ebook_audio_initialization.py',
             'tests/ui/test_ebook_dialog.py',
             'tests/reader/test_ebook_audio.py',
@@ -188,6 +198,8 @@ jobs:
             'tests/packaging/test_windows_launcher_bundle.py',
             'tests/ui/test_federated_labels.py',
             'tests/ui/test_reader_synthesis.py',
+            'tests/ui/test_progress_voice_actions.py',
+            'tests/ui/test_progress_job_review.py',
             'tests/storage/test_reader_synthesis_backup.py',
             'tests/storage/test_state_json_reader.py',
             'tests/transcription/test_control_reads.py',
@@ -217,6 +229,7 @@ jobs:
             'tests/studio/test_production_cancellation_outcomes.py',
             'tests/studio/test_production.py',
             'tests/studio/test_production_hardening.py',
+            'tests/studio/test_clip_dialog.py',
             'tests/studio/test_book_audio.py',
             'tests/storage/test_production_operation_backup.py',
             'tests/ui/test_studio_output_settings.py',
@@ -236,6 +249,14 @@ jobs:
             'tests/packaging/test_standard_installer.py',
             'tests/packaging/test_managed_launch_boundary.py',
             'tests/operations/test_resources.py',
+            'tests/operations/test_facade.py',
+            'tests/operations/test_production_admission.py',
+            'tests/e2e/test_operations_cli.py',
+            'tests/e2e/test_import_worker_publication.py',
+            'tests/ui/test_operations_policy.py',
+            'tests/speech/test_synthesis_admission.py',
+            'tests/speech/test_registered_studio_voices.py',
+            'tests/audio/test_model_voices.py',
             'tests/storage/test_backup_book_plan_bindings.py',
             'tests/ui/test_book_audio_dialog.py',
             'tests/speech/test_python_helper.py',
@@ -246,6 +267,7 @@ jobs:
             'tests/audio/test_audio_process.py',
             'tests/audio/test_process_deadline.py',
             'tests/audio/test_capture_access_diagnostic.py',
+            'tests/audio/test_recording_windows_process.py',
             'tests/ui/test_ebook_audio_initialization.py',
             'tests/ui/test_ebook_dialog.py',
             'tests/reader/test_ebook_audio.py',
@@ -260,6 +282,8 @@ jobs:
             'tests/packaging/test_windows_launcher_bundle.py',
             'tests/ui/test_federated_labels.py',
             'tests/ui/test_reader_synthesis.py',
+            'tests/ui/test_progress_voice_actions.py',
+            'tests/ui/test_progress_job_review.py',
             'tests/storage/test_reader_synthesis_backup.py',
             'tests/storage/test_state_json_reader.py',
             'tests/transcription/test_control_reads.py',
@@ -272,6 +296,40 @@ jobs:
           $testExit = $LASTEXITCODE
           python -I -B -c "import xml.etree.ElementTree as E; cases=list(E.parse('ci-component-results/installed.xml').getroot().iter('testcase')); assert cases and all(c.find('failure') is None and c.find('error') is None and c.find('skipped') is None for c in cases); print('INSTALLED_CASES_PASS',len(cases))"
           if ($testExit -ne 0 -or $LASTEXITCODE -ne 0) { exit 1 }
+      - name: Require real Windows virtual-environment EOF and cleanup contracts
+        if: ${{ !cancelled() && matrix.mode == 'installed' && runner.os == 'Windows' && steps.inventory.outcome == 'success' }}
+        timeout-minutes: 5
+        run: |
+          $fixtureEnvironment = Join-Path $env:RUNNER_TEMP 'carr-deadline-fixture-python'
+          python -I -B -m venv --without-pip --system-site-packages $fixtureEnvironment
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $fixturePython = Join-Path $fixtureEnvironment 'Scripts/python.exe'
+          $identity = @'
+          import json, sys
+          from pathlib import Path
+          import carr_library
+          assert sys.prefix != sys.base_prefix, 'The regression must run through an actual venv.'
+          assert Path(sys.executable).resolve(strict=True) == Path(sys.argv[1]).resolve(strict=True)
+          prior = json.loads(Path('ci-component-results/application-source.json').read_text(encoding='utf-8-sig'))
+          installed = Path(carr_library.__file__).resolve(strict=True).parent
+          assert installed == Path(prior['module_origin']).resolve(strict=True)
+          assert not installed.is_relative_to(Path('src').resolve())
+          print(json.dumps(dict(status='PASS', executable=sys.executable,
+              base_executable=sys._base_executable, python=sys.version,
+              installed_package=str(installed), source_inventory_sha256=prior['source_inventory_sha256'])))
+          '@
+          $identity | & $fixturePython -I -B -X utf8 - $fixturePython | Tee-Object ci-component-results/venv-deadline-identity.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $fixturePython -I -B -X utf8 -m pytest -q -o addopts= -o pythonpath= -o xfail_strict=true --import-mode=importlib --junitxml=ci-component-results/venv-deadline.xml tests/audio/test_process_deadline.py 2>&1 | Tee-Object ci-component-results/venv-deadline.txt
+          $testExit = $LASTEXITCODE
+          & $fixturePython -I -B -c "import xml.etree.ElementTree as E; cases=list(E.parse('ci-component-results/venv-deadline.xml').getroot().iter('testcase')); assert cases and all(c.find('failure') is None and c.find('error') is None and c.find('skipped') is None for c in cases); print('VENV_DEADLINE_CASES_PASS',len(cases))"
+          if ($testExit -ne 0 -or $LASTEXITCODE -ne 0) { exit 1 }
+      - name: Require installed native clip editing and explicit loop controls
+        if: ${{ !cancelled() && matrix.mode == 'installed' && runner.os == 'Windows' && steps.inventory.outcome == 'success' && steps.audio.outcome == 'success' }}
+        timeout-minutes: 5
+        run: |
+          python -I -B -X utf8 scripts/windows_clip_editor_smoke.py 2>&1 | Tee-Object ci-component-results/installed-native-clip-editor.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Retain public synthetic source and installed evidence
         if: ${{ always() }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9

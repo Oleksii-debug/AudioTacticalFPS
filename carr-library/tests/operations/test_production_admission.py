@@ -234,3 +234,65 @@ def test_pending_native_cleanup_retains_actual_resource_lock_until_quiescent(
         quiescent[0] = True
         owner.close()
     assert not broker.snapshot()['leases']
+
+
+@pytest.mark.skipif(not shutil.which('ffmpeg') or not shutil.which('ffprobe'),
+                    reason='Actual saved artifact details require FFmpeg and ffprobe.')
+def test_facade_records_actual_pcm_identity_without_reverifying_missing_output(
+        tmp_path, monkeypatch):
+    from hashlib import sha256
+    import wave
+    from carr_library.application import LibraryApp
+    from carr_library.operations import OperationFacade
+
+    app = LibraryApp(tmp_path / 'library')
+    outputs = tmp_path / 'private-outputs'
+    outputs.mkdir()
+    broker = ResourceBroker.for_app(app.root, limits=ResourceLimits(cpu_slots=1))
+    def factory(root, **options):
+        return AudioRuntime(root, budget=AudioBudget(threads=1), **options)
+    service = ProductionService(app.root / 'state/studio', voices=VoiceRegistry([]),
+                                runtime_factory=factory, broker=broker)
+    try:
+        project = service.create('[Pause: 0.2]', title='PRIVATE_STORED_TITLE')
+        identity = service.submit(project, outputs, stems=False)
+        completed = service.run(identity)
+        assert completed['status'] == 'complete'
+        master = Path(completed['destination']) / 'master.wav'
+        raw_pcm = master.read_bytes()
+        with wave.open(str(master), 'rb') as audio:
+            assert audio.getnframes() > 0 and audio.getsampwidth() == 2
+            assert audio.getframerate() == project.sample_rate and audio.getnchannels() == 2
+        master_row, = [row for row in completed['artifacts'] if Path(row['path']) == master]
+        assert master_row['sha256'] == sha256(raw_pcm).hexdigest()
+        assert master_row['size'] == len(raw_pcm)
+        assert not broker.snapshot()['leases']
+        checkpoint = service.jobs_root / identity / 'job.json'
+        saved_bytes = checkpoint.read_bytes()
+        cache = {path: path.read_bytes() for path in service.cache.glob('*.wav')}
+        assert cache
+
+        def forbidden(*args, **kwargs):
+            pytest.fail('Reading stored details started current audio verification.')
+        monkeypatch.setattr(service, '_runtime', forbidden)
+        monkeypatch.setattr(service, '_verify_artifacts', forbidden)
+        facade = OperationFacade(app, studio=service, broker=broker)
+        before = facade.get('studio', identity)
+        assert before.status == 'complete' and before.controls == () and before.live is None
+        assert before.details.resource_plan.cpu_slots == 1
+        assert before.details.completed_artifact_count == len(completed['artifacts'])
+        assert [(item.sha256, item.size) for item in before.details.completed_artifacts] == [
+            (row['sha256'], row['size']) for row in completed['artifacts']]
+        assert before.details.settings_sha256 is before.details.adapter is None
+
+        # A stored completion remains a historical declaration when bytes vanish.
+        # The dashboard must neither replay production nor claim current verification.
+        master.unlink()
+        after = facade.get('studio', identity)
+        assert after == before
+        assert 'artifact bytes and current assets were not checked' in after.details.note
+        assert not master.exists() and not broker.snapshot()['leases']
+        assert checkpoint.read_bytes() == saved_bytes
+        assert all(path.read_bytes() == raw for path, raw in cache.items())
+    finally:
+        service.close()

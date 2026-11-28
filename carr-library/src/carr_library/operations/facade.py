@@ -3,7 +3,7 @@
 Stored status is reported as stored status. Listing never resumes a worker,
 contacts a provider, loads a model, or upgrades a saved receipt to verified audio.
 """
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, field, replace
 from hashlib import sha256
 import math
 import os
@@ -21,6 +21,11 @@ _STATES = {'pending', 'queued', 'preparing', 'running', 'pausing', 'cancelling',
 _TERMINAL = {'complete', 'completed', 'cancelled'}
 _MAX_CHECKPOINT = 32 * 1024 * 1024
 _MAX_DISCOVERY = 10000
+_MAX_DETAIL_ARTIFACTS = 64
+_STUDIO_SUMMARY_FIELDS = {'schema', 'id', 'status', 'nodes', 'progress',
+                          'created', 'updated', 'error'}
+_UNKNOWN_DETAILS = ('Detailed metadata is unavailable for this checkpoint. '
+                    'Unknown values do not authorize execution or output reuse.')
 _LOCATIONS = {
     'studio': ('state/studio/jobs', '*/job.json'),
     'assistant': ('state/assistant', '*.json'),
@@ -62,6 +67,88 @@ def _receipt_paths(base):
 
 
 @dataclass(frozen=True)
+class ResourcePlanView:
+    cpu_slots: int
+    memory_bytes: int
+    gpu_requested: bool
+    gpu_memory_bytes: int
+    disk_reservation_bytes: tuple
+    exclusive_device_count: int
+    source_count: int | None
+    estimated_duration_seconds: float | None
+
+
+@dataclass(frozen=True)
+class ArtifactIdentityView:
+    ordinal: int
+    sha256: str
+    size: int
+
+
+@dataclass(frozen=True)
+class OperationDetails:
+    handler_schema: str | None = None
+    adapter: str | None = None
+    operation_plan_sha256: str | None = None
+    settings_sha256: str | None = None
+    project_fingerprint: str | None = None
+    resource_plan: ResourcePlanView | None = None
+    completed_artifacts: tuple = ()
+    completed_artifact_count: int | None = None
+    omitted_artifact_count: int | None = None
+    restore_requires_new_output: bool | None = None
+    note: str = _UNKNOWN_DETAILS
+
+
+def _studio_details(data, checkpoint):
+    """Project typed stored declarations without opening their referenced paths."""
+    if type(data.get('schema')) is not int:
+        raise ResourceStateError('Invalid production checkpoint schema.')
+    # Historical dashboard-only summaries carry no canonical detail envelope.
+    # A partially present canonical envelope must not fall back to this case.
+    if set(data) <= _STUDIO_SUMMARY_FIELDS:
+        return OperationDetails()
+    from ..backup_producers import validate
+    from ..studio.render import ENGINE_SCHEMA
+    try:
+        validate(None, checkpoint, data)
+    except (ValueError, TypeError, KeyError, OverflowError, OSError):
+        raise ResourceStateError(
+            'Saved production details failed their canonical checks; open Studio to review.') from None
+
+    plan = data.get('resource_plan')
+    resources = None
+    if plan is not None:
+        request = plan['request']
+        disks = ((request['disk_bytes'],) if request['disk_path'] is not None else ())
+        disks += tuple(size for _, size in request['additional_disks'])
+        resources = ResourcePlanView(request['cpu_slots'], request['memory_bytes'],
+            request['gpu_device'] is not None, request['gpu_memory_bytes'], disks,
+            len(request['devices']), len(plan['source_sha256']) if 'source_sha256' in plan else None,
+            plan.get('estimated_duration'))
+    identities, count, omitted = (), None, None
+    if data['status'] == 'complete':
+        rows = data['artifacts']
+        count = len(rows)
+        identities = tuple(ArtifactIdentityView(index + 1, row['sha256'], row['size'])
+            for index, row in enumerate(rows[:_MAX_DETAIL_ARTIFACTS]))
+        omitted = count - len(identities)
+    note = ('The handler identifies the current canonical production reader. '
+            'Other details are stored declarations; artifact bytes and current assets were not checked. '
+            'Resource budgets are declarations, not measured use. '
+            'No selected backend identity or separate settings digest is recorded.')
+    if 'operation_sha256' not in data:
+        note += ' This historical record has no saved operation-plan digest.'
+    if data.get('restore_requires_new_output'):
+        note += ' Its restore marker requires review of a new output in Studio.'
+    return OperationDetails(handler_schema=ENGINE_SCHEMA,
+        operation_plan_sha256=data.get('operation_sha256'), project_fingerprint=data['fingerprint'],
+        resource_plan=resources, completed_artifacts=identities,
+        completed_artifact_count=count, omitted_artifact_count=omitted,
+        restore_requires_new_output=data.get('restore_requires_new_output'), note=note)
+
+
+@dataclass(frozen=True)
 class OperationView:
     kind: str
     id: str
@@ -74,6 +161,7 @@ class OperationView:
     controls: tuple
     checkpoint: str
     live: bool | None = None
+    details: OperationDetails = field(default_factory=OperationDetails)
 
     @property
     def key(self):
@@ -141,15 +229,17 @@ class OperationFacade:
         if kind == 'translation' and data.get('kind') != 'translation/1':
             raise ResourceStateError('Unsupported translation checkpoint.')
         status = data.get('state') if kind == 'import' else data.get('status')
-        if status not in _STATES:
+        if not isinstance(status, str) or status not in _STATES:
             raise ResourceStateError('Unknown saved operation state; inspect its canonical service.')
         workspace = data.get('workspace') if kind in ('assistant', 'import', 'asr-receipts') else None
         if workspace is not None and (not isinstance(workspace, str) or not workspace or len(workspace) > 200):
             raise ResourceStateError('Invalid saved operation workspace.')
         completed = total = None
+        details = OperationDetails()
         if kind == 'studio':
             if not isinstance(data.get('nodes'), dict):
                 raise ResourceStateError('Invalid production checkpoint nodes.')
+            details = _studio_details(data, path.relative_to(self.root).as_posix())
             completed = len(data['nodes'])
             phase = 'Stored production checkpoint; accepted nodes'
         elif kind == 'assistant':
@@ -191,7 +281,8 @@ class OperationFacade:
         if not isinstance(updated, str) or len(updated) > 128 or any(ord(char) < 32 for char in updated):
             raise ResourceStateError('Invalid operation update time.')
         return OperationView(kind, identity, workspace, status, completed, total, phase, updated,
-                             self._controls(kind, status), path.relative_to(self.root).as_posix())
+                             self._controls(kind, status), path.relative_to(self.root).as_posix(),
+                             details=details)
 
     def _live(self, values):
         if self.broker is None:

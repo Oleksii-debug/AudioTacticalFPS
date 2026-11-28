@@ -120,3 +120,53 @@ def test_native_snapshot_rejects_changed_operation_before_publication(tmp_path, 
         create_backup(app, folder)
     assert not folder.exists()
     assert path.read_bytes() == raw
+
+
+@pytest.mark.parametrize('flat', [False, True], ids=['native-format5', 'legacy-flat4'])
+@pytest.mark.parametrize('legacy', [False, True], ids=['bound-operation', 'historical-operation'])
+def test_restored_facade_details_are_passive_and_keep_new_output_review(
+        tmp_path, monkeypatch, flat, legacy):
+    from carr_library.audio import AudioBudget
+    from carr_library.operations import OperationFacade, ResourceBroker
+    from carr_library.studio.project import Project
+    from carr_library.ui.operations_dialog import operation_details_text
+
+    app, _, service, identity, path, saved = prepared(tmp_path, legacy)
+    project = Project.from_dict(saved['project'])
+    _, plan = service._resource_plan(project, saved,
+                                    SimpleNamespace(budget=AudioBudget(threads=1)))
+    saved['resource_plan'] = plan
+    service._save(saved)
+    original = path.read_bytes()
+    folder = tmp_path / 'details-backup'
+    manifest, digest = snapshot(app, folder, flat)
+    assert manifest['version'] == (4 if flat else 5) and manifest['schema_version'] == 6
+    target = restore_backup(folder, tmp_path / 'details-restored', digest)
+    relative = path.relative_to(app.root)
+    restored_bytes = (target / relative).read_bytes()
+    restored_app = LibraryApp(target)
+    reopened = ProductionService(target / 'state/studio', voices=InventoryOnly())
+    def forbidden(*args, **kwargs):
+        pytest.fail('Passive restored detail projection acquired runtime authority.')
+    monkeypatch.setattr(reopened, '_runtime', forbidden)
+    monkeypatch.setattr(reopened, '_verify_artifacts', forbidden)
+    with monkeypatch.context() as guard:
+        guard.setattr(ResourceBroker, '__init__', forbidden)
+        view = OperationFacade(restored_app, studio=reopened).get('studio', identity)
+        rendered = operation_details_text(view)
+    details = view.details
+    assert view.status == 'pending' and view.live is None
+    assert details.operation_plan_sha256 == (None if legacy else saved['operation_sha256'])
+    assert details.project_fingerprint == saved['fingerprint']
+    assert details.adapter is details.settings_sha256 is None
+    assert details.resource_plan.cpu_slots == plan['request']['cpu_slots']
+    assert details.restore_requires_new_output is True
+    assert details.completed_artifact_count is details.omitted_artifact_count is None
+    assert 'requires review of a new output' in details.note
+    assert 'Saved restore marker requires a new output: Yes' in rendered
+    assert str(target) not in rendered and str(Path(saved['destination'])) not in rendered
+    with pytest.raises(ValueError, match='requires a new output'):
+        reopened.run(identity)
+    assert (target / relative).read_bytes() == restored_bytes
+    assert path.read_bytes() == (folder / relative).read_bytes() == original
+    assert not Path(saved['destination']).exists()

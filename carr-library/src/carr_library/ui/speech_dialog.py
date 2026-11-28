@@ -9,6 +9,7 @@ from ..speech import ReadingDocument, SpeechSettings, VoiceRegistry
 from ..speech.player import WavePlayer
 from ..speech.progress_speech import activate_progress_voice, play_when_quiet
 from ..speech.session import ReaderDraftStore, ReaderResume
+from ..speech.synthesis_admission import ReaderSynthesisRequest, defer_synthesis_files
 from .reader_playback import ReaderPlaybackControls, show_reader_playback
 from .reader_transport import ReaderPlaybackSession
 from .reader_navigation import ReaderNavigation
@@ -32,6 +33,7 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
     executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix='local-speech')
     cancel = threading.Event()
     audio_files = TemporaryDirectory(prefix='research-reader-')
+    synthesis_requests = []
     player = WavePlayer()
     reader_library = getattr(parent, 'library', None)
     reader_root = getattr(reader_library, 'root', None)
@@ -516,6 +518,7 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
             if document.text[render_start:render_end] != content:
                 raise ValueError('The native reading selection changed. Select it again.')
             render_document, render_signature = document, document._signature()
+            render_registry = registry
             voice = voices[selected]
             settings = synthesis_controls.settings(rate.GetValue(), volume.GetValue(), voice)
             playback_generation += 1
@@ -523,6 +526,35 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
             if progress is not None:
                 progress.refresh_audio_state()
             output = destination or (Path(audio_files.name) / (uuid4().hex + '.wav'))
+            render_generation = playback_generation
+
+            def synthesis_cancelled():
+                # Plain captured state only: the worker never reads wx controls.
+                return (cancel.is_set() or not alive or dialog_destroyed
+                    or render_generation != playback_generation
+                    or getattr(parent, '_closing', False)
+                    or getattr(parent, 'library', None) is not reader_library
+                    or getattr(reader_library, 'root', None) != reader_root)
+
+            def admitted(*, rendering):
+                # ReaderSynthesisRequest dispatches this bounded check onto this
+                # window's owner thread after resource and runtime validation.
+                playback_guard()
+                sync_document()
+                if (registry is not render_registry or document is not render_document
+                        or document._signature() != render_signature
+                        or document.text[render_start:render_end] != content):
+                    raise ValueError('The reading copy changed while waiting for speech. Read it again.')
+                current_index = voice_choice.GetSelection()
+                current_voice = voices[current_index] if 0 <= current_index < len(voices) else None
+                if (current_voice != voice
+                        or synthesis_controls.settings(rate.GetValue(), volume.GetValue(), current_voice) != settings):
+                    raise ValueError('The native voice request changed while waiting. Read with the current settings.')
+                report('Rendering locally. F8 cancels. Original text is unchanged.' if rendering else
+                       'Preparing local speech. F8 cancels.')
+
+            request = ReaderSynthesisRequest(render_registry, voice, settings, root=reader_root,
+                cancelled=synthesis_cancelled, dispatch=wx.CallAfter, verify=admitted)
 
             def rendered(result):
                 nonlocal last_audio, last_reading_audio
@@ -558,9 +590,11 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
                 else:
                     report(f'WAV saved: {result.path}. Duration {result.duration_seconds:.1f} seconds; '
                            f'{result.sample_rate} Hz; {result.channels} channels.', focus=True)
-            report('Rendering locally. F8 cancels. Original text is unchanged.')
-            run(lambda: registry.synthesize(content, voice.id, output,
-                                            settings=settings, cancelled=cancel.is_set), rendered)
+            report('Preparing local speech. F8 cancels.')
+            if run(lambda: request.run(content, output), rendered):
+                synthesis_requests[:] = [previous for previous in synthesis_requests
+                    if not previous.finished or any(not owner.quiescent for owner in previous.cleanup_owners)]
+                synthesis_requests.append(request)
         except Exception as exc:
             report(str(exc), focus=True)
 
@@ -1268,14 +1302,36 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
                     retained = []
                     parent._reader_listening_retained = retained
                 retained.append(playback_session)
-            removed = False
+            removed, deferred = False, False
             if silence_confirmed and worker_finished:
                 try:
-                    audio_files.cleanup()
-                    removed = True
+                    if any(not owner.quiescent for request in synthesis_requests
+                           for owner in request.cleanup_owners):
+                        retained = getattr(parent, '_reader_playback_retained', None)
+                        if not isinstance(retained, list):
+                            retained = []
+                            parent._reader_playback_retained = retained
+                        pair = (player, audio_files)
+                        retained.append(pair)
+                        deferred = True
+
+                        def release_synthesis_files():
+                            # Existing native owner callbacks can run off the
+                            # GUI thread. Keep this release strictly file-only.
+                            audio_files.cleanup()
+                            try:
+                                retained.remove(pair)
+                            except ValueError:
+                                pass
+
+                        defer_synthesis_files(tuple(synthesis_requests), release_synthesis_files)
+                        notices.append('Temporary reading audio is retained until native synthesis cleanup is confirmed.')
+                    else:
+                        audio_files.cleanup()
+                        removed = True
                 except (OSError, RuntimeError) as exc:
                     notices.append(f'Temporary reading audio could not be removed: {exc}')
-            if not removed:
+            if not removed and not deferred:
                 # A failed MCI close can leave its WAV open. Keep its private
                 # directory alive with the application instead of deleting an
                 # uncertain transport's input or losing its cleanup handle.

@@ -33,7 +33,13 @@ class ClipDialog(wx.Dialog):
         self._unregister_cleanup = lambda: None
         self.player = None
         self.playback_generation = 0
+        self._preview_binding = self._preview_path = self._preview_session = None
+        self._repeat_pending = False
+        self._repeat_sequence = 0
+        self._preview_timer = None
+        self._preview_gui_thread = threading.get_ident()
         self.previews = []
+        self.pending = self.closing = self.closed = False
         try:
             self._unregister_cleanup = frame.register_worker_cleanup(self._close_editor)
         except Exception:
@@ -42,7 +48,6 @@ class ClipDialog(wx.Dialog):
         self.projects = ()
         self.project = None
         self.recovery_notices = {}
-        self.pending = self.closing = self.closed = False
         self.Bind(wx.EVT_WINDOW_DESTROY, self._owner_destroyed)
         self.controls = []
         body = wx.ScrolledWindow(self, style=wx.VSCROLL)
@@ -85,6 +90,10 @@ class ClipDialog(wx.Dialog):
             value='Choose a project or create one. No audio starts automatically.',
             style=wx.TE_READONLY | wx.TE_MULTILINE, size=(-1, 70))
         self.controls.remove(self.status)
+        self.loop_status = field('Clip loop preview status', wx.TextCtrl,
+            value='Loop off. Start a preview explicitly, then choose Loop current preview.',
+            style=wx.TE_READONLY)
+        self.controls.remove(self.loop_status)
         self.buttons = {}
         for items in (
             (('new', '&New project', self.new), ('reload', 'Re&load projects', self.reload),
@@ -102,6 +111,8 @@ class ClipDialog(wx.Dialog):
              ('master_effects', 'Master effects...', self.master_effects)),
             (('dry_preview', 'Preview without clip effects', self.preview_dry),
              ('sample_rate', 'Set master sample rate', self.set_sample_rate)),
+            (('loop', 'Loop current preview', self.enable_loop),
+             ('loop_off', 'Disable preview loop', self.disable_loop)),
             (('stop', 'S&top playback', self.stop), ('cancel', 'Cancel operation', self.cancel),
              ('close', '&Close', self.close))):
             row = wx.BoxSizer(wx.HORIZONTAL)
@@ -122,28 +133,45 @@ class ClipDialog(wx.Dialog):
         self.clip_choice.Bind(wx.EVT_CHOICE, self.select_clip)
         self.Bind(wx.EVT_CLOSE, self.close)
         self.Bind(wx.EVT_CHAR_HOOK, self.key)
+        self._preview_timer = wx.Timer(self)
+        self.Bind(wx.EVT_TIMER, self.poll_preview, self._preview_timer)
         self._enable()
 
     def _owner_destroyed(self, event):
-        if event.GetId() == self._window_id and not self._native_destroyed:
-            # The original wx wrapper can already be invalid. Read only the
-            # captured ID and Python state; never call this dying window.
-            self._native_destroyed = True
-            self.closed = self.closing = True
-            self.playback_generation += 1
-            if self.pending:
-                self.frame.cancel_event.set()
-            if not self._editor_closed:
+        try:
+            if event.GetId() == self._window_id and not self._native_destroyed:
+                # The original wx wrapper can already be invalid. Revoke the
+                # queued actions using captured identity and Python state first.
+                self._native_destroyed = True
+                self.closed = self.closing = True
+                self.playback_generation += 1
+                self._repeat_sequence += 1
+                self._repeat_pending = False
+                self._preview_binding = self._preview_path = self._preview_session = None
                 try:
-                    # The same executor places release behind active work.
-                    # If shutdown cancels this ordinary Future, the existing
-                    # registered finalizer still owns the exact same release.
-                    self._destroy_cleanup_future = self.frame.executor.submit(self._close_editor)
+                    self._stop_preview_timer()
                 except RuntimeError:
-                    # Shutdown already captured the registered owner. Do not
-                    # close an active worker's service on the GUI thread.
+                    # wx can have disposed the timer before the owner event.
+                    # Revoked callbacks cannot touch audio or dying controls.
                     pass
-        event.Skip()
+                finally:
+                    # A queued timer notification may still arrive. It must not
+                    # retry a disposed native timer after this destruction event.
+                    self._preview_timer = None
+                    if self.pending:
+                        self.frame.cancel_event.set()
+                    if not self._editor_closed:
+                        try:
+                            # The same executor places release behind active work.
+                            # If shutdown cancels this ordinary Future, the existing
+                            # registered finalizer still owns the exact same release.
+                            self._destroy_cleanup_future = self.frame.executor.submit(self._close_editor)
+                        except RuntimeError:
+                            # Shutdown already captured the registered owner. Do not
+                            # close an active worker's service on the GUI thread.
+                            pass
+        finally:
+            event.Skip()
 
     def _project_recovery_notice(self, project):
         # Only the existing worker calls this bounded passive metadata reader.
@@ -178,8 +206,11 @@ class ClipDialog(wx.Dialog):
         for control in self.controls:
             control.Enable(not self.pending)
         for name, button in self.buttons.items():
-            button.Enable(name in ('close', 'stop') or (name == 'cancel' and self.pending)
-                          or (name != 'cancel' and not self.pending))
+            if name in ('loop', 'loop_off'):
+                button.Enable(not self.pending and self._preview_binding is not None)
+            else:
+                button.Enable(name in ('close', 'stop') or (name == 'cancel' and self.pending)
+                              or (name != 'cancel' and not self.pending))
 
     def cancelled(self):
         return (self.frame.cancel_event.is_set() or self.closed or self.closing
@@ -602,28 +633,186 @@ class ClipDialog(wx.Dialog):
         except (ValueError, OSError) as exc:
             self.message(exc)
 
+    def _stop_preview_timer(self):
+        # The registered editor finalizer can run on the existing worker.
+        # It revokes Python state immediately; only the GUI thread touches wx.
+        if (self._preview_timer is not None
+                and threading.get_ident() == self._preview_gui_thread):
+            self._preview_timer.Stop()
+
+    def _loop_message(self, text):
+        if (not self.closed and not self._native_destroyed
+                and not getattr(self.frame, '_closing', False)
+                and threading.get_ident() == self._preview_gui_thread
+                and hasattr(self, 'loop_status')):
+            self.loop_status.ChangeValue(str(text))
+            for name in ('loop', 'loop_off'):
+                button = getattr(self, 'buttons', {}).get(name)
+                if button is not None:
+                    button.Enable(not self.pending and self._preview_binding is not None)
+
+    def _preview_current(self, generation, binding, session=None):
+        if (self.closed or self.closing or self._native_destroyed or self._editor_closed
+                or getattr(self.frame, '_closing', False) or self.cancelled()
+                or generation != self.playback_generation
+                or self.project is None):
+            return False
+        # These are the captured immutable Project/Scene/Cue objects. Avoid
+        # hashing a complete performance on every GUI timer observation.
+        try:
+            project, scene, cue = binding
+            if self.project is not project or self._scene() is not scene or self._clip() is not cue:
+                return False
+        except ValueError:
+            return False
+        return session is None or (self.player is not None
+            and self._preview_binding is binding and self._preview_path == self.player.path
+            and session == self.player.session_generation)
+
+    def _preview_failure(self, error, *, automatic=False):
+        try:
+            self.stop()
+        except Exception as close_error:
+            error = RuntimeError(f'{error} Playback closure is not confirmed: {close_error}')
+        if (not self.closed and not self._native_destroyed
+                and not getattr(self.frame, '_closing', False)):
+            self._loop_message('Loop off. ' + str(error))
+            if automatic:
+                self.status.ChangeValue(str(error))
+            else:
+                self.message(error)
+
+    def _admit_loop(self, action, *, automatic=False):
+        from ..speech.progress_speech import play_when_quiet
+        binding, session = self._preview_binding, self._preview_session
+        generation = self.playback_generation
+        if binding is None or not self._preview_current(generation, binding, session):
+            raise ValueError('Start a saved clip preview explicitly before using its loop controls.')
+        self._repeat_sequence += 1
+        sequence = self._repeat_sequence
+        self._repeat_pending = True
+        if not self._preview_timer.Start(100):
+            raise RuntimeError('The preview loop timer could not start.')
+
+        def current():
+            return (sequence == self._repeat_sequence
+                    and self._preview_current(generation, binding, session))
+
+        def failed(error):
+            if generation == self.playback_generation and sequence == self._repeat_sequence:
+                self._preview_failure(error, automatic=automatic)
+
+        def accepted():
+            with self._editor_close_lock:
+                if not current():
+                    return
+                try:
+                    action()
+                    text = (f'Loop {"on" if self.player.repeat_enabled else "off"}; '
+                            f'{self.player.repeat_count} completed repeats. Stop ends playback.')
+                    self._loop_message(text)
+                    if not automatic:
+                        self.message(text)
+                except Exception as exc:
+                    # A native refusal can invalidate the player's own session.
+                    # Report this admitted failure before that invalidation makes
+                    # the outer quiet helper suppress a stale callback.
+                    failed(exc)
+                finally:
+                    if generation == self.playback_generation and sequence == self._repeat_sequence:
+                        self._repeat_pending = False
+                        if not self.player.repeat_enabled:
+                            self._stop_preview_timer()
+
+        progress = getattr(self.frame, 'operation_progress', None)
+        try:
+            play_when_quiet((progress,), accepted, schedule=wx.CallLater,
+                            alive=current, on_error=failed)
+        except Exception as exc:
+            failed(exc)
+
+    def enable_loop(self, event=None):
+        if (self.closed or self.closing or self._native_destroyed or self._editor_closed
+                or getattr(self.frame, '_closing', False)):
+            return
+        try:
+            if self.player is None:
+                raise ValueError('Start a preview explicitly before enabling its loop.')
+            # A short preview may have ended naturally before this button is
+            # reached. Its same binding/session remains reviewed; Stop revokes it.
+            def enable():
+                self.player.set_ab_loop(0, self.player.duration_seconds)
+                self.player.enable_repeat(True)
+            self._admit_loop(enable)
+        except Exception as exc:
+            self._preview_failure(exc)
+
+    def disable_loop(self, event=None):
+        if (self.closed or self.closing or self._native_destroyed or self._editor_closed
+                or getattr(self.frame, '_closing', False)):
+            return
+        try:
+            self._admit_loop(lambda: self.player.enable_repeat(False))
+        except Exception as exc:
+            self._preview_failure(exc)
+
+    def poll_preview(self, event=None):
+        with self._editor_close_lock:
+            if self.closed or self.closing or self._native_destroyed or self._editor_closed:
+                self._stop_preview_timer()
+                return
+            binding = self._preview_binding
+            if binding is None:
+                self._stop_preview_timer()
+                return
+            try:
+                if not self._preview_current(self.playback_generation, binding, self._preview_session):
+                    raise ValueError('The preview selection or playback session changed. Preview again to continue.')
+                if self._repeat_pending:
+                    return
+                result = self.player.poll(restart=False)
+                if result == 'repeat_due':
+                    self._admit_loop(self.player.restart_repeat, automatic=True)
+                elif result == 'error':
+                    raise RuntimeError('The playback device stopped. Preview again to start a new session.')
+                elif not self.player.repeat_enabled:
+                    self._stop_preview_timer()
+            except Exception as exc:
+                self._preview_failure(exc, automatic=True)
+
     def preview_dry(self, event=None):
         return self.preview(event, dry=True)
-
 
     def preview(self, event=None, *, dry=False):
         try:
             project, scene, cue = self.project, self._scene(), self._clip()
+            binding = (project, scene, cue)
+            # _run performs one Stop before queueing. Capture that request now:
+            # a later Stop during rendering must also revoke its queued Play.
+            generation = self.playback_generation + 1
             def play(path):
                 from ..speech.player import WavePlayer
                 from ..speech.progress_speech import play_when_quiet
                 self._remember_preview(path)
+                if not self._preview_current(generation, binding):
+                    return
                 self.player = self.player or WavePlayer()
                 progress = getattr(self.frame, 'operation_progress', None)
                 if progress is not None:
                     progress.register_player(self.player)
-                generation = self.playback_generation
-                play_when_quiet((progress,), lambda: self.player.play(path), schedule=wx.CallLater,
-                    alive=lambda: not self.closed and not self.closing and not self._editor_closed
-                        and not getattr(self.frame, '_closing', False)
-                        and self.frame.library.root == self.library_root
-                        and generation == self.playback_generation,
-                    on_error=lambda error: self.message(error))
+                def start():
+                    with self._editor_close_lock:
+                        if not self._preview_current(generation, binding):
+                            return
+                        self.player.play(path)
+                        self._preview_binding = binding
+                        self._preview_path = self.player.path
+                        self._preview_session = self.player.session_generation
+                        self._enable()
+                        self._loop_message('Loop off. Choose Loop current preview to repeat this saved range.')
+                play_when_quiet((progress,), start, schedule=wx.CallLater,
+                    alive=lambda: self._preview_current(generation, binding),
+                    on_error=lambda error: self._preview_failure(error))
                 self.message(('Previewing with clip effects bypassed. ' if dry else 'Previewing saved clip effects. ')
                              + 'Timing, gain, pan and fades are retained. Stop ends playback.')
             options = {'cancelled': self.cancelled}
@@ -637,8 +826,15 @@ class ClipDialog(wx.Dialog):
     def stop(self, event=None):
         with self._editor_close_lock:
             self.playback_generation += 1
-            if self.player is not None:
-                self.player.close()
+            self._repeat_sequence += 1
+            self._repeat_pending = False
+            self._preview_binding = self._preview_path = self._preview_session = None
+            try:
+                self._stop_preview_timer()
+            finally:
+                self._loop_message('Loop off. Start another preview explicitly.')
+                if self.player is not None:
+                    self.player.close()
 
     def cancel(self, event=None):
         if self.pending:
@@ -691,6 +887,8 @@ class ClipDialog(wx.Dialog):
             except Exception as exc:
                 self.message(f'Playback is closed, but its progress observer could not detach: {exc}')
         self.closed = True
+        if threading.get_ident() == self._preview_gui_thread:
+            self._preview_timer = None
         for path in self.previews:
             try:
                 path.unlink(missing_ok=True)

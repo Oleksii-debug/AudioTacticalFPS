@@ -1,5 +1,4 @@
 """Accessible shared job view and explicit local resource policy."""
-from dataclasses import asdict
 from concurrent.futures import ThreadPoolExecutor
 import json
 from pathlib import Path
@@ -25,6 +24,59 @@ def policy_from_fields(*, cpu, memory_mib, disk_gib, free_mib, gpu, max_leases):
     return ResourceLimits(cpu_slots=cpu, memory_bytes=memory_mib * MIB,
         disk_bytes=disk_gib * GIB, min_free_disk_bytes=free_mib * MIB,
         gpu_devices=tuple(devices), max_leases=max_leases)
+
+
+def operation_details_text(value):
+    """Format only the facade's redacted snapshot, without refreshing a producer."""
+    details = value.details
+    unknown = 'Unknown; not recorded'
+    lines = [
+        'Saved operation metadata; current output files have not been checked.',
+        'Operation: ' + value.key,
+        'Stored status: ' + value.status,
+        'Workspace: ' + (value.workspace or unknown),
+        'Saved update time: ' + (value.updated or unknown),
+        'Available controls: ' + (', '.join(value.controls) or 'None in the current context'),
+        'Phase: ' + value.phase,
+        'Recorded progress: ' + (str(value.completed) if value.completed is not None else 'Unknown') +
+            (' of ' + str(value.total) if value.total is not None else ''),
+        'Active broker reservation: ' + ('Observed' if value.live is True else 'Unknown'),
+        'Current canonical handler: ' + (details.handler_schema or unknown),
+        'Selected engine or model adapter: ' + (details.adapter or unknown),
+        'Saved operation-plan SHA-256: ' + (details.operation_plan_sha256 or unknown),
+        'Separate settings SHA-256: ' + (details.settings_sha256 or unknown),
+        'Saved project fingerprint: ' + (details.project_fingerprint or unknown),
+    ]
+    plan = details.resource_plan
+    if plan is None:
+        lines.append('Declared resource plan: ' + unknown)
+    else:
+        lines.extend([
+            'Declared CPU slots: ' + str(plan.cpu_slots),
+            'Declared memory bytes: ' + str(plan.memory_bytes),
+            'GPU requested: ' + ('Yes' if plan.gpu_requested else 'No'),
+            'Declared GPU memory bytes: ' + str(plan.gpu_memory_bytes),
+            'Declared disk reservations in bytes: ' +
+                (', '.join(str(size) for size in plan.disk_reservation_bytes) or 'None requested'),
+            'Exclusive device count: ' + str(plan.exclusive_device_count),
+            'Recorded input count: ' + (str(plan.source_count) if plan.source_count is not None else unknown),
+            'Estimated duration in seconds: ' + (str(plan.estimated_duration_seconds)
+                if plan.estimated_duration_seconds is not None else unknown),
+        ])
+    if details.completed_artifact_count is None:
+        lines.append('Completed artifact identities: Unavailable in this saved checkpoint')
+    else:
+        lines.append('Recorded completed artifact identities: showing ' +
+            str(len(details.completed_artifacts)) + ' of ' + str(details.completed_artifact_count))
+        for artifact in details.completed_artifacts:
+            lines.append('Artifact ' + str(artifact.ordinal) + ': ' + str(artifact.size) +
+                         ' bytes; SHA-256 ' + artifact.sha256)
+        lines.append('Omitted artifact identities: ' + str(details.omitted_artifact_count))
+    marker = details.restore_requires_new_output
+    lines.append('Saved restore marker requires a new output: ' +
+                 (unknown if marker is None else 'Yes' if marker else 'Recorded as no'))
+    lines.extend(['Checkpoint: ' + value.checkpoint, details.note])
+    return '\n'.join(lines)
 
 
 def show_operations(frame):
@@ -97,7 +149,7 @@ def show_operations(frame):
             return
         index = listing.GetSelection()
         if 0 <= index < len(jobs):
-            detail.ChangeValue(json.dumps(asdict(jobs[index]), ensure_ascii=False, indent=2))
+            detail.ChangeValue(operation_details_text(jobs[index]))
         controls()
 
     def begin(title, operation, done):

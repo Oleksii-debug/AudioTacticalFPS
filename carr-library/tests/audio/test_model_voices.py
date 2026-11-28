@@ -287,3 +287,57 @@ def test_script_new_roles_use_only_declared_language_defaults_and_keep_explicit_
     assert preserved.roles == result.roles
     explicit = parse_script('Text', ('explicit-user-selected-id',), language='sk')
     assert explicit.roles[0].voice_id == 'explicit-user-selected-id'
+
+
+@pytest.mark.parametrize('engine', ['piper', 'dordiai-voices'])
+def test_existing_model_identity_schema_is_unchanged_by_cancellable_validation(tmp_path, engine):
+    selected = manifest(tmp_path / engine, engine=engine)
+    registry = VoiceRegistry(config(selected) if engine == 'piper' else {
+        'include_sapi': False, 'ffmpeg': False, 'espeak_ng': False,
+        'dordiai_manifest': str(selected)})
+    registry.list_voices()
+    calls = []
+    def current():
+        calls.append(True)
+        return False
+    assert registry.runtime_identity(cancelled=current) == registry.runtime_identity()
+    assert registry.fingerprint(cancelled=current) == registry.fingerprint()
+    assert calls
+    model = registry._model_engines[engine]
+    voice = registry.list_voices()[0]
+    assert model.cache_identity(voice.id, cancelled=current) == model.cache_identity(voice.id)
+
+
+@pytest.mark.parametrize('engine', ['piper', 'dordiai-voices'])
+@pytest.mark.parametrize('boundary', ['enumeration', 'identity', 'synthesis'])
+def test_registered_model_asset_cancellation_propagates_without_unavailable_fallback(
+        tmp_path, monkeypatch, engine, boundary):
+    selected = manifest(tmp_path / engine, engine=engine)
+    registry = VoiceRegistry(config(selected) if engine == 'piper' else {
+        'include_sapi': False, 'ffmpeg': False, 'espeak_ng': False,
+        'dordiai_manifest': str(selected)})
+    voice = registry.list_voices()[0]
+    model = registry._model_engines[engine]
+    from threading import Event
+    stop = Event()
+    original, checked, workers = LocalModelManifest.verify, [], []
+    def verify(self, *, cancelled=lambda: False, **kwargs):
+        def stop_during_real_hash():
+            checked.append(True)
+            if len(checked) == 2:
+                stop.set()
+            return cancelled()
+        return original(self, cancelled=stop_during_real_hash, **kwargs)
+    monkeypatch.setattr(LocalModelManifest, 'verify', verify)
+    monkeypatch.setattr(model_voices, '_run', lambda *args, **kwargs: workers.append(args))
+    monkeypatch.setattr(model_voices.DordiaiVoicesEngine, '_stream',
+                        lambda *args, **kwargs: workers.append(args))
+    with pytest.raises(InterruptedError, match='cancelled'):
+        if boundary == 'enumeration':
+            registry.list_voices(refresh=True, cancelled=stop.is_set)
+        elif boundary == 'identity':
+            registry.fingerprint(cancelled=stop.is_set)
+        else:
+            model.synthesize('A cancelled model request.', tmp_path / 'never.wav',
+                voice=voice.id, language='uk', cancelled=stop.is_set)
+    assert len(checked) == 2 and not workers and not (tmp_path / 'never.wav').exists()

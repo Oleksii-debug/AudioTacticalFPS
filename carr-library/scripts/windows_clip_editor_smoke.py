@@ -5,6 +5,7 @@ Real Windows keyboard
 events activate buttons; a real wx event loop handles background completion.
 Physical recording devices, native file pickers and NVDA are separate gates.
 """
+import argparse
 from hashlib import file_digest, sha256
 import json
 import math
@@ -17,7 +18,17 @@ import traceback
 import wave
 
 
-def main():
+def main(argv=None):
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--loop-output-device', type=int)
+    parser.add_argument('--loop-output-identity')
+    options = parser.parse_args(argv)
+    if (options.loop_output_device is None) != (options.loop_output_identity is None):
+        parser.error('Loop playback requires both the exact output index and its reviewed identity.')
+    if options.loop_output_identity is not None and (
+            options.loop_output_device < 0 or len(options.loop_output_identity) != 64
+            or any(value not in '0123456789abcdef' for value in options.loop_output_identity)):
+        parser.error('Choose a nonnegative output index and its lower-case SHA256 identity.')
     if os.name != 'nt':
         print(json.dumps({'result': 'NOT_RUN', 'reason': 'Native Windows session required', 'nvda': 'NOT_RUN'}))
         return 77
@@ -32,6 +43,9 @@ def main():
     from carr_library.ui.desktop_app import DesktopFrame
 
     checks, errors, audio_proof = [], [], {}
+    loop_proof = {'status': 'NOT_RUN',
+        'reason': 'No exact reviewed output endpoint was supplied for loop playback.',
+        'acoustic_listening': 'NOT_RUN', 'physical_output_device': 'NOT_RUN'}
     def check(name, condition):
         if not condition:
             raise AssertionError(name)
@@ -209,6 +223,12 @@ def main():
                     check('native project choice binds saved identity', dialog.project.id == project.id)
                     check('all timing controls have readable names', all(
                         isinstance(control, wx.TextCtrl) and control.GetName() for control in dialog.fields.values()))
+                    check('native loop controls are named and require an explicit preview', all(
+                        isinstance(dialog.buttons[name], wx.Button)
+                        and dialog.buttons[name].GetName() and not dialog.buttons[name].IsEnabled()
+                        for name in ('loop', 'loop_off')))
+                    check('opening the clip editor does not start a preview loop',
+                          dialog.player is None and not dialog._preview_timer.IsRunning())
                     press(dialog.buttons['add'])
                     pump(lambda: not frame.working and not dialog.pending, 'Retaining original')
                     check('native Add retains an actual clip', len(dialog.project.scenes[0].cues) == 1)
@@ -307,6 +327,83 @@ def main():
                     pump(lambda: not frame.working and not dialog.pending, 'Saving native master sample rate')
                     check('native master sample rate preserves effect chains',
                           dialog.project.sample_rate == 48000 and dialog.project.effects == affected.effects)
+                    if options.loop_output_identity is not None:
+                        import carr_library
+                        from carr_library.speech import (player as player_module,
+                            output_devices, progress_speech, _wave_output)
+                        package_root = Path(carr_library.__file__).resolve(strict=True).parent
+                        source_root = Path(__file__).resolve(strict=True).parents[1] / 'src'
+                        module_hashes = {}
+                        for module in (ui, clips, player_module, output_devices,
+                                       progress_speech, _wave_output):
+                            loaded = Path(module.__file__).resolve(strict=True)
+                            expected = source_root.joinpath(*module.__name__.split('.')).with_suffix('.py')
+                            check('loop module belongs to the actual installed package: ' + module.__name__,
+                                  loaded.is_relative_to(package_root))
+                            check('loop module bytes are bounded: ' + module.__name__,
+                                  loaded.stat().st_size <= 2 * 1024**2
+                                  and expected.stat().st_size <= 2 * 1024**2)
+                            actual_bytes, expected_bytes = loaded.read_bytes(), expected.read_bytes()
+                            check('loop module matches the exact checked-out source: ' + module.__name__,
+                                  actual_bytes == expected_bytes)
+                            module_hashes[module.__name__] = sha256(actual_bytes).hexdigest()
+
+                        player = player_module.WavePlayer()
+                        selected, = [value for value in player.output_devices()
+                                     if value.index == options.loop_output_device]
+                        check('native loop output matches the separately reviewed exact identity',
+                              selected.identity == options.loop_output_identity)
+                        player.select_output(selected)
+                        dialog.player = player
+                        check('selecting the exact loop output does not start audio',
+                              player.path is None and player.state == 'stopped')
+                        before_project = dialog.project
+                        press(dialog.buttons['preview'])
+                        pump(lambda: not frame.working and not dialog.pending
+                             and dialog._preview_binding is not None, 'Rendering explicit native loop preview')
+                        preview_path = player.path
+                        preview_digest = sha256(preview_path.read_bytes()).hexdigest()
+                        check('first native clip preview does not enable loop automatically',
+                              not player.repeat_enabled and player.repeat_count == 0)
+                        pump(lambda: player.state == 'stopped', 'Waiting for the short preview to end naturally',
+                             timeout=8)
+                        check('loop remains keyboard available after natural completion',
+                              dialog.buttons['loop'].IsEnabled())
+                        press(dialog.buttons['loop'])
+                        pump(lambda: player.repeat_count >= 2, 'Waiting for two actual native clip repeats',
+                             timeout=8)
+                        repeats = player.repeat_count
+                        check('actual native loop keeps the exact selected output',
+                              player.output_device.identity == options.loop_output_identity
+                              and player.active_output_index == options.loop_output_device
+                              and player.repeat_enabled and player.ab_loop == (0, player.duration_seconds))
+                        check('native loop retains exact preview and project bytes',
+                              player.path == preview_path
+                              and sha256(preview_path.read_bytes()).hexdigest() == preview_digest
+                              and dialog.project is before_project
+                              and sha256(retained.read_bytes()).hexdigest() == original
+                              and sha256(source.read_bytes()).hexdigest() == original)
+                        press(dialog.buttons['loop_off'])
+                        pump(lambda: not player.repeat_enabled and not dialog._repeat_pending,
+                             'Disabling native clip loop', timeout=5)
+                        after_disable = player.repeat_count
+                        pump(lambda: player.state == 'stopped', 'Finishing the explicitly disabled loop',
+                             timeout=8)
+                        gui.Yield()
+                        check('native loop disable leaves natural completion stopped',
+                              not dialog._preview_timer.IsRunning() and player.repeat_count == after_disable)
+                        press(dialog.buttons['stop'])
+                        check('native Stop revokes loop and closes the exact playback owner',
+                              dialog._preview_binding is None and not player.repeat_enabled
+                              and not player._open and player._wave is None
+                              and not dialog._preview_timer.IsRunning()
+                              and not dialog.buttons['loop'].IsEnabled())
+                        loop_proof.update(status='PASS', reason=None, completed_repeats=repeats,
+                            output_index=options.loop_output_device,
+                            output_identity=options.loop_output_identity,
+                            preview_sha256=preview_digest, module_sha256=module_hashes,
+                            native_keyboard='PASS', fixture='synthetic retained PCM with saved clip effects')
+
                     edited = dialog.project
                     newer = editor.scene_duration(edited, edited.scenes[0].id, 2)
                     dialog.fields['pan'].ChangeValue('1')
@@ -347,7 +444,8 @@ def main():
                 native_handle.close()
     print(json.dumps({'result': 'PASS', 'checks': checks, 'native_keyboard': 'PASS',
         'fixture': 'synthetic PCM rendered by actual FFmpeg', 'audio_runtime': audio_proof, 'nvda': 'NOT_RUN',
-        'native_file_pickers': 'NOT_RUN', 'physical_microphone': 'NOT_RUN'}), flush=True)
+        'native_file_pickers': 'NOT_RUN', 'physical_microphone': 'NOT_RUN',
+        'loop_preview': loop_proof}), flush=True)
     return 0
 
 

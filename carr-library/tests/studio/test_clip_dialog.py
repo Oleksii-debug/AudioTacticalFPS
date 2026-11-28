@@ -18,7 +18,8 @@ def dialog(tmp_path):
     parsed = ast.parse(source.read_text(encoding='utf-8'))
     nodes = [node for node in parsed.body if isinstance(node, (ast.Assign, ast.ClassDef))]
     wx = SimpleNamespace(Dialog=object, ID_CANCEL=2, NOT_FOUND=-1)
-    env = dict(wx=wx, Path=Path, __name__='carr_library.ui._clips_probe', __package__='carr_library.ui')
+    env = dict(wx=wx, Path=Path, threading=threading,
+               __name__='carr_library.ui._clips_probe', __package__='carr_library.ui')
     exec(compile(ast.Module(body=nodes, type_ignores=[]), str(source), 'exec'), env)
     value = object.__new__(env['ClipDialog'])
     value.closed = value.closing = value.pending = False
@@ -32,9 +33,14 @@ def dialog(tmp_path):
     value.editor = SimpleNamespace(close=Mock())
     value.player = None
     value.playback_generation = 0
+    value._preview_binding = value._preview_path = value._preview_session = None
+    value._repeat_pending, value._repeat_sequence = False, 0
+    value._preview_timer = None
+    value._preview_gui_thread = threading.get_ident()
     value.previews = []
     value.recovery_notices = {}
     value.status = Mock()
+    value.loop_status = Mock()
     value._enable = Mock()
     value.Hide = Mock()
     value.Destroy = Mock()
@@ -720,3 +726,446 @@ def test_unreadable_recovery_notice_does_not_relabel_a_committed_project(dialog,
     accepted.assert_called_once_with(project)
     assert not dialog.pending and not dialog.closed
     assert 'Input recovery review is unavailable' in dialog.recovery_notices[project.fingerprint]
+
+
+@pytest.fixture
+def loop_preview(dialog, tmp_path, monkeypatch):
+    """Real WavePlayer policy and PCM reads; only native MCI calls are modeled."""
+    import wave
+    from carr_library.speech import player as player_module
+
+    original = tmp_path / 'original-loop.wav'
+    preview = tmp_path / 'clip-preview-loop.wav'
+    with wave.open(str(original), 'wb') as output:
+        output.setparams((1, 2, 8000, 0, 'NONE', 'not compressed'))
+        output.writeframes(b'\xe8\x03' * 2000)
+    raw = original.read_bytes()
+    preview.write_bytes(raw)
+    cue = Cue('loop-clip', str(original), duration=.25)
+    scene = Scene('loop-scene', 'Loop scene', (), cues=(cue,))
+    project = Project('loop-project', 'Loop project', (), (scene,))
+    dialog.project = project
+    dialog._scene = lambda: dialog.project.scenes[0]
+    dialog._clip = lambda: dialog._scene().cues[0]
+    dialog.editor.preview = Mock(return_value=preview)
+
+    driver = SimpleNamespace(mode='stopped', opened=[], commands=[], fail_close=False)
+    def native_open(_player, path):
+        driver.opened.append(Path(path))
+        driver.mode = 'stopped'
+    def native_command(command):
+        driver.commands.append(command)
+        operation = command.split()[0]
+        if operation == 'status':
+            return driver.mode if command.endswith(' mode') else '0'
+        if operation == 'play':
+            driver.mode = 'playing'
+        elif operation == 'pause':
+            driver.mode = 'paused'
+        elif operation == 'resume':
+            driver.mode = 'playing'
+        elif operation == 'stop':
+            driver.mode = 'stopped'
+        elif operation == 'close' and driver.fail_close:
+            raise OSError('The modeled native owner has not released the preview.')
+        return ''
+    monkeypatch.setattr(player_module, 'os', SimpleNamespace(name='nt'))
+    # Transport admission/length is separately tested by the real native gate.
+    # This controller fixture exercises one existing MCI route on both OSes.
+    monkeypatch.setattr(player_module, '_mci_filename_supported', lambda path: True)
+    monkeypatch.setattr(player_module.WavePlayer, '_mci_open', native_open)
+    monkeypatch.setattr(player_module.WavePlayer, '_mci', staticmethod(native_command))
+    player = player_module.WavePlayer()
+    dialog.player = player
+
+    class Timer:
+        running = False
+        stop_error = None
+        def Start(self, milliseconds):
+            assert threading.get_ident() == dialog._preview_gui_thread
+            assert milliseconds == 100
+            self.running = True
+            return True
+        def Stop(self):
+            assert threading.get_ident() == dialog._preview_gui_thread
+            self.running = False
+            if self.stop_error is not None:
+                raise self.stop_error
+    timer = Timer()
+    dialog._preview_timer = timer
+    ready = SimpleNamespace(value=True)
+    holds, callbacks = [], []
+
+    class Hold:
+        def __init__(self):
+            self.closed = False
+        @property
+        def ready(self):
+            return ready.value
+        def close(self):
+            assert not self.closed
+            self.closed = True
+    class Progress:
+        register_player = Mock()
+        unregister_player = Mock()
+        refresh_audio_state = Mock()
+        def hold_audio(self):
+            hold = Hold()
+            holds.append(hold)
+            return hold
+    progress = Progress()
+    dialog.frame.operation_progress = progress
+    wx = type(dialog).preview.__globals__['wx']
+    def later(milliseconds, callback):
+        assert milliseconds == 25
+        callbacks.append(callback)
+    monkeypatch.setattr(wx, 'CallLater', later, raising=False)
+
+    def flush():
+        count = 0
+        while callbacks:
+            count += 1
+            assert count <= 20, 'A revoked or admitted quiet callback kept scheduling itself.'
+            callbacks.pop(0)()
+    def begin(*, dry=False):
+        dialog.preview(dry=dry)
+        assert dialog.pending and not driver.opened
+        dialog.finish()
+    value = SimpleNamespace(dialog=dialog, player=player, driver=driver, original=original,
+                            preview=preview, raw=raw, project=project, timer=timer,
+                            ready=ready, holds=holds, callbacks=callbacks,
+                            progress=progress, flush=flush, begin=begin)
+    yield value
+    driver.fail_close = False
+    timer.stop_error = None
+    player.close()
+
+
+def test_clip_loop_requires_an_explicit_initial_preview(loop_preview):
+    state = loop_preview
+    state.dialog.enable_loop()
+    assert not state.driver.opened and not state.player.repeat_enabled
+    assert not state.timer.running and not state.dialog.calls
+    assert 'preview explicitly' in state.dialog.status.ChangeValue.call_args.args[0]
+    assert state.original.read_bytes() == state.raw
+
+
+@pytest.mark.parametrize('dry', [False, True])
+def test_clip_loop_uses_actual_player_repeat_and_quiet_admission(loop_preview, dry):
+    state, dialog = loop_preview, loop_preview.dialog
+    state.begin(dry=dry)
+    assert dialog.editor.preview.call_args.kwargs.get('dry', False) is dry
+    assert state.player.state == 'playing' and not state.player.repeat_enabled
+    assert not state.timer.running and len(state.driver.opened) == 1
+    state.progress.register_player.assert_called_once_with(state.player)
+
+    state.ready.value = False
+    dialog.enable_loop()
+    assert dialog._repeat_pending and state.timer.running
+    assert len(state.driver.opened) == 1 and len(state.callbacks) == 1
+    dialog.poll_preview()
+    assert len(state.callbacks) == 1
+    state.ready.value = True
+    state.flush()
+    assert state.player.ab_loop == (0, .25) and state.player.repeat_enabled
+    assert len(state.driver.opened) == 2 and state.player.repeat_count == 0
+    assert not dialog._repeat_pending
+    focused = dialog.status.SetFocus.call_count
+
+    for count in (1, 2):
+        state.driver.mode = 'stopped'
+        state.ready.value = False
+        before = len(state.driver.opened)
+        dialog.poll_preview()
+        assert dialog._repeat_pending and len(state.callbacks) == 1
+        dialog.poll_preview()
+        assert len(state.driver.opened) == before and len(state.callbacks) == 1
+        state.ready.value = True
+        state.flush()
+        assert len(state.driver.opened) == before + 1
+        assert state.player.repeat_count == count and state.player.state == 'playing'
+        assert dialog.status.SetFocus.call_count == focused
+
+    dialog.disable_loop()
+    assert not state.player.repeat_enabled and not state.timer.running
+    assert dialog.status.SetFocus.call_count == focused + 1
+    before = len(state.driver.opened)
+    state.driver.mode = 'stopped'
+    dialog.poll_preview()
+    assert len(state.driver.opened) == before
+    assert all(hold.closed for hold in state.holds)
+    assert state.original.read_bytes() == state.raw
+    assert state.preview.read_bytes() == state.raw
+
+
+def test_clip_natural_end_can_be_explicitly_looped_but_stop_revokes_it(loop_preview):
+    state, dialog = loop_preview, loop_preview.dialog
+    state.begin()
+    state.driver.mode = 'stopped'
+    assert state.player.state == 'stopped'
+    dialog.enable_loop()
+    assert state.player.repeat_enabled and state.player.state == 'playing'
+    assert len(state.driver.opened) == 2
+    dialog.stop()
+    before = len(state.driver.opened)
+    dialog.enable_loop()
+    assert len(state.driver.opened) == before
+    assert not state.player.repeat_enabled and not state.timer.running
+    assert dialog._preview_binding is None
+
+
+@pytest.mark.parametrize('when', ['rendering', 'waiting-for-quiet'])
+def test_clip_stop_revokes_the_first_queued_preview(loop_preview, when):
+    state, dialog = loop_preview, loop_preview.dialog
+    dialog.preview()
+    if when == 'waiting-for-quiet':
+        state.ready.value = False
+        dialog.finish()
+        assert len(state.callbacks) == 1
+    dialog.stop()
+    if when == 'rendering':
+        dialog.finish()
+    state.ready.value = True
+    state.flush()
+    assert not state.driver.opened and not state.player.repeat_enabled
+    assert not state.timer.running
+    assert state.preview in dialog.previews and state.preview.exists()
+    assert all(hold.closed for hold in state.holds)
+    dialog.close()
+    assert not state.preview.exists() and state.original.read_bytes() == state.raw
+
+
+@pytest.mark.parametrize('changed', ['project', 'clip', 'library', 'player-session', 'cancel'])
+def test_clip_loop_rechecks_the_exact_selection_before_queued_restart(loop_preview, changed):
+    from dataclasses import replace
+    state, dialog = loop_preview, loop_preview.dialog
+    state.begin()
+    dialog.enable_loop()
+    state.driver.mode = 'stopped'
+    state.ready.value = False
+    dialog.poll_preview()
+    before = len(state.driver.opened)
+    if changed == 'project':
+        dialog.project = replace(dialog.project, title='Another reviewed revision',
+                                 revision=dialog.project.revision + 1)
+    elif changed == 'clip':
+        old = dialog._clip()
+        dialog._clip = lambda: replace(old)
+    elif changed == 'library':
+        dialog.frame.library = SimpleNamespace(root=dialog.library_root / 'other-library')
+    elif changed == 'player-session':
+        state.player.stop()
+    else:
+        dialog.frame.cancel_event.set()
+    dialog.poll_preview()
+    state.ready.value = True
+    state.flush()
+    assert len(state.driver.opened) == before
+    assert not state.player.repeat_enabled and not state.timer.running
+    assert not dialog._repeat_pending and dialog._preview_binding is None
+    assert all(hold.closed for hold in state.holds)
+    assert state.original.read_bytes() == state.raw
+
+
+def test_clip_changed_preview_pcm_is_refused_by_actual_player_before_restart(loop_preview):
+    state, dialog = loop_preview, loop_preview.dialog
+    state.begin()
+    dialog.enable_loop()
+    state.driver.mode = 'stopped'
+    state.ready.value = False
+    dialog.poll_preview()
+    before = len(state.driver.opened)
+    state.preview.write_bytes(state.raw + b'changed after review')
+    state.ready.value = True
+    state.flush()
+    assert len(state.driver.opened) == before
+    assert not state.player.repeat_enabled and not state.timer.running
+    assert not dialog._repeat_pending
+    assert 'changed' in dialog.status.ChangeValue.call_args.args[0]
+    assert state.original.read_bytes() == state.raw
+    assert all(hold.closed for hold in state.holds)
+
+
+@pytest.mark.parametrize('action', ['stop', 'close'])
+def test_clip_stop_or_close_revokes_deferred_repeat_and_quiet_hold(loop_preview, action):
+    state, dialog = loop_preview, loop_preview.dialog
+    state.begin()
+    dialog.enable_loop()
+    state.driver.mode = 'stopped'
+    state.ready.value = False
+    dialog.poll_preview()
+    before = len(state.driver.opened)
+    getattr(dialog, action)()
+    state.ready.value = True
+    state.flush()
+    assert len(state.driver.opened) == before and not state.player._open
+    assert not state.player.repeat_enabled and not state.timer.running
+    assert not dialog._repeat_pending and all(hold.closed for hold in state.holds)
+    assert state.preview.exists() is (action == 'stop')
+    assert state.original.read_bytes() == state.raw
+
+
+def test_clip_failed_device_close_keeps_owner_but_disarms_loop(loop_preview):
+    state, dialog = loop_preview, loop_preview.dialog
+    state.begin()
+    dialog.enable_loop()
+    state.driver.fail_close = True
+    dialog.close()
+    assert not dialog.closed and not dialog._editor_closed
+    assert not state.player.repeat_enabled and not state.timer.running
+    assert state.player._open and state.preview.exists()
+    dialog.editor.close.assert_not_called()
+    state.driver.fail_close = False
+    dialog.close()
+    assert dialog.closed and dialog._editor_closed and not state.player._open
+    assert not state.preview.exists() and state.original.read_bytes() == state.raw
+
+
+@pytest.mark.parametrize('deleted_timer', [False, True])
+def test_clip_destroy_revokes_repeat_before_retained_worker_cleanup(loop_preview, deleted_timer):
+    from carr_library.ui.worker_lifetime import DesktopExecutor
+    state, dialog = loop_preview, loop_preview.dialog
+    executor = DesktopExecutor()
+    dialog.frame.executor = executor
+    dialog._unregister_cleanup = executor.register_cleanup(dialog._close_editor)
+    state.begin()
+    dialog.enable_loop()
+    state.driver.mode = 'stopped'
+    state.ready.value = False
+    dialog.poll_preview()
+    before = len(state.driver.opened)
+    if deleted_timer:
+        state.timer.stop_error = RuntimeError('The native timer wrapper has been deleted.')
+    _invalidate_native_wrapper(dialog)
+    dialog.loop_status.ChangeValue.reset_mock()
+    dialog.loop_status.ChangeValue.side_effect = AssertionError('Destroyed loop status was touched.')
+    event = SimpleNamespace(GetId=lambda: dialog._window_id, Skip=Mock())
+    try:
+        dialog._owner_destroyed(event)
+        event.Skip.assert_called_once_with()
+        dialog._destroy_cleanup_future.result(5)
+        state.ready.value = True
+        state.flush()
+        dialog.poll_preview()  # Already queued GUI notification after Destroy.
+        assert len(state.driver.opened) == before and not state.player._open
+        assert dialog._native_destroyed and dialog._editor_closed
+        assert dialog._preview_timer is None and not state.timer.running
+        assert not state.preview.exists() and state.original.read_bytes() == state.raw
+        assert all(hold.closed for hold in state.holds)
+        dialog.loop_status.ChangeValue.assert_not_called()
+    finally:
+        executor.shutdown(wait=True, cancel_futures=True)
+
+
+def test_clip_host_finalizer_revokes_timer_work_without_worker_wx_calls(loop_preview):
+    from concurrent.futures import ThreadPoolExecutor
+    state, dialog = loop_preview, loop_preview.dialog
+    state.begin()
+    dialog.enable_loop()
+    before = len(state.driver.opened)
+    dialog.frame._closing = True
+    with ThreadPoolExecutor(max_workers=1) as executor:
+        executor.submit(dialog._close_editor).result(5)
+    assert dialog._editor_closed and not state.player._open
+    assert dialog._preview_binding is None
+    # Only the GUI notification may touch its timer; Timer asserts its thread.
+    dialog.poll_preview()
+    assert not state.timer.running and len(state.driver.opened) == before
+    assert not state.preview.exists() and state.original.read_bytes() == state.raw
+
+
+def test_clip_cleanup_registration_failure_keeps_original_error_and_closes_editor(tmp_path):
+    import carr_library
+    source = Path(carr_library.__file__).parent / 'ui/studio_clips.py'
+    parsed = ast.parse(source.read_text(encoding='utf-8'))
+    nodes = [node for node in parsed.body if isinstance(node, (ast.Assign, ast.ClassDef))]
+    class NativeDialog:
+        def __init__(self, *args, **kwargs):
+            pass
+        def GetId(self):
+            return 451
+    wx = SimpleNamespace(Dialog=NativeDialog, DEFAULT_DIALOG_STYLE=0, RESIZE_BORDER=0)
+    env = dict(wx=wx, Path=Path, threading=threading,
+               __name__='carr_library.ui._clips_registration', __package__='carr_library.ui')
+    exec(compile(ast.Module(body=nodes, type_ignores=[]), str(source), 'exec'), env)
+    original = RuntimeError('The existing host cleanup registration failed.')
+    callbacks = []
+    def refused(callback):
+        callbacks.append(callback)
+        raise original
+    frame = SimpleNamespace(library=SimpleNamespace(root=tmp_path),
+                            register_worker_cleanup=refused)
+    editor = SimpleNamespace(close=Mock())
+    with pytest.raises(RuntimeError) as raised:
+        env['ClipDialog'](frame, editor=editor)
+    assert raised.value is original
+    editor.close.assert_called_once_with()
+    assert len(callbacks) == 1 and callbacks[0].__self__._editor_closed
+    assert callbacks[0].__self__._preview_timer is None
+
+
+
+def test_clip_timer_start_refusal_cannot_arm_an_unobserved_loop(loop_preview, monkeypatch):
+    state, dialog = loop_preview, loop_preview.dialog
+    state.begin()
+    before = len(state.driver.opened)
+    monkeypatch.setattr(state.timer, 'Start', lambda milliseconds: False)
+    dialog.enable_loop()
+    assert len(state.driver.opened) == before
+    assert not state.player.repeat_enabled and not state.player._open
+    assert not state.timer.running and not dialog._repeat_pending
+    assert 'timer could not start' in dialog.status.ChangeValue.call_args.args[0]
+    assert state.preview.exists() and state.original.read_bytes() == state.raw
+
+
+def test_clip_normal_timer_stop_error_still_closes_native_audio_and_stays_visible(loop_preview):
+    state, dialog = loop_preview, loop_preview.dialog
+    state.begin()
+    dialog.enable_loop()
+    state.timer.stop_error = RuntimeError('The live timer stop failed.')
+    with pytest.raises(RuntimeError, match='live timer stop failed'):
+        dialog.stop()
+    assert not state.player.repeat_enabled and not state.player._open
+    assert dialog._preview_binding is None and not dialog._repeat_pending
+    assert not dialog.closed and state.preview.exists()
+    assert state.original.read_bytes() == state.raw
+
+
+@pytest.mark.parametrize('action', ['enable_loop', 'disable_loop'])
+@pytest.mark.parametrize('lifetime', ['close', 'destroy'])
+def test_clip_queued_loop_events_after_close_never_observe_or_touch_retained_player(
+        loop_preview, monkeypatch, action, lifetime):
+    from carr_library.ui.worker_lifetime import DesktopExecutor
+    state, dialog = loop_preview, loop_preview.dialog
+    state.begin()
+    dialog.enable_loop()
+    executor = None
+    try:
+        if lifetime == 'close':
+            dialog.close()
+        else:
+            executor = DesktopExecutor()
+            dialog.frame.executor = executor
+            dialog._unregister_cleanup = executor.register_cleanup(dialog._close_editor)
+            event = SimpleNamespace(GetId=lambda: dialog._window_id, Skip=Mock())
+            dialog._owner_destroyed(event)
+            dialog._destroy_cleanup_future.result(5)
+            event.Skip.assert_called_once_with()
+        assert dialog.closed and dialog._editor_closed and not state.player._open
+        observed = []
+        def forbidden_state(_player):
+            observed.append('state')
+            raise AssertionError('A queued event observed the closed playback owner.')
+        def forbidden_close():
+            observed.append('close')
+            raise AssertionError('A queued event retried the closed playback owner.')
+        with monkeypatch.context() as late:
+            late.setattr(type(state.player), 'state', property(forbidden_state))
+            late.setattr(state.player, 'close', forbidden_close)
+            getattr(dialog, action)()
+            dialog.poll_preview()
+        assert observed == []
+        assert not state.preview.exists() and state.original.read_bytes() == state.raw
+    finally:
+        if executor is not None:
+            executor.shutdown(wait=True, cancel_futures=True)

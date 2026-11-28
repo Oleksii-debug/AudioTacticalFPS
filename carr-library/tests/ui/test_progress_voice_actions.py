@@ -150,7 +150,7 @@ def reader(tmp_path, monkeypatch):
         source_status=Mock(), sync_document=lambda: None, save_project=lambda: True,
         dialog=Mock(), autosave_timer=Mock(), transport=Mock(), playback_guard=Mock(),
         executor=Mock(), audio_files=Mock(), keyboard=Mock(), output_controls=Mock(),
-        unregister_save=Mock(), detach_reader=Mock())
+        unregister_save=Mock(), detach_reader=Mock(), synthesis_requests=[])
     # The production finally block owns the existing listening adapter too.
     # Keep its real close/drain state machine with this fixture's same borrowed
     # player/worker; do not replace or remove cleanup calls from the extraction.

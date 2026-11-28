@@ -45,8 +45,18 @@ def observed(monkeypatch):
             process._stop_owned(child)
 
 
-def run(code, **options):
-    return process.run_process([sys.executable, '-I', '-B', '-c', code],
+def run(code, *, direct_stdio=False, **options):
+    executable = sys.executable
+    if direct_stdio and os.name == 'nt':
+        # CPython's Windows venv redirector retains duplicate stdout/stderr
+        # handles while waiting for its child. Only these stdlib-only fixtures
+        # need to close the actual owned leader's pipes before that leader exits.
+        # Product workers and every other test retain the selected interpreter.
+        executable = getattr(sys, '_base_executable', None)
+        assert sys.implementation.name == 'cpython'
+        assert isinstance(executable, str) and Path(executable).is_absolute()
+        assert Path(executable).is_file(), 'The active CPython base executable is unavailable.'
+    return process.run_process([executable, '-I', '-B', '-c', code],
         owned_tree=True, budget=process.AudioBudget(timeout=5, reserve_disk_bytes=0,
                                                    **options.pop('budget_options', {})),
         **options)
@@ -263,12 +273,23 @@ def join_readers(tracked):
 
 def gated_code(tmp_path, *, early_eof=False, stderr_bytes=0, exit_code=0):
     ready, release = tmp_path / 'worker-ready', tmp_path / 'release-worker'
+    if early_eof:
+        # Publish a closed complete PID marker, never a just-created empty file.
+        marker = ready.with_name(ready.name + '.pending')
+        readiness = ('marker = Path(' + repr(str(marker)) + ')\n'
+                     'marker.write_bytes(str(os.getpid()).encode("ascii"))\n'
+                     'os.replace(marker, ' + repr(str(ready)) + ')\n')
+    else:
+        readiness = 'Path(' + repr(str(ready)) + ').write_bytes(b"ready")\n'
     code = (
         'from pathlib import Path\n'
         'import os,time\n'
-        + ('os.close(1)\nos.close(2)\n' if early_eof else '')
-        + 'Path(' + repr(str(ready)) + ').write_bytes(b"ready")\n'
-        'release = Path(' + repr(str(release)) + ')\n'
+        + ('import sys\n'
+           + 'assert (sys.implementation.name, sys.version_info[:3], sys.maxsize) == '
+           + repr((sys.implementation.name, sys.version_info[:3], sys.maxsize)) + '\n'
+           + 'os.close(1)\nos.close(2)\n' if early_eof else '')
+        + readiness
+        + 'release = Path(' + repr(str(release)) + ')\n'
         'while not release.exists():\n'
         '    time.sleep(.005)\n'
         + ('os.write(2, b"x" * ' + str(stderr_bytes) + ')\n' if stderr_bytes else '')
@@ -327,6 +348,7 @@ def test_early_eof_waits_for_actual_exit_before_freezing_deadline(observed, monk
         calls.append(threading.get_ident())
         if len(calls) == 1:
             wait_for_file(ready)
+            assert int(ready.read_bytes()) == observed.children[0].pid
             assert entered.wait(10)
             assert observed.children[0].poll() is None
             release.write_bytes(b'exit only after an actual reader wait started')
@@ -334,7 +356,7 @@ def test_early_eof_waits_for_actual_exit_before_freezing_deadline(observed, monk
             observed.offset += 6.0
         return False
 
-    result = run(code, cancelled=review)
+    result = run(code, direct_stdio=True, cancelled=review)
     assert result.returncode == 0 and result.stdout == result.stderr == b''
     assert result.elapsed >= 6.0 and tracked.waits
     assert closed(observed).returncode == 0
@@ -358,13 +380,14 @@ def test_closed_diagnostic_pipes_do_not_stop_a_live_child_deadline(
             return False
         calls.append(threading.get_ident())
         wait_for_file(ready)
+        assert int(ready.read_bytes()) == observed.children[0].pid
         assert entered.wait(10)
         assert observed.children[0].poll() is None
         observed.offset += 6.0
         return False
 
     with pytest.raises(process.AudioError, match='time allowance'):
-        run(code, cancelled=review)
+        run(code, direct_stdio=True, cancelled=review)
     assert len(calls) == 1 and tracked.waits and not release.exists()
     closed(observed)
 
@@ -657,17 +680,19 @@ def test_native_cleanup_waits_for_inflight_eof_wait_before_closing_process_handl
         return actual_stop(child)
 
     monkeypatch.setattr(process, '_stop_owned', stop)
-    _, _, code = gated_code(tmp_path, early_eof=True)
+    ready, _, code = gated_code(tmp_path, early_eof=True)
 
     def cancel():
         if not observed.children:
             return False
+        wait_for_file(ready)
+        assert int(ready.read_bytes()) == observed.children[0].pid
         assert entered.wait(10)
         return True
 
     def execute():
         try:
-            run(code, cancelled=cancel)
+            run(code, direct_stdio=True, cancelled=cancel)
         except BaseException as error:
             failures.append(error)
 

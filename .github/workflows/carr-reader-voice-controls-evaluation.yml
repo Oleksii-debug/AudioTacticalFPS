@@ -132,6 +132,26 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           "CARR_TEST_WHEEL=$($wheels[0].FullName)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
+      - name: Prepare actual portable speech for registered Studio voice contracts
+        if: ${{ !cancelled() && runner.os == 'Linux' && steps.installed.outcome == 'success' }}
+        shell: bash
+        timeout-minutes: 5
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install --no-install-recommends -y ffmpeg
+          ffmpeg -version
+
+      - name: Prepare the existing pinned Windows speech runtime
+        if: ${{ !cancelled() && runner.os == 'Windows' && steps.installed.outcome == 'success' }}
+        timeout-minutes: 5
+        run: |
+          $speechRuntime = Join-Path $env:RUNNER_TEMP 'carr-reader-voice-audio'
+          & $env:CARR_PYTHON -I -B -X utf8 packaging/prepare_windows_audio.py --output $speechRuntime --download | Tee-Object ci-reader-voice-results/audio-runtime.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          (Join-Path $speechRuntime 'bin') | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          "CARR_AUDIO_RUNTIME=$speechRuntime" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
       - name: Prove complete source wheel and installed Python identity
         id: inventory
         if: ${{ !cancelled() && steps.installed.outcome == 'success' }}
@@ -164,7 +184,7 @@ jobs:
           assert metadata.version(support_name) == support_version
           if sys.platform == 'win32':
               assert metadata.version('wxPython') == '4.2.4'
-          suites = ["tests/ui/test_reader_synthesis.py","tests/storage/test_reader_synthesis_backup.py","tests/speech/test_session.py","tests/speech/test_reading_tabs.py","tests/ui/test_reader_tabs.py","tests/storage/test_reading_tabs_backup.py","tests/ui/test_save_all_access.py","tests/speech/test_source.py","tests/speech/test_voice_preferences.py","tests/ui/test_voice_preferences_dialog.py","tests/storage/test_voice_preferences_backup.py"]
+          suites = ["tests/ui/test_reader_synthesis.py","tests/ui/test_progress_voice_actions.py","tests/ui/test_progress_job_review.py","tests/speech/test_synthesis_admission.py","tests/speech/test_registered_studio_voices.py","tests/audio/test_model_voices.py","tests/storage/test_reader_synthesis_backup.py","tests/speech/test_session.py","tests/speech/test_reading_tabs.py","tests/ui/test_reader_tabs.py","tests/storage/test_reading_tabs_backup.py","tests/ui/test_save_all_access.py","tests/speech/test_source.py","tests/speech/test_voice_preferences.py","tests/ui/test_voice_preferences_dialog.py","tests/storage/test_voice_preferences_backup.py"]
           for name in [*suites, 'scripts/windows_voice_preferences_smoke.py']:
               path = checkout / name
               assert path.is_file() and path.stat().st_size <= 2 * 1024 * 1024, name
@@ -184,6 +204,11 @@ jobs:
         run: |
           $suites = @(
             'tests/ui/test_reader_synthesis.py',
+            'tests/ui/test_progress_voice_actions.py',
+            'tests/ui/test_progress_job_review.py',
+            'tests/speech/test_synthesis_admission.py',
+            'tests/speech/test_registered_studio_voices.py',
+            'tests/audio/test_model_voices.py',
             'tests/storage/test_reader_synthesis_backup.py',
             'tests/speech/test_session.py',
             'tests/speech/test_reading_tabs.py',
@@ -204,6 +229,11 @@ jobs:
         run: |
           $suites = @(
             'tests/ui/test_reader_synthesis.py',
+            'tests/ui/test_progress_voice_actions.py',
+            'tests/ui/test_progress_job_review.py',
+            'tests/speech/test_synthesis_admission.py',
+            'tests/speech/test_registered_studio_voices.py',
+            'tests/audio/test_model_voices.py',
             'tests/storage/test_reader_synthesis_backup.py',
             'tests/speech/test_session.py',
             'tests/speech/test_reading_tabs.py',

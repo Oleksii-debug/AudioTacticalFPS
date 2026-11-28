@@ -118,3 +118,94 @@ def test_sapi_facade_rejects_unrepresentable_native_rates(rate, tmp_path):
     provider.registry = SimpleNamespace(synthesize=forbidden)
     with pytest.raises(ValueError, match='-5 to 5'):
         provider.render('Text.', source, tmp_path / 'never.wav', SpeechSettings(rate=rate), lambda: False)
+
+
+def test_actual_registered_basic_flite_remains_available_while_heavy_policy_is_occupied(registration):
+    from carr_library.operations.broker import ResourceBroker
+    from carr_library.operations.models import ResourceRequest
+    from carr_library.speech.synthesis_admission import ReaderSynthesisRequest
+    root, _, _, _, selected = registration
+    reader = voice_registry(root / 'state')
+    broker = ResourceBroker.for_app(root)
+    checks = []
+    try:
+        item = ReaderSynthesisRequest(reader, reader.get(selected.id), SpeechSettings(),
+            root=root, cancelled=lambda: False, dispatch=lambda callback: callback(),
+            verify=lambda **kwargs: checks.append('current reader'))
+        assert item.basic
+        with broker.reserve(ResourceRequest(cpu_slots=broker.limits.cpu_slots),
+                            operation_id='fixture.heavy-production'):
+            result = item.run('Actual Flite keeps the basic reading route available.',
+                              root / 'basic-while-heavy.wav', admission_timeout=0)
+            assert result.frames > 0 and any(pcm(result.path)[3])
+            assert len(broker.snapshot()['leases']) == 1
+        assert checks == ['current reader'] and not broker.snapshot()['leases']
+    finally:
+        reader.close()
+
+
+@pytest.mark.parametrize('route', ['piper', 'dordiai-voices'])
+def test_registered_model_route_cannot_claim_basic_status_through_display_metadata(tmp_path, route):
+    from carr_library.speech.synthesis_admission import ReaderSynthesisRequest
+    from carr_library.speech.studio_voice_adapter import RegisteredVoice
+    provider = object.__new__(StudioVoiceProvider)
+    native = object.__new__(StudioRegistry)
+    source = StudioVoice('fixture:registered', 'sapi5', 'Misleading display label',
+                         ('en',), ('pcm', 'rate', 'volume', 'local'))
+    native._routes = {source.id: (route, tmp_path / 'not-executed', 'owned-token')}
+    native._model_engines = {route: object()}
+    provider.registry, provider._voices = native, {source.id: source}
+    voice = RegisteredVoice(source.id, source.name, source.engine, 'en', ('rate', 'volume'),
+                            languages=('en',))
+    provider.voices = lambda: (voice,)
+    registry = VoiceRegistry([provider])
+    try:
+        item = ReaderSynthesisRequest(registry, voice, SpeechSettings(), root=tmp_path,
+            cancelled=lambda: False, dispatch=lambda callback: callback(), verify=lambda **kwargs: None)
+        assert not item.basic
+        assert item.route.provider is provider
+        assert item.route.detail[2] == native._routes[source.id]
+    finally:
+        registry.close()
+
+
+@pytest.mark.parametrize('cancel_after_identity', [False, True])
+def test_legacy_registered_identity_keeps_its_zero_argument_contract_inside_admission(
+        registration, cancel_after_identity):
+    from threading import Event
+    from carr_library.operations.broker import ResourceBroker
+    from carr_library.speech.synthesis_admission import ReaderSynthesisRequest
+    root, _, _, _, selected = registration
+    reader = voice_registry(root / 'state')
+    provider = reader._owners[selected.id]
+    original, cancelled, calls = provider.registry, Event(), []
+    broker = ResourceBroker.for_app(root)
+
+    class LegacyRegistry:
+        def fingerprint(self):
+            assert len(broker.snapshot()['leases']) == 1
+            calls.append('legacy zero-argument callback')
+            result = original.fingerprint()
+            if cancel_after_identity:
+                cancelled.set()
+            return result
+        def synthesize(self, *args, **kwargs):
+            return original.synthesize(*args, **kwargs)
+
+    provider.registry = LegacyRegistry()
+    item = ReaderSynthesisRequest(reader, reader.get(selected.id),
+        SpeechSettings(max_output_bytes=4 * 1024 * 1024), root=root,
+        cancelled=cancelled.is_set, dispatch=lambda callback: callback(), verify=lambda **kwargs: None)
+    assert not item.basic  # An unknown implementation cannot borrow the native exemption.
+    target = root / 'legacy-admitted.wav'
+    try:
+        if cancel_after_identity:
+            with pytest.raises(InterruptedError, match='cancelled'):
+                item.run('A cancellation after the opaque callback.', target)
+            assert len(calls) == 1 and not target.exists()
+        else:
+            result = item.run('An actual registered Flite voice through a legacy identity callback.', target)
+            assert len(calls) == 2 and result.frames > 0 and any(pcm(result.path)[3])
+        assert not broker.snapshot()['leases']
+    finally:
+        reader.close()

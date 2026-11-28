@@ -199,11 +199,14 @@ def _run(command, directory, *, timeout_seconds, cancelled=None,
     return log.read_text(encoding='utf-8', errors='replace')
 
 
-def _digest(path):
+def _digest(path, *, cancelled=None):
+    _cancel(cancelled)
     digest = sha256()
     with path.open('rb') as stream:
         while block := stream.read(128 * 1024):
+            _cancel(cancelled)
             digest.update(block)
+    _cancel(cancelled)
     return digest.hexdigest()
 
 
@@ -300,10 +303,12 @@ class VoiceRegistry:
                  {value.replace('_', '-').casefold() for value in voice.languages}]
         return (exact or list(available))[0]
 
-    def list_voices(self, refresh=False):
+    def list_voices(self, refresh=False, *, cancelled=None):
+        _cancel(cancelled)
+        cancellation = {} if cancelled is None else {'cancelled': lambda: bool(_cancel(cancelled))}
         if self._registered_settings is not None:
             from .voice_settings import verify_voice_settings_bindings
-            verify_voice_settings_bindings(self._registered_settings)
+            verify_voice_settings_bindings(self._registered_settings, **cancellation)
         if self._voices is not None and not refresh:
             return self._voices
         rows, routes, statuses = [], {}, []
@@ -312,7 +317,7 @@ class VoiceRegistry:
             for arch, host in _sapi_hosts():
                 try:
                     with retained_temporary_directory(prefix='carr-voice-discovery-', dir=None) as temp:
-                        reply = self._sapi(host, Path(temp), {'operation': 'voices'}, 30)
+                        reply = self._sapi(host, Path(temp), {'operation': 'voices'}, 30, **cancellation)
                     voices = reply.get('voices')
                     if type(voices) is not list or len(voices) > 1000:
                         raise ValueError('Invalid installed-voice enumeration.')
@@ -331,6 +336,8 @@ class VoiceRegistry:
                             (row['language'],), ('pcm', 'rate', 'volume', 'local'), row['vendor']))
                         routes[identifier] = ('sapi5', host, row['id'])
                     statuses.append({'engine': 'sapi5-' + arch, 'status': 'available', 'voices': len(voices)})
+                except InterruptedError:
+                    raise
                 except (OSError, ValueError, RuntimeError, TimeoutError) as exc:
                     if _pending_owners(exc):
                         raise
@@ -343,7 +350,7 @@ class VoiceRegistry:
                 with retained_temporary_directory(prefix='carr-voice-discovery-', dir=None) as temp:
                     log = _run([executable, '-hide_banner', '-nostdin', '-f', 'lavfi',
                                 '-i', 'flite=list_voices=1', '-f', 'null', '-'], Path(temp),
-                               timeout_seconds=15, allowed_returncodes=(0, 1, 255))
+                               timeout_seconds=15, allowed_returncodes=(0, 1, 255), **cancellation)
                 names = tuple(dict.fromkeys(re.findall(
                     r'\[Parsed_flite_\d+ @ [^\]]+\]\s+([A-Za-z][A-Za-z0-9_]*)\s*$',
                     log, re.MULTILINE)))
@@ -358,6 +365,8 @@ class VoiceRegistry:
                         'Installed Flite voice and FFmpeg build terms apply; no bundled voices.'))
                     routes[identifier] = ('flite', self.ffmpeg, name)
                 statuses.append({'engine': 'flite', 'status': 'available', 'voices': len(names)})
+            except InterruptedError:
+                raise
             except (OSError, ValueError, RuntimeError, TimeoutError) as exc:
                 if _pending_owners(exc):
                     raise
@@ -365,7 +374,7 @@ class VoiceRegistry:
         if self.espeak is not None:
             try:
                 with retained_temporary_directory(prefix='carr-voice-discovery-', dir=None) as temp:
-                    log = _run([self.espeak, '--voices'], Path(temp), timeout_seconds=15)
+                    log = _run([self.espeak, '--voices'], Path(temp), timeout_seconds=15, **cancellation)
                 seen = set()
                 for line in log.splitlines():
                     values = line.split()
@@ -383,6 +392,8 @@ class VoiceRegistry:
                 if not seen:
                     raise RuntimeError('No eSpeak NG voices could be enumerated.')
                 statuses.append({'engine': 'espeak-ng', 'status': 'available', 'voices': len(seen)})
+            except InterruptedError:
+                raise
             except (OSError, ValueError, RuntimeError, TimeoutError) as exc:
                 if _pending_owners(exc):
                     raise
@@ -394,7 +405,8 @@ class VoiceRegistry:
                     'reason': 'Select a reviewed local model/runtime manifest; assets are not bundled or downloaded.'})
                 continue
             try:
-                found = model.voices()
+                found = (model.voices() if cancelled is None else
+                         model.voices(cancelled=lambda: bool(_cancel(cancelled))))
                 model_rows, model_routes, profiles = [], {}, []
                 for item in found:
                     languages = tuple(value.replace('_', '-') for value in item.languages)
@@ -420,6 +432,8 @@ class VoiceRegistry:
                 statuses.append({'engine': name, 'status': 'available' if model_rows else 'configured',
                                  'voices': len(model_rows), 'profiles': profiles,
                                  'inference': 'not verified by enumeration'})
+            except InterruptedError:
+                raise
             except (OSError, ValueError, RuntimeError, TimeoutError) as exc:
                 if _pending_owners(exc):
                     raise
@@ -435,6 +449,7 @@ class VoiceRegistry:
         if self.espeak is None:
             statuses.append({'engine': 'espeak-ng', 'status': 'unavailable',
                              'reason': 'A local eSpeak NG executable is not configured.'})
+        _cancel(cancelled)
         self._voices, self._routes, self._status = tuple(rows), routes, statuses
         self._sapi_metadata = sapi_metadata
         return self._voices
@@ -443,24 +458,29 @@ class VoiceRegistry:
         self.list_voices()
         return tuple(dict(row) for row in self._status)
 
-    def runtime_identity(self):
+    def runtime_identity(self, *, cancelled=None):
         """Cache provenance, without exposing private installation paths.
 
         Covers executable bytes/version, helper bytes and installed voice
         identities. An OS voice's opaque external assets are *not* claimed to
         be individually hashed. Reload voices after changing installed engines.
         """
-        voices = self.list_voices()
+        voices = (self.list_voices() if cancelled is None else
+                  self.list_voices(cancelled=cancelled))
+        def digest(path):
+            return _digest(path) if cancelled is None else _digest(path, cancelled=cancelled)
         executables = {}
         for engine, executable, _ in self._routes.values():
             key = (engine, executable)
             if key in executables:
                 continue
-            item = {'engine': engine, 'executable_sha256': _digest(executable)}
+            _cancel(cancelled)
+            item = {'engine': engine, 'executable_sha256': digest(executable)}
             if engine in ('flite', 'espeak-ng'):
                 with retained_temporary_directory(prefix='carr-voice-version-', dir=None) as temp:
                     log = _run([executable, '-version' if engine == 'flite' else '--version'],
-                               Path(temp), timeout_seconds=15)
+                               Path(temp), timeout_seconds=15,
+                               **({} if cancelled is None else {'cancelled': cancelled}))
                 item['version_sha256'] = sha256(log.encode('utf-8')).hexdigest()
             executables[key] = item
         helper = Path(__file__).with_name('sapi_helper.ps1')
@@ -468,19 +488,23 @@ class VoiceRegistry:
         for engine, model in self._model_engines.items():
             for voice in voices:
                 if voice.engine == engine:
-                    model_identities.append(model.cache_identity(voice.id))
+                    model_identities.append(model.cache_identity(voice.id) if cancelled is None else
+                        model.cache_identity(voice.id, cancelled=lambda: bool(_cancel(cancelled))))
         return {'version': 2, 'voices': [asdict(voice) for voice in voices],
                 'executables': sorted(executables.values(), key=lambda row: (row['engine'], row['executable_sha256'])),
-                'sapi_helper_sha256': _digest(helper), 'sapi_runtime': self._sapi_metadata,
+                'sapi_helper_sha256': digest(helper), 'sapi_runtime': self._sapi_metadata,
                 'model_manifests': model_identities,
-                'model_adapter_sha256': _digest(Path(__file__).with_name('model_voices.py')),
-                'model_validator_sha256': _digest(Path(__file__).with_name('voice_manifest.py')),
-                'owner_package_adapter_sha256': _digest(Path(__file__).with_name('voice_packages.py')),
-                'registry_sha256': _digest(Path(__file__)),
+                'model_adapter_sha256': digest(Path(__file__).with_name('model_voices.py')),
+                'model_validator_sha256': digest(Path(__file__).with_name('voice_manifest.py')),
+                'owner_package_adapter_sha256': digest(Path(__file__).with_name('voice_packages.py')),
+                'registry_sha256': digest(Path(__file__)),
                 'fingerprint_scope': 'executables, versions, helpers, installed identities, configured model manifests and verified assets'}
 
-    def fingerprint(self):
-        return sha256(json.dumps(self.runtime_identity(), ensure_ascii=False,
+    def fingerprint(self, *, cancelled=None):
+        identity = (self.runtime_identity() if cancelled is None else
+                    self.runtime_identity(cancelled=cancelled))
+        _cancel(cancelled)
+        return sha256(json.dumps(identity, ensure_ascii=False,
                                  sort_keys=True, separators=(',', ':')).encode('utf-8')).hexdigest()
 
     @staticmethod
@@ -515,7 +539,8 @@ class VoiceRegistry:
             raise ValueError('Utterance storage budget must be between 4096 bytes and 512 MiB.')
         _cancel(cancelled)
         destination = _destination(output)
-        voices = {voice.id: voice for voice in self.list_voices()}
+        voices = {voice.id: voice for voice in (self.list_voices() if cancelled is None else
+                  self.list_voices(cancelled=cancelled))}
         if not isinstance(voice_id, str) or voice_id not in voices:
             raise ValueError('Select an available installed voice; reload voices after installing one.')
         voice = voices[voice_id]
@@ -577,7 +602,7 @@ class VoiceRegistry:
                         raise RuntimeError('The local engine returned a truncated waveform.')
             except (wave.Error, EOFError) as exc:
                 raise RuntimeError('The local engine returned an invalid WAV file.') from exc
-            digest = _digest(rendered)
+            digest = _digest(rendered, cancelled=cancelled)
             with rendered.open('r+b') as stream:
                 os.fsync(stream.fileno())
             _cancel(cancelled)

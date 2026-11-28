@@ -6,6 +6,7 @@ are the real production implementations, with synthetic local documents.
 """
 from pathlib import Path
 from contextlib import closing
+import errno
 import shutil
 import sqlite3
 import subprocess
@@ -52,11 +53,14 @@ def _wait_for_barrier(process, marker, *, timeout=15.0):
             except FileNotFoundError:
                 raw = None
             except PermissionError as exc:
-                if sys.platform != 'win32' or getattr(exc, 'winerror', None) not in (5, 32, 33):
+                winerror = getattr(exc, 'winerror', None)
+                if sys.platform != 'win32' or not (
+                        winerror in (5, 32, 33)
+                        or (winerror is None and exc.errno == errno.EACCES)):
                     raise
-                # This owned marker can briefly be held by Windows during its
-                # atomic publication. Keep the original startup deadline and
-                # child-exit/cleanup checks; a permanent denial still fails.
+                # Windows CRT open reports sharing/access denial as EACCES
+                # without winerror. A retry does not prove a transient cause:
+                # keep the original deadline and child-exit/cleanup checks.
                 raw = None
             if raw is not None:
                 # The child atomically publishes the entire PID acknowledgement.
@@ -656,3 +660,105 @@ def test_historical_completed_request_remains_readable_without_inventing_owner(
     with app.read(workspace) as db:
         assert db.execute('SELECT count(*) FROM import_publication').fetchone()[0] == 0
         assert db.execute('SELECT count(*) FROM import_registration').fetchone()[0] == 0
+
+
+def _barrier_fixture_child(root):
+    """Publish the same complete PID acknowledgement with an actual child."""
+    marker = root / 'actual-pid-marker'
+    code = (
+        'import os,sys,time; from pathlib import Path; '
+        'marker=Path(sys.argv[1]); temporary=marker.with_name(marker.name+".tmp"); '
+        'temporary.write_bytes((str(os.getpid())+"\\n").encode("ascii")); '
+        'os.replace(temporary,marker); time.sleep(20)')
+    options = ({'creationflags': getattr(subprocess, 'CREATE_NO_WINDOW', 0)
+                | getattr(subprocess, 'CREATE_NEW_PROCESS_GROUP', 0)}
+               if sys.platform == 'win32' else {'start_new_session': True})
+    return subprocess.Popen([sys.executable, '-I', '-B', '-c', code, str(marker)],
+                            **options), marker
+
+
+@pytest.mark.parametrize('platform, error_number, winerror, recovers', [
+    ('win32', errno.EACCES, None, True),
+    ('win32', errno.EACCES, 5, True),
+    ('win32', errno.EACCES, 32, True),
+    ('win32', errno.EACCES, 33, True),
+    ('linux', errno.EACCES, None, False),
+    ('win32', errno.EPERM, None, False),
+    ('win32', errno.EACCES, 87, False),
+], ids=('windows-crt-eacces', 'windows-access', 'windows-sharing', 'windows-lock',
+        'non-windows-access', 'windows-other-errno', 'windows-other-winerror'))
+def test_owned_barrier_access_retry_keeps_exact_pid_and_rejects_other_errors(
+        tmp_path, monkeypatch, request, platform, error_number, winerror, recovers):
+    from types import SimpleNamespace
+    process, marker = _barrier_fixture_child(tmp_path)
+    try:
+        pid = _wait_for_barrier(process, marker)
+        exited = _child_exit_check(request, process, pid)
+        original = marker.read_bytes()
+        error = PermissionError(error_number, 'Purpose-written access-denial observation.', str(marker))
+        if winerror is not None:
+            error.winerror = winerror
+        assert getattr(error, 'winerror', None) == winerror
+        observations = []
+
+        class ObservedMarker:
+            def read_bytes(self):
+                raw = marker.read_bytes()
+                observations.append(raw)
+                if len(observations) == 1:
+                    raise error
+                return raw
+
+        # Replace this test module's platform view only. The real child,
+        # pathlib and production stop operation retain their actual OS.
+        monkeypatch.setitem(_wait_for_barrier.__globals__, 'sys',
+                            SimpleNamespace(platform=platform))
+        if recovers:
+            assert _wait_for_barrier(process, ObservedMarker()) == pid
+            assert observations == [original, original]
+            assert process.poll() is None and not exited()
+        else:
+            with pytest.raises(PermissionError) as caught:
+                _wait_for_barrier(process, ObservedMarker())
+            assert caught.value is error and observations == [original]
+            assert process.poll() is not None and exited()
+        assert marker.read_bytes() == original == (str(pid) + '\n').encode('ascii')
+    finally:
+        worker._stop(process)
+    assert process.poll() is not None
+    assert process.wait(timeout=1) == process.returncode
+
+
+@pytest.mark.parametrize('termination', ('startup-deadline', 'child-exit'))
+def test_owned_barrier_permanent_windows_crt_denial_never_acknowledges_or_leaks_child(
+        tmp_path, monkeypatch, request, termination):
+    from types import SimpleNamespace
+    process, marker = _barrier_fixture_child(tmp_path)
+    try:
+        pid = _wait_for_barrier(process, marker)
+        exited = _child_exit_check(request, process, pid)
+        original = marker.read_bytes()
+        error = PermissionError(errno.EACCES, 'Permanent fixture refusal.', str(marker))
+        assert getattr(error, 'winerror', None) is None
+        observations = []
+
+        class DeniedMarker:
+            def read_bytes(self):
+                observations.append(marker.read_bytes())
+                raise error
+
+        if termination == 'child-exit':
+            worker._stop(process)
+            assert process.poll() is not None and exited()
+        monkeypatch.setitem(_wait_for_barrier.__globals__, 'sys',
+                            SimpleNamespace(platform='win32'))
+        expected = ('did not reach its barrier within 0.1s'
+                    if termination == 'startup-deadline' else 'exited before its barrier')
+        with pytest.raises(AssertionError, match=expected):
+            _wait_for_barrier(process, DeniedMarker(), timeout=0.1)
+        assert observations and all(raw == original for raw in observations)
+        assert process.poll() is not None and exited()
+        assert marker.read_bytes() == original
+    finally:
+        worker._stop(process)
+    assert process.wait(timeout=1) == process.returncode

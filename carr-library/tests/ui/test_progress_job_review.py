@@ -401,6 +401,7 @@ def test_reader_close_always_unregisters_playback_and_finishes_resource_cleanup(
     # This existing close fixture represents a single, live reader. The modal
     # finally also captures the optional tab controller and native owner state.
     env['reader_tabs'] = None
+    env['synthesis_requests'] = []
     env['dialog_destroyed'] = False
     env['unregister_save'] = Mock()
     env['detach_reader'] = Mock()

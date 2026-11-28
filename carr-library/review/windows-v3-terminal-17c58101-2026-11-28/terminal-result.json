@@ -1,0 +1,70 @@
+{
+  "schema": "carr-terminal-gate-evidence/1",
+  "source_commit": "17c581015fc1ca6f3294f4cce1fe894f33a843cd",
+  "run": 46088683372,
+  "job": 140804190853,
+  "conclusion": "failure",
+  "started_at": "2026-11-28T00:35:59Z",
+  "completed_at": "2026-11-28T02:13:22Z",
+  "workflow": ".github/workflows/carr-v3.yml",
+  "log": {
+    "sha256": "5e0322a9d02c3bd71a81048652194f479218cc8698cb29ac680e722bf745be23",
+    "bytes": 287603,
+    "scope": "Complete decoded terminal job log returned by GitHub; digest is the UTF-8 encoding of that returned text."
+  },
+  "installed_services": {
+    "passed": 1778,
+    "failed": 5,
+    "skipped": 0,
+    "seconds": 403.62,
+    "scope": "One combined installed shared-services pytest invocation; no native SAPI-stage success inferred."
+  },
+  "installed_integrity": {
+    "passed": 632,
+    "failed": 0,
+    "skipped": 0,
+    "seconds": 418.59
+  },
+  "source": {
+    "passed": 6536,
+    "failed": 6,
+    "skipped": 0,
+    "seconds": 4754.81,
+    "timeout": false,
+    "failures": [
+      "tests/audio/test_capture_access_diagnostic.py::test_changed_original_receipt_is_refused_before_native_open - FileExistsError: C:\\Users\\runneradmin\\AppData\\Local\\Temp\\pytest-of-runneradmin\\pytest-3\\test_changed_original_receipt_0\\failed-capture.json",
+      "tests/audio/test_process_deadline.py::test_timely_reader_exit_preserves_fresh_caller_guards[cancel] - ValueError: Output budget must be an integer from 4096 to 9223372036854775807.",
+      "tests/audio/test_process_deadline.py::test_timely_reader_exit_preserves_fresh_caller_guards[identity] - AssertionError: Regex pattern did not match.",
+      "tests/audio/test_process_deadline.py::test_timely_reader_exit_preserves_fresh_caller_guards[diagnostic] - ValueError: Output budget must be an integer from 4096 to 9223372036854775807.",
+      "tests/audio/test_process_deadline.py::test_timely_reader_exit_preserves_fresh_caller_guards[staging] - ValueError: Output budget must be an integer from 4096 to 9223372036854775807.",
+      "tests/e2e/test_import_worker_publication.py::test_stopped_child_before_commit_never_reports_completion[timeout-pdf] - PermissionError: [Errno 13] Permission denied: 'C:\\\\Users\\\\runneradmin\\\\AppData\\\\Local\\\\Temp\\\\pytest-of-runneradmin\\\\pytest-3\\\\test_stopped_child_before_comm4\\\\before-commit'"
+    ]
+  },
+  "native_sapi_scene_keyboard_stage": "SKIPPED after installed service failure",
+  "warnings_observed": [],
+  "artifact": {
+    "id": 15244005725,
+    "name": "carr-v3-evidence-46088683372-1",
+    "size_in_bytes": 204132,
+    "url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15244005725",
+    "archive_download_url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15244005725/zip",
+    "expired": false,
+    "created_at": "2026-11-28T02:13:19Z",
+    "expires_at": "2026-12-05T02:13:18Z",
+    "updated_at": "2026-11-28T02:13:19Z",
+    "digest": "sha256:39dc6d3ff5f662bbaee4b2f4c2a8aeb5804f74aee0f3144067992b19a0e1f940",
+    "workflow_run": {
+      "id": 46088683372,
+      "repository_id": 1341777614,
+      "head_repository_id": 1341777614,
+      "head_branch": "carr/ci-endpoint-evaluation-20261127",
+      "head_sha": "17c581015fc1ca6f3294f4cce1fe894f33a843cd"
+    }
+  },
+  "interpretation": [
+    "The capture receipt replacement and four minimum output-budget fixtures have later corrections at8bcbdb74; no8b PASS is transferred into this17 result.",
+    "The additional source failure is a PermissionError in fixture _wait_for_barrier while reading the before-commit marker. A product publication failure is not established by that fixture exception.",
+    "The three early-EOF cases have no failures in this base-interpreter V3 invocation; their different fullmain venv failures and scoped fixture correction retain separate evidence.",
+    "The entire job completed naturally. No job cancellation, assertion removal or deadline extension was used."
+  ]
+}

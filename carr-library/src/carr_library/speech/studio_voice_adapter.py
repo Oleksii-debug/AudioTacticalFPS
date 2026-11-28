@@ -10,6 +10,7 @@ import json
 from pathlib import Path
 
 from .runtime import SpeechSettings, Voice
+from ._io import check_cancelled
 from ..audio.voice_settings import VoiceSettingsStore, verify_voice_settings_bindings
 from ..audio.voices import MAX_OUTPUT_BYTES, VoiceRegistry as StudioRegistry
 
@@ -75,15 +76,21 @@ class StudioVoiceProvider:
         self._voices = owners
         return tuple(result)
 
-    def fingerprint(self, voice_id):
-        self._verify_registration()
+    def fingerprint(self, voice_id, *, cancelled=None):
+        if cancelled is not None:
+            check_cancelled(cancelled)
+        self._verify_registration(cancelled=cancelled)
         if voice_id not in self._voices:
             raise ValueError('Select an available registered voice.')
         identity = {'schema': 1, 'voice_id': voice_id,
                     'registration_revision': self.registration['revision'],
-                    'runtime': self.registry.fingerprint(),
+                    'runtime': (self.registry.fingerprint(cancelled=cancelled)
+                                if cancelled is not None and type(self.registry) is StudioRegistry
+                                else self.registry.fingerprint()),
                     'reader_adapter_sha256': sha256(Path(__file__).read_bytes()).hexdigest()}
-        self._verify_registration()
+        if cancelled is not None:
+            check_cancelled(cancelled)
+        self._verify_registration(cancelled=cancelled)
         return sha256(json.dumps(identity, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
 
     def render(self, text, voice, output, settings, cancelled):

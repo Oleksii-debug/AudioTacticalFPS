@@ -201,17 +201,17 @@ class PiperEngine:
         self.manifest.asset(self.config)
         self.voice_id = 'piper:' + self.manifest.manifest_sha256[:24]
 
-    def voices(self):
-        self.manifest.verify()
+    def voices(self, *, cancelled=lambda: False):
+        self.manifest.verify(cancelled=cancelled)
         return (Voice(self.voice_id, self.name, (self.language,), self.id,
                       license=self.manifest.license, revision=self.manifest.revision),)
 
-    def cache_identity(self, voice):
+    def cache_identity(self, voice, *, cancelled=lambda: False):
         if voice != self.voice_id:
             raise EngineUnavailable('Choose the configured local Piper voice.')
-        self.manifest.verify()
+        self.manifest.verify(cancelled=cancelled)
         return {**self.manifest.cache_identity(), 'adapter': ADAPTER_VERSION,
-                'binary_sha256': digest_file(self.binary)}
+                'binary_sha256': digest_file(self.binary, cancelled=cancelled)}
 
     def synthesize(self, text, output, *, voice, language='en', rate=0, pitch=0, volume=1,
                    cancelled=lambda: False, max_output_bytes=MAX_PCM_BYTES + 4096):
@@ -219,7 +219,7 @@ class PiperEngine:
         max_output_bytes = _output_budget(max_output_bytes)
         if '[[' in text or ']]' in text:
             raise EngineUnavailable('This Piper CLI interprets bracketed phonemes. Use another engine for literal bracketed source text.')
-        self.cache_identity(voice)
+        self.cache_identity(voice, cancelled=cancelled)
         if pitch:
             raise EngineUnavailable('Piper native pitch is not exposed; use a separate audio effect.')
         if language.lower().replace('_', '-').split('-')[0] != self.language.lower().replace('_', '-').split('-')[0]:
@@ -282,8 +282,8 @@ class DordiaiVoicesEngine:
         self._profile_languages = {}
         self._language_codes = {}
 
-    def voices(self):
-        self.manifest.verify(require_complete=True)
+    def voices(self, *, cancelled=lambda: False):
+        self.manifest.verify(cancelled=cancelled, require_complete=True)
         catalog = read_json(self.catalog_path)
         profiles = catalog.get('voices') if isinstance(catalog, dict) else None
         languages = catalog.get('languages') if isinstance(catalog, dict) else None
@@ -292,7 +292,7 @@ class DordiaiVoicesEngine:
         managed, owned = {}, ()
         if self.manifest.settings.get('managed_profiles', False):
             from .voice_packages import managed_catalog
-            profiles, managed, owned = managed_catalog(self.manifest, profiles)
+            profiles, managed, owned = managed_catalog(self.manifest, profiles, cancelled=cancelled)
             profiles = dict(profiles)
             languages = dict(languages)
             for identity in owned:
@@ -380,12 +380,12 @@ class DordiaiVoicesEngine:
         self._profiles, self._profile_languages, self._language_codes = records, supported_by_profile, language_codes
         return tuple(rows)
 
-    def cache_identity(self, voice):
+    def cache_identity(self, voice, *, cancelled=lambda: False):
         if not self._profiles:
-            self.voices()
+            self.voices(cancelled=cancelled)
         if voice not in self._profiles:
             raise EngineUnavailable('Choose an enabled profile from the installed dordiai-voices catalogue.')
-        self.manifest.verify(require_complete=True)
+        self.manifest.verify(cancelled=cancelled, require_complete=True)
         from .voice_packages import bridge_identity
         return {**self.manifest.cache_identity(), 'adapter': ADAPTER_VERSION, 'voice': voice,
                 'protocol': 'nvda-worker-jsonl-pcm24k-v1',
@@ -396,7 +396,7 @@ class DordiaiVoicesEngine:
                    cancelled=lambda: False, max_output_bytes=MAX_PCM_BYTES + 4096):
         _request(text, language, rate, pitch, volume)
         max_output_bytes = _output_budget(max_output_bytes)
-        self.cache_identity(voice)
+        self.cache_identity(voice, cancelled=cancelled)
         requested = language.lower().replace('_', '-')
         supported = self._profile_languages[voice]
         matching = [code for code in supported if code == requested or

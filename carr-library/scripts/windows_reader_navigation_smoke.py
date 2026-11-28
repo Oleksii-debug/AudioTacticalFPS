@@ -108,7 +108,8 @@ def run_native(options, report):
         'carr_library.speech.navigation', 'carr_library.ui.reader_navigation',
         'carr_library.ui.reading_tools', 'carr_library.speech.reading_tools',
         'carr_library.ui.speech_dialog', 'carr_library.ui.keyboard_settings',
-        'carr_library.keybindings', 'carr_library.speech.runtime', 'carr_library.speech.player'))
+        'carr_library.keybindings', 'carr_library.speech.runtime', 'carr_library.speech.player',
+        'carr_library.speech.synthesis_admission'))
     report['wx'] = wx.version()
     devices = output_devices()
     selected = next((device for device in devices
@@ -167,6 +168,10 @@ def run_native(options, report):
         name = 'Purpose-written scoped-speech PCM fixture'
         def voices(self):
             return (Voice('fixture:scoped-pcm', self.name, 'synthetic-protocol', 'uk'),)
+        def fingerprint(self, voice_id):
+            if voice_id != 'fixture:scoped-pcm':
+                raise ValueError('Unknown synthetic fixture voice.')
+            return sha256(Path(__file__).read_bytes()).hexdigest()
         def render(self, text, voice, destination, settings, cancelled):
             if threading.get_ident() == main_thread:
                 raise AssertionError('Narration ran on the GUI thread.')

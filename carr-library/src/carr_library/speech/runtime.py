@@ -82,7 +82,8 @@ class SpeechResult:
     chunks: int
 
 
-def _wave_info(path):
+def _wave_info(path, *, cancelled=lambda: False):
+    check_cancelled(cancelled)
     with wave.open(str(path), 'rb') as audio:
         if (audio.getcomptype() != 'NONE' or audio.getsampwidth() not in (1, 2, 3, 4)
                 or audio.getnchannels() not in (1, 2) or not 8000 <= audio.getframerate() <= 192000
@@ -92,7 +93,9 @@ def _wave_info(path):
                                        audio.getnframes(), audio.getsampwidth())
         total = 0
         while block := audio.readframes(65536):
+            check_cancelled(cancelled)
             total += len(block)
+        check_cancelled(cancelled)
         if total != frames * channels * width:
             raise ValueError('The voice produced truncated audio.')
         return rate, channels, frames, width
@@ -202,28 +205,36 @@ class VoiceRegistry:
         except (KeyError, TypeError) as exc:
             raise ValueError('Select an available installed voice and reload if it was removed.') from exc
 
-    def fingerprint(self, voice_id):
+    def fingerprint(self, voice_id, *, cancelled=lambda: False):
         """Fingerprint visible installed runtime/voice assets for render caches.
 
         SAPI exposes an opaque token, not every proprietary driver's model file.
         Its identity remains a token/host fingerprint and is described as such;
         it is never represented as proof of a third-party model revision.
         """
+        check_cancelled(cancelled)
         voice = self.get(voice_id)
         provider = self._owners[voice_id]
         fingerprint = getattr(provider, 'fingerprint', None)
         if callable(fingerprint):
-            value = fingerprint(voice_id)
+            from .studio_voice_adapter import StudioVoiceProvider
+            # Existing extension callbacks keep their one-argument API. Only
+            # the known adapter has a cancellable identity contract; arbitrary
+            # trusted extension code cannot be forcibly interrupted here.
+            value = (fingerprint(voice_id, cancelled=cancelled)
+                     if type(provider) is StudioVoiceProvider else fingerprint(voice_id))
+            check_cancelled(cancelled)
             if not isinstance(value, str) or not re.fullmatch('[0-9a-f]{64}', value):
                 raise ValueError('The registered voice adapter returned an invalid runtime identity.')
             identity = {'voice': asdict(voice), 'registered_runtime_sha256': value}
         else:
-            identity = {'voice': asdict(voice), 'executable_sha256': digest(provider.executable)}
+            identity = {'voice': asdict(voice), 'executable_sha256': digest(provider.executable, cancelled=cancelled)}
         if isinstance(provider, PiperProvider):
             model, config, _, _ = provider._models[voice_id]
-            identity.update(model_sha256=digest(local_file(model)), config_sha256=digest(local_file(config)))
+            identity.update(model_sha256=digest(local_file(model), cancelled=cancelled),
+                            config_sha256=digest(local_file(config), cancelled=cancelled))
         elif isinstance(provider, LocalHelperProvider):
-            provider._verify()
+            provider._verify(cancelled=cancelled)
             identity['helper_contract'] = 'carr.local-voice.v1'
             if provider.script is not None:
                 identity['helper_script_sha256'] = provider.expected_script_hash
@@ -238,7 +249,7 @@ class VoiceRegistry:
                 except PackageNotFoundError:
                     client_version = 'unavailable'
                 worker = Path(__file__).with_name('sapi_native_worker.py')
-                identity.update(native_worker_sha256=digest(worker) if worker.is_file() else None,
+                identity.update(native_worker_sha256=digest(worker, cancelled=cancelled) if worker.is_file() else None,
                                 native_protocol='carr.sapi-native.v1',
                                 com_client='comtypes', com_client_version=client_version)
         elif os.name != 'nt' and isinstance(provider, (FliteProvider, EspeakProvider)):
@@ -252,10 +263,12 @@ class VoiceRegistry:
             assets = {}
             for directory in directories:
                 for path in directory.glob(prefix + '*.so*'):
+                    check_cancelled(cancelled)
                     actual = path.resolve(strict=True)
                     if actual.is_file():
-                        assets[str(actual)] = digest(actual)
+                        assets[str(actual)] = digest(actual, cancelled=cancelled)
             identity['installed_voice_libraries'] = assets
+        check_cancelled(cancelled)
         return sha256(json.dumps(identity, ensure_ascii=False, sort_keys=True).encode('utf-8')).hexdigest()
 
     def synthesize(self, text, voice_id, destination, *, settings=None, cancelled=lambda: False):
@@ -291,7 +304,7 @@ class VoiceRegistry:
                     remove_part = True
                     try:
                         provider.render(chunk, voice, part, options, cancelled)
-                        rate, channels, size, width = _wave_info(part)
+                        rate, channels, size, width = _wave_info(part, cancelled=cancelled)
                         if params is None:
                             params = rate, channels, width
                             combined.setframerate(rate)
@@ -316,8 +329,8 @@ class VoiceRegistry:
                     finally:
                         if remove_part:
                             part.unlink(missing_ok=True)
-            rate, channels, frames, _ = _wave_info(staged)
-            checksum = digest(staged)
+            rate, channels, frames, _ = _wave_info(staged, cancelled=cancelled)
+            checksum = digest(staged, cancelled=cancelled)
         return SpeechResult(target, checksum, frames / rate, rate, channels, frames,
                             voice_id, sha256(text.encode('utf-8')).hexdigest(), count)
 
@@ -427,7 +440,7 @@ class NativeSapiProvider(SapiProvider):
                 raise ValueError('Native SAPI replied from an unexpected host architecture or adapter.')
             if output is not None:
                 check_cancelled(cancelled)
-                _wave_info(temporary / 'speech.wav')
+                _wave_info(temporary / 'speech.wav', cancelled=cancelled)
                 # Same-filesystem, no-overwrite publication into the parent's
                 # already private chunk staging area; final WAV stays atomic.
                 os.link(temporary / 'speech.wav', output)
@@ -541,13 +554,14 @@ class PiperProvider:
 
     def render(self, text, voice, output, settings, cancelled):
         model, config, model_hash, config_hash = self._models[voice.id]
-        if digest(local_file(model)) != model_hash or digest(local_file(config)) != config_hash:
+        if (digest(local_file(model), cancelled=cancelled) != model_hash
+                or digest(local_file(config), cancelled=cancelled) != config_hash):
             raise ValueError('The installed Piper model changed; review and register it again.')
         run_process([self.executable, '--model', str(model), '--config', str(config),
                      '--output-file', str(output), '--length-scale', str(2 ** (-settings.rate / 10)),
                      '--volume', str(settings.volume / 100)], input_bytes=(text + '\n').encode('utf-8'),
                     cancelled=cancelled, timeout=settings.timeout_seconds, output_file=output,
-                    max_output=settings.max_output_bytes)
+                    max_output=settings.max_output_bytes, owned_tree=True)
 
 
 class LocalHelperProvider:

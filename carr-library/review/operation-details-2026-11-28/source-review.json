@@ -1,0 +1,154 @@
+{
+  "schema": "carr-source-review/1",
+  "baseline": "8bcbdb74328d7f6bb71ea8987cb5305064b8eb0e",
+  "status": "SOURCE_REVIEWED",
+  "execution": "NOT_RUN",
+  "scope": "Read-only redacted canonical Studio details in the existing operation facade and labelled native details control; CLI continues to serialize the same facade.",
+  "semantics": {
+    "handler_schema": "The current canonical reader's handler constant, not historical selected backend identity.",
+    "adapter": "Unknown; no separately declared selected engine/model/protocol identity is copied from this checkpoint.",
+    "operation_plan_sha256": "Only the existing stored immutable operation-plan digest, validated with the canonical producer validator.",
+    "settings_sha256": "Unknown; no separate settings digest is recorded.",
+    "resource_plan": "Typed saved declarations only; numbers/counts, no disk paths, GPU IDs, source paths or free-form runtime/estimate strings.",
+    "completed_artifacts": "Stored complete-status identities only, capped at64 with exact total/omitted count; artifact bytes are never read or claimed currently verified.",
+    "legacy": "Exact historical summary envelopes stay visible with unknown detail fields; partial malformed canonical envelopes fail closed.",
+    "restore": "The existing new-output-review marker remains visible and does not authorize execution."
+  },
+  "preservation": {
+    "single_checkpoint_read": true,
+    "same_read_validation": true,
+    "validator_database_argument": null,
+    "frozen_nested_values": true,
+    "existing_workspace_authorization": true,
+    "existing_controls": true,
+    "existing_ui_worker_lifetime": true,
+    "no_job_store_or_schema": true,
+    "no_runtime_or_provider_construction": true,
+    "no_resource_module_edit": true,
+    "all_original_tests_exact_prefix": true,
+    "all_existing_source_recovered_by_inverse_hunks": true,
+    "prior_display_fields_retained": true,
+    "invalid_status_type_attention": true
+  },
+  "selectors": [
+    {
+      "selector": "tests/operations/test_facade.py",
+      "old_cases": 4,
+      "added_cases": 19,
+      "total_cases": 23
+    },
+    {
+      "selector": "tests/operations/test_production_admission.py",
+      "old_cases": 7,
+      "added_cases": 1,
+      "total_cases": 8
+    },
+    {
+      "selector": "tests/storage/test_production_operation_backup.py",
+      "old_cases": 14,
+      "added_cases": 4,
+      "total_cases": 18
+    },
+    {
+      "selector": "tests/e2e/test_operations_cli.py",
+      "old_cases": 2,
+      "added_cases": 2,
+      "total_cases": 4
+    },
+    {
+      "selector": "tests/ui/test_operations_policy.py",
+      "old_cases": 10,
+      "added_cases": 5,
+      "total_cases": 15
+    }
+  ],
+  "planned_total_cases": 68,
+  "planned_added_cases": 31,
+  "notes": [
+    "Counts are static estimates, not collected or executed results.",
+    "The added actual media case uses real FFmpeg/PCM, then removes output and requires the facade to keep an explicitly historical declaration without re-executing or checking output.",
+    "Native5 and supported flat4 backup cases keep typed saved resource/operation identity and restore_requires_new_output.",
+    "Existing generic operations CLI uses asdict; no separate dispatcher or CLI store is added.",
+    "Locate independently cleared the five test/API deltas in6e07051a. The final UI-only successor adds the same prior workspace/update/control snapshot fields and exact label assertions; no reads or actions added.",
+    "Root approved the explicit status string guard before set membership, preventing malformed JSON arrays/objects from raising an unhandled TypeError. Two actual-journal tests preserve another valid row and controls while the malformed row stays redacted attention; no admission or execution path changes."
+  ],
+  "files": [
+    {
+      "path": "carr-library/src/carr_library/operations/facade.py",
+      "preimage": "966e71d7f54d5385dcfb4bf74c349b588e389e09",
+      "before_bytes": 13943,
+      "after_bytes": 18156,
+      "sha256": "8106b530a13262e87cb6f733f322ae2bcb4f74a441dcb0c3061fcb3c43902285",
+      "exact_original_prefix": null,
+      "old_assertions": 0,
+      "new_assertions": 0,
+      "inverse_exact": true
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/operations_dialog.py",
+      "preimage": "901c32be5e5b03a556a89a7717e34dc40db6f479",
+      "before_bytes": 10457,
+      "after_bytes": 13531,
+      "sha256": "99b3882ffdf91d7fcdb5da2b0bbd0b438919e6f8cfe9227e7f82adad9e89ff4b",
+      "exact_original_prefix": null,
+      "old_assertions": 0,
+      "new_assertions": 0,
+      "inverse_exact": true
+    },
+    {
+      "path": "carr-library/tests/operations/test_facade.py",
+      "preimage": "c41babf1fc93cfe5d60c7fcb7a56efd8009aee35",
+      "before_bytes": 6049,
+      "after_bytes": 19718,
+      "sha256": "2fd9258b1392d98db7ca14a46260573c2cc8444e3cfedf4bd689ec7b28a6d2c7",
+      "exact_original_prefix": true,
+      "old_assertions": 20,
+      "new_assertions": 72,
+      "inverse_exact": true
+    },
+    {
+      "path": "carr-library/tests/operations/test_production_admission.py",
+      "preimage": "5ffe6c26e63d9f14c476bdb92ba29a6698cccd6f",
+      "before_bytes": 12038,
+      "after_bytes": 15422,
+      "sha256": "fe4255519ef0e6002ada1bb92079c8f9783e37488245fb47b5d0c938cc2e49e4",
+      "exact_original_prefix": true,
+      "old_assertions": 40,
+      "new_assertions": 57,
+      "inverse_exact": true
+    },
+    {
+      "path": "carr-library/tests/storage/test_production_operation_backup.py",
+      "preimage": "b96b74e914a916e1da60cd56424c5cea64125d59",
+      "before_bytes": 5801,
+      "after_bytes": 8689,
+      "sha256": "c8da9c7d7507fa6078004c247992985826d600e938792f2bd363af82557e9170",
+      "exact_original_prefix": true,
+      "old_assertions": 17,
+      "new_assertions": 31,
+      "inverse_exact": true
+    },
+    {
+      "path": "carr-library/tests/e2e/test_operations_cli.py",
+      "preimage": "f5477d021d9b644506002e1219e27b2dc6f82a00",
+      "before_bytes": 1638,
+      "after_bytes": 4875,
+      "sha256": "fdd1507437b37ab4f287e376824c17b22260b9a6456dc7a9d1507b5a1f724659",
+      "exact_original_prefix": true,
+      "old_assertions": 11,
+      "new_assertions": 25,
+      "inverse_exact": true
+    },
+    {
+      "path": "carr-library/tests/ui/test_operations_policy.py",
+      "preimage": "f033b76f132c457f6ff1533fbff96a1a84e699c5",
+      "before_bytes": 1563,
+      "after_bytes": 6046,
+      "sha256": "b51e221b6da2c78ba814d4532d2e26c8ec20d66ef134fda85661ad5373373d9d",
+      "exact_original_prefix": true,
+      "old_assertions": 6,
+      "new_assertions": 32,
+      "inverse_exact": true
+    }
+  ]
+}
