@@ -11,10 +11,13 @@ import json
 import os
 from pathlib import Path
 import re
-from tempfile import TemporaryDirectory
+import shutil
+import stat
+from tempfile import gettempdir, mkdtemp
+import time
 
 from . import engines
-from .jobs import file_identity, regular_file, verified_reader
+from .jobs import checked_directory, file_identity, regular_file, verified_reader
 from .model_manifest import LocalModelManifest, ModelManifestError, offline_environment
 
 ENGINE = 'local-voice-helper'
@@ -63,6 +66,60 @@ def _regular(path):
     if info.st_nlink != 1:
         raise ModelManifestError('A selected helper launch file must not have hard-link aliases.')
     return info
+
+
+
+def _directory_identity(path):
+    info = path.lstat()
+    if (not stat.S_ISDIR(info.st_mode) or path.is_symlink()
+            or getattr(info, 'st_file_attributes', 0) & 0x400):
+        raise ValueError('The owned local helper directory is not an ordinary directory.')
+    checked_directory(path)
+    return info.st_dev, info.st_ino
+
+
+def _remove_private_directory(path, *, identity, parent_identity):
+    """Settle only this directory after the current process/reader owner exits."""
+    deadline = time.monotonic() + 5
+    while True:
+        if _directory_identity(path.parent) != parent_identity:
+            raise ValueError('The local helper temporary parent changed before cleanup.')
+        try:
+            current = _directory_identity(path)
+        except FileNotFoundError:
+            # A completed removal is harmless only under the same retained parent.
+            if _directory_identity(path.parent) != parent_identity:
+                raise ValueError('The local helper temporary parent changed during cleanup.')
+            return
+        if current != identity:
+            raise ValueError('The owned local helper temporary directory changed before cleanup.')
+        try:
+            shutil.rmtree(path)
+        except OSError as exc:
+            # This is filesystem cleanup after engines._run has settled its
+            # exact process family and streams, and _lease has closed its
+            # selected input readers. It does not extend inference time.
+            if (os.name != 'nt' or getattr(exc, 'winerror', None) not in (32, 33)
+                    or time.monotonic() >= deadline):
+                raise
+            time.sleep(min(.02, max(0, deadline - time.monotonic())))
+        else:
+            return
+
+
+@contextmanager
+def _private_directory(*, prefix, dir=None):
+    """Retain an exact private directory without an unsafe later finalizer."""
+    parent = Path(gettempdir() if dir is None else dir).absolute()
+    parent_identity = _directory_identity(parent)
+    path = Path(mkdtemp(prefix=prefix, dir=parent))
+    identity = _directory_identity(path)
+    try:
+        if _directory_identity(parent) != parent_identity:
+            raise ValueError('The local helper temporary parent changed during creation.')
+        yield path
+    finally:
+        _remove_private_directory(path, identity=identity, parent_identity=parent_identity)
 
 
 class LocalVoiceHelperEngine:
@@ -155,7 +212,7 @@ class LocalVoiceHelperEngine:
 
     def voices(self, *, cancelled=lambda: False):
         engines._cancelled(cancelled)
-        with TemporaryDirectory(prefix='carr-local-voice-catalogue-') as directory:
+        with _private_directory(prefix='carr-local-voice-catalogue-') as directory:
             value = self._call({'operation': 'voices'}, directory=Path(directory),
                                cancelled=cancelled)
         if set(value) != {'schema', 'voices'} or type(value['voices']) is not list or len(value['voices']) > self.max_voices:
@@ -230,7 +287,7 @@ class LocalVoiceHelperEngine:
                    'pitch': None if pitch == 0 else round(50 + pitch * 3),
                    'punctuation': punctuation, 'timeout_seconds': self.timeout,
                    'max_output_bytes': engines.MAX_PCM_BYTES}
-        with TemporaryDirectory(prefix='.speech-', dir=target.parent) as directory:
+        with _private_directory(prefix='.speech-', dir=target.parent) as directory:
             stage = Path(directory)
             pcm = stage / 'speech.wav'
             value = self._call({'operation': 'render', 'voice_id': record['id'],
