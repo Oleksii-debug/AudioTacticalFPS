@@ -203,7 +203,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        profile: [core, integrated]
+        profile: [core, semantic]
     defaults:
       run:
         working-directory: carr-library
@@ -228,7 +228,7 @@ jobs:
       - name: Install the actual pinned profile and composed package
         run: |
           New-Item -ItemType Directory -Force ci-about-native | Out-Null
-          $lock = if ($env:CARR_ABOUT_PROFILE -eq 'integrated') { 'packaging/windows-integrated-cp311.lock' } else { 'packaging/windows-cp311.lock' }
+          $lock = if ($env:CARR_ABOUT_PROFILE -eq 'semantic') { 'packaging/windows-semantic-cp311.lock' } else { 'packaging/windows-cp311.lock' }
           python -m pip install --only-binary=:all: --require-hashes -r $lock
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python -m pip install --no-deps .
@@ -252,8 +252,8 @@ jobs:
           SOURCE = ROOT / "src" / "carr_library"
           INSTALLED = Path(sysconfig.get_path("purelib")).resolve() / "carr_library"
           assert SOURCE.resolve() != INSTALLED.resolve()
-          assert os.environ["CARR_ABOUT_PROFILE"] in ("core", "integrated")
-          LOCK = "packaging/windows-" + ("integrated-" if os.environ["CARR_ABOUT_PROFILE"] == "integrated" else "") + "cp311.lock"
+          assert os.environ["CARR_ABOUT_PROFILE"] in ("core", "semantic")
+          LOCK = "packaging/windows-" + ("semantic-" if os.environ["CARR_ABOUT_PROFILE"] == "semantic" else "") + "cp311.lock"
           FILES = ("tests/ui/probe_about_native.py", "scripts/about_native_oracle.json", LOCK)
           NAMES = ("carr_library.component_notices", "carr_library.ui.about_dialog", "carr_library.ui.desktop_app")
 
