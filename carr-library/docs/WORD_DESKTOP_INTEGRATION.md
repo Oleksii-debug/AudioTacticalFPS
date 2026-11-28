@@ -36,6 +36,15 @@ The automated source and isolated-installed suites exercise the current library,
 
 The separate Windows desktop-controls probe uses actual wx windows, keyboard events and the existing desktop executor while controlling only Word and picker answers. It is not a real Office or real picker-dialog test.
 
+The completed [native component run 46126241176](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46126241176)
+qualified commit `429a5e60685b4c4ac38efd204d8fb4d57a6604c5` with **128 required
+native assertions passed**. Its before/after proof covered all 408 package Python
+files, 20 CSL/runtime/notice assets and 19 named module origins. The retained
+record is `8264ac4a6aa227d0e86b7d7041fe16476de1125d`. Office was not installed
+on that runner; the separate optional Office probe reported `NOT_RUN` with zero
+checks and the explicit availability reason. This result belongs to the recorded
+component head and does not qualify a later composed application.
+
 The optional actual Office command is:
 
 ```text

@@ -8,6 +8,51 @@ The import and retrieval benchmark scripts use the existing product routes. `scr
 
 The default import limits remain unchanged. Large sources use an explicit, frozen `ImportBudget`; its allowance does not grant source authority. Original identity, whole-source digest, sealed segments, publication attempts and source-backed quotations retain their current checks.
 
+### Six completed tiers on candidate 71ca, 28 November 2026
+
+At the 09:30 UTC evidence checkpoint, the [actual corpus run](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46124999025) had completed the six jobs below on exact head `71ca92be691455d0ff51ed163b1d91749e5ae62e`. The six 10,000-book, 50,000-book and exact 2 GiB jobs were still running; the four required largest-tier backup/fresh-restore verdicts were pending. This dated checkpoint qualifies only the listed jobs on that tested head. It does not qualify a changed candidate or the complete twelve-tier protocol.
+
+The [separate read-only artifact harvest](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46129830331), head `ce8a6c326988c5b8d73bb107a0dcf043c9f2b151`, checked each fixed artifact's run, job, head, compressed byte size and SHA-256 before reading its bounded saved JSON. It did not replay a corpus or import application code. All six reports matched the original exact-head source and installed inventories: **426 Python files, 45 selected origins and three measurement scripts**, checked before and after the original executions and independently checked against the selected Git source by the harvester.
+
+| Actual input | OS | Books / original segments | Original bytes | Measured import API calls | Complete search scenario |
+| --- | --- | ---: | ---: | ---: | ---: |
+| 1,000 books | Linux | 1,000 / 40,000 | 10,279,003 | 92.994 s | 41.298 s |
+| 1,000 books | Windows | 1,000 / 40,000 | 10,279,003 | 198.130 s | 48.393 s |
+| 65 MiB + 173 bytes TXT | Linux | 1 / 17 | 68,157,613 | 6.037 s | 260.631 s |
+| 65 MiB + 173 bytes TXT | Windows | 1 / 17 | 68,157,613 | 11.284 s | 463.918 s |
+| 129 MiB + 173 bytes TXT | Linux | 1 / 33 | 135,266,477 | 12.961 s | 414.437 s |
+| 129 MiB + 173 bytes TXT | Windows | 1 / 33 | 135,266,477 | 18.560 s | 558.043 s |
+
+Times are rounded to three decimal places; the saved records retain the original measurements. Import totals include the genuine first committed publication, owned worker cleanup and any remaining public resume calls. They exclude coordinator downtime between commands and are not CI step-wall measurements. Search times cover the complete authored scenario: full literal traversal, all 50 title anchors, current-source copies, Unicode and foreign-scope checks, 21 auxiliary libraries, first and reopened complete-scope ranking, and confirmed search-owner cleanup. The 1,000-book jobs traversed 400 literal windows; the 65 MiB and 129 MiB jobs traversed three and five respectively. Every reopened index reported zero updated rows. All six jobs retained the actual exit 73 after one committed publication and resumed the same durable queue.
+
+The following are separate process observations in bytes. The coordinator column is the search process's own high-water observation; the worker column is the maximum observed individual import-worker high-water value.
+
+| Actual input | OS | Coordinator own peak, bytes | Maximum individual worker own peak, bytes |
+| --- | --- | ---: | ---: |
+| 1,000 books | Linux | 52,183,040 | 46,968,832 |
+| 1,000 books | Windows | 53,153,792 | 45,686,784 |
+| 65 MiB + 173 bytes TXT | Linux | 667,365,376 | 134,471,680 |
+| 65 MiB + 173 bytes TXT | Windows | 641,994,752 | 96,649,216 |
+| 129 MiB + 173 bytes TXT | Linux | 1,219,563,520 | 131,936,256 |
+| 129 MiB + 173 bytes TXT | Windows | 1,170,731,008 | 98,275,328 |
+
+Linux uses `resource.getrusage(RUSAGE_SELF).ru_maxrss`; Windows uses `GetProcessMemoryInfo.PeakWorkingSetSize`. These values must not be added as a simultaneous family peak, which remains `NOT_MEASURED`. The 1,000-book jobs used the unchanged derived 64 MiB search working allowance; the large-single-source jobs selected 1 GiB. A working allowance is not a whole-interpreter RSS ceiling or an operating-system memory cap. The observed 129 MiB coordinator peaks above 1 GiB do not change that distinction.
+
+The next table compares logical byte counts from the same named after-search checkpoint. SQLite columns are the main files; the full reports also retain any observed WAL, SHM or journal sidecars.
+
+| Actual input | OS | External originals | Retained originals | library.sqlite | imports.sqlite | Whole application profile |
+| --- | --- | ---: | ---: | ---: | ---: | ---: |
+| 1,000 books | Linux | 10,279,003 | 10,279,948 | 41,193,472 | 31,391,744 | 114,811,402 |
+| 1,000 books | Windows | 10,279,003 | 10,279,948 | 41,287,680 | 31,457,280 | 115,026,949 |
+| 65 MiB + 173 bytes TXT | Linux | 68,157,613 | 68,158,558 | 145,633,280 | 68,280,320 | 359,798,767 |
+| 65 MiB + 173 bytes TXT | Windows | 68,157,613 | 68,158,558 | 145,633,280 | 68,280,320 | 359,798,724 |
+| 129 MiB + 173 bytes TXT | Linux | 135,266,477 | 135,267,422 | 289,144,832 | 135,479,296 | 711,780,347 |
+| 129 MiB + 173 bytes TXT | Windows | 135,266,477 | 135,267,422 | 289,144,832 | 135,479,296 | 711,780,304 |
+
+The whole application profile includes its retained originals, SQLite files, derived search data and the 21 auxiliary-library fixtures. Its columns overlap and must not be summed as disjoint storage. External originals are measured separately. These are disk checkpoints, not continuous peak allocation measurements. POSIX allocated-byte observations remain available in the full records; Windows physical allocation is `NOT_MEASURED`, so the table deliberately compares logical bytes only. Each runner's actual temporary-volume identities, total/free space and admission decisions remain in the same evidence.
+
+Complete measured records, frozen artifact identities, raw-log references and the six-row field mapping are retained in evidence `e9c9059cc506f40aa1a08d86776e779d61235938`; the read-only harvest raw log is `269bf468f4286923b99d7655151fdc86a45b2100`. The common package SHA-256 is `805d2713cccb7ee797412ff3aac0977c414f846580d83850cb589bdaa2ec3bd1`. These measurements do not establish larger-tier backup capacity, simultaneous family RAM, semantic-model quality or a general cross-run speedup. Final acceptance still requires the complete bound results for the ultimately selected head.
+
 ### Latest completed index publication correction
 
 The [actual Windows 512 MiB protocol](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46112104315)

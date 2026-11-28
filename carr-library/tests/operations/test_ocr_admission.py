@@ -157,3 +157,139 @@ def test_workspace_archived_while_ocr_waits_is_reauthorized_before_launch(tmp_pa
     app.restore_workspace(workspace)
     monkeypatch.setattr(worker, '_invoke', invoke)
     assert app.resume_import(workspace, identity, timeout=30)['state'] == 'complete'
+
+
+def test_fresh_precancelled_request_is_durable_then_reuses_its_real_worker_identity(tmp_path, monkeypatch):
+    app, workspace, source, broker = installation(tmp_path)
+    original_bytes = source.read_bytes()
+    invoke, launches = worker._invoke, []
+
+    def observed(message, **kwargs):
+        launches.append(dict(message))
+        return invoke(message, **kwargs)
+
+    monkeypatch.setattr(worker, '_invoke', observed)
+    try:
+        result = app.import_file(workspace, source, cancelled=lambda: True, timeout=5)
+        assert result['state'] == 'cancelled' and result['isolated'] is True
+        identity = result['request_id']
+        record = worker.load_request(app.root, identity)
+        assert record['state'] == 'cancelled' and record['result'] == result
+        assert record.get('attempt') is None and record.get('publication_candidate') is None
+        assert not launches and app.browse(workspace) == ()
+        assert app.import_requests(workspace) == (
+            dict(request_id=identity, file=source.name, state='cancelled', result=result),)
+        assert source.read_bytes() == original_bytes and broker.snapshot()['leases'] == []
+
+        # A later cancelled observer of this same saved request owns no new
+        # admission outcome and must leave its complete durable bytes alone.
+        path = app.root / 'import-requests' / (identity + '.json')
+        saved = path.read_bytes()
+        repeated = app.resume_import(workspace, identity, cancelled=lambda: True, timeout=5)
+        assert repeated == result and path.read_bytes() == saved
+        assert not launches and worker.load_request(app.root, identity) == record
+
+        resumed = app.resume_import(workspace, identity, timeout=30)
+        assert resumed['state'] == 'complete' and resumed['request_id'] == identity
+        assert len(launches) == 1 and launches[0]['request_id'] == identity
+        final = worker.load_request(app.root, identity)
+        assert final['state'] == 'complete' and final['result'] == resumed
+        assert final['attempt'] == launches[0]['attempt_id']
+        assert worker._request_identity(final) == worker._request_identity(record)
+        assert app.import_requests(workspace) == (
+            dict(request_id=identity, file=source.name, state='complete', result=resumed),)
+        assert len(app.browse(workspace)) == 1
+        assert source.read_bytes() == original_bytes and broker.snapshot()['leases'] == []
+        assert [item.name for item in path.parent.glob('*.json')] == [path.name]
+    finally:
+        assert app.close_search()
+
+
+def test_precancelled_resume_does_not_rewrite_an_explicitly_prepared_request(tmp_path, monkeypatch):
+    from carr_library.extract.page_ocr import Config
+
+    app, workspace, source, broker = installation(tmp_path)
+    original_bytes = source.read_bytes()
+    monkeypatch.setattr(worker, '_invoke',
+                        lambda *_args, **_kwargs: pytest.fail('A cancelled prepared request launched native work'))
+    try:
+        prepared = worker.prepare_request(app.root, workspace, source,
+            dict(title=None, authors=(), language=None, edition=None, volume=None,
+                 collections=(), work_id=None, edition_id=None), Config())
+        identity = prepared['request_id']
+        path = app.root / 'import-requests' / (identity + '.json')
+        saved = path.read_bytes()
+        result = app.resume_import(workspace, identity, cancelled=lambda: True, timeout=5)
+        assert result['state'] == 'cancelled' and result['request_id'] == identity
+        assert result['isolated'] is True
+        assert path.read_bytes() == saved
+        assert worker.load_request(app.root, identity) == prepared
+        assert prepared['state'] == 'pending' and prepared.get('attempt') is None
+        assert app.import_requests(workspace) == (
+            dict(request_id=identity, file=source.name, state='pending', result=None),)
+        assert app.browse(workspace) == () and source.read_bytes() == original_bytes
+        assert broker.snapshot()['leases'] == []
+    finally:
+        assert app.close_search()
+
+
+@pytest.mark.parametrize('outcome', ['cancelled', 'timed_out'])
+def test_fresh_waiting_outcome_cannot_overwrite_a_changed_current_record(tmp_path, monkeypatch, outcome):
+    app, workspace, source, broker = installation(tmp_path)
+    original_bytes = source.read_bytes()
+    entered, stop = observe_wait(monkeypatch), threading.Event()
+    results, errors, launches = [], [], []
+
+    def forbidden(*_args, **_kwargs):
+        launches.append(True)
+        pytest.fail('A refused resource waiter launched native work')
+
+    monkeypatch.setattr(worker, '_invoke', forbidden)
+
+    def run():
+        try:
+            results.append(app.import_file(workspace, source, cancelled=stop.is_set, timeout=3))
+        except BaseException as exc:
+            errors.append(exc)
+
+    thread = threading.Thread(target=run)
+    try:
+        with broker.reserve(ResourceRequest(cpu_slots=2), operation_id='occupier', timeout=0):
+            thread.start()
+            assert entered.wait(3)
+            assert thread.is_alive() and len(broker.snapshot()['leases']) == 1
+            paths = list((app.root / 'import-requests').glob('*.json'))
+            assert len(paths) == 1
+            path, identity = paths[0], paths[0].stem
+            initial = worker.load_request(app.root, identity)
+            assert initial['state'] == 'pending' and initial.get('attempt') is None
+            # Exercise the real progress writer while admission is genuinely
+            # occupied. The stable request identity remains unchanged; only
+            # a later persisted status differs from this invocation's capture.
+            later = dict(state='pending', message='Independent status retained while admission is occupied.',
+                         request_id=identity, isolated=True)
+            worker.record_progress(app.root, identity, state='pending', result=later)
+            changed = worker.load_request(app.root, identity)
+            saved = path.read_bytes()
+            assert changed != initial
+            assert worker._request_identity(changed) == worker._request_identity(initial)
+            if outcome == 'cancelled':
+                stop.set()
+            thread.join(5)
+            assert not thread.is_alive() and not results and not launches
+            assert len(errors) == 1 and isinstance(errors[0], ValueError)
+            assert str(errors[0]) == 'The fresh import request changed before admission settled.'
+            assert path.read_bytes() == saved and worker.load_request(app.root, identity) == changed
+            assert len(broker.snapshot()['leases']) == 1
+        with worker.request_lock(app.root, identity):
+            assert worker.load_request(app.root, identity) == changed
+        assert app.import_requests(workspace) == (
+            dict(request_id=identity, file=source.name, state='pending', result=later),)
+        assert app.browse(workspace) == () and source.read_bytes() == original_bytes
+        assert broker.snapshot()['leases'] == []
+    finally:
+        stop.set()
+        if thread.ident is not None:
+            thread.join(5)
+        assert not thread.is_alive()
+        assert app.close_search()

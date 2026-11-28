@@ -186,6 +186,7 @@ jobs:
             tests/integrations/test_dordiai_ownership.py \
             tests/integrations/test_dordiai_probe_cancellation.py \
             tests/studio/test_production_cancellation_outcomes.py \
+            tests/packaging/test_windows_bundle.py \
             tests/packaging/test_refresh_private_bundle_review.py \
             tests/ui/test_keyboard_settings.py \
             tests/speech/test_pronunciation_review.py \
@@ -727,6 +728,7 @@ jobs:
               'tests/citations/test_custom_csl.py',
               'tests/citations/test_bibliography_workbench.py',
               'tests/citations/test_custom_workbench.py',
+              'tests/operations/test_ocr_admission.py',
               'tests/e2e/test_import_files_cancellation.py',
               'tests/storage/test_backup_pending_common4.py',
               'tests/reader/test_export_change_time.py',
@@ -869,6 +871,7 @@ jobs:
               'tests/ui/test_reader_dialog_lifetime.py',
               'tests/ui/test_profile_project_exports.py',
               'tests/studio/test_production_cancellation_outcomes.py',
+              'tests/packaging/test_windows_bundle.py',
               'tests/packaging/test_refresh_private_bundle_review.py',
               'tests/security/test_anchor_locking.py',
               'tests/security/test_canonical_boundary.py',

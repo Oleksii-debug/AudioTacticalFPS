@@ -744,6 +744,16 @@ def _run_request(root, workspace, source, metadata, config, *, cancelled,
     result = dict(result, request_id=request_id, isolated=True)
     if attempt_id is not None:
         record_progress(root, request_id, state=result.get('state', 'failed'), result=result)
+    elif new:
+        # This invocation created this exact request while holding request_lock.
+        # No native attempt has been admitted, so retain its waiting outcome
+        # without manufacturing publication authority or rebinding an old owner.
+        with app.read(workspace):
+            current = load_request(root, request_id)
+            if current != record:
+                raise ValueError('The fresh import request changed before admission settled.')
+            _store(root, request_id, dict(current, state=result.get('state', 'failed'),
+                                         result=result))
     return result
 
 

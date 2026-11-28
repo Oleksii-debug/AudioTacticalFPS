@@ -10,7 +10,7 @@ def test_installed_slovak_notice_is_discoverable_and_exact_in_about_inventory():
     expected = package.joinpath('COPYING').read_bytes()
     catalogue = component_notices.catalogue()
     components = [item for item in catalogue.components
-                  if item.name.casefold().replace('_', '-') == 'carr-library']
+                  if item.name.casefold().replace('_', '-') == 'universal-research-library']
     assert len(components) == 1
     selected = [notice for notice in component_notices.notices(components[0])
                 if notice.relative.endswith('/reader/_vendor_num2words/COPYING')]

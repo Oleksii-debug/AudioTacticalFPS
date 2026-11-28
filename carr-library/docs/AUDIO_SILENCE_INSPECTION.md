@@ -77,6 +77,16 @@ retains the exact counts, identities and raw logs.
 These tests include genuine PCM16 RIFF/RF64 files, a real short FFmpeg production,
 completed receipt verification, file replacement and cancellation, the current
 backup consumers of the shared PCM parser, and the current Studio progress/action
-contracts. Native Windows Studio control verification remains a separate maintained
-probe. This component run does not qualify a later combined application head, human
-NVDA use, physical device listening or acoustic quality.
+contracts.
+
+The separate native Windows [run 46123004216](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46123004216)
+qualified commit `feb07924db248c2f028517939daeec02ebeb3ce9` with **98 native
+assertions and all nine fixed scenarios passed**. It exercised the actual installed
+Studio, selected FFmpeg production and current completed receipts, preserving the
+408-file package inventory, 17 named module origins and four outer probe/helper
+scripts before and after. The retained record is
+`f651a223e990d12de0f200b17656560b1616ddc6`.
+
+These component records do not qualify a later combined application head, human
+NVDA use, physical device listening or acoustic quality. The maintained final
+installed/offline gates must run against the exact composed package.
