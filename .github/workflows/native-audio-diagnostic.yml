@@ -1,4 +1,4 @@
-name: CARR isolated composed recovery diagnostics
+name: CARR isolated Windows source failure cohort
 
 on:
   push:
@@ -15,7 +15,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        scope: [composed-recovery]
+        scope: [regressions, unfinished]
     defaults:
       run:
         shell: pwsh
@@ -119,18 +119,82 @@ jobs:
           "CARR_V3_AUDIO=$audioRuntime" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
           (Join-Path $audioRuntime 'bin') | Out-File $env:GITHUB_PATH -Encoding utf8 -Append
 
-      - name: Require actual composed recovery and cancellation boundaries
-        if: ${{ !cancelled() && steps.install-runtime.outcome == 'success' && steps.installed-origin.outcome == 'success' && steps.audio-runtime.outcome == 'success' }}
+      - name: Prepare the canonical pinned OCR runtime for source coverage
+        id: ocr_runtime
+        timeout-minutes: 10
+        run: |
+          $bundleWork = Join-Path $env:RUNNER_TEMP 'carr-source-cohort-ocr'
+          New-Item -ItemType Directory -Force $bundleWork | Out-Null
+          & $env:CARR_PYTHON -m pip install --only-binary=:all: zstandard==0.25.0
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $ocr = Join-Path $bundleWork 'ocr'
+          $ocrSource = Join-Path $bundleWork 'ocr-corresponding-source.tar'
+          & $env:CARR_PYTHON packaging/prepare_windows_ocr.py --cache (Join-Path $bundleWork 'ocr-cache') --output $ocr --source-archive $ocrSource --download | Tee-Object 'ci-native-audio-diagnostic/ocr-preparation.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          "CARR_CI_OCR_DIR=$ocr" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Require observed failures negative controls and unfinished source coverage
+        if: ${{ !cancelled() && steps.install-runtime.outcome == 'success' && steps.installed-origin.outcome == 'success' && steps.audio-runtime.outcome == 'success' && steps.ocr_runtime.outcome == 'success' }}
         timeout-minutes: 12
         run: |
-          & $env:CARR_PYTHON scripts/ci_check.py --jobs 1 tests/storage/test_composed_recovery.py 2>&1 | Tee-Object 'ci-native-audio-diagnostic/composed-recovery-tests.txt'
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $allSuites = @(
+            'tests/e2e/test_epub_library.py',
+            'tests/reader/test_reading_desk.py',
+            'tests/ui/test_notebook_search_actions.py',
+            'tests/ui/test_desktop_result_modes.py',
+            'tests/ui/probe_catalog_insights_actions.py',
+            'tests/ingest/test_import_metadata_shape.py',
+            'tests/ingest/test_txt_replay_registration.py',
+            'tests/ingest/test_terminal_replay_registration.py',
+            'tests/ingest/test_import_publication_point.py',
+            'tests/ingest/test_import_replay_identity.py',
+            'tests/storage/test_engine_settings_dordiai_backup.py',
+            'tests/storage/test_studio_input_backup.py',
+            'tests/storage/test_composed_recovery.py',
+            'tests/storage/test_engine_settings_backup.py',
+            'tests/storage/test_backup_v4_sidecars.py',
+            'tests/storage/test_backup_generated_audio.py',
+            'tests/storage/test_studio_input_authority.py',
+            'tests/search/test_federated_advanced.py',
+            'tests/security/test_portable_handoff.py'
+          )
+          if ($allSuites.Count -ne 19 -or @($allSuites | Sort-Object -Unique).Count -ne 19) { throw 'The focused source cohort must contain exactly 19 unique suites.' }
+          switch ('${{ matrix.scope }}') {
+            'regressions' { $suites = @($allSuites[0..16]); $expected = 17 }
+            'unfinished' { $suites = @($allSuites[17..18]); $expected = 2 }
+            default { throw 'Unknown required source cohort.' }
+          }
+          if ($suites.Count -ne $expected) { throw 'The selected source cohort is incomplete.' }
+          foreach ($suite in $suites) {
+            if (-not (Test-Path -LiteralPath $suite -PathType Leaf)) { throw "Required suite is missing: $suite" }
+          }
+          @{ scope = '${{ matrix.scope }}'; all_suites = $allSuites; selected_suites = $suites } | ConvertTo-Json -Depth 4 | Set-Content 'ci-native-audio-diagnostic/selected-suites-${{ matrix.scope }}.json'
+          $previousPath = $env:PATH
+          $previousOcr = $env:CARR_OCR_DIR
+          $previousTessdata = $env:TESSDATA_PREFIX
+          try {
+            if (-not $env:CARR_CI_AUDIO_DIR -or -not $env:CARR_CI_OCR_DIR) { throw 'Verified audio and OCR prerequisites are required for source acceptance.' }
+            $audioBin = Join-Path $env:CARR_CI_AUDIO_DIR 'bin'
+            foreach ($tool in @('ffmpeg.exe', 'ffprobe.exe')) {
+              if (-not (Test-Path -LiteralPath (Join-Path $audioBin $tool) -PathType Leaf)) { throw "Verified audio executable is missing: $tool" }
+            }
+            if (-not (Test-Path -LiteralPath (Join-Path $env:CARR_CI_OCR_DIR 'tesseract.exe') -PathType Leaf)) { throw 'Verified OCR executable is missing.' }
+            $env:PATH = "$audioBin;$env:CARR_CI_OCR_DIR;$previousPath"
+            $env:CARR_OCR_DIR = $env:CARR_CI_OCR_DIR
+            $env:TESSDATA_PREFIX = Join-Path $env:CARR_CI_OCR_DIR 'tessdata'
+            & $env:CARR_PYTHON scripts/ci_check.py --jobs 2 @suites 2>&1 | Tee-Object 'ci-native-audio-diagnostic/focused-source-tests-${{ matrix.scope }}.txt'
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          } finally {
+            $env:PATH = $previousPath
+            $env:CARR_OCR_DIR = $previousOcr
+            $env:TESSDATA_PREFIX = $previousTessdata
+          }
 
-      - name: Preserve composed recovery diagnostic evidence
+      - name: Preserve focused source diagnostic evidence
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: carr-composed-recovery-diagnostic-${{ github.sha }}
+          name: carr-source-cohort-diagnostic-${{ github.sha }}-${{ matrix.scope }}
           path: |
             carr-library/ci-native-audio-diagnostic/*.txt
             carr-library/ci-native-audio-diagnostic/*.json

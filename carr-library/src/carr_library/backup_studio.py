@@ -21,6 +21,7 @@ PUBLICATION = re.compile(r'state/studio/publications/(' + ID + r')\.json\Z')
 BOOK_SOURCE = re.compile(r'state/studio/jobs/([A-Za-z0-9_-]{1,80})/book-source\.json\Z')
 INPUT_RECEIPT = 'state/studio/backup-inputs.json'
 INPUT_REVIEW = 'state/studio/legacy-input-review.json'
+DRAFT = 'state/studio/draft.json'
 MAX_MEDIA_BYTES = 32 * 1024**3
 MAX_RECORDING_BYTES = 2 * 1024**3
 
@@ -35,7 +36,7 @@ def limit(name):
     if BATCH.fullmatch(name):
         return 128 * 1024
     if (BOOK.fullmatch(name) or BOOK_SOURCE.fullmatch(name) or PUBLICATION.fullmatch(name)
-            or name in (INPUT_RECEIPT, INPUT_REVIEW)):
+            or name in (INPUT_RECEIPT, INPUT_REVIEW, DRAFT)):
         return 32 * 1024 * 1024
     return None
 
@@ -81,7 +82,23 @@ def validate_source_snapshot(db, anchor):
 
 
 def validate(db, name, value):
-    if match := PRESET.fullmatch(name):
+    if name == DRAFT:
+        # StudioController.autosave retains even unfinished/invalid scripts.
+        # This is editable text, not a parsed project or a voice/output grant.
+        fields(value, {'schema', 'text', 'title', 'voice_ids', 'project_id'})
+        if type(value['schema']) is not int or value['schema'] != 1:
+            raise ValueError('Invalid Studio draft schema.')
+        text(value['text'], 16_000_000, empty=True)
+        text(value['title'], 32768, empty=True)
+        if type(value['voice_ids']) is not list or len(value['voice_ids']) > 256:
+            raise ValueError('Invalid Studio draft voice choices.')
+        for voice_id in value['voice_ids']:
+            text(voice_id, 2048, empty=True)
+        if (value['project_id'] is not None and
+                (type(value['project_id']) is not str
+                 or re.fullmatch(r'[A-Za-z0-9_-]{1,80}', value['project_id']) is None)):
+            raise ValueError('Invalid Studio draft project identity.')
+    elif match := PRESET.fullmatch(name):
         from .audio.effect_presets import EffectPreset
         preset = EffectPreset.from_dict(value)
         if preset.id != match[1]:

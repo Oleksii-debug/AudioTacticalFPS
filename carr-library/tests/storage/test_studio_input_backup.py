@@ -23,6 +23,7 @@ from carr_library.state_backup import snapshot_state
 from carr_library.studio.backup_inputs import RECEIPT, review_project_inputs
 from carr_library.studio.project import Cue, Project, ProjectStore, Scene
 from carr_library.studio.render import ProductionService, _operation_sha256
+from carr_library.ui.studio_dialog import StudioController
 
 
 def tone(path, *, frequency=220, seconds=.5):
@@ -61,7 +62,7 @@ def manifest_rehash(backup, name, value):
     raw = encode(value)
     (backup / 'state' / name).write_bytes(raw)
     manifest = read_json(backup / 'manifest.json')
-    entry = next(item for item in manifest['state'] if item['filename'] == name)
+    entry = next(item for item in manifest['sidecars'] if item['filename'] == 'state/' + name)
     entry.update(size_bytes=len(raw), sha256=sha256(raw).hexdigest())
     raw = encode(manifest)
     (backup / 'manifest.json').write_bytes(raw)
@@ -94,7 +95,10 @@ def test_real_render_backup_delete_original_state_restore_and_render_again(tmp_p
                                  operation_id='pending-second-revision')
     draft = {'schema': 1, 'text': 'Unsaved editable draft stays exact.',
              'title': current.title, 'voice_ids': [], 'project_id': current.id}
-    atomic_json(service.root / 'draft.json', draft)
+    controller = StudioController(app, service=service)
+    controller.project = current
+    controller.autosave(draft['text'], draft['title'], draft['voice_ids'])
+    assert read_json(controller.draft) == draft
     original_project_bytes = {str(path.relative_to(app.root / 'state')): path.read_bytes()
                               for path in service.root.rglob('*.json')
                               if 'cache' not in path.parts}
@@ -106,9 +110,9 @@ def test_real_render_backup_delete_original_state_restore_and_render_again(tmp_p
     assert manifest['version'] == 4 and manifest['generated_audio_included'] is False
     assert set(receipt['inputs']) == set(original_inputs)
     assert len(receipt['projects']) == 5  # current, revision, two jobs, completed export
-    assert not any('/cache/' in item['filename'] for item in manifest['state'])
+    assert not any('/cache/' in item['filename'] for item in manifest['sidecars'])
     for original, entry in receipt['inputs'].items():
-        assert entry in manifest['state']
+        assert dict(entry, filename='state/' + entry['filename']) in manifest['sidecars']
         assert (backup / 'state' / entry['filename']).read_bytes() == original_inputs[original]
         assert entry['sha256'] == sha256(original_inputs[original]).hexdigest()
         assert Path(original).read_bytes() == original_inputs[original]
@@ -230,20 +234,21 @@ def test_invalid_retained_inputs_or_project_bindings_never_publish(backed_up, tm
 def historical_v4(backup, *, forged_review=None, uppercase_job=False):
     from carr_library.studio.backup_inputs import REVIEW
     manifest = read_json(backup / 'manifest.json')
-    omitted = [item for item in manifest['state'] if item['filename'] == RECEIPT
-               or item['filename'].startswith('studio/inputs/')]
-    manifest['state'] = [item for item in manifest['state'] if item not in omitted]
+    assert manifest['version'] == 4 and 'state' not in manifest
+    omitted = [item for item in manifest['sidecars'] if item['filename'] == 'state/' + RECEIPT
+               or item['filename'].startswith('state/studio/inputs/')]
+    manifest['sidecars'] = [item for item in manifest['sidecars'] if item not in omitted]
     for item in omitted:
-        (backup / 'state' / item['filename']).unlink()
+        (backup / item['filename']).unlink()
     if forged_review is not None:
         raw = encode(forged_review)
         (backup / 'state' / REVIEW).write_bytes(raw)
-        manifest['state'] = [entry for entry in manifest['state'] if entry['filename'] != REVIEW]
-        manifest['state'].append({'filename': REVIEW, 'size_bytes': len(raw),
+        manifest['sidecars'] = [entry for entry in manifest['sidecars'] if entry['filename'] != 'state/' + REVIEW]
+        manifest['sidecars'].append({'filename': 'state/' + REVIEW, 'size_bytes': len(raw),
                                   'sha256': sha256(raw).hexdigest()})
     if uppercase_job:
-        entry = next(item for item in manifest['state'] if item['filename'].endswith('/job.json'))
-        path = backup / 'state' / entry['filename']
+        entry = next(item for item in manifest['sidecars'] if item['filename'].endswith('/job.json'))
+        path = backup / entry['filename']
         path.rename(path.with_name('JOB.JSON'))
         entry['filename'] = entry['filename'].removesuffix('job.json') + 'JOB.JSON'
     raw = encode(manifest)
@@ -302,14 +307,19 @@ def test_legacy_paths_and_inherited_approvals_cannot_capture_local_files(backed_
 
 
 def test_case_variant_legacy_job_cannot_retain_external_output_authority(backed_up, tmp_path):
-    from carr_library.studio.backup_inputs import input_review
     _app, source, _project, backup, _digest = backed_up
     digest = historical_v4(backup, uppercase_job=True)
-    restored = restore_backup(backup, tmp_path / 'restored', digest)
-    state = read_json(restored / 'state/studio/jobs/restorable-job/JOB.JSON')
-    assert state['status'] == 'waiting-input' and state['destination'] == ''
-    assert state['recovery']['requires_output_directory'] is True
-    assert input_review(restored / 'state/studio')['pending'] == [str(source)]
+    target = tmp_path / 'restored'
+    preserved = (backup / 'state/studio/jobs/restorable-job/JOB.JSON').read_bytes()
+    original_input = source.read_bytes()
+    # The typed v4 registry admits exact producer filenames only. A case alias
+    # must not be restored as an unchecked job carrying external output rights.
+    with pytest.raises(ValueError, match=r'No validated backup adapter.*JOB\.JSON'):
+        restore_backup(backup, target, digest)
+    assert not target.exists()
+    assert (backup / 'state/studio/jobs/restorable-job/JOB.JSON').read_bytes() == preserved
+    assert source.read_bytes() == original_input
+    assert not list((tmp_path / 'outputs').iterdir())
 
 
 def test_case_aliased_reserved_receipt_is_rejected(backed_up, tmp_path):
@@ -317,11 +327,11 @@ def test_case_aliased_reserved_receipt_is_rejected(backed_up, tmp_path):
     alias = 'studio/Backup-Inputs.json'
     (backup / 'state' / RECEIPT).rename(backup / 'state' / alias)
     manifest = read_json(backup / 'manifest.json')
-    next(item for item in manifest['state'] if item['filename'] == RECEIPT)['filename'] = alias
+    next(item for item in manifest['sidecars'] if item['filename'] == 'state/' + RECEIPT)['filename'] = 'state/' + alias
     raw = encode(manifest)
     (backup / 'manifest.json').write_bytes(raw)
     target = tmp_path / 'restored'
-    with pytest.raises(ValueError, match='reserved filename'):
+    with pytest.raises(ValueError, match=r'No validated backup adapter.*Backup-Inputs\.json'):
         restore_backup(backup, target, sha256(raw).hexdigest())
     assert not target.exists()
 
@@ -423,11 +433,12 @@ def test_modified_restored_input_is_refused_before_render(backed_up, tmp_path):
 def test_legacy_v4_without_studio_receipt_remains_readable(backed_up, tmp_path):
     _app, _source, project, backup, _digest = backed_up
     manifest = read_json(backup / 'manifest.json')
-    omitted = [item for item in manifest['state'] if item['filename'] == RECEIPT
-               or item['filename'].startswith('studio/inputs/')]
-    manifest['state'] = [item for item in manifest['state'] if item not in omitted]
+    assert manifest['version'] == 4 and 'state' not in manifest
+    omitted = [item for item in manifest['sidecars'] if item['filename'] == 'state/' + RECEIPT
+               or item['filename'].startswith('state/studio/inputs/')]
+    manifest['sidecars'] = [item for item in manifest['sidecars'] if item not in omitted]
     for item in omitted:
-        (backup / 'state' / item['filename']).unlink()
+        (backup / item['filename']).unlink()
     raw = encode(manifest)
     (backup / 'manifest.json').write_bytes(raw)
     restored = restore_backup(backup, tmp_path / 'restored', sha256(raw).hexdigest())
@@ -449,7 +460,9 @@ def test_invalid_typed_project_fails_before_backup_publication(tmp_path):
     path = app.root / 'state/studio/projects' / project.id / 'project.json'
     atomic_json(path, value, replace=True)
     target = tmp_path / 'backup'
-    with pytest.raises(ValueError, match='Invalid typed Studio project'):
+    with pytest.raises(ValueError, match='Cue start must be between'):
+        Project.from_dict(value)
+    with pytest.raises(ValueError, match=r'invalid backup sidecar .*project\.json: Cue start must be between'):
         create_backup(app, target)
     assert not target.exists()
 
@@ -477,3 +490,55 @@ def test_complete_clip_stem_receipt_cannot_omit_a_published_role(tmp_path, monke
     assert read_json(receipt) == damaged and Path(stem['path']).read_bytes() == retained
     atomic_json(receipt, complete, replace=True)
     assert service.run(job) == complete
+
+
+def test_invalid_editable_studio_draft_restores_as_exact_passive_data(tmp_path, monkeypatch):
+    import subprocess
+
+    app = LibraryApp(tmp_path / 'draft-library')
+    controller = StudioController(app, service=production(app.root / 'state/studio'))
+    original = '[Execute: never run this draft]\nUnfinished editable text — не втрачати.'
+    with pytest.raises(ValueError, match='direction'):
+        controller.save(original, '', ('absent-local-voice',))
+    draft = controller.draft.read_bytes()
+    assert read_json(controller.draft)['project_id'] is None
+    assert controller.project is None and controller.service.projects.list() == ()
+
+    def forbidden(*args, **kwargs):
+        pytest.fail('Passive draft backup or restore attempted to run an engine.')
+    monkeypatch.setattr(subprocess, 'Popen', forbidden)
+    monkeypatch.setattr(ProductionService, 'run', forbidden)
+    monkeypatch.setattr(ProductionService, 'discover_voices', forbidden)
+    backup = tmp_path / 'draft-backup'
+    checksum = create_backup(app, backup)
+    manifest = read_json(backup / 'manifest.json')
+    assert manifest['sidecars'] == [{
+        'filename': 'state/studio/draft.json', 'size_bytes': len(draft),
+        'sha256': sha256(draft).hexdigest()}]
+    shutil.rmtree(app.root)
+    restored = restore_backup(backup, tmp_path / 'restored-draft', checksum)
+    assert (restored / 'state/studio/draft.json').read_bytes() == draft
+    assert read_json(restored / 'state/studio/draft.json')['text'] == original
+    assert not (restored / 'state/studio/jobs').exists()
+
+
+@pytest.mark.parametrize('change', [
+    {'schema': True}, {'schema': 2}, {'command': 'must not execute'},
+    {'text': []}, {'text': 'invalid\x00draft'}, {'title': None},
+    {'voice_ids': 'voice'}, {'voice_ids': [None]}, {'voice_ids': ['x' * 2049]},
+    {'voice_ids': ['voice'] * 257}, {'project_id': '../outside'}, {'project_id': 1},
+], ids=['boolean-schema', 'schema', 'unknown-field', 'text-type', 'text-nul',
+        'title-type', 'voices-type', 'voice-type', 'voice-size', 'voice-count',
+        'project-path', 'project-type'])
+def test_malformed_studio_draft_never_publishes_backup(tmp_path, change):
+    app = LibraryApp(tmp_path / 'library')
+    value = {'schema': 1, 'text': '', 'title': '', 'voice_ids': [], 'project_id': None}
+    value.update(change)
+    path = app.root / 'state/studio/draft.json'
+    atomic_json(path, value)
+    original = path.read_bytes()
+    target = tmp_path / 'rejected'
+    with pytest.raises(ValueError, match='invalid backup sidecar state/studio/draft.json'):
+        create_backup(app, target)
+    assert not target.exists()
+    assert path.read_bytes() == original

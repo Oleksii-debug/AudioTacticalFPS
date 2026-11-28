@@ -71,6 +71,11 @@ def test_bounded_unicode_sequences_preserve_order_on_both_routes(
     collections = sequence(('Залізниці', 'Města') * (count // 2))
     captured = []
     expected = {'state': 'accepted'}
+    if suffix == 'txt':
+        # TXT routing inspects the real byte size before either backend runs.
+        selected = tmp_path / 'selected.txt'
+        original = 'Незмінні bytes for bounded metadata dispatch.'.encode('utf-8')
+        selected.write_bytes(original)
 
     def inline(selected_workspace, path, **metadata):
         captured.append(('inline', selected_workspace, metadata))
@@ -91,6 +96,8 @@ def test_bounded_unicode_sequences_preserve_order_on_both_routes(
     assert metadata['authors'] == tuple(authors)
     assert metadata['collections'] == tuple(collections)
     assert isinstance(metadata['authors'], tuple) and isinstance(metadata['collections'], tuple)
+    if suffix == 'txt':
+        assert selected.read_bytes() == original
 
 
 @pytest.mark.parametrize('sequence', [list, tuple], ids=['list', 'tuple'])
