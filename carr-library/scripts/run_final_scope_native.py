@@ -193,10 +193,12 @@ def main():
             probe = dict(id=spec['id'], source_sha256=sources_before[spec['path']],
                          timeout_seconds=outer, owned_deadline_seconds=owned)
             failure = None
+            diagnostic_tails = {}
             def retain(channel, text):
                 if isinstance(text, bytes):
                     text = text.decode('utf-8', errors='replace')
                 (output / (spec['id'] + '.' + channel + '.txt')).write_text(text or '', encoding='utf-8')
+                diagnostic_tails[channel] = (text or '')[-8192:]
             try:
                 try:
                     completed = subprocess.run(command, cwd=project, capture_output=True, timeout=outer,
@@ -272,6 +274,16 @@ def main():
                     probe['identity_failure_type'] = type(exc).__name__
                     probe['identity_failure_message'] = str(exc)[:1200]
                 report['probes'].append(probe)
+            if failure is not None or probe['exact_identity_after'] != 'PASS':
+                # These fixed acceptance probes use synthetic data. Keep a bounded
+                # diagnostic in the job log while preserving complete artifact files.
+                diagnostic = dict(schema='carr-final-native-failure/1', id=spec['id'],
+                    returncode=probe.get('returncode'), failure_type=probe.get('failure_type'),
+                    failure_message=probe.get('failure_message'),
+                    exact_identity_after=probe['exact_identity_after'],
+                    identity_failure_message=probe.get('identity_failure_message'),
+                    tail_characters_per_channel=8192, retained_tails=diagnostic_tails)
+                print(json.dumps(diagnostic, sort_keys=True), file=sys.stderr, flush=True)
             if failure is not None:
                 raise failure
             if probe['exact_identity_after'] != 'PASS':

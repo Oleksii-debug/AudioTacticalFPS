@@ -20,10 +20,10 @@ jobs:
         tier:
           - {name: books-1000, books: 1000, bytes: 0, segments: 40, spool_mib: 4096}
           - {name: books-10000, books: 10000, bytes: 0, segments: 40, spool_mib: 4096}
-          - {name: books-50000, books: 50000, bytes: 0, segments: 40, spool_mib: 4096}
+          - {name: books-50000, books: 50000, bytes: 0, segments: 40, spool_mib: 8192}
           - {name: text-65m, books: 0, bytes: 68157613, segments: 17, spool_mib: 4096}
           - {name: text-129m, books: 0, bytes: 135266477, segments: 33, spool_mib: 4096}
-          - {name: text-2g, books: 0, bytes: 2147483648, segments: 1000, spool_mib: 8192}
+          - {name: text-2g, books: 0, bytes: 2147483648, segments: 1000, spool_mib: 16384}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 360
     defaults:

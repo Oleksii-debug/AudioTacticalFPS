@@ -578,16 +578,26 @@ def _run_native():
             press(dialog.buttons['preview'])
             yield waiting(hold.ready.is_set, 'The genuine preparation did not reach its completion hold')
             record = jobs[-1]
+            peer = peers[-1]
+            check('the held result belongs to the observed native preparation owner', peer.dialog is dialog)
             if action == 'cancel':
                 press(dialog.buttons['cancel'])
                 yield waiting(dialog._withdrawn.is_set, 'The native Cancel event did not reach its owner')
                 check('native Cancel is acknowledged before releasing the genuine completed proposal',
                       dialog.busy and dialog.proposal is None and not record.returned)
             else:
+                withdrawn = dialog._withdrawn
                 dialog.Destroy()
+                check('direct destruction immediately withdraws the logical preparation owner',
+                      withdrawn.is_set() and not dialog.alive)
+                check('direct destruction preserves the document before genuine worker delivery',
+                      current().to_dict() == accepted)
             hold.release.set()
-            yield waiting(lambda: record.returned and record.delivered,
-                          'The same reader worker did not deliver its genuine completion')
+            # Worker delivery can precede wx's idle-time native deletion. Require
+            # the existing cached-ID destruction observation in this same wait.
+            yield waiting(lambda: record.returned and record.delivered
+                          and (action == 'cancel' or (not dialog and len(peer.deaths) == 1)),
+                          'The same reader worker and requested native destruction did not settle')
             if action == 'cancel':
                 check('native cancellation does not grant a stale proposal',
                       dialog.proposal is None and not dialog.busy and current().to_dict() == accepted)
