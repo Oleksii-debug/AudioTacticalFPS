@@ -292,3 +292,65 @@ def test_cancelled_stream_setup_keeps_pending_job_retryable_without_publication(
             assert file_digest(store.resolve(original['sha256'])) == original['sha256']
             ingest.retry('A', job)
             assert ingest.inspect('A', job)['state'] == 'pending'
+
+
+def test_interrupted_publication_read_releases_lock_with_retained_traceback(tmp_path):
+    from carr_library.ingest.publication import _read_database
+    from carr_library.pending_backup import MAX_PAYLOAD
+
+    source = tmp_path / 'three-pages.txt'
+    source.write_text('First exact page.\fSecond exact page.\fThird exact page.', encoding='utf-8')
+    app = LibraryApp(tmp_path / 'library')
+    workspace = app.create_workspace('Interrupted receipt')
+    result = app.import_file(workspace, source, timeout=60, **metadata())
+    assert result['state'] == 'complete' and result['completed'] == 3, result
+    request = worker.load_request(app.root, result['request_id'])
+    candidate = request['publication_candidate']
+    assert candidate['revision'] == result['id']
+    page_queries = []
+
+    def observe_query(statement):
+        if (statement.startswith('SELECT ordinal,physical,printed,verified,')
+                and 'FROM page WHERE revision=' in statement):
+            page_queries.append(statement)
+
+    def interrupt_pages():
+        if page_queries:
+            raise TimeoutError('Synthetic stop during receipt page iteration.')
+
+    # This small deterministic regression exercises the real read connection,
+    # SQLite cursor and receipt verifier. The existing large-source cases retain
+    # the real one-second reconciliation deadline and actual child termination.
+    with pytest.raises(TimeoutError, match='Synthetic stop during receipt page iteration') as failure:
+        with _read_database(app.database, lambda: False, MAX_PAYLOAD) as db:
+            db.set_trace_callback(observe_query)
+            try:
+                worker._publication_state(db, request, candidate['revision'],
+                                          check=interrupt_pages, max_payload=MAX_PAYLOAD)
+            finally:
+                db.set_trace_callback(None)
+    assert len(page_queries) == 1
+    traceback = failure.value.__traceback__
+    while traceback is not None and traceback.tb_frame.f_code is not worker._publication_state.__code__:
+        traceback = traceback.tb_next
+    assert traceback is not None and 'pages' in traceback.tb_frame.f_locals
+
+    # Keep the exception and verifier frame alive while a separate writer must
+    # commit immediately. No garbage collection, busy retry or timeout increase
+    # may be needed to release the interrupted reader's statement.
+    with closing(sqlite3.connect(app.database, isolation_level=None, timeout=0)) as writer:
+        writer.execute('BEGIN IMMEDIATE')
+        writer.execute('UPDATE workspace_meta SET description=? WHERE workspace=?',
+                       ('Writer committed after interrupted receipt.', workspace))
+        writer.commit()
+    reopened = LibraryApp(app.root)
+    with reopened.read(workspace) as db:
+        assert db.execute('SELECT description FROM workspace_meta WHERE workspace=?',
+                          (workspace,)).fetchone()[0] == 'Writer committed after interrupted receipt.'
+        assert [row[0] for row in db.execute(
+            'SELECT raw FROM page WHERE revision=? ORDER BY ordinal', (result['id'],))] == [
+                'First exact page.', 'Second exact page.', 'Third exact page.']
+        receipt, = [tuple(row) for row in db.execute(
+            'SELECT revision,request_id,attempt,sha256 FROM import_publication')]
+        assert receipt == (result['id'], result['request_id'], request['attempt'], candidate['sha256'])
+    assert failure.value.__traceback__ is not None and traceback.tb_frame.f_locals['pages'] is not None

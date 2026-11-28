@@ -1,0 +1,59 @@
+{
+  "schema": "carr-actual-G-native-launchers/1",
+  "created_utc": "2026-11-28 10:17:23 UTC",
+  "status": "ACTUAL_BOTH_JOBS_SUCCESS",
+  "source_commit": "fc84f903dfe068b4eb816e5395cdbd3bf7aa7ad2",
+  "source_tree": "b5155e3ee1efb09097a1b6759cb9d5374bffbd9a",
+  "run_id": 46131516649,
+  "workflow_blob": "f8263b911e1bf209dd61859653cf84b3fb36534d",
+  "zig": {
+    "job_id": 140937499782,
+    "status": "SUCCESS",
+    "receipt": "f4b0980006545876345f8301f7baca4d836ed24f",
+    "required_checks": 9
+  },
+  "msvc": {
+    "job_id": 140937499959,
+    "started_at": "2026-11-28T09:55:02Z",
+    "completed_at": "2026-11-28T09:55:33Z",
+    "status": "SUCCESS",
+    "log": {
+      "bytes": 34196,
+      "sha256": "e18a1e5643706db0c3199ee9e2040b94fb93e10807ce818866408a53c42a5c00"
+    },
+    "actual_report": {
+      "schema": 1,
+      "status": "passed",
+      "checks": [
+        "unicode-spaces-fixed-argv-offline-optional-runtimes",
+        "read-only-ready-probe",
+        "fixed-installation-check",
+        "child-exit-status-propagated",
+        "extra-arguments-rejected",
+        "incomplete-state-preserved-without-reinstall",
+        "missing-runtime-does-not-search-path",
+        "fresh-package-reuses-fixed-offline-installer",
+        "research-data-sentinel-preserved"
+      ],
+      "check_count": 9,
+      "launcher_sha256": "40201a9f834ed7fe10b749fe53750867ee289c246ee1b8b5349584906bd26366",
+      "synthetic_child_sha256": "c0112243896c7eee158b715c4b1f80de87d0867c1692f5f356742d0109906294",
+      "native_launcher_execution_verified": true,
+      "actual_python_installation_verified": false,
+      "nvda_verified": false,
+      "authenticode_verified": false
+    }
+  },
+  "qualification": {
+    "actual_native_launcher_execution": true,
+    "actual_python_installation": false,
+    "nvda": false,
+    "authenticode": false,
+    "synthetic_child": true
+  },
+  "limits": [
+    "Both separate actual native build/execute jobs passed their original9checks on this exact G head.",
+    "This does not qualify physical output, real installed Python, manual NVDA, signing, the full desktop bundle or an H successor.",
+    "No refs or stable G result files changed."
+  ]
+}

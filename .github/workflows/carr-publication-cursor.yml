@@ -1,0 +1,255 @@
+name: Publication cursor interruption regression
+
+on:
+  push:
+    branches: ['carr/ci-publication-cursor-*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  retained-cursor:
+    name: Actual retained-exception SQLite control on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-2022]
+    concurrency:
+      group: carr-publication-cursor-${{ matrix.os }}-${{ github.sha }}
+      cancel-in-progress: false
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: carr-library
+    env:
+      EXPECTED_SOURCE_SHA: ${{ github.sha }}
+      PYTHONUTF8: '1'
+      PYTHONUNBUFFERED: '1'
+      PYTHONDONTWRITEBYTECODE: '1'
+      PYTEST_DISABLE_PLUGIN_AUTOLOAD: '1'
+      PYTEST_ADDOPTS: ''
+      PIP_DISABLE_PIP_VERSION_CHECK: '1'
+      HF_HUB_OFFLINE: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      DO_NOT_TRACK: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        timeout-minutes: 3
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        timeout-minutes: 5
+        with:
+          python-version: '3.11'
+          architecture: x64
+      - name: Verify exact correction and acquire existing hashed dependencies
+        timeout-minutes: 20
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $false
+          @'
+          from hashlib import sha1
+          import os, pathlib, subprocess
+          root = pathlib.Path.cwd()
+          head = subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip()
+          assert head == os.environ['EXPECTED_SOURCE_SHA']
+          pins = {
+              'src/carr_library/ingest/worker.py': '532cd6d0e0bdbeb55675eeb813aa1e39239df022',
+              'src/carr_library/ingest/publication.py': 'a2b8c3a1f4ce5be17567b8bcd8cda743d73e7fb5',
+              'tests/ingest/test_large_source_intake.py': '6f5f116cf54d3183d1edfc36bd58acc4e1de5c38',
+              'tests/ingest/large_source_fixtures.py': '7d59170c1d372d9b1bbdfa672dfd2d80021a26df',
+              'scripts/ci_check.py': '6ad3055cfcd7c6a1b1af8544ae462c5d51adb473',
+              'pyproject.toml': '0e691bab81b90bf9b1543b454014c47b987f11ce',
+              'packaging/windows-cp311.lock': '8dad99c0ea80470b7253873aee78e08857affec6',
+              'packaging/windows-sync-cp311.lock': 'cd9c18a24d7a7ac203d81cf6a8d82d8bcb8f8ab3',
+              'packaging/trusted-client.lock': '6c4b48ac09572dc259d62d0d801057ab47c04583',
+              'packaging/windows-sync-test-cp311.lock': 'e3f6eda5976e867abe7267c04e0b867b1fd16f7a',
+              'packaging/linux-sync-core-cp311.lock': '08f945066be748972a10d5b0ce46480fff722959',
+          }
+          for name, expected in pins.items():
+              path = root / name
+              assert path.is_file() and not path.is_symlink(), name
+              raw = path.read_bytes()
+              assert sha1(b'blob '+str(len(raw)).encode('ascii')+b'\0'+raw).hexdigest() == expected, name
+              if path.suffix == '.py':
+                  compile(raw, name, 'exec')
+          subprocess.run(['git', 'diff', '--exit-code', 'HEAD', '--', '.'], check=True)
+          print('Exact source head and eleven correction/dependency pins verified.')
+          '@ | & python -I -B -X utf8 -
+          if ($LASTEXITCODE -ne 0) { throw 'Publication regression source preflight failed.' }
+          if ($IsWindows) {
+            & python -B -m pip install --only-binary=:all: --require-hashes -r packaging/windows-cp311.lock -r packaging/windows-sync-cp311.lock -r packaging/trusted-client.lock -r packaging/windows-sync-test-cp311.lock
+          } else {
+            & python -B -m pip install --only-binary=:all: --require-hashes -r packaging/linux-sync-core-cp311.lock -r packaging/trusted-client.lock -r packaging/windows-sync-test-cp311.lock
+          }
+          if ($LASTEXITCODE -ne 0) { throw 'Existing hashed publication regression dependencies failed.' }
+          & python -I -B -m pip check
+          if ($LASTEXITCODE -ne 0) { throw 'Publication regression dependency closure failed.' }
+      - name: Require observed preimage lock failure and corrected immediate writer
+        timeout-minutes: 8
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $false
+          @'
+          from hashlib import sha1, sha256
+          import json, os, pathlib, re, runpy, shutil, stat, subprocess, sys, tempfile
+          import xml.etree.ElementTree as ET
+          root = pathlib.Path.cwd().resolve()
+          repository = root.parent
+          evidence = repository / 'ci-publication-cursor'
+          evidence.mkdir()
+          test = 'test_interrupted_publication_read_releases_lock_with_retained_traceback'
+          suite = 'tests/ingest/test_large_source_intake.py'
+          worker = pathlib.Path('src/carr_library/ingest/worker.py')
+          old_head = 'fc84f903dfe068b4eb816e5395cdbd3bf7aa7ad2'
+          old_blob = '8ab4334be7f7728de84839a6a35cfae5a1347830'
+          new_blob = '532cd6d0e0bdbeb55675eeb813aa1e39239df022'
+
+          def blob(raw):
+              return sha1(b'blob '+str(len(raw)).encode('ascii')+b'\0'+raw).hexdigest()
+
+          def inventory(directory):
+              values = {}
+              for path in sorted(directory.rglob('*')):
+                  info = path.lstat()
+                  assert not path.is_symlink() and not getattr(info, 'st_file_attributes', 0) & 1024
+                  if stat.S_ISDIR(info.st_mode):
+                      continue
+                  assert stat.S_ISREG(info.st_mode) and info.st_nlink == 1
+                  values[path.relative_to(directory).as_posix()] = blob(path.read_bytes())
+              return values
+
+          before = inventory(root)
+          assert before[worker.as_posix()] == new_blob
+          old = subprocess.check_output(['git', 'show', old_head+':carr-library/'+worker.as_posix()])
+          assert blob(old) == old_blob
+          head = subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip()
+          assert head == os.environ['EXPECTED_SOURCE_SHA']
+          policy = runpy.run_path(str(root / 'scripts/ci_check.py'))
+          child = r"""
+          from hashlib import sha1
+          import json, pathlib, runpy, sys
+          root, expected, origins, report, temporary, selected = sys.argv[1:]
+          root = pathlib.Path(root).resolve()
+          sys.path[:0] = [str(root / 'src'), str(root)]
+          from carr_library.ingest import worker
+          actual = pathlib.Path(worker.__file__).resolve()
+          assert actual == root / 'src/carr_library/ingest/worker.py'
+          raw = actual.read_bytes()
+          assert sha1(b'blob '+str(len(raw)).encode('ascii')+b'\0'+raw).hexdigest() == expected
+          pathlib.Path(origins).write_text(json.dumps({
+              'worker_origin': str(actual), 'worker_blob': expected,
+              'interpretation': 'temporary source copy; no installed qualification'
+          }, indent=2)+'\n', encoding='utf-8')
+          policy = runpy.run_path(str(root / 'scripts/ci_check.py'))
+          sys.argv = ['publication-cursor', '-v', '-o', 'addopts=', '-o', 'xfail_strict=true',
+                      '-o', 'faulthandler_timeout=120', '-o', 'faulthandler_exit_on_timeout=false',
+                      '-o', 'cache_dir='+temporary+'-cache',
+                      '--junitxml', report, '--basetemp', temporary,
+                      '--', str(root / 'tests/ingest/test_large_source_intake.py')+'::'+selected]
+          exec(compile(policy['PYTEST_CHILD'], '<canonical-ci-check-child>', 'exec'))
+          """
+          import textwrap
+          child = textwrap.dedent(child)
+          compile(child, '<publication-control-child>', 'exec')
+          results = []
+          with tempfile.TemporaryDirectory(prefix='carr-publication-cursor-') as temporary:
+              temporary = pathlib.Path(temporary)
+              for mode, expected in (('preimage', old_blob), ('postimage', new_blob)):
+                  clone = temporary / mode
+                  shutil.copytree(root, clone)
+                  if mode == 'preimage':
+                      (clone / worker).write_bytes(old)
+                  wanted = dict(before)
+                  wanted[worker.as_posix()] = expected
+                  assert inventory(clone) == wanted, mode
+                  report = evidence / (mode+'.xml')
+                  log = evidence / (mode+'.txt')
+                  origins = evidence / (mode+'-origins.json')
+                  command = [sys.executable, '-I', '-B', '-X', 'utf8', '-c', child,
+                             str(clone), expected, str(origins), str(report),
+                             str(temporary / (mode+'-pytest')), test]
+                  isolation = ({'creationflags': subprocess.CREATE_NEW_PROCESS_GROUP}
+                               if os.name == 'nt' else {'start_new_session': True})
+                  with log.open('wb') as output:
+                      process = subprocess.Popen(command, cwd=clone, env=os.environ.copy(),
+                          stdin=subprocess.DEVNULL, stdout=output, stderr=subprocess.STDOUT, **isolation)
+                      try:
+                          code = process.wait(timeout=180)
+                      except BaseException:
+                          policy['_terminate_process_tree'](process)
+                          raise
+                  cases = list(ET.parse(report).iter('testcase'))
+                  assert len(cases) == 1 and cases[0].get('name') == test, mode
+                  assert cases[0].find('skipped') is None and cases[0].find('error') is None, mode
+                  failed = cases[0].find('failure')
+                  if mode == 'preimage':
+                      assert code == 1 and failed is not None, 'The actual original defect was not reproduced.'
+                      failure_text = ''.join(failed.itertext())
+                      assert 'sqlite3.OperationalError: database is locked' in failure_text, failure_text
+                      assert re.search(r'(?m)^>\s+writer\.commit\(\)\s*$', failure_text), failure_text
+                      status = 'OBSERVED_EXPECTED_PREIMAGE_FAILURE'
+                  else:
+                      assert code == 0 and failed is None, 'Corrected reader did not release its real lock.'
+                      status = 'PASS'
+                  assert inventory(clone) == wanted, mode+' source copy changed during its case.'
+                  results.append({'mode': mode, 'status': status, 'worker_blob': expected,
+                                  'pytest_exit': code, 'cases': 1, 'failed': int(failed is not None),
+                                  'skipped': 0, 'source_copy_unchanged': True,
+                                  'log_sha256': sha256(log.read_bytes()).hexdigest(),
+                                  'junit_sha256': sha256(report.read_bytes()).hexdigest(),
+                                  'origins_sha256': sha256(origins.read_bytes()).hexdigest()})
+                  print(json.dumps(results[-1]), flush=True)
+          assert inventory(root) == before, 'The source checkout changed during regression work.'
+          subprocess.run(['git', 'diff', '--exit-code', 'HEAD', '--', '.'], check=True)
+          record = {'schema': 'carr-publication-cursor-control/1', 'status': 'PASS',
+                    'head': head, 'preimage_head': old_head, 'test': suite+'::'+test,
+                    'results': results, 'source_inputs_unchanged': True,
+                    'temporary_copies_removed': True, 'scope': 'one real source regression per mode',
+                    'complete_seven_case_whole': 'NOT_RUN', 'installed': 'NOT_RUN'}
+          (evidence / 'summary.json').write_text(json.dumps(record, indent=2)+'\n', encoding='utf-8')
+          '@ | & python -I -B -X utf8 -
+          if ($LASTEXITCODE -ne 0) { throw 'Actual publication cursor preimage/postimage control failed.' }
+      - name: Admit bounded synthetic text reports only
+        id: evidence_contract
+        if: ${{ always() }}
+        timeout-minutes: 2
+        run: |
+          @'
+          import json, pathlib, stat, xml.etree.ElementTree as ET
+          root = pathlib.Path('../ci-publication-cursor')
+          assert root.is_dir() and not root.is_symlink()
+          allowed = {'summary.json'} | {
+              mode+suffix for mode in ('preimage', 'postimage')
+              for suffix in ('.txt', '.xml', '-origins.json')}
+          total = 0
+          files = list(root.iterdir())
+          assert files and len(files) <= 7
+          for path in files:
+              info = path.lstat()
+              assert path.name in allowed and stat.S_ISREG(info.st_mode) and info.st_nlink == 1
+              assert not path.is_symlink() and not getattr(info, 'st_file_attributes', 0) & 1024
+              assert info.st_size <= 8*1024*1024
+              total += info.st_size
+              assert total <= 16*1024*1024
+              raw = path.read_bytes()
+              assert b'\0' not in raw
+              if path.suffix == '.json':
+                  json.loads(raw.decode('utf-8'))
+              elif path.suffix == '.xml':
+                  ET.fromstring(raw)
+          print('Only bounded synthetic JSON, text and JUnit reports retained.')
+          '@ | & python -I -B -X utf8 -
+          if ($LASTEXITCODE -ne 0) { throw 'Publication regression evidence is invalid.' }
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        timeout-minutes: 3
+        if: ${{ always() && steps.evidence_contract.outcome == 'success' }}
+        with:
+          name: publication-cursor-${{ matrix.os }}-${{ github.sha }}-${{ github.run_attempt }}
+          path: ci-publication-cursor/
+          if-no-files-found: error

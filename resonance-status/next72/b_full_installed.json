@@ -1,0 +1,5567 @@
+{
+  "schema": "carr-actual-B-complete-bundle-installed-timeout/1",
+  "created_utc": "2026-11-28 10:13:52 UTC",
+  "status": "ACTUAL_CLOSED_FAILURE_PARTIAL_TEST_PROGRESS",
+  "source": {
+    "repository": "Oleksii-debug/AudioTacticalFPS",
+    "commit": "26beb805aab1e9e202d134008441927523cdcb94",
+    "tree": "510592c4d116652f4099a14cc7216fbcf48c955d",
+    "run_id": 46122917046,
+    "job_id": 140911206997,
+    "job_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46122917046/job/140911206997",
+    "job_started_at": "2026-11-28T07:49:53Z",
+    "job_completed_at": "2026-11-28T10:04:44Z",
+    "closed_log": {
+      "bytes": 1417246,
+      "sha256": "6b539d9c3bf0de4b575045bf64fb6fd8c6f682c5426d2d1997356651fa07ff63"
+    },
+    "decoded_characters": 1416192,
+    "line_numbering": "1-based decoded CRLF/LF lines; literal timestamps retained"
+  },
+  "phase": {
+    "name": "Build, install and exercise the complete bundle with runtime egress blocked",
+    "step_number": 42,
+    "started_at": "2026-11-28T07:56:48Z",
+    "completed_at": "2026-11-28T09:56:51Z",
+    "declared_timeout_minutes": 120,
+    "job_timeout_minutes": 270,
+    "explicit_timeout": {
+      "line": 9351,
+      "text": "2026-11-28T09:56:51.0316018Z ##[error]The action 'Build, install and exercise the complete bundle with runtime egress blocked' has timed out after 120 minutes."
+    },
+    "installed_checker_blob": "76a4ba5f1e899a3d6d1233c15b0313f68ff53b1a"
+  },
+  "collection": {
+    "items": 8719,
+    "exact_session": [
+      {
+        "line": 8971,
+        "text": "2026-11-28T08:09:15.9893970Z {\"installed_package\": true, \"source_commit\": \"26beb805aab1e9e202d134008441927523cdcb94\"}"
+      },
+      {
+        "line": 8972,
+        "text": "2026-11-28T08:09:36.1390661Z ============================= test session starts ============================="
+      },
+      {
+        "line": 8973,
+        "text": "2026-11-28T08:09:36.1392503Z platform win32 -- Python 3.11.18, pytest-9.0.2, pluggy-1.7.0"
+      },
+      {
+        "line": 8974,
+        "text": "2026-11-28T08:09:36.1393606Z rootdir: D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library"
+      },
+      {
+        "line": 8975,
+        "text": "2026-11-28T08:09:36.1394811Z configfile: pyproject.toml"
+      },
+      {
+        "line": 8976,
+        "text": "2026-11-28T08:09:36.1395584Z collected 8719 items"
+      }
+    ]
+  },
+  "partial_progress": {
+    "scope": "Observed pytest progress marks only. Neither a final JUnit result nor complete whole-suite verdict is inferred.",
+    "result_marks": 7143,
+    "counts": {
+      "passed": 7138,
+      "failed": 5,
+      "skipped": 0,
+      "error": 0,
+      "xfail": 0,
+      "xpass": 0
+    },
+    "distinct_module_paths": 294,
+    "last_percent": 81,
+    "final_pytest_summary_present": false,
+    "completed_junit_verdict": false,
+    "failed_rows": [
+      {
+        "path": "tests/assistant/test_translation_documents.py",
+        "lines": [
+          9020,
+          9020
+        ],
+        "first_output_at": "2026-11-28T08:17:03.6807670Z",
+        "last_output_at": "2026-11-28T08:17:03.6807670Z",
+        "counts": {
+          "passed": 19,
+          "failed": 1,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        },
+        "exact_rows": [
+          {
+            "line": 9020,
+            "text": "2026-11-28T08:17:03.6807670Z tests\\assistant\\test_translation_documents.py ...........F........       [  9%]"
+          }
+        ]
+      },
+      {
+        "path": "tests/transcription/test_admission_boundaries.py",
+        "lines": [
+          9145,
+          9146
+        ],
+        "first_output_at": "2026-11-28T08:50:05.1667582Z",
+        "last_output_at": "2026-11-28T08:54:33.5641365Z",
+        "counts": {
+          "passed": 37,
+          "failed": 3,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        },
+        "exact_rows": [
+          {
+            "line": 9145,
+            "text": "2026-11-28T08:50:05.1667582Z tests\\transcription\\test_admission_boundaries.py ....................... [ 37%]"
+          },
+          {
+            "line": 9146,
+            "text": "2026-11-28T08:54:33.5641365Z .......FFF.......                                                        [ 37%]"
+          }
+        ]
+      },
+      {
+        "path": "tests/speech/test_voice_preferences.py",
+        "lines": [
+          9240,
+          9240
+        ],
+        "first_output_at": "2026-11-28T09:11:18.7207754Z",
+        "last_output_at": "2026-11-28T09:11:18.7207754Z",
+        "counts": {
+          "passed": 22,
+          "failed": 1,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        },
+        "exact_rows": [
+          {
+            "line": 9240,
+            "text": "2026-11-28T09:11:18.7207754Z tests\\speech\\test_voice_preferences.py .F.....................           [ 60%]"
+          }
+        ]
+      }
+    ],
+    "last_printed_progress": [
+      {
+        "line": 9343,
+        "text": "2026-11-28T09:51:40.6262166Z tests\\catalog\\test_read_views.py .........                               [ 81%]"
+      },
+      {
+        "line": 9344,
+        "text": "2026-11-28T09:51:41.1656679Z tests\\catalog\\test_read_views_v2_integration.py .....                    [ 81%]"
+      },
+      {
+        "line": 9345,
+        "text": "2026-11-28T09:51:41.1767866Z tests\\search\\test_literal_integrity.py ......                            [ 81%]"
+      },
+      {
+        "line": 9346,
+        "text": "2026-11-28T09:51:41.4601920Z tests\\search\\test_literal_readonly.py ......                             [ 81%]"
+      },
+      {
+        "line": 9347,
+        "text": "2026-11-28T09:51:41.8567731Z tests\\search\\test_literal_v2_composition.py ......                       [ 81%]"
+      },
+      {
+        "line": 9348,
+        "text": "2026-11-28T09:52:27.7498503Z tests\\e2e\\test_retained_source_search_integrity.py ...........           [ 81%]"
+      },
+      {
+        "line": 9349,
+        "text": "2026-11-28T09:53:00.0185149Z tests\\packaging\\test_library_capacity_measurement.py ................... [ 81%]"
+      },
+      {
+        "line": 9350,
+        "text": "2026-11-28T09:53:06.2355359Z ......                                                                   [ 81%]"
+      },
+      {
+        "line": 9351,
+        "text": "2026-11-28T09:56:51.0316018Z ##[error]The action 'Build, install and exercise the complete bundle with runtime egress blocked' has timed out after 120 minutes."
+      }
+    ],
+    "module_rows": [
+      {
+        "path": "tests/e2e/test_semantic_runtime.py",
+        "lines": [
+          8978,
+          8978
+        ],
+        "first_output_at": "2026-11-28T08:09:41.2009901Z",
+        "last_output_at": "2026-11-28T08:09:41.2009901Z",
+        "counts": {
+          "passed": 8,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/e2e/test_import_worker.py",
+        "lines": [
+          8979,
+          8979
+        ],
+        "first_output_at": "2026-11-28T08:12:22.9606398Z",
+        "last_output_at": "2026-11-28T08:12:22.9606398Z",
+        "counts": {
+          "passed": 38,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/e2e/test_import_batches_ocr.py",
+        "lines": [
+          8980,
+          8980
+        ],
+        "first_output_at": "2026-11-28T08:12:32.4757800Z",
+        "last_output_at": "2026-11-28T08:12:32.4757800Z",
+        "counts": {
+          "passed": 1,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/e2e/test_notebook_research_workflow.py",
+        "lines": [
+          8981,
+          8981
+        ],
+        "first_output_at": "2026-11-28T08:13:00.1462082Z",
+        "last_output_at": "2026-11-28T08:13:00.1462082Z",
+        "counts": {
+          "passed": 11,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/e2e/test_epub_import.py",
+        "lines": [
+          8982,
+          8982
+        ],
+        "first_output_at": "2026-11-28T08:13:18.0267590Z",
+        "last_output_at": "2026-11-28T08:13:18.0267590Z",
+        "counts": {
+          "passed": 13,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/e2e/test_extended_document_workflows.py",
+        "lines": [
+          8983,
+          8984
+        ],
+        "first_output_at": "2026-11-28T08:13:44.0545724Z",
+        "last_output_at": "2026-11-28T08:13:53.2198133Z",
+        "counts": {
+          "passed": 36,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/reader/test_ebook_reader.py",
+        "lines": [
+          8985,
+          8985
+        ],
+        "first_output_at": "2026-11-28T08:14:05.5401752Z",
+        "last_output_at": "2026-11-28T08:14:05.5401752Z",
+        "counts": {
+          "passed": 13,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/e2e/test_catalog_insights_workflow.py",
+        "lines": [
+          8986,
+          8986
+        ],
+        "first_output_at": "2026-11-28T08:14:17.8142484Z",
+        "last_output_at": "2026-11-28T08:14:17.8142484Z",
+        "counts": {
+          "passed": 17,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/e2e/test_academic_workflows.py",
+        "lines": [
+          8987,
+          8987
+        ],
+        "first_output_at": "2026-11-28T08:14:19.6984059Z",
+        "last_output_at": "2026-11-28T08:14:19.6984059Z",
+        "counts": {
+          "passed": 4,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/e2e/test_academic_workflow.py",
+        "lines": [
+          8988,
+          8988
+        ],
+        "first_output_at": "2026-11-28T08:14:21.1851428Z",
+        "last_output_at": "2026-11-28T08:14:21.1851428Z",
+        "counts": {
+          "passed": 6,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/e2e/test_academic_document_export.py",
+        "lines": [
+          8989,
+          8989
+        ],
+        "first_output_at": "2026-11-28T08:14:26.0897937Z",
+        "last_output_at": "2026-11-28T08:14:26.0897937Z",
+        "counts": {
+          "passed": 10,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/e2e/test_result_presentation.py",
+        "lines": [
+          8990,
+          8991
+        ],
+        "first_output_at": "2026-11-28T08:14:34.9827794Z",
+        "last_output_at": "2026-11-28T08:14:36.0445801Z",
+        "counts": {
+          "passed": 41,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/e2e/test_advanced_research_search.py",
+        "lines": [
+          8992,
+          8992
+        ],
+        "first_output_at": "2026-11-28T08:14:39.3794756Z",
+        "last_output_at": "2026-11-28T08:14:39.3794756Z",
+        "counts": {
+          "passed": 10,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/search/test_advanced_search.py",
+        "lines": [
+          8993,
+          8994
+        ],
+        "first_output_at": "2026-11-28T08:14:39.6536899Z",
+        "last_output_at": "2026-11-28T08:14:39.9637681Z",
+        "counts": {
+          "passed": 86,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/e2e/test_import_progress.py",
+        "lines": [
+          8995,
+          8995
+        ],
+        "first_output_at": "2026-11-28T08:14:42.4213838Z",
+        "last_output_at": "2026-11-28T08:14:42.4213838Z",
+        "counts": {
+          "passed": 11,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/ingest/test_import_metadata_shape.py",
+        "lines": [
+          8996,
+          8997
+        ],
+        "first_output_at": "2026-11-28T08:14:43.9545260Z",
+        "last_output_at": "2026-11-28T08:14:45.7167277Z",
+        "counts": {
+          "passed": 58,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/speech/test_progress_speech.py",
+        "lines": [
+          8998,
+          8998
+        ],
+        "first_output_at": "2026-11-28T08:14:46.7450101Z",
+        "last_output_at": "2026-11-28T08:14:46.7450101Z",
+        "counts": {
+          "passed": 24,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/studio/test_production_cancellation_outcomes.py",
+        "lines": [
+          8999,
+          8999
+        ],
+        "first_output_at": "2026-11-28T08:15:02.1091442Z",
+        "last_output_at": "2026-11-28T08:15:02.1091442Z",
+        "counts": {
+          "passed": 11,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/ui/test_progress_numeric_limits.py",
+        "lines": [
+          9000,
+          9000
+        ],
+        "first_output_at": "2026-11-28T08:15:02.1335545Z",
+        "last_output_at": "2026-11-28T08:15:02.1335545Z",
+        "counts": {
+          "passed": 7,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/ui/test_studio_progress_isolation.py",
+        "lines": [
+          9001,
+          9001
+        ],
+        "first_output_at": "2026-11-28T08:15:02.5343636Z",
+        "last_output_at": "2026-11-28T08:15:02.5343636Z",
+        "counts": {
+          "passed": 19,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/ui/test_progress_media_quiet.py",
+        "lines": [
+          9002,
+          9002
+        ],
+        "first_output_at": "2026-11-28T08:15:02.8951025Z",
+        "last_output_at": "2026-11-28T08:15:02.8951025Z",
+        "counts": {
+          "passed": 13,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/ui/test_progress_voice_actions.py",
+        "lines": [
+          9003,
+          9003
+        ],
+        "first_output_at": "2026-11-28T08:15:03.6774886Z",
+        "last_output_at": "2026-11-28T08:15:03.6774886Z",
+        "counts": {
+          "passed": 22,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/storage/test_progress_preferences_backup.py",
+        "lines": [
+          9004,
+          9004
+        ],
+        "first_output_at": "2026-11-28T08:15:03.8428942Z",
+        "last_output_at": "2026-11-28T08:15:03.8428942Z",
+        "counts": {
+          "passed": 1,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/progress/test_progress_media_integration.py",
+        "lines": [
+          9005,
+          9005
+        ],
+        "first_output_at": "2026-11-28T08:15:04.2097017Z",
+        "last_output_at": "2026-11-28T08:15:04.2097017Z",
+        "counts": {
+          "passed": 15,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/reader/test_ebook_contents.py",
+        "lines": [
+          9006,
+          9006
+        ],
+        "first_output_at": "2026-11-28T08:15:07.4296064Z",
+        "last_output_at": "2026-11-28T08:15:07.4296064Z",
+        "counts": {
+          "passed": 23,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/ui/test_studio_progress_results.py",
+        "lines": [
+          9007,
+          9007
+        ],
+        "first_output_at": "2026-11-28T08:15:07.6611943Z",
+        "last_output_at": "2026-11-28T08:15:07.6611943Z",
+        "counts": {
+          "passed": 10,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/ui/test_worker_cleanup.py",
+        "lines": [
+          9008,
+          9008
+        ],
+        "first_output_at": "2026-11-28T08:15:07.6653752Z",
+        "last_output_at": "2026-11-28T08:15:07.6653752Z",
+        "counts": {
+          "passed": 2,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/integrations/test_dordiai_convergence.py",
+        "lines": [
+          9009,
+          9009
+        ],
+        "first_output_at": "2026-11-28T08:15:15.9432048Z",
+        "last_output_at": "2026-11-28T08:15:15.9432048Z",
+        "counts": {
+          "passed": 10,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/integrations/test_dordiai_probe_cancellation.py",
+        "lines": [
+          9010,
+          9010
+        ],
+        "first_output_at": "2026-11-28T08:15:19.7944257Z",
+        "last_output_at": "2026-11-28T08:15:19.7944257Z",
+        "counts": {
+          "passed": 7,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/assistant/test_local_assistant.py",
+        "lines": [
+          9011,
+          9011
+        ],
+        "first_output_at": "2026-11-28T08:15:26.4721606Z",
+        "last_output_at": "2026-11-28T08:15:26.4721606Z",
+        "counts": {
+          "passed": 21,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/assistant/test_supplied_transcription.py",
+        "lines": [
+          9012,
+          9013
+        ],
+        "first_output_at": "2026-11-28T08:15:35.0271959Z",
+        "last_output_at": "2026-11-28T08:15:35.7639864Z",
+        "counts": {
+          "passed": 32,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/assistant/test_providers.py",
+        "lines": [
+          9014,
+          9014
+        ],
+        "first_output_at": "2026-11-28T08:15:40.1649645Z",
+        "last_output_at": "2026-11-28T08:15:40.1649645Z",
+        "counts": {
+          "passed": 28,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/assistant/test_translation.py",
+        "lines": [
+          9015,
+          9017
+        ],
+        "first_output_at": "2026-11-28T08:15:45.2801347Z",
+        "last_output_at": "2026-11-28T08:16:49.9502068Z",
+        "counts": {
+          "passed": 168,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/assistant/test_translation_local.py",
+        "lines": [
+          9018,
+          9019
+        ],
+        "first_output_at": "2026-11-28T08:16:50.5357458Z",
+        "last_output_at": "2026-11-28T08:16:52.6220338Z",
+        "counts": {
+          "passed": 39,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/assistant/test_translation_documents.py",
+        "lines": [
+          9020,
+          9020
+        ],
+        "first_output_at": "2026-11-28T08:17:03.6807670Z",
+        "last_output_at": "2026-11-28T08:17:03.6807670Z",
+        "counts": {
+          "passed": 19,
+          "failed": 1,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/ui/test_translation_documents.py",
+        "lines": [
+          9021,
+          9021
+        ],
+        "first_output_at": "2026-11-28T08:17:04.8631773Z",
+        "last_output_at": "2026-11-28T08:17:04.8631773Z",
+        "counts": {
+          "passed": 29,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/storage/test_backup_primary_producers.py",
+        "lines": [
+          9022,
+          9022
+        ],
+        "first_output_at": "2026-11-28T08:17:16.7739314Z",
+        "last_output_at": "2026-11-28T08:17:16.7739314Z",
+        "counts": {
+          "passed": 22,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/storage/test_backup_retained_audio.py",
+        "lines": [
+          9023,
+          9023
+        ],
+        "first_output_at": "2026-11-28T08:17:25.3442848Z",
+        "last_output_at": "2026-11-28T08:17:25.3442848Z",
+        "counts": {
+          "passed": 22,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/storage/test_state_json_reader.py",
+        "lines": [
+          9024,
+          9024
+        ],
+        "first_output_at": "2026-11-28T08:17:25.8037967Z",
+        "last_output_at": "2026-11-28T08:17:25.8037967Z",
+        "counts": {
+          "passed": 11,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/storage/test_backup_generated_audio.py",
+        "lines": [
+          9025,
+          9025
+        ],
+        "first_output_at": "2026-11-28T08:17:27.6831204Z",
+        "last_output_at": "2026-11-28T08:17:27.6831204Z",
+        "counts": {
+          "passed": 14,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/storage/test_backup_translation.py",
+        "lines": [
+          9026,
+          9026
+        ],
+        "first_output_at": "2026-11-28T08:17:32.8734983Z",
+        "last_output_at": "2026-11-28T08:17:32.8734983Z",
+        "counts": {
+          "passed": 14,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/audio/test_bundled_runtime_settings.py",
+        "lines": [
+          9027,
+          9027
+        ],
+        "first_output_at": "2026-11-28T08:17:33.0267118Z",
+        "last_output_at": "2026-11-28T08:17:33.0267118Z",
+        "counts": {
+          "passed": 8,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/studio/test_studio_controller.py",
+        "lines": [
+          9028,
+          9028
+        ],
+        "first_output_at": "2026-11-28T08:17:34.0744210Z",
+        "last_output_at": "2026-11-28T08:17:34.0744210Z",
+        "counts": {
+          "passed": 18,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/e2e/test_epub_library.py",
+        "lines": [
+          9029,
+          9029
+        ],
+        "first_output_at": "2026-11-28T08:17:36.3263647Z",
+        "last_output_at": "2026-11-28T08:17:36.3263647Z",
+        "counts": {
+          "passed": 8,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/e2e/test_epub_reading_desk.py",
+        "lines": [
+          9030,
+          9030
+        ],
+        "first_output_at": "2026-11-28T08:17:37.5378914Z",
+        "last_output_at": "2026-11-28T08:17:37.5378914Z",
+        "counts": {
+          "passed": 1,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/acquisition/test_providers.py",
+        "lines": [
+          9031,
+          9032
+        ],
+        "first_output_at": "2026-11-28T08:17:37.5850626Z",
+        "last_output_at": "2026-11-28T08:17:37.6749795Z",
+        "counts": {
+          "passed": 95,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/acquisition/test_acquisition_security.py",
+        "lines": [
+          9033,
+          9034
+        ],
+        "first_output_at": "2026-11-28T08:17:37.7019187Z",
+        "last_output_at": "2026-11-28T08:17:42.9822767Z",
+        "counts": {
+          "passed": 73,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/acquisition/test_acquisition_workflow.py",
+        "lines": [
+          9035,
+          9035
+        ],
+        "first_output_at": "2026-11-28T08:17:51.3246618Z",
+        "last_output_at": "2026-11-28T08:17:51.3246618Z",
+        "counts": {
+          "passed": 14,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/acquisition/test_acquisition_cli.py",
+        "lines": [
+          9036,
+          9036
+        ],
+        "first_output_at": "2026-11-28T08:17:51.3504886Z",
+        "last_output_at": "2026-11-28T08:17:51.3504886Z",
+        "counts": {
+          "passed": 9,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/ui/test_native_acquisition.py",
+        "lines": [
+          9037,
+          9038
+        ],
+        "first_output_at": "2026-11-28T08:17:51.5825553Z",
+        "last_output_at": "2026-11-28T08:17:52.3117417Z",
+        "counts": {
+          "passed": 65,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/extract/test_ocr_model_catalog.py",
+        "lines": [
+          9039,
+          9039
+        ],
+        "first_output_at": "2026-11-28T08:17:52.8264993Z",
+        "last_output_at": "2026-11-28T08:17:52.8264993Z",
+        "counts": {
+          "passed": 32,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/extract/test_ocr_model_cli.py",
+        "lines": [
+          9041,
+          9041
+        ],
+        "first_output_at": "2026-11-28T08:17:53.4196468Z",
+        "last_output_at": "2026-11-28T08:17:53.4196468Z",
+        "counts": {
+          "passed": 12,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/extract/test_ocr_model_store.py",
+        "lines": [
+          9042,
+          9042
+        ],
+        "first_output_at": "2026-11-28T08:17:55.0252718Z",
+        "last_output_at": "2026-11-28T08:17:55.0252718Z",
+        "counts": {
+          "passed": 33,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/extract/test_managed_ocr.py",
+        "lines": [
+          9043,
+          9044
+        ],
+        "first_output_at": "2026-11-28T08:18:02.1050034Z",
+        "last_output_at": "2026-11-28T08:18:02.6204949Z",
+        "counts": {
+          "passed": 40,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/e2e/test_managed_ocr_import.py",
+        "lines": [
+          9045,
+          9045
+        ],
+        "first_output_at": "2026-11-28T08:18:19.7921466Z",
+        "last_output_at": "2026-11-28T08:18:19.7921466Z",
+        "counts": {
+          "passed": 2,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/extract/test_ocr_languages.py",
+        "lines": [
+          9046,
+          9047
+        ],
+        "first_output_at": "2026-11-28T08:18:19.8313637Z",
+        "last_output_at": "2026-11-28T08:18:19.8371617Z",
+        "counts": {
+          "passed": 40,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/ingest/test_worker_publication_boundary.py",
+        "lines": [
+          9048,
+          9049
+        ],
+        "first_output_at": "2026-11-28T08:18:49.6605730Z",
+        "last_output_at": "2026-11-28T08:19:03.2869050Z",
+        "counts": {
+          "passed": 32,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/e2e/test_import_files_cancellation.py",
+        "lines": [
+          9050,
+          9050
+        ],
+        "first_output_at": "2026-11-28T08:19:03.8779567Z",
+        "last_output_at": "2026-11-28T08:19:03.8779567Z",
+        "counts": {
+          "passed": 5,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/storage/test_complete_pending_backup.py",
+        "lines": [
+          9051,
+          9051
+        ],
+        "first_output_at": "2026-11-28T08:19:06.5984995Z",
+        "last_output_at": "2026-11-28T08:19:06.5984995Z",
+        "counts": {
+          "passed": 4,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/storage/test_backup_pending_common4.py",
+        "lines": [
+          9052,
+          9052
+        ],
+        "first_output_at": "2026-11-28T08:19:23.4539719Z",
+        "last_output_at": "2026-11-28T08:19:23.4539719Z",
+        "counts": {
+          "passed": 27,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/storage/test_pending_backup.py",
+        "lines": [
+          9054,
+          9055
+        ],
+        "first_output_at": "2026-11-28T08:19:46.2090009Z",
+        "last_output_at": "2026-11-28T08:19:55.3995995Z",
+        "counts": {
+          "passed": 41,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/reader/test_export_publication_boundary.py",
+        "lines": [
+          9056,
+          9056
+        ],
+        "first_output_at": "2026-11-28T08:19:56.1952425Z",
+        "last_output_at": "2026-11-28T08:19:56.1952425Z",
+        "counts": {
+          "passed": 6,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/reader/test_export_change_time.py",
+        "lines": [
+          9057,
+          9057
+        ],
+        "first_output_at": "2026-11-28T08:19:56.4414040Z",
+        "last_output_at": "2026-11-28T08:19:56.4414040Z",
+        "counts": {
+          "passed": 24,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/ui/test_export_confirmation.py",
+        "lines": [
+          9058,
+          9058
+        ],
+        "first_output_at": "2026-11-28T08:19:56.4857980Z",
+        "last_output_at": "2026-11-28T08:19:56.4857980Z",
+        "counts": {
+          "passed": 5,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/storage/test_backup_schema_identity.py",
+        "lines": [
+          9059,
+          9060
+        ],
+        "first_output_at": "2026-11-28T08:20:07.3638977Z",
+        "last_output_at": "2026-11-28T08:20:10.5734068Z",
+        "counts": {
+          "passed": 36,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/storage/test_backup_v4_sidecars.py",
+        "lines": [
+          9061,
+          9062
+        ],
+        "first_output_at": "2026-11-28T08:20:23.1019860Z",
+        "last_output_at": "2026-11-28T08:20:24.5802283Z",
+        "counts": {
+          "passed": 35,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/storage/test_library_backup_reading_state.py",
+        "lines": [
+          9063,
+          9065
+        ],
+        "first_output_at": "2026-11-28T08:20:39.4762584Z",
+        "last_output_at": "2026-11-28T08:21:48.1652948Z",
+        "counts": {
+          "passed": 126,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/storage/test_v3_state_backup.py",
+        "lines": [
+          9066,
+          9067
+        ],
+        "first_output_at": "2026-11-28T08:22:01.3318925Z",
+        "last_output_at": "2026-11-28T08:22:03.4926132Z",
+        "counts": {
+          "passed": 42,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/library_assistant/test_library_workflow.py",
+        "lines": [
+          9068,
+          9069
+        ],
+        "first_output_at": "2026-11-28T08:22:07.1769169Z",
+        "last_output_at": "2026-11-28T08:22:16.9695782Z",
+        "counts": {
+          "passed": 51,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/reader/test_export_no_clobber.py",
+        "lines": [
+          9070,
+          9071
+        ],
+        "first_output_at": "2026-11-28T08:22:17.8064139Z",
+        "last_output_at": "2026-11-28T08:22:37.9456362Z",
+        "counts": {
+          "passed": 80,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/citations/test_bibliography_workbench.py",
+        "lines": [
+          9072,
+          9073
+        ],
+        "first_output_at": "2026-11-28T08:25:51.0542884Z",
+        "last_output_at": "2026-11-28T08:26:18.3409909Z",
+        "counts": {
+          "passed": 27,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/ui/test_citation_styles_jobs.py",
+        "lines": [
+          9074,
+          9074
+        ],
+        "first_output_at": "2026-11-28T08:26:18.5727696Z",
+        "last_output_at": "2026-11-28T08:26:18.5727696Z",
+        "counts": {
+          "passed": 22,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/speech/test_source.py",
+        "lines": [
+          9075,
+          9075
+        ],
+        "first_output_at": "2026-11-28T08:26:30.2560043Z",
+        "last_output_at": "2026-11-28T08:26:30.2560043Z",
+        "counts": {
+          "passed": 37,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/storage/test_academic_migration.py",
+        "lines": [
+          9076,
+          9077
+        ],
+        "first_output_at": "2026-11-28T08:26:42.3105048Z",
+        "last_output_at": "2026-11-28T08:26:43.1819328Z",
+        "counts": {
+          "passed": 32,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/e2e/test_import_worker_publication.py",
+        "lines": [
+          9078,
+          9079
+        ],
+        "first_output_at": "2026-11-28T08:27:36.7066060Z",
+        "last_output_at": "2026-11-28T08:27:59.7226252Z",
+        "counts": {
+          "passed": 36,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/ingest/test_import_replay_identity.py",
+        "lines": [
+          9080,
+          9080
+        ],
+        "first_output_at": "2026-11-28T08:28:43.8005713Z",
+        "last_output_at": "2026-11-28T08:28:43.8005713Z",
+        "counts": {
+          "passed": 24,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/speech/test_reading.py",
+        "lines": [
+          9081,
+          9082
+        ],
+        "first_output_at": "2026-11-28T08:28:44.0738606Z",
+        "last_output_at": "2026-11-28T08:28:45.8483008Z",
+        "counts": {
+          "passed": 62,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/speech/test_session.py",
+        "lines": [
+          9083,
+          9083
+        ],
+        "first_output_at": "2026-11-28T08:28:46.6263776Z",
+        "last_output_at": "2026-11-28T08:28:46.6263776Z",
+        "counts": {
+          "passed": 5,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/packaging/test_worker_bytecode.py",
+        "lines": [
+          9084,
+          9084
+        ],
+        "first_output_at": "2026-11-28T08:28:46.9827102Z",
+        "last_output_at": "2026-11-28T08:28:46.9827102Z",
+        "counts": {
+          "passed": 2,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/extract/test_ocr_runtime.py",
+        "lines": [
+          9085,
+          9085
+        ],
+        "first_output_at": "2026-11-28T08:28:47.1816032Z",
+        "last_output_at": "2026-11-28T08:28:47.1816032Z",
+        "counts": {
+          "passed": 3,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/studio/test_clip_editing.py",
+        "lines": [
+          9086,
+          9086
+        ],
+        "first_output_at": "2026-11-28T08:29:06.2216926Z",
+        "last_output_at": "2026-11-28T08:29:06.2216926Z",
+        "counts": {
+          "passed": 34,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/studio/test_clip_restoration.py",
+        "lines": [
+          9087,
+          9087
+        ],
+        "first_output_at": "2026-11-28T08:29:22.3635241Z",
+        "last_output_at": "2026-11-28T08:29:22.3635241Z",
+        "counts": {
+          "passed": 24,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/studio/test_clip_dialog.py",
+        "lines": [
+          9088,
+          9089
+        ],
+        "first_output_at": "2026-11-28T08:29:24.2337296Z",
+        "last_output_at": "2026-11-28T08:29:24.4610574Z",
+        "counts": {
+          "passed": 45,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/studio/test_clip_cli.py",
+        "lines": [
+          9090,
+          9090
+        ],
+        "first_output_at": "2026-11-28T08:29:54.8837277Z",
+        "last_output_at": "2026-11-28T08:29:54.8837277Z",
+        "counts": {
+          "passed": 8,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/storage/test_state_clip_inputs.py",
+        "lines": [
+          9091,
+          9091
+        ],
+        "first_output_at": "2026-11-28T08:29:56.0754567Z",
+        "last_output_at": "2026-11-28T08:29:56.0754567Z",
+        "counts": {
+          "passed": 17,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/audio/test_recording.py",
+        "lines": [
+          9092,
+          9092
+        ],
+        "first_output_at": "2026-11-28T08:30:11.4813496Z",
+        "last_output_at": "2026-11-28T08:30:11.4813496Z",
+        "counts": {
+          "passed": 31,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/audio/test_recording_cleanup.py",
+        "lines": [
+          9093,
+          9093
+        ],
+        "first_output_at": "2026-11-28T08:30:12.0634832Z",
+        "last_output_at": "2026-11-28T08:30:12.0634832Z",
+        "counts": {
+          "passed": 13,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/audio/test_recording_compatibility.py",
+        "lines": [
+          9094,
+          9094
+        ],
+        "first_output_at": "2026-11-28T08:30:12.1280412Z",
+        "last_output_at": "2026-11-28T08:30:12.1280412Z",
+        "counts": {
+          "passed": 5,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/audio/test_recording_export.py",
+        "lines": [
+          9095,
+          9095
+        ],
+        "first_output_at": "2026-11-28T08:30:13.2619423Z",
+        "last_output_at": "2026-11-28T08:30:13.2619423Z",
+        "counts": {
+          "passed": 9,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/ui/test_recording_dialog.py",
+        "lines": [
+          9096,
+          9096
+        ],
+        "first_output_at": "2026-11-28T08:30:15.2095272Z",
+        "last_output_at": "2026-11-28T08:30:15.2095272Z",
+        "counts": {
+          "passed": 28,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/audio/test_audio_process.py",
+        "lines": [
+          9097,
+          9097
+        ],
+        "first_output_at": "2026-11-28T08:30:18.7234045Z",
+        "last_output_at": "2026-11-28T08:30:18.7234045Z",
+        "counts": {
+          "passed": 23,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/audio/test_publication_fsync.py",
+        "lines": [
+          9098,
+          9098
+        ],
+        "first_output_at": "2026-11-28T08:30:18.7806405Z",
+        "last_output_at": "2026-11-28T08:30:18.7806405Z",
+        "counts": {
+          "passed": 4,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/audio/test_dsp.py",
+        "lines": [
+          9099,
+          9099
+        ],
+        "first_output_at": "2026-11-28T08:30:32.1832205Z",
+        "last_output_at": "2026-11-28T08:30:32.1832205Z",
+        "counts": {
+          "passed": 41,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/audio/test_effect_presets.py",
+        "lines": [
+          9100,
+          9101
+        ],
+        "first_output_at": "2026-11-28T08:30:33.9842732Z",
+        "last_output_at": "2026-11-28T08:30:34.1728102Z",
+        "counts": {
+          "passed": 40,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/audio/test_audio_conversion.py",
+        "lines": [
+          9102,
+          9102
+        ],
+        "first_output_at": "2026-11-28T08:30:46.0703721Z",
+        "last_output_at": "2026-11-28T08:30:46.0703721Z",
+        "counts": {
+          "passed": 15,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/ui/test_audio_conversion.py",
+        "lines": [
+          9103,
+          9103
+        ],
+        "first_output_at": "2026-11-28T08:30:46.5214254Z",
+        "last_output_at": "2026-11-28T08:30:46.5214254Z",
+        "counts": {
+          "passed": 22,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/speech/test_runtime.py",
+        "lines": [
+          9104,
+          9104
+        ],
+        "first_output_at": "2026-11-28T08:30:47.7534637Z",
+        "last_output_at": "2026-11-28T08:30:47.7534637Z",
+        "counts": {
+          "passed": 13,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/audio/test_windows_audio_ownership.py",
+        "lines": [
+          9105,
+          9105
+        ],
+        "first_output_at": "2026-11-28T08:31:03.3657284Z",
+        "last_output_at": "2026-11-28T08:31:03.3657284Z",
+        "counts": {
+          "passed": 7,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/studio/test_publishing.py",
+        "lines": [
+          9106,
+          9107
+        ],
+        "first_output_at": "2026-11-28T08:31:19.4641367Z",
+        "last_output_at": "2026-11-28T08:31:27.0086973Z",
+        "counts": {
+          "passed": 48,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/studio/test_publishing_cli.py",
+        "lines": [
+          9108,
+          9108
+        ],
+        "first_output_at": "2026-11-28T08:31:42.5003828Z",
+        "last_output_at": "2026-11-28T08:31:42.5003828Z",
+        "counts": {
+          "passed": 7,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/studio/test_publishing_handlers.py",
+        "lines": [
+          9109,
+          9109
+        ],
+        "first_output_at": "2026-11-28T08:31:48.9931029Z",
+        "last_output_at": "2026-11-28T08:31:48.9931029Z",
+        "counts": {
+          "passed": 12,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/assistant/test_translation_v3.py",
+        "lines": [
+          9110,
+          9111
+        ],
+        "first_output_at": "2026-11-28T08:31:51.9215664Z",
+        "last_output_at": "2026-11-28T08:31:58.0201144Z",
+        "counts": {
+          "passed": 64,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/assistant/test_translation_advanced_source.py",
+        "lines": [
+          9112,
+          9112
+        ],
+        "first_output_at": "2026-11-28T08:32:04.5503946Z",
+        "last_output_at": "2026-11-28T08:32:04.5503946Z",
+        "counts": {
+          "passed": 9,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/assistant/test_translation_advanced_union.py",
+        "lines": [
+          9113,
+          9113
+        ],
+        "first_output_at": "2026-11-28T08:32:12.1372490Z",
+        "last_output_at": "2026-11-28T08:32:12.1372490Z",
+        "counts": {
+          "passed": 12,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/assistant/test_local_planning.py",
+        "lines": [
+          9114,
+          9114
+        ],
+        "first_output_at": "2026-11-28T08:32:16.7584009Z",
+        "last_output_at": "2026-11-28T08:32:16.7584009Z",
+        "counts": {
+          "passed": 14,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/assistant/test_planning_handlers.py",
+        "lines": [
+          9115,
+          9115
+        ],
+        "first_output_at": "2026-11-28T08:32:18.1663962Z",
+        "last_output_at": "2026-11-28T08:32:18.1663962Z",
+        "counts": {
+          "passed": 19,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/assistant/test_workflow_templates.py",
+        "lines": [
+          9116,
+          9117
+        ],
+        "first_output_at": "2026-11-28T08:32:30.4632838Z",
+        "last_output_at": "2026-11-28T08:32:31.2778866Z",
+        "counts": {
+          "passed": 31,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/assistant/test_workflow_template_handlers.py",
+        "lines": [
+          9118,
+          9118
+        ],
+        "first_output_at": "2026-11-28T08:32:32.6546594Z",
+        "last_output_at": "2026-11-28T08:32:32.6546594Z",
+        "counts": {
+          "passed": 18,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/studio/test_book_audio.py",
+        "lines": [
+          9119,
+          9120
+        ],
+        "first_output_at": "2026-11-28T08:34:21.5411199Z",
+        "last_output_at": "2026-11-28T08:35:03.8124828Z",
+        "counts": {
+          "passed": 46,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/ui/test_book_audio_dialog.py",
+        "lines": [
+          9121,
+          9121
+        ],
+        "first_output_at": "2026-11-28T08:35:12.8756134Z",
+        "last_output_at": "2026-11-28T08:35:12.8756134Z",
+        "counts": {
+          "passed": 29,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/ui/test_worker_lifetime.py",
+        "lines": [
+          9122,
+          9122
+        ],
+        "first_output_at": "2026-11-28T08:35:13.9544873Z",
+        "last_output_at": "2026-11-28T08:35:13.9544873Z",
+        "counts": {
+          "passed": 11,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/storage/test_backup_book_audio.py",
+        "lines": [
+          9123,
+          9123
+        ],
+        "first_output_at": "2026-11-28T08:36:14.1745749Z",
+        "last_output_at": "2026-11-28T08:36:14.1745749Z",
+        "counts": {
+          "passed": 32,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/storage/test_backup_studio_draft.py",
+        "lines": [
+          9125,
+          9125
+        ],
+        "first_output_at": "2026-11-28T08:36:19.8762398Z",
+        "last_output_at": "2026-11-28T08:36:19.8762398Z",
+        "counts": {
+          "passed": 26,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/storage/test_backup_effect_presets.py",
+        "lines": [
+          9126,
+          9127
+        ],
+        "first_output_at": "2026-11-28T08:36:23.0349271Z",
+        "last_output_at": "2026-11-28T08:36:39.4187979Z",
+        "counts": {
+          "passed": 45,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/storage/test_backup_v4_review.py",
+        "lines": [
+          9128,
+          9128
+        ],
+        "first_output_at": "2026-11-28T08:36:43.8805898Z",
+        "last_output_at": "2026-11-28T08:36:43.8805898Z",
+        "counts": {
+          "passed": 5,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/e2e/test_pdf_review_cancellation.py",
+        "lines": [
+          9129,
+          9129
+        ],
+        "first_output_at": "2026-11-28T08:36:58.4061514Z",
+        "last_output_at": "2026-11-28T08:36:58.4061514Z",
+        "counts": {
+          "passed": 4,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/storage/test_crash_backup.py",
+        "lines": [
+          9130,
+          9130
+        ],
+        "first_output_at": "2026-11-28T08:36:59.4135070Z",
+        "last_output_at": "2026-11-28T08:36:59.4135070Z",
+        "counts": {
+          "passed": 5,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/ui/probe_advanced_query_builder.py",
+        "lines": [
+          9131,
+          9132
+        ],
+        "first_output_at": "2026-11-28T08:36:59.4494777Z",
+        "last_output_at": "2026-11-28T08:36:59.4879125Z",
+        "counts": {
+          "passed": 60,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/speech/test_python_helper.py",
+        "lines": [
+          9133,
+          9133
+        ],
+        "first_output_at": "2026-11-28T08:37:05.9908836Z",
+        "last_output_at": "2026-11-28T08:37:05.9908836Z",
+        "counts": {
+          "passed": 21,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/ui/test_operation_progress.py",
+        "lines": [
+          9134,
+          9134
+        ],
+        "first_output_at": "2026-11-28T08:37:06.1227586Z",
+        "last_output_at": "2026-11-28T08:37:06.1227586Z",
+        "counts": {
+          "passed": 14,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/ui/test_progress_job_review.py",
+        "lines": [
+          9135,
+          9136
+        ],
+        "first_output_at": "2026-11-28T08:37:06.7980843Z",
+        "last_output_at": "2026-11-28T08:37:07.1449896Z",
+        "counts": {
+          "passed": 48,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/transcription/test_supplied_worker_bridge.py",
+        "lines": [
+          9137,
+          9138
+        ],
+        "first_output_at": "2026-11-28T08:37:12.9455273Z",
+        "last_output_at": "2026-11-28T08:37:38.3557049Z",
+        "counts": {
+          "passed": 62,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/transcription/test_v5_worker_profile.py",
+        "lines": [
+          9139,
+          9140
+        ],
+        "first_output_at": "2026-11-28T08:37:57.4536336Z",
+        "last_output_at": "2026-11-28T08:38:13.8162696Z",
+        "counts": {
+          "passed": 39,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/transcription/test_runtime_interpreter.py",
+        "lines": [
+          9141,
+          9141
+        ],
+        "first_output_at": "2026-11-28T08:38:14.6978891Z",
+        "last_output_at": "2026-11-28T08:38:14.6978891Z",
+        "counts": {
+          "passed": 1,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/transcription/test_protocol_fixture.py",
+        "lines": [
+          9142,
+          9142
+        ],
+        "first_output_at": "2026-11-28T08:38:14.8274093Z",
+        "last_output_at": "2026-11-28T08:38:14.8274093Z",
+        "counts": {
+          "passed": 9,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/transcription/test_protocol_fixture_windows.py",
+        "lines": [
+          9143,
+          9143
+        ],
+        "first_output_at": "2026-11-28T08:38:14.8575216Z",
+        "last_output_at": "2026-11-28T08:38:14.8575216Z",
+        "counts": {
+          "passed": 2,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/transcription/test_service.py",
+        "lines": [
+          9144,
+          9144
+        ],
+        "first_output_at": "2026-11-28T08:43:17.7360078Z",
+        "last_output_at": "2026-11-28T08:43:17.7360078Z",
+        "counts": {
+          "passed": 28,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/transcription/test_admission_boundaries.py",
+        "lines": [
+          9145,
+          9146
+        ],
+        "first_output_at": "2026-11-28T08:50:05.1667582Z",
+        "last_output_at": "2026-11-28T08:54:33.5641365Z",
+        "counts": {
+          "passed": 37,
+          "failed": 3,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/transcription/test_runtime_admission.py",
+        "lines": [
+          9147,
+          9147
+        ],
+        "first_output_at": "2026-11-28T08:54:48.1804606Z",
+        "last_output_at": "2026-11-28T08:54:48.1804606Z",
+        "counts": {
+          "passed": 13,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/transcription/test_restore.py",
+        "lines": [
+          9148,
+          9148
+        ],
+        "first_output_at": "2026-11-28T08:55:05.6604535Z",
+        "last_output_at": "2026-11-28T08:55:05.6604535Z",
+        "counts": {
+          "passed": 1,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/storage/test_transcription_backup.py",
+        "lines": [
+          9149,
+          9151
+        ],
+        "first_output_at": "2026-11-28T08:57:38.9278024Z",
+        "last_output_at": "2026-11-28T08:57:55.1652758Z",
+        "counts": {
+          "passed": 143,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/ui/test_transcription_dialog.py",
+        "lines": [
+          9152,
+          9153
+        ],
+        "first_output_at": "2026-11-28T08:58:12.0415336Z",
+        "last_output_at": "2026-11-28T08:58:12.1231014Z",
+        "counts": {
+          "passed": 40,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/e2e/test_transcription_cli.py",
+        "lines": [
+          9154,
+          9154
+        ],
+        "first_output_at": "2026-11-28T08:58:58.1544473Z",
+        "last_output_at": "2026-11-28T08:58:58.1544473Z",
+        "counts": {
+          "passed": 4,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/transcription/test_unified_authority.py",
+        "lines": [
+          9155,
+          9155
+        ],
+        "first_output_at": "2026-11-28T09:00:27.3775332Z",
+        "last_output_at": "2026-11-28T09:00:27.3775332Z",
+        "counts": {
+          "passed": 24,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/transcription/test_export_publication.py",
+        "lines": [
+          9156,
+          9156
+        ],
+        "first_output_at": "2026-11-28T09:02:41.1786485Z",
+        "last_output_at": "2026-11-28T09:02:41.1786485Z",
+        "counts": {
+          "passed": 14,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/ingest/test_initial_publication_completion.py",
+        "lines": [
+          9157,
+          9157
+        ],
+        "first_output_at": "2026-11-28T09:02:46.1098812Z",
+        "last_output_at": "2026-11-28T09:02:46.1098812Z",
+        "counts": {
+          "passed": 4,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/catalog/test_ris_apply.py",
+        "lines": [
+          9158,
+          9158
+        ],
+        "first_output_at": "2026-11-28T09:02:52.3572949Z",
+        "last_output_at": "2026-11-28T09:02:52.3572949Z",
+        "counts": {
+          "passed": 16,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/research/test_bibtex_import.py",
+        "lines": [
+          9159,
+          9160
+        ],
+        "first_output_at": "2026-11-28T09:02:53.7241611Z",
+        "last_output_at": "2026-11-28T09:02:54.9715009Z",
+        "counts": {
+          "passed": 100,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/ui/test_export_destination.py",
+        "lines": [
+          9161,
+          9161
+        ],
+        "first_output_at": "2026-11-28T09:02:55.0623693Z",
+        "last_output_at": "2026-11-28T09:02:55.0623693Z",
+        "counts": {
+          "passed": 5,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/storage/test_durable_state_publication.py",
+        "lines": [
+          9162,
+          9163
+        ],
+        "first_output_at": "2026-11-28T09:03:07.0087354Z",
+        "last_output_at": "2026-11-28T09:03:07.0452909Z",
+        "counts": {
+          "passed": 27,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/ui/test_profile_project_exports.py",
+        "lines": [
+          9164,
+          9164
+        ],
+        "first_output_at": "2026-11-28T09:03:10.3245173Z",
+        "last_output_at": "2026-11-28T09:03:10.3245173Z",
+        "counts": {
+          "passed": 27,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/ui/test_academic_actions.py",
+        "lines": [
+          9165,
+          9166
+        ],
+        "first_output_at": "2026-11-28T09:03:11.0579414Z",
+        "last_output_at": "2026-11-28T09:03:11.5737848Z",
+        "counts": {
+          "passed": 63,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/speech/test_reader_usability.py",
+        "lines": [
+          9167,
+          9167
+        ],
+        "first_output_at": "2026-11-28T09:03:19.2806911Z",
+        "last_output_at": "2026-11-28T09:03:19.2806911Z",
+        "counts": {
+          "passed": 33,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/speech/test_navigation.py",
+        "lines": [
+          9168,
+          9168
+        ],
+        "first_output_at": "2026-11-28T09:03:19.5263132Z",
+        "last_output_at": "2026-11-28T09:03:19.5263132Z",
+        "counts": {
+          "passed": 27,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/reader/test_ebook_audio.py",
+        "lines": [
+          9169,
+          9170
+        ],
+        "first_output_at": "2026-11-28T09:03:38.7575040Z",
+        "last_output_at": "2026-11-28T09:04:34.3515637Z",
+        "counts": {
+          "passed": 65,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/ui/test_ebook_audio_lifetime.py",
+        "lines": [
+          9171,
+          9171
+        ],
+        "first_output_at": "2026-11-28T09:04:35.2170910Z",
+        "last_output_at": "2026-11-28T09:04:35.2170910Z",
+        "counts": {
+          "passed": 14,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/operations/test_worker_start_cleanup.py",
+        "lines": [
+          9172,
+          9172
+        ],
+        "first_output_at": "2026-11-28T09:04:35.6808099Z",
+        "last_output_at": "2026-11-28T09:04:35.6808099Z",
+        "counts": {
+          "passed": 2,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/speech/test_player_controls.py",
+        "lines": [
+          9173,
+          9174
+        ],
+        "first_output_at": "2026-11-28T09:04:36.3004559Z",
+        "last_output_at": "2026-11-28T09:04:36.3370432Z",
+        "counts": {
+          "passed": 37,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/speech/test_player_transport.py",
+        "lines": [
+          9175,
+          9175
+        ],
+        "first_output_at": "2026-11-28T09:04:36.4799603Z",
+        "last_output_at": "2026-11-28T09:04:36.4799603Z",
+        "counts": {
+          "passed": 11,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/ui/test_reader_playback.py",
+        "lines": [
+          9176,
+          9177
+        ],
+        "first_output_at": "2026-11-28T09:04:36.5370662Z",
+        "last_output_at": "2026-11-28T09:04:36.5579960Z",
+        "counts": {
+          "passed": 52,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/ui/test_reader_playback_actions.py",
+        "lines": [
+          9178,
+          9178
+        ],
+        "first_output_at": "2026-11-28T09:04:37.8915032Z",
+        "last_output_at": "2026-11-28T09:04:37.8915032Z",
+        "counts": {
+          "passed": 24,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/packaging/test_audio_runtime.py",
+        "lines": [
+          9179,
+          9179
+        ],
+        "first_output_at": "2026-11-28T09:04:39.2461446Z",
+        "last_output_at": "2026-11-28T09:04:39.2461446Z",
+        "counts": {
+          "passed": 32,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/packaging/test_audio_bundle.py",
+        "lines": [
+          9180,
+          9180
+        ],
+        "first_output_at": "2026-11-28T09:04:39.9570337Z",
+        "last_output_at": "2026-11-28T09:04:39.9570337Z",
+        "counts": {
+          "passed": 11,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/reader/test_export_reconciliation.py",
+        "lines": [
+          9181,
+          9181
+        ],
+        "first_output_at": "2026-11-28T09:04:40.5184714Z",
+        "last_output_at": "2026-11-28T09:04:40.5184714Z",
+        "counts": {
+          "passed": 28,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/ui/test_keyboard_manager.py",
+        "lines": [
+          9182,
+          9182
+        ],
+        "first_output_at": "2026-11-28T09:04:41.4645777Z",
+        "last_output_at": "2026-11-28T09:04:41.4645777Z",
+        "counts": {
+          "passed": 37,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/storage/test_incremental_backup.py",
+        "lines": [
+          9183,
+          9184
+        ],
+        "first_output_at": "2026-11-28T09:05:07.1294610Z",
+        "last_output_at": "2026-11-28T09:05:13.9106680Z",
+        "counts": {
+          "passed": 38,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/storage/test_incremental_backup_cli.py",
+        "lines": [
+          9185,
+          9185
+        ],
+        "first_output_at": "2026-11-28T09:05:29.6391634Z",
+        "last_output_at": "2026-11-28T09:05:29.6391634Z",
+        "counts": {
+          "passed": 4,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/sync/test_vault.py",
+        "lines": [
+          9186,
+          9186
+        ],
+        "first_output_at": "2026-11-28T09:05:34.5296489Z",
+        "last_output_at": "2026-11-28T09:05:34.5296489Z",
+        "counts": {
+          "passed": 46,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/ui/test_incremental_backup_dialog.py",
+        "lines": [
+          9187,
+          9187
+        ],
+        "first_output_at": "2026-11-28T09:05:39.7638596Z",
+        "last_output_at": "2026-11-28T09:05:39.7638596Z",
+        "counts": {
+          "passed": 20,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/audio/test_audiobook.py",
+        "lines": [
+          9188,
+          9188
+        ],
+        "first_output_at": "2026-11-28T09:05:43.2858176Z",
+        "last_output_at": "2026-11-28T09:05:43.2858176Z",
+        "counts": {
+          "passed": 17,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/studio/test_audiobook_publication.py",
+        "lines": [
+          9189,
+          9189
+        ],
+        "first_output_at": "2026-11-28T09:05:47.9934740Z",
+        "last_output_at": "2026-11-28T09:05:47.9934740Z",
+        "counts": {
+          "passed": 1,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/studio/test_daisy_publishing.py",
+        "lines": [
+          9190,
+          9190
+        ],
+        "first_output_at": "2026-11-28T09:06:06.9650938Z",
+        "last_output_at": "2026-11-28T09:06:06.9650938Z",
+        "counts": {
+          "passed": 29,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/studio/test_daisy_boundaries.py",
+        "lines": [
+          9191,
+          9191
+        ],
+        "first_output_at": "2026-11-28T09:06:20.4636383Z",
+        "last_output_at": "2026-11-28T09:06:20.4636383Z",
+        "counts": {
+          "passed": 15,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/studio/test_publishing_boundaries.py",
+        "lines": [
+          9192,
+          9192
+        ],
+        "first_output_at": "2026-11-28T09:06:32.8825644Z",
+        "last_output_at": "2026-11-28T09:06:32.8825644Z",
+        "counts": {
+          "passed": 19,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/storage/test_backup_publication_formats.py",
+        "lines": [
+          9193,
+          9193
+        ],
+        "first_output_at": "2026-11-28T09:06:43.8457068Z",
+        "last_output_at": "2026-11-28T09:06:43.8457068Z",
+        "counts": {
+          "passed": 8,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/ui/test_find_replace_hooks.py",
+        "lines": [
+          9194,
+          9194
+        ],
+        "first_output_at": "2026-11-28T09:06:45.7159474Z",
+        "last_output_at": "2026-11-28T09:06:45.7159474Z",
+        "counts": {
+          "passed": 13,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/ui/test_reader_navigation_ui.py",
+        "lines": [
+          9195,
+          9195
+        ],
+        "first_output_at": "2026-11-28T09:06:46.5205188Z",
+        "last_output_at": "2026-11-28T09:06:46.5205188Z",
+        "counts": {
+          "passed": 11,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/ui/test_find_replace_ui.py",
+        "lines": [
+          9196,
+          9196
+        ],
+        "first_output_at": "2026-11-28T09:06:47.9480774Z",
+        "last_output_at": "2026-11-28T09:06:47.9480774Z",
+        "counts": {
+          "passed": 13,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/ui/test_find_replace.py",
+        "lines": [
+          9197,
+          9197
+        ],
+        "first_output_at": "2026-11-28T09:06:51.2656636Z",
+        "last_output_at": "2026-11-28T09:06:51.2656636Z",
+        "counts": {
+          "passed": 31,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/operations/test_facade.py",
+        "lines": [
+          9198,
+          9198
+        ],
+        "first_output_at": "2026-11-28T09:06:55.2236402Z",
+        "last_output_at": "2026-11-28T09:06:55.2236402Z",
+        "counts": {
+          "passed": 22,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/operations/test_import_admission.py",
+        "lines": [
+          9199,
+          9199
+        ],
+        "first_output_at": "2026-11-28T09:07:19.6343772Z",
+        "last_output_at": "2026-11-28T09:07:19.6343772Z",
+        "counts": {
+          "passed": 6,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/operations/test_production_admission.py",
+        "lines": [
+          9200,
+          9200
+        ],
+        "first_output_at": "2026-11-28T09:07:33.6348668Z",
+        "last_output_at": "2026-11-28T09:07:33.6348668Z",
+        "counts": {
+          "passed": 18,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/operations/test_resources.py",
+        "lines": [
+          9201,
+          9201
+        ],
+        "first_output_at": "2026-11-28T09:07:44.5680756Z",
+        "last_output_at": "2026-11-28T09:07:44.5680756Z",
+        "counts": {
+          "passed": 18,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/operations/test_transcription_admission.py",
+        "lines": [
+          9202,
+          9202
+        ],
+        "first_output_at": "2026-11-28T09:07:50.5021964Z",
+        "last_output_at": "2026-11-28T09:07:50.5021964Z",
+        "counts": {
+          "passed": 10,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/operations/test_current_union.py",
+        "lines": [
+          9203,
+          9203
+        ],
+        "first_output_at": "2026-11-28T09:07:53.1202118Z",
+        "last_output_at": "2026-11-28T09:07:53.1202118Z",
+        "counts": {
+          "passed": 11,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/ui/test_operations_dialog.py",
+        "lines": [
+          9204,
+          9204
+        ],
+        "first_output_at": "2026-11-28T09:07:55.3217715Z",
+        "last_output_at": "2026-11-28T09:07:55.3217715Z",
+        "counts": {
+          "passed": 13,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/ui/test_operations_policy.py",
+        "lines": [
+          9205,
+          9205
+        ],
+        "first_output_at": "2026-11-28T09:07:55.6736148Z",
+        "last_output_at": "2026-11-28T09:07:55.6736148Z",
+        "counts": {
+          "passed": 37,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/e2e/test_operations_cli.py",
+        "lines": [
+          9207,
+          9207
+        ],
+        "first_output_at": "2026-11-28T09:07:58.0557667Z",
+        "last_output_at": "2026-11-28T09:07:58.0557667Z",
+        "counts": {
+          "passed": 5,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/reader/test_braille.py",
+        "lines": [
+          9208,
+          9208
+        ],
+        "first_output_at": "2026-11-28T09:08:04.7050042Z",
+        "last_output_at": "2026-11-28T09:08:04.7050042Z",
+        "counts": {
+          "passed": 40,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/ui/test_braille_actions.py",
+        "lines": [
+          9209,
+          9209
+        ],
+        "first_output_at": "2026-11-28T09:08:06.9853275Z",
+        "last_output_at": "2026-11-28T09:08:06.9853275Z",
+        "counts": {
+          "passed": 8,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/studio/test_project_effects.py",
+        "lines": [
+          9210,
+          9210
+        ],
+        "first_output_at": "2026-11-28T09:08:40.7107490Z",
+        "last_output_at": "2026-11-28T09:08:40.7107490Z",
+        "counts": {
+          "passed": 25,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/storage/test_backup_studio_effects.py",
+        "lines": [
+          9211,
+          9211
+        ],
+        "first_output_at": "2026-11-28T09:08:47.2105635Z",
+        "last_output_at": "2026-11-28T09:08:47.2105635Z",
+        "counts": {
+          "passed": 21,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/integrations/test_dordiai_host_lifecycle.py",
+        "lines": [
+          9212,
+          9212
+        ],
+        "first_output_at": "2026-11-28T09:08:54.1476973Z",
+        "last_output_at": "2026-11-28T09:08:54.1476973Z",
+        "counts": {
+          "passed": 13,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/ui/test_engine_settings_lifetime.py",
+        "lines": [
+          9213,
+          9214
+        ],
+        "first_output_at": "2026-11-28T09:08:56.9653550Z",
+        "last_output_at": "2026-11-28T09:08:58.2677968Z",
+        "counts": {
+          "passed": 43,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/speech/test_listening.py",
+        "lines": [
+          9215,
+          9215
+        ],
+        "first_output_at": "2026-11-28T09:09:14.5752252Z",
+        "last_output_at": "2026-11-28T09:09:14.5752252Z",
+        "counts": {
+          "passed": 28,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/speech/test_playback_devices.py",
+        "lines": [
+          9216,
+          9217
+        ],
+        "first_output_at": "2026-11-28T09:09:14.7474606Z",
+        "last_output_at": "2026-11-28T09:09:15.0089508Z",
+        "counts": {
+          "passed": 53,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/ui/test_reader_listening_hooks.py",
+        "lines": [
+          9218,
+          9218
+        ],
+        "first_output_at": "2026-11-28T09:09:16.5487226Z",
+        "last_output_at": "2026-11-28T09:09:16.5487226Z",
+        "counts": {
+          "passed": 24,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/packaging/test_installed_trusted_client_probe.py",
+        "lines": [
+          9219,
+          9220
+        ],
+        "first_output_at": "2026-11-28T09:09:17.6404987Z",
+        "last_output_at": "2026-11-28T09:09:23.6308966Z",
+        "counts": {
+          "passed": 34,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/speech/test_wave_output.py",
+        "lines": [
+          9221,
+          9221
+        ],
+        "first_output_at": "2026-11-28T09:09:24.5231659Z",
+        "last_output_at": "2026-11-28T09:09:24.5231659Z",
+        "counts": {
+          "passed": 31,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/speech/test_playlist.py",
+        "lines": [
+          9222,
+          9222
+        ],
+        "first_output_at": "2026-11-28T09:09:25.0577063Z",
+        "last_output_at": "2026-11-28T09:09:25.0577063Z",
+        "counts": {
+          "passed": 21,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/speech/test_playlist_recovery.py",
+        "lines": [
+          9223,
+          9224
+        ],
+        "first_output_at": "2026-11-28T09:09:39.8364386Z",
+        "last_output_at": "2026-11-28T09:09:40.0084583Z",
+        "counts": {
+          "passed": 36,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/ui/test_audio_playback.py",
+        "lines": [
+          9225,
+          9225
+        ],
+        "first_output_at": "2026-11-28T09:09:44.7697990Z",
+        "last_output_at": "2026-11-28T09:09:44.7697990Z",
+        "counts": {
+          "passed": 24,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/audio/test_conversion_batch.py",
+        "lines": [
+          9226,
+          9227
+        ],
+        "first_output_at": "2026-11-28T09:10:45.0136549Z",
+        "last_output_at": "2026-11-28T09:10:48.3496727Z",
+        "counts": {
+          "passed": 42,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/ui/test_audio_conversion_batch.py",
+        "lines": [
+          9228,
+          9228
+        ],
+        "first_output_at": "2026-11-28T09:10:49.0195354Z",
+        "last_output_at": "2026-11-28T09:10:49.0195354Z",
+        "counts": {
+          "passed": 21,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/studio/test_conversion_batch_cli.py",
+        "lines": [
+          9229,
+          9229
+        ],
+        "first_output_at": "2026-11-28T09:11:04.9638798Z",
+        "last_output_at": "2026-11-28T09:11:04.9638798Z",
+        "counts": {
+          "passed": 4,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/speech/test_publication_validation.py",
+        "lines": [
+          9230,
+          9230
+        ],
+        "first_output_at": "2026-11-28T09:11:07.0204836Z",
+        "last_output_at": "2026-11-28T09:11:07.0204836Z",
+        "counts": {
+          "passed": 12,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/speech/test_reading_marks.py",
+        "lines": [
+          9231,
+          9231
+        ],
+        "first_output_at": "2026-11-28T09:11:07.5979551Z",
+        "last_output_at": "2026-11-28T09:11:07.5979551Z",
+        "counts": {
+          "passed": 36,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/ui/test_reading_tools.py",
+        "lines": [
+          9232,
+          9232
+        ],
+        "first_output_at": "2026-11-28T09:11:08.2546256Z",
+        "last_output_at": "2026-11-28T09:11:08.2546256Z",
+        "counts": {
+          "passed": 14,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/speech/test_reading_tabs.py",
+        "lines": [
+          9233,
+          9233
+        ],
+        "first_output_at": "2026-11-28T09:11:11.5425904Z",
+        "last_output_at": "2026-11-28T09:11:11.5425904Z",
+        "counts": {
+          "passed": 25,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/ui/test_reader_tabs.py",
+        "lines": [
+          9234,
+          9234
+        ],
+        "first_output_at": "2026-11-28T09:11:15.8002811Z",
+        "last_output_at": "2026-11-28T09:11:15.8002811Z",
+        "counts": {
+          "passed": 20,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/speech/test_reading_presentation.py",
+        "lines": [
+          9235,
+          9236
+        ],
+        "first_output_at": "2026-11-28T09:11:16.1855345Z",
+        "last_output_at": "2026-11-28T09:11:16.4433279Z",
+        "counts": {
+          "passed": 32,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/speech/test_reading_presentation_handlers.py",
+        "lines": [
+          9237,
+          9237
+        ],
+        "first_output_at": "2026-11-28T09:11:17.4989531Z",
+        "last_output_at": "2026-11-28T09:11:17.4989531Z",
+        "counts": {
+          "passed": 20,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/speech/test_reading_presentation_reader_hook.py",
+        "lines": [
+          9238,
+          9238
+        ],
+        "first_output_at": "2026-11-28T09:11:18.0800469Z",
+        "last_output_at": "2026-11-28T09:11:18.0800469Z",
+        "counts": {
+          "passed": 9,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/ui/test_native_reading_presentation_driver.py",
+        "lines": [
+          9239,
+          9239
+        ],
+        "first_output_at": "2026-11-28T09:11:18.1798493Z",
+        "last_output_at": "2026-11-28T09:11:18.1798493Z",
+        "counts": {
+          "passed": 14,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/speech/test_voice_preferences.py",
+        "lines": [
+          9240,
+          9240
+        ],
+        "first_output_at": "2026-11-28T09:11:18.7207754Z",
+        "last_output_at": "2026-11-28T09:11:18.7207754Z",
+        "counts": {
+          "passed": 22,
+          "failed": 1,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/storage/test_voice_preferences_backup.py",
+        "lines": [
+          9241,
+          9241
+        ],
+        "first_output_at": "2026-11-28T09:11:19.3209263Z",
+        "last_output_at": "2026-11-28T09:11:19.3209263Z",
+        "counts": {
+          "passed": 2,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/ui/test_voice_preferences_dialog.py",
+        "lines": [
+          9242,
+          9242
+        ],
+        "first_output_at": "2026-11-28T09:11:19.7588256Z",
+        "last_output_at": "2026-11-28T09:11:19.7588256Z",
+        "counts": {
+          "passed": 12,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/ui/test_reader_view_hooks.py",
+        "lines": [
+          9243,
+          9243
+        ],
+        "first_output_at": "2026-11-28T09:11:20.3122730Z",
+        "last_output_at": "2026-11-28T09:11:20.3122730Z",
+        "counts": {
+          "passed": 11,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/storage/test_reader_preferences_state.py",
+        "lines": [
+          9244,
+          9244
+        ],
+        "first_output_at": "2026-11-28T09:11:21.6384032Z",
+        "last_output_at": "2026-11-28T09:11:21.6384032Z",
+        "counts": {
+          "passed": 7,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/studio/test_book_batch.py",
+        "lines": [
+          9245,
+          9245
+        ],
+        "first_output_at": "2026-11-28T09:21:04.0050541Z",
+        "last_output_at": "2026-11-28T09:21:04.0050541Z",
+        "counts": {
+          "passed": 29,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/studio/test_book_cli.py",
+        "lines": [
+          9246,
+          9246
+        ],
+        "first_output_at": "2026-11-28T09:22:58.4637801Z",
+        "last_output_at": "2026-11-28T09:22:58.4637801Z",
+        "counts": {
+          "passed": 18,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/ui/test_book_batch_dialog.py",
+        "lines": [
+          9247,
+          9247
+        ],
+        "first_output_at": "2026-11-28T09:23:14.5402951Z",
+        "last_output_at": "2026-11-28T09:23:14.5402951Z",
+        "counts": {
+          "passed": 18,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/storage/test_backup_book_batches.py",
+        "lines": [
+          9248,
+          9249
+        ],
+        "first_output_at": "2026-11-28T09:23:51.8939884Z",
+        "last_output_at": "2026-11-28T09:23:55.8283897Z",
+        "counts": {
+          "passed": 33,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/audio/test_recording_controls.py",
+        "lines": [
+          9250,
+          9250
+        ],
+        "first_output_at": "2026-11-28T09:24:09.4642257Z",
+        "last_output_at": "2026-11-28T09:24:09.4642257Z",
+        "counts": {
+          "passed": 30,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/audio/test_recording_monitor.py",
+        "lines": [
+          9251,
+          9251
+        ],
+        "first_output_at": "2026-11-28T09:24:09.5588392Z",
+        "last_output_at": "2026-11-28T09:24:09.5588392Z",
+        "counts": {
+          "passed": 21,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/storage/test_backup_recording_controls.py",
+        "lines": [
+          9252,
+          9252
+        ],
+        "first_output_at": "2026-11-28T09:24:12.0147728Z",
+        "last_output_at": "2026-11-28T09:24:12.0147728Z",
+        "counts": {
+          "passed": 20,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/catalog/test_streaming_intake.py",
+        "lines": [
+          9253,
+          9253
+        ],
+        "first_output_at": "2026-11-28T09:24:16.6631017Z",
+        "last_output_at": "2026-11-28T09:24:16.6631017Z",
+        "counts": {
+          "passed": 16,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/e2e/test_raster_import.py",
+        "lines": [
+          9254,
+          9254
+        ],
+        "first_output_at": "2026-11-28T09:25:23.3885453Z",
+        "last_output_at": "2026-11-28T09:25:23.3885453Z",
+        "counts": {
+          "passed": 11,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/e2e/test_raster_ocr_native.py",
+        "lines": [
+          9255,
+          9255
+        ],
+        "first_output_at": "2026-11-28T09:25:49.9276822Z",
+        "last_output_at": "2026-11-28T09:25:49.9276822Z",
+        "counts": {
+          "passed": 3,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/extract/test_raster_pages.py",
+        "lines": [
+          9256,
+          9256
+        ],
+        "first_output_at": "2026-11-28T09:25:50.2308367Z",
+        "last_output_at": "2026-11-28T09:25:50.2308367Z",
+        "counts": {
+          "passed": 23,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/ingest/test_batch_continuation.py",
+        "lines": [
+          9257,
+          9257
+        ],
+        "first_output_at": "2026-11-28T09:26:57.5657685Z",
+        "last_output_at": "2026-11-28T09:26:57.5657685Z",
+        "counts": {
+          "passed": 18,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/ingest/test_batch_continuation_cli.py",
+        "lines": [
+          9258,
+          9258
+        ],
+        "first_output_at": "2026-11-28T09:27:11.4534265Z",
+        "last_output_at": "2026-11-28T09:27:11.4534265Z",
+        "counts": {
+          "passed": 3,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/ui/test_import_center.py",
+        "lines": [
+          9259,
+          9260
+        ],
+        "first_output_at": "2026-11-28T09:27:12.1927769Z",
+        "last_output_at": "2026-11-28T09:27:12.2121966Z",
+        "counts": {
+          "passed": 42,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/e2e/test_research_search_cli.py",
+        "lines": [
+          9261,
+          9261
+        ],
+        "first_output_at": "2026-11-28T09:27:35.9939663Z",
+        "last_output_at": "2026-11-28T09:27:35.9939663Z",
+        "counts": {
+          "passed": 15,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/search/test_federated.py",
+        "lines": [
+          9262,
+          9263
+        ],
+        "first_output_at": "2026-11-28T09:27:56.2812157Z",
+        "last_output_at": "2026-11-28T09:28:01.7258500Z",
+        "counts": {
+          "passed": 100,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/ui/test_federated_search.py",
+        "lines": [
+          9264,
+          9266
+        ],
+        "first_output_at": "2026-11-28T09:28:28.6055557Z",
+        "last_output_at": "2026-11-28T09:28:54.8512005Z",
+        "counts": {
+          "passed": 114,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/search/test_search_paging.py",
+        "lines": [
+          9267,
+          9267
+        ],
+        "first_output_at": "2026-11-28T09:31:14.2427914Z",
+        "last_output_at": "2026-11-28T09:31:14.2427914Z",
+        "counts": {
+          "passed": 27,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/ingest/test_scan_root_binding.py",
+        "lines": [
+          9268,
+          9268
+        ],
+        "first_output_at": "2026-11-28T09:31:15.3413854Z",
+        "last_output_at": "2026-11-28T09:31:15.3413854Z",
+        "counts": {
+          "passed": 4,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/ingest/test_large_source_intake.py",
+        "lines": [
+          9269,
+          9269
+        ],
+        "first_output_at": "2026-11-28T09:33:44.7872543Z",
+        "last_output_at": "2026-11-28T09:33:44.7872543Z",
+        "counts": {
+          "passed": 6,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/storage/test_desktop_preferences.py",
+        "lines": [
+          9270,
+          9270
+        ],
+        "first_output_at": "2026-11-28T09:33:45.5844682Z",
+        "last_output_at": "2026-11-28T09:33:45.5844682Z",
+        "counts": {
+          "passed": 22,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/ui/test_desktop_integration.py",
+        "lines": [
+          9271,
+          9272
+        ],
+        "first_output_at": "2026-11-28T09:33:46.2406679Z",
+        "last_output_at": "2026-11-28T09:33:46.2910015Z",
+        "counts": {
+          "passed": 37,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/ui/test_desktop_settings.py",
+        "lines": [
+          9273,
+          9273
+        ],
+        "first_output_at": "2026-11-28T09:33:46.4512988Z",
+        "last_output_at": "2026-11-28T09:33:46.4512988Z",
+        "counts": {
+          "passed": 4,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/ui/test_desktop_host_lifecycle.py",
+        "lines": [
+          9274,
+          9274
+        ],
+        "first_output_at": "2026-11-28T09:33:46.6518146Z",
+        "last_output_at": "2026-11-28T09:33:46.6518146Z",
+        "counts": {
+          "passed": 4,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/speech/test_narration_receipt.py",
+        "lines": [
+          9275,
+          9276
+        ],
+        "first_output_at": "2026-11-28T09:33:47.4061926Z",
+        "last_output_at": "2026-11-28T09:33:48.1793243Z",
+        "counts": {
+          "passed": 79,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/storage/test_local_schedules.py",
+        "lines": [
+          9277,
+          9278
+        ],
+        "first_output_at": "2026-11-28T09:34:35.1871206Z",
+        "last_output_at": "2026-11-28T09:34:47.6432580Z",
+        "counts": {
+          "passed": 43,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/ui/test_local_schedules.py",
+        "lines": [
+          9279,
+          9279
+        ],
+        "first_output_at": "2026-11-28T09:34:51.0971553Z",
+        "last_output_at": "2026-11-28T09:34:51.0971553Z",
+        "counts": {
+          "passed": 21,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/storage/test_backup_local_schedules.py",
+        "lines": [
+          9280,
+          9280
+        ],
+        "first_output_at": "2026-11-28T09:34:59.4563897Z",
+        "last_output_at": "2026-11-28T09:34:59.4563897Z",
+        "counts": {
+          "passed": 23,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/packaging/test_local_schedules_cli.py",
+        "lines": [
+          9281,
+          9281
+        ],
+        "first_output_at": "2026-11-28T09:35:15.8332074Z",
+        "last_output_at": "2026-11-28T09:35:15.8332074Z",
+        "counts": {
+          "passed": 11,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/speech/test_spelling.py",
+        "lines": [
+          9282,
+          9283
+        ],
+        "first_output_at": "2026-11-28T09:35:34.4748812Z",
+        "last_output_at": "2026-11-28T09:35:40.1061100Z",
+        "counts": {
+          "passed": 55,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/speech/test_spelling_handlers.py",
+        "lines": [
+          9284,
+          9284
+        ],
+        "first_output_at": "2026-11-28T09:35:44.9970565Z",
+        "last_output_at": "2026-11-28T09:35:44.9970565Z",
+        "counts": {
+          "passed": 20,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/speech/test_spelling_reader_hook.py",
+        "lines": [
+          9285,
+          9285
+        ],
+        "first_output_at": "2026-11-28T09:35:45.6739901Z",
+        "last_output_at": "2026-11-28T09:35:45.6739901Z",
+        "counts": {
+          "passed": 9,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/packaging/test_hunspell_build.py",
+        "lines": [
+          9286,
+          9286
+        ],
+        "first_output_at": "2026-11-28T09:35:48.2043461Z",
+        "last_output_at": "2026-11-28T09:35:48.2043461Z",
+        "counts": {
+          "passed": 31,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/packaging/test_library_scale_benchmark.py",
+        "lines": [
+          9287,
+          9287
+        ],
+        "first_output_at": "2026-11-28T09:36:04.2714069Z",
+        "last_output_at": "2026-11-28T09:36:04.2714069Z",
+        "counts": {
+          "passed": 24,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/audio/test_envelopes.py",
+        "lines": [
+          9289,
+          9290
+        ],
+        "first_output_at": "2026-11-28T09:36:04.3218134Z",
+        "last_output_at": "2026-11-28T09:36:09.0151823Z",
+        "counts": {
+          "passed": 64,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/studio/test_envelope_workflow.py",
+        "lines": [
+          9291,
+          9291
+        ],
+        "first_output_at": "2026-11-28T09:36:13.5788967Z",
+        "last_output_at": "2026-11-28T09:36:13.5788967Z",
+        "counts": {
+          "passed": 17,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/studio/test_clip_operations.py",
+        "lines": [
+          9292,
+          9293
+        ],
+        "first_output_at": "2026-11-28T09:36:13.7972423Z",
+        "last_output_at": "2026-11-28T09:36:13.8627660Z",
+        "counts": {
+          "passed": 90,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/studio/test_project_history.py",
+        "lines": [
+          9294,
+          9294
+        ],
+        "first_output_at": "2026-11-28T09:36:30.2677385Z",
+        "last_output_at": "2026-11-28T09:36:30.2677385Z",
+        "counts": {
+          "passed": 29,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/studio/test_clip_history_dialog.py",
+        "lines": [
+          9295,
+          9296
+        ],
+        "first_output_at": "2026-11-28T09:36:32.3963823Z",
+        "last_output_at": "2026-11-28T09:36:33.7917244Z",
+        "counts": {
+          "passed": 50,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/assistant/test_translation_layout.py",
+        "lines": [
+          9297,
+          9298
+        ],
+        "first_output_at": "2026-11-28T09:38:23.7478190Z",
+        "last_output_at": "2026-11-28T09:38:51.0761929Z",
+        "counts": {
+          "passed": 33,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/ui/test_translation_layout.py",
+        "lines": [
+          9299,
+          9299
+        ],
+        "first_output_at": "2026-11-28T09:39:46.0035789Z",
+        "last_output_at": "2026-11-28T09:39:46.0035789Z",
+        "counts": {
+          "passed": 23,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/assistant/test_translation_layout_cli.py",
+        "lines": [
+          9300,
+          9300
+        ],
+        "first_output_at": "2026-11-28T09:40:32.3269209Z",
+        "last_output_at": "2026-11-28T09:40:32.3269209Z",
+        "counts": {
+          "passed": 5,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/assistant/test_translation_partition.py",
+        "lines": [
+          9301,
+          9301
+        ],
+        "first_output_at": "2026-11-28T09:42:24.5667120Z",
+        "last_output_at": "2026-11-28T09:42:24.5667120Z",
+        "counts": {
+          "passed": 26,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/ui/test_save_all.py",
+        "lines": [
+          9303,
+          9303
+        ],
+        "first_output_at": "2026-11-28T09:42:24.6071865Z",
+        "last_output_at": "2026-11-28T09:42:24.6071865Z",
+        "counts": {
+          "passed": 24,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/academic_integration/test_word_records.py",
+        "lines": [
+          9304,
+          9305
+        ],
+        "first_output_at": "2026-11-28T09:42:24.6402005Z",
+        "last_output_at": "2026-11-28T09:43:12.2117764Z",
+        "counts": {
+          "passed": 50,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/academic_integration/test_word_bridge.py",
+        "lines": [
+          9306,
+          9306
+        ],
+        "first_output_at": "2026-11-28T09:45:55.3865333Z",
+        "last_output_at": "2026-11-28T09:45:55.3865333Z",
+        "counts": {
+          "passed": 20,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/academic_integration/test_word_worker.py",
+        "lines": [
+          9307,
+          9307
+        ],
+        "first_output_at": "2026-11-28T09:46:08.4473626Z",
+        "last_output_at": "2026-11-28T09:46:08.4473626Z",
+        "counts": {
+          "passed": 17,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/ui/test_word_citations.py",
+        "lines": [
+          9308,
+          9308
+        ],
+        "first_output_at": "2026-11-28T09:46:10.6800276Z",
+        "last_output_at": "2026-11-28T09:46:10.6800276Z",
+        "counts": {
+          "passed": 17,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/assistant/test_google_oauth.py",
+        "lines": [
+          9309,
+          9310
+        ],
+        "first_output_at": "2026-11-28T09:46:15.7687721Z",
+        "last_output_at": "2026-11-28T09:46:17.8543762Z",
+        "counts": {
+          "passed": 49,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/ui/test_google_oauth.py",
+        "lines": [
+          9311,
+          9311
+        ],
+        "first_output_at": "2026-11-28T09:46:18.8067132Z",
+        "last_output_at": "2026-11-28T09:46:18.8067132Z",
+        "counts": {
+          "passed": 15,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/assistant/test_translation_epub_layout.py",
+        "lines": [
+          9312,
+          9313
+        ],
+        "first_output_at": "2026-11-28T09:46:44.8708311Z",
+        "last_output_at": "2026-11-28T09:47:27.7641738Z",
+        "counts": {
+          "passed": 31,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/ui/test_translation_epub_layout.py",
+        "lines": [
+          9314,
+          9314
+        ],
+        "first_output_at": "2026-11-28T09:47:40.6378988Z",
+        "last_output_at": "2026-11-28T09:47:40.6378988Z",
+        "counts": {
+          "passed": 6,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/assistant/test_translation_epub_cli.py",
+        "lines": [
+          9315,
+          9315
+        ],
+        "first_output_at": "2026-11-28T09:48:16.9269211Z",
+        "last_output_at": "2026-11-28T09:48:16.9269211Z",
+        "counts": {
+          "passed": 5,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/studio/test_clip_copy.py",
+        "lines": [
+          9316,
+          9316
+        ],
+        "first_output_at": "2026-11-28T09:48:26.4256958Z",
+        "last_output_at": "2026-11-28T09:48:26.4256958Z",
+        "counts": {
+          "passed": 17,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/studio/test_clip_copy_dialog.py",
+        "lines": [
+          9317,
+          9317
+        ],
+        "first_output_at": "2026-11-28T09:48:27.1472827Z",
+        "last_output_at": "2026-11-28T09:48:27.1472827Z",
+        "counts": {
+          "passed": 10,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/extract/test_docx_rich.py",
+        "lines": [
+          9318,
+          9319
+        ],
+        "first_output_at": "2026-11-28T09:48:30.5369799Z",
+        "last_output_at": "2026-11-28T09:48:32.3856154Z",
+        "counts": {
+          "passed": 55,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/assistant/test_translation_rich_docx.py",
+        "lines": [
+          9320,
+          9320
+        ],
+        "first_output_at": "2026-11-28T09:49:48.0682813Z",
+        "last_output_at": "2026-11-28T09:49:48.0682813Z",
+        "counts": {
+          "passed": 17,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/ui/test_translation_rich_docx.py",
+        "lines": [
+          9321,
+          9321
+        ],
+        "first_output_at": "2026-11-28T09:50:18.9820667Z",
+        "last_output_at": "2026-11-28T09:50:18.9820667Z",
+        "counts": {
+          "passed": 5,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/assistant/test_translation_rich_docx_cli.py",
+        "lines": [
+          9322,
+          9322
+        ],
+        "first_output_at": "2026-11-28T09:50:52.9546500Z",
+        "last_output_at": "2026-11-28T09:50:52.9546500Z",
+        "counts": {
+          "passed": 4,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/extract/test_docx_ordered.py",
+        "lines": [
+          9323,
+          9323
+        ],
+        "first_output_at": "2026-11-28T09:50:53.3380546Z",
+        "last_output_at": "2026-11-28T09:50:53.3380546Z",
+        "counts": {
+          "passed": 9,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/extract/test_docx_omitted_content.py",
+        "lines": [
+          9324,
+          9324
+        ],
+        "first_output_at": "2026-11-28T09:50:54.1658064Z",
+        "last_output_at": "2026-11-28T09:50:54.1658064Z",
+        "counts": {
+          "passed": 20,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/extract/test_docx_hidden_styles.py",
+        "lines": [
+          9325,
+          9325
+        ],
+        "first_output_at": "2026-11-28T09:50:54.8847030Z",
+        "last_output_at": "2026-11-28T09:50:54.8847030Z",
+        "counts": {
+          "passed": 13,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/ingest/test_application_atomic_docx_gate.py",
+        "lines": [
+          9326,
+          9326
+        ],
+        "first_output_at": "2026-11-28T09:50:55.2251313Z",
+        "last_output_at": "2026-11-28T09:50:55.2251313Z",
+        "counts": {
+          "passed": 1,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/ingest/test_terminal_replay_registration.py",
+        "lines": [
+          9327,
+          9327
+        ],
+        "first_output_at": "2026-11-28T09:51:12.3058846Z",
+        "last_output_at": "2026-11-28T09:51:12.3058846Z",
+        "counts": {
+          "passed": 10,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/ingest/test_txt_replay_registration.py",
+        "lines": [
+          9328,
+          9328
+        ],
+        "first_output_at": "2026-11-28T09:51:17.8954104Z",
+        "last_output_at": "2026-11-28T09:51:17.8954104Z",
+        "counts": {
+          "passed": 7,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/ingest/test_import_publication_point.py",
+        "lines": [
+          9329,
+          9329
+        ],
+        "first_output_at": "2026-11-28T09:51:22.9919504Z",
+        "last_output_at": "2026-11-28T09:51:22.9919504Z",
+        "counts": {
+          "passed": 2,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/ui/test_native_recording_driver.py",
+        "lines": [
+          9330,
+          9330
+        ],
+        "first_output_at": "2026-11-28T09:51:23.0200037Z",
+        "last_output_at": "2026-11-28T09:51:23.0200037Z",
+        "counts": {
+          "passed": 10,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/storage/test_scoped_locator_capacity.py",
+        "lines": [
+          9331,
+          9331
+        ],
+        "first_output_at": "2026-11-28T09:51:24.0589057Z",
+        "last_output_at": "2026-11-28T09:51:24.0589057Z",
+        "counts": {
+          "passed": 4,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/storage/test_locator_integrity.py",
+        "lines": [
+          9332,
+          9332
+        ],
+        "first_output_at": "2026-11-28T09:51:24.5720583Z",
+        "last_output_at": "2026-11-28T09:51:24.5720583Z",
+        "counts": {
+          "passed": 8,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/storage/test_printed_label_integrity.py",
+        "lines": [
+          9333,
+          9334
+        ],
+        "first_output_at": "2026-11-28T09:51:26.6930387Z",
+        "last_output_at": "2026-11-28T09:51:27.6671271Z",
+        "counts": {
+          "passed": 37,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/ingest/test_checked_catalog_commit.py",
+        "lines": [
+          9335,
+          9335
+        ],
+        "first_output_at": "2026-11-28T09:51:30.3709522Z",
+        "last_output_at": "2026-11-28T09:51:30.3709522Z",
+        "counts": {
+          "passed": 10,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/search/test_search_query_work.py",
+        "lines": [
+          9336,
+          9336
+        ],
+        "first_output_at": "2026-11-28T09:51:32.6353462Z",
+        "last_output_at": "2026-11-28T09:51:32.6353462Z",
+        "counts": {
+          "passed": 17,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/operations/test_broker_scope.py",
+        "lines": [
+          9337,
+          9337
+        ],
+        "first_output_at": "2026-11-28T09:51:35.0061423Z",
+        "last_output_at": "2026-11-28T09:51:35.0061423Z",
+        "counts": {
+          "passed": 20,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/ingest/test_application_atomic_gate.py",
+        "lines": [
+          9338,
+          9338
+        ],
+        "first_output_at": "2026-11-28T09:51:35.5416439Z",
+        "last_output_at": "2026-11-28T09:51:35.5416439Z",
+        "counts": {
+          "passed": 1,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/ingest/test_pipeline.py",
+        "lines": [
+          9339,
+          9339
+        ],
+        "first_output_at": "2026-11-28T09:51:37.2964680Z",
+        "last_output_at": "2026-11-28T09:51:37.2964680Z",
+        "counts": {
+          "passed": 9,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/storage/test_schema_boundary.py",
+        "lines": [
+          9340,
+          9340
+        ],
+        "first_output_at": "2026-11-28T09:51:38.0661909Z",
+        "last_output_at": "2026-11-28T09:51:38.0661909Z",
+        "counts": {
+          "passed": 9,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/storage/test_revisions.py",
+        "lines": [
+          9341,
+          9341
+        ],
+        "first_output_at": "2026-11-28T09:51:38.4717335Z",
+        "last_output_at": "2026-11-28T09:51:38.4717335Z",
+        "counts": {
+          "passed": 5,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/storage/test_read_boundary.py",
+        "lines": [
+          9342,
+          9342
+        ],
+        "first_output_at": "2026-11-28T09:51:38.9138194Z",
+        "last_output_at": "2026-11-28T09:51:38.9138194Z",
+        "counts": {
+          "passed": 5,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/catalog/test_read_views.py",
+        "lines": [
+          9343,
+          9343
+        ],
+        "first_output_at": "2026-11-28T09:51:40.6262166Z",
+        "last_output_at": "2026-11-28T09:51:40.6262166Z",
+        "counts": {
+          "passed": 9,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/catalog/test_read_views_v2_integration.py",
+        "lines": [
+          9344,
+          9344
+        ],
+        "first_output_at": "2026-11-28T09:51:41.1656679Z",
+        "last_output_at": "2026-11-28T09:51:41.1656679Z",
+        "counts": {
+          "passed": 5,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/search/test_literal_integrity.py",
+        "lines": [
+          9345,
+          9345
+        ],
+        "first_output_at": "2026-11-28T09:51:41.1767866Z",
+        "last_output_at": "2026-11-28T09:51:41.1767866Z",
+        "counts": {
+          "passed": 6,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/search/test_literal_readonly.py",
+        "lines": [
+          9346,
+          9346
+        ],
+        "first_output_at": "2026-11-28T09:51:41.4601920Z",
+        "last_output_at": "2026-11-28T09:51:41.4601920Z",
+        "counts": {
+          "passed": 6,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/search/test_literal_v2_composition.py",
+        "lines": [
+          9347,
+          9347
+        ],
+        "first_output_at": "2026-11-28T09:51:41.8567731Z",
+        "last_output_at": "2026-11-28T09:51:41.8567731Z",
+        "counts": {
+          "passed": 6,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/e2e/test_retained_source_search_integrity.py",
+        "lines": [
+          9348,
+          9348
+        ],
+        "first_output_at": "2026-11-28T09:52:27.7498503Z",
+        "last_output_at": "2026-11-28T09:52:27.7498503Z",
+        "counts": {
+          "passed": 11,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      },
+      {
+        "path": "tests/packaging/test_library_capacity_measurement.py",
+        "lines": [
+          9349,
+          9350
+        ],
+        "first_output_at": "2026-11-28T09:53:00.0185149Z",
+        "last_output_at": "2026-11-28T09:53:06.2355359Z",
+        "counts": {
+          "passed": 25,
+          "failed": 0,
+          "skipped": 0,
+          "error": 0,
+          "xfail": 0,
+          "xpass": 0
+        }
+      }
+    ]
+  },
+  "native_failure_context": {
+    "reader_player": {
+      "cause": "Actual output inventory contains no identifiable device; original required qualification refuses.",
+      "excerpt": [
+        {
+          "line": 6383,
+          "text": "2026-11-28T08:00:48.1215696Z   \"device_installation\": \"NOT_PERFORMED\","
+        },
+        {
+          "line": 6384,
+          "text": "2026-11-28T08:00:48.1215984Z   \"playback_evidence\": \"NOT_RUN\""
+        },
+        {
+          "line": 6385,
+          "text": "2026-11-28T08:00:48.1216232Z }"
+        },
+        {
+          "line": 6386,
+          "text": "2026-11-28T08:00:48.7291979Z PASS: installed reader output module: carr_library.speech.player"
+        },
+        {
+          "line": 6387,
+          "text": "2026-11-28T08:00:48.7294176Z PASS: installed reader output module: carr_library.speech.playback_devices"
+        },
+        {
+          "line": 6388,
+          "text": "2026-11-28T08:00:48.7295457Z PASS: installed reader output module: carr_library.speech.listening"
+        },
+        {
+          "line": 6389,
+          "text": "2026-11-28T08:00:48.7296215Z PASS: installed reader output module: carr_library.audio.dsp"
+        },
+        {
+          "line": 6390,
+          "text": "2026-11-28T08:00:48.7300769Z PASS: installed reader output module: carr_library.ui.reader_playback"
+        },
+        {
+          "line": 6391,
+          "text": "2026-11-28T08:00:48.7788903Z {\"device_inventory_truncated\": false, \"devices\": [], \"mapper_queries\": [{\"bits_per_sample\": 16, \"channels\": 1, \"code\": 2, \"message\": \"A device ID has been used that is out of range for your system.\", \"sample_rate\": 24000}, {\"bits_per_sample\": 16, \"channels\": 2, \"code\": 2, \"message\": \"A device ID has been used that is out of range for your system.\", \"sample_rate\": 24000}, {\"bits_per_sample\": 16, \"channels\": 1, \"code\": 2, \"message\": \"A device ID has been used that is out of range for your system.\", \"sample_rate\": 44100}, {\"bits_per_sample\": 16, \"channels\": 2, \"code\": 2, \"message\": \"A device ID has been used that is out of range for your system.\", \"sample_rate\": 44100}, {\"bits_per_sample\": 16, \"channels\": 1, \"code\": 2, \"message\": \"A device ID has been used that is out of range for your system.\", \"sample_rate\": 48000}, {\"bits_per_sample\": 16, \"channels\": 2, \"code\": 2, \"message\": \"A device ID has been used that is out of range for your system.\", \"sample_rate\": 48000}], \"observation\": \"NO_OUTPUT_DEVICE_ENUMERATED_OR_QUERY_ERROR\", \"playback_evidence\": \"NOT_RUN\", \"query_only\": true, \"schema\": \"carr-windows-audio-diagnostics/1\", \"services\": {\"AudioEndpointBuilder\": {\"service_exit_code\": 0, \"state\": \"RUNNING\", \"state_code\": 4, \"win32_exit_code\": 0}, \"Audiosrv\": {\"service_exit_code\": 0, \"state\": \"RUNNING\", \"state_code\": 4, \"win32_exit_code\": 0}}, \"stage\": \"before-output-device-admission\", \"wave_output_device_count\": 0}"
+        },
+        {
+          "line": 6392,
+          "text": "2026-11-28T08:00:48.7796304Z PASS: actual Windows output inventory stays within its bound"
+        },
+        {
+          "line": 6393,
+          "text": "2026-11-28T08:00:48.7957899Z Traceback (most recent call last):"
+        },
+        {
+          "line": 6394,
+          "text": "2026-11-28T08:00:48.7961596Z   File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_reader_player_smoke.py\", line 500, in <module>"
+        },
+        {
+          "line": 6395,
+          "text": "2026-11-28T08:00:48.7977256Z     raise SystemExit(main())"
+        },
+        {
+          "line": 6396,
+          "text": "2026-11-28T08:00:48.7981036Z                      ^^^^^^"
+        },
+        {
+          "line": 6397,
+          "text": "2026-11-28T08:00:48.7986482Z   File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_reader_player_smoke.py\", line 386, in main"
+        },
+        {
+          "line": 6398,
+          "text": "2026-11-28T08:00:48.7990447Z     raise RuntimeError('Actual output-device qualification requires an identifiable Windows output.')"
+        },
+        {
+          "line": 6399,
+          "text": "2026-11-28T08:00:48.7994336Z RuntimeError: Actual output-device qualification requires an identifiable Windows output."
+        },
+        {
+          "line": 6400,
+          "text": "2026-11-28T08:00:48.8187034Z REQUIRED NATIVE BLOCK FAILED [reader-player]: Actual installed native reader playback failed."
+        }
+      ]
+    },
+    "recording": {
+      "cause": "Actual monitoring output count0; strict recording-monitoring qualification fails.",
+      "excerpt": [
+        {
+          "line": 6508,
+          "text": "2026-11-28T08:02:39.8130333Z PASS: native focus reaches Microphone device (explicit selection required)"
+        },
+        {
+          "line": 6509,
+          "text": "2026-11-28T08:02:39.8131945Z PASS: native key dispatch: Microphone device (explicit selection required)"
+        },
+        {
+          "line": 6510,
+          "text": "2026-11-28T08:02:39.8755278Z PASS: native focus reaches Refresh monitoring outputs"
+        },
+        {
+          "line": 6511,
+          "text": "2026-11-28T08:02:39.8755951Z PASS: native key dispatch: Refresh monitoring outputs"
+        },
+        {
+          "line": 6512,
+          "text": "2026-11-28T08:02:39.8957261Z ACTUAL_MONITORING_OUTPUTS: 0"
+        },
+        {
+          "line": 6513,
+          "text": "2026-11-28T08:02:39.9181428Z FAIL: native recording phase 103"
+        },
+        {
+          "line": 6514,
+          "text": "2026-11-28T08:02:39.9184971Z Traceback (most recent call last):"
+        },
+        {
+          "line": 6515,
+          "text": "2026-11-28T08:02:39.9190190Z   File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_recording_smoke.py\", line 43, in invoke"
+        },
+        {
+          "line": 6516,
+          "text": "2026-11-28T08:02:39.9195088Z     callback()"
+        },
+        {
+          "line": 6517,
+          "text": "2026-11-28T08:02:39.9198881Z   File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_recording_smoke.py\", line 372, in drive"
+        },
+        {
+          "line": 6518,
+          "text": "2026-11-28T08:02:39.9286893Z     drive_monitor()"
+        },
+        {
+          "line": 6519,
+          "text": "2026-11-28T08:02:39.9323734Z   File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_recording_smoke.py\", line 486, in drive_monitor"
+        },
+        {
+          "line": 6520,
+          "text": "2026-11-28T08:02:39.9412433Z     raise RuntimeError('Actual Windows monitoring output is required; no output was enumerated. '"
+        },
+        {
+          "line": 6521,
+          "text": "2026-11-28T08:02:39.9416819Z RuntimeError: Actual Windows monitoring output is required; no output was enumerated. Native monitoring remains unqualified. Choose a monitoring output explicitly. Use headphones to avoid microphone feedback; no output was opened."
+        },
+        {
+          "line": 6522,
+          "text": "2026-11-28T08:02:39.9420285Z "
+        },
+        {
+          "line": 6523,
+          "text": "2026-11-28T08:02:39.9916690Z PASS: recording host Close drains its registered native owners"
+        }
+      ],
+      "cleanup": [
+        {
+          "line": 6523,
+          "text": "2026-11-28T08:02:39.9916690Z PASS: recording host Close drains its registered native owners"
+        }
+      ]
+    },
+    "saved_queue": {
+      "cause": "Actual waveOut progress check times out. Absent-device attribution is not inferred from this probe alone.",
+      "cleanup": [
+        {
+          "line": 8486,
+          "text": "2026-11-28T08:06:25.3625625Z SAVED_PLAYBACK_HOST_CLOSE: {\"event\": \"requested\", \"accepted\": true, \"before\": {\"working\": false, \"busy\": false, \"closing\": false, \"main_loop\": true, \"destroy_event_seen\": false, \"status\": \"Review selected playback files: complete.\"}, \"native_window_present\": true}"
+        },
+        {
+          "line": 8487,
+          "text": "2026-11-28T08:06:25.4066559Z SAVED_PLAYBACK_HOST_CLOSE: {\"event\": \"settled\", \"native_window_present\": false, \"destroy_event_seen\": true}"
+        },
+        {
+          "line": 8488,
+          "text": "2026-11-28T08:06:25.4067680Z PASS: actual host Close drains saved playback owners and the existing worker"
+        }
+      ],
+      "failure": [
+        {
+          "line": 8489,
+          "text": "2026-11-28T08:06:25.4198700Z Traceback (most recent call last):"
+        },
+        {
+          "line": 8490,
+          "text": "2026-11-28T08:06:25.4201950Z   File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_audio_player_smoke.py\", line 557, in <module>"
+        },
+        {
+          "line": 8491,
+          "text": "2026-11-28T08:06:25.4205032Z     main()"
+        },
+        {
+          "line": 8492,
+          "text": "2026-11-28T08:06:25.4209066Z   File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_audio_player_smoke.py\", line 534, in main"
+        },
+        {
+          "line": 8493,
+          "text": "2026-11-28T08:06:25.4212124Z     raise RuntimeError('\\n'.join(errors))"
+        },
+        {
+          "line": 8494,
+          "text": "2026-11-28T08:06:25.4215573Z RuntimeError: Traceback (most recent call last):"
+        },
+        {
+          "line": 8495,
+          "text": "2026-11-28T08:06:25.4219509Z   File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_audio_player_smoke.py\", line 331, in controls"
+        },
+        {
+          "line": 8496,
+          "text": "2026-11-28T08:06:25.4222672Z     pump(lambda: current.position_seconds >= .05, 'Real waveOut did not advance')"
+        },
+        {
+          "line": 8497,
+          "text": "2026-11-28T08:06:25.4227208Z   File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_audio_player_smoke.py\", line 154, in pump"
+        },
+        {
+          "line": 8498,
+          "text": "2026-11-28T08:06:25.4230183Z     raise TimeoutError(label)"
+        },
+        {
+          "line": 8499,
+          "text": "2026-11-28T08:06:25.4233739Z TimeoutError: Real waveOut did not advance"
+        }
+      ]
+    },
+    "recorded_epub": {
+      "cause": "Original report only establishes stage2 timeout with host idle/transport stopped and last_error null. Later reporting-source fix is separate.",
+      "excerpt": [
+        {
+          "line": 8528,
+          "text": "2026-11-28T08:06:31.1535273Z PASS: owned native focus: EPUB synchronized recorded audio..."
+        },
+        {
+          "line": 8529,
+          "text": "2026-11-28T08:06:31.1535969Z PASS: native key down: EPUB synchronized recorded audio..."
+        },
+        {
+          "line": 8530,
+          "text": "2026-11-28T08:06:31.1916781Z PASS: native key release: EPUB synchronized recorded audio..."
+        },
+        {
+          "line": 8531,
+          "text": "2026-11-28T08:06:32.0446361Z PASS: recorded preparation borrows the current host worker"
+        },
+        {
+          "line": 8532,
+          "text": "2026-11-28T08:06:32.0448054Z PASS: opening recorded audio does not start playback"
+        },
+        {
+          "line": 8533,
+          "text": "2026-11-28T08:06:32.0449114Z PASS: native source highlight is an exact Unicode fragment"
+        },
+        {
+          "line": 8534,
+          "text": "2026-11-28T08:06:32.0450153Z PASS: existing progress observes the owned transport"
+        },
+        {
+          "line": 8535,
+          "text": "2026-11-28T08:06:32.0456405Z PASS: owned native focus: Play from selected segment"
+        },
+        {
+          "line": 8536,
+          "text": "2026-11-28T08:06:32.0457329Z PASS: native key down: Play from selected segment"
+        },
+        {
+          "line": 8537,
+          "text": "2026-11-28T08:06:32.0826380Z PASS: native key release: Play from selected segment"
+        },
+        {
+          "line": 8538,
+          "text": "2026-11-28T08:08:26.2510507Z DIAGNOSTIC: recorded EPUB timeout {\"host_working\": false, \"key_pending\": false, \"last_error\": null, \"overlay_busy\": false, \"player_state\": \"stopped\", \"pressed\": [], \"reader_busy\": false, \"stage\": 2, \"status\": \"Preparing the exact recorded audio interval\\u2026\", \"transport_active\": false}"
+        },
+        {
+          "line": 8539,
+          "text": "2026-11-28T08:08:26.2516607Z FAIL: native recorded EPUB callback"
+        },
+        {
+          "line": 8540,
+          "text": "2026-11-28T08:08:26.2517210Z Traceback (most recent call last):"
+        },
+        {
+          "line": 8541,
+          "text": "2026-11-28T08:08:26.2531125Z   File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_epub_reading_smoke.py\", line 133, in invoke"
+        },
+        {
+          "line": 8542,
+          "text": "2026-11-28T08:08:26.2532165Z     callback()"
+        },
+        {
+          "line": 8543,
+          "text": "2026-11-28T08:08:26.2532992Z   File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_epub_reading_smoke.py\", line 274, in drive"
+        },
+        {
+          "line": 8544,
+          "text": "2026-11-28T08:08:26.2533894Z     raise TimeoutError('Native recorded-EPUB acceptance exceeded its deadline at stage ' + str(stage))"
+        },
+        {
+          "line": 8545,
+          "text": "2026-11-28T08:08:26.2534685Z TimeoutError: Native recorded-EPUB acceptance exceeded its deadline at stage 2"
+        }
+      ]
+    }
+  },
+  "later_steps": [
+    {
+      "number": 43,
+      "name": "Qualify the transferable library bundle without an audio payload",
+      "status": "completed",
+      "conclusion": "skipped",
+      "started_at": "2026-11-28T09:56:51Z",
+      "completed_at": "2026-11-28T09:56:51Z"
+    },
+    {
+      "number": 44,
+      "name": "Prepare separate source-bound owner-candidate inputs after no-audio checks",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-28T09:56:51Z",
+      "completed_at": "2026-11-28T10:03:31Z"
+    },
+    {
+      "number": 45,
+      "name": "Retain only separately qualified owner-candidate public inputs",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-28T10:03:31Z",
+      "completed_at": "2026-11-28T10:03:33Z"
+    },
+    {
+      "number": 46,
+      "name": "Assemble unqualified owner archives and retain only public receipts",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-28T10:03:33Z",
+      "completed_at": "2026-11-28T10:04:34Z"
+    },
+    {
+      "number": 47,
+      "name": "Build pinned standard setup and execute actual install, repair and uninstall",
+      "status": "completed",
+      "conclusion": "skipped",
+      "started_at": "2026-11-28T10:04:34Z",
+      "completed_at": "2026-11-28T10:04:34Z"
+    },
+    {
+      "number": 48,
+      "name": "Publish public phase diagnostics before extended source acceptance",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-28T10:04:34Z",
+      "completed_at": "2026-11-28T10:04:35Z"
+    },
+    {
+      "number": 49,
+      "name": "Retain only public Hunspell source notices and text evidence",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-28T10:04:35Z",
+      "completed_at": "2026-11-28T10:04:36Z"
+    },
+    {
+      "number": 50,
+      "name": "Preserve exact-commit runtime and test evidence",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-28T10:04:36Z",
+      "completed_at": "2026-11-28T10:04:37Z"
+    }
+  ],
+  "artifact": {
+    "id": 15257838852,
+    "name": "carr-windows-26beb805aab1e9e202d134008441927523cdcb94-1",
+    "size_in_bytes": 3636981,
+    "digest": "sha256:9c34efb2bb991cb477f03504581e32ac57a01e965df05e322824997dba4c9810",
+    "expired": false
+  },
+  "interpretation": [
+    "The120-minute outer timeout is explicit, not inferred from elapsed metadata.",
+    "The five observed failures belong to three old test modules. Their individual assertion traces were not printed before interruption, so this log alone does not establish their causes.",
+    "All strict source/installed identity and post-pytest assertions remain required. Their absence after interruption is not a pass.",
+    "The B standalone native-library failure at step26 predates the independently executed C idle-admission correction.",
+    "The saved queue's real host Close/native Destroy/worker settlement passed despite playback failure; no output-device or acoustic qualification follows.",
+    "No current G result, source correctness, full bundle qualification or subsequent native phase is inferred from this B partial run."
+  ]
+}

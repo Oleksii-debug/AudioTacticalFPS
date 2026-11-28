@@ -1,0 +1,436 @@
+{
+  "schema": "carr-h-source-composition/1",
+  "status": "SOURCE_VERIFIED_RUNTIME_NOT_RUN",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "base_commit": "fc84f903dfe068b4eb816e5395cdbd3bf7aa7ad2",
+  "base_tree": "b5155e3ee1efb09097a1b6759cb9d5374bffbd9a",
+  "authority": {
+    "canonical_ref": "e5c64a5245583f8f8b404a0f042f6ca438c24d7f",
+    "issue_updated_at": "2026-11-27T16:44:15Z",
+    "unchanged": [
+      {
+        "sha": "080bb9104d3224749e9317c2273d803c0ac37835",
+        "paths": [
+          "AGENTS.md"
+        ]
+      },
+      {
+        "sha": "eacc34f48eb8c3e18b0cda74c4bd2eaf15ec315b",
+        "paths": [
+          "carr-library/automation/COMMON.md"
+        ]
+      },
+      {
+        "sha": "db8adbdc483a03c262885928c7ed214ca70bbaa7",
+        "paths": [
+          "carr-library/docs/UNIVERSAL_SCOPE_V3_FINALIZATION.md"
+        ]
+      },
+      {
+        "sha": "d0b2761dd22b33233b311d4800230fb47f5d3d8b",
+        "paths": [
+          "carr-library/docs/UNIVERSAL_SCOPE_V3_AUDIO_AGENT.md"
+        ]
+      },
+      {
+        "sha": "45752d31899f91bbdc9c71e4b256ac42975beaac",
+        "paths": [
+          "carr-library/docs/acceptance.md"
+        ]
+      },
+      {
+        "sha": "cca1b46f68d5b858924dd9bf37da02e144816c9d",
+        "paths": [
+          "carr-library/automation/ROLES.json"
+        ]
+      }
+    ]
+  },
+  "scope": {
+    "live_changes": 18,
+    "existing_replacements": 17,
+    "new_workflow_files": 1,
+    "product_files_changed": [
+      "carr-library/src/carr_library/ingest/worker.py"
+    ],
+    "test_files_changed": 5,
+    "helper_files_changed": 4,
+    "workflow_files_changed": 8,
+    "required_source_wholes": 493,
+    "source_shard_sizes": [
+      124,
+      123,
+      123,
+      123
+    ],
+    "isolated_and_pooled_groups": [
+      [
+        2,
+        122
+      ],
+      [
+        1,
+        122
+      ],
+      [
+        0,
+        123
+      ],
+      [
+        2,
+        121
+      ]
+    ],
+    "fast_wholes": 185,
+    "composed_wholes": 138,
+    "full_installed_selectors": 342,
+    "full_installed_wholes": 339,
+    "v3_source_wholes": 223,
+    "v3_installed_wholes": 202,
+    "language_source_cases": 147,
+    "language_installed_cases": 147,
+    "language_native_checks": 75
+  },
+  "review": {
+    "input": "b61417e5788f11ccf08e7d2ac47aae28118b4fb8",
+    "independent_peer": "765cfd3cab393c12d875ed1252a7e73f30c34d78",
+    "live_map_digest": {
+      "bytes": 205829,
+      "sha256": "f55800248d4664207888fcea2a8bcb16355653527ab234723254314cdd58bf54"
+    },
+    "repository_pins": 957,
+    "gate_files": 63,
+    "whole_case_declarations": 1489,
+    "additional_tuple_guards": 157,
+    "count_conflicts": 0,
+    "stale_pins": 0,
+    "full_replacement_inverses": 17,
+    "all_source_blob_readbacks": true,
+    "main_bytes": 404596,
+    "v3_bytes": 402515
+  },
+  "changes": [
+    {
+      "path": "carr-library/scripts/check_integrated_source_shard.ps1",
+      "preimage": "6032567fb09dd4e235caca7a3480d27845fcf889",
+      "blob": "dba0ffd3d3d8e0c5b695cbf7273b391f889ea138",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/scripts/check_installed_bundle.py",
+      "preimage": "93eb4eab03bdb37ae09373ce1adee74632300167",
+      "blob": "3b4981beac7d036d183eff16efd6f3adb26ae458",
+      "mode": "100644"
+    },
+    {
+      "path": ".github/workflows/carr-v3.yml",
+      "preimage": "2530ad683289a6d9d16f5282fc470cf819e791b2",
+      "blob": "5740472c341920ac29d3d1716796662bc51a289a",
+      "mode": "100644"
+    },
+    {
+      "path": ".github/workflows/carr-corpus-profile.yml",
+      "preimage": "2d9d8e88aaad47f23947f7b877a51e4777016e7f",
+      "blob": "7a7ee04513ffb6e3522c6312e89864729c4eaf04",
+      "mode": "100644"
+    },
+    {
+      "path": ".github/workflows/carr-windows.yml",
+      "preimage": "2f0ee50dd507be94424040d88e4807edd7c1ee62",
+      "blob": "8724a4036ec50037e44179e2dba939758ca1ebfb",
+      "mode": "100644"
+    },
+    {
+      "path": ".github/workflows/carr-integrated-source-shard.yml",
+      "preimage": "7d32d1153af6f612c82b319e608fc8e10bc128de",
+      "blob": "dd3bdcc80cd55745508cdb6d249c34ea9e44ae73",
+      "mode": "100644"
+    },
+    {
+      "path": ".github/workflows/carr-next8-source-verification.yml",
+      "preimage": "4f3f8a1f6112cc638d9087378900bf5ad5cf2e07",
+      "blob": "5b048c2482c20ef419cc13fb34d95187464fafb3",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/src/carr_library/ingest/worker.py",
+      "preimage": "8ab4334be7f7728de84839a6a35cfae5a1347830",
+      "blob": "532cd6d0e0bdbeb55675eeb813aa1e39239df022",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/tests/ingest/test_large_source_intake.py",
+      "preimage": "e97c4d77f398349153ef7dd95b7bb57b2b0aa2a5",
+      "blob": "6f5f116cf54d3183d1edfc36bd58acc4e1de5c38",
+      "mode": "100644"
+    },
+    {
+      "path": ".github/workflows/carr-publication-cursor.yml",
+      "preimage": null,
+      "blob": "ffb211d36e4eb4ca49a480b160b720e50b44dae6",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/tests/language_qualification/test_evidence.py",
+      "preimage": "8a5dfe80519194673b33eed77f87a5b1946d5906",
+      "blob": "6c5d52a8102d40842f23838a1eb65630626a2a9d",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/scripts/ci_language_evidence_contracts.py",
+      "preimage": "460e6ba9397c956660b9658b8f29047952e4243d",
+      "blob": "9a75188ec6a583aade9a5970dc548d3d35724b9d",
+      "mode": "100644"
+    },
+    {
+      "path": ".github/workflows/carr-language-evidence.yml",
+      "preimage": "5fb36eda5c859af0d8a4c304fafb1680feb4e3dc",
+      "blob": "29bf8a261151818ed9b45695ef5cf356f8fc552d",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/tests/ui/test_ebook_audio_lifetime.py",
+      "preimage": "d9f84b8451cb73910ac4c843c5f097ad7e7397cb",
+      "blob": "01938c8d8d282886151d0a659f94f46e46ccfacc",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/tests/transcription/test_admission_boundaries.py",
+      "preimage": "5fb6e519bfa27ea296aeee775985fc31ba4afc65",
+      "blob": "aa4e03e782fbb34c19344e2b1911af38c9fac65e",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/tests/transcription/test_service.py",
+      "preimage": "7162ccfee03ede2e908d9292e12ebe2df8c30669",
+      "blob": "0f23ffe48b509fea2a173c5b16676c7cf2c9bca5",
+      "mode": "100644"
+    },
+    {
+      "path": "carr-library/scripts/ci_installed_failure_contracts.py",
+      "preimage": "a9d0d3288746b2d7555db1029a6aa7205af6da66",
+      "blob": "4bd9331163cc3c342674aef37ee2ea8d5c74099f",
+      "mode": "100644"
+    },
+    {
+      "path": ".github/workflows/carr-installed-failure-contracts.yml",
+      "preimage": "aee1a8fabc5c822c40915fb6d44caa11295669c4",
+      "blob": "40b349eddaab341e56802674942f8b2dc9d2e6d3",
+      "mode": "100644"
+    }
+  ],
+  "evidence": [
+    {
+      "path": "resonance-status/next72/h_sqlite.json",
+      "blob": "2b5baa3193508973f21fc6aafdc30de66a4104c7"
+    },
+    {
+      "path": "resonance-status/next72/h_sqlite_peer.json",
+      "blob": "2d29f2fac705cc1553e32c7d76f970ca77593777"
+    },
+    {
+      "path": "resonance-status/next72/h_cursor_workflow.json",
+      "blob": "a898e8ea9992c2393b25106f48fb963ca8e4ece4"
+    },
+    {
+      "path": "resonance-status/next72/h_cursor_peer.json",
+      "blob": "4d5b96f0e67af78709aedffbfed7cd041d631bcb"
+    },
+    {
+      "path": "resonance-status/next72/h_gate_closure.json",
+      "blob": "ca7a38c6663a993cfc933c63fdc7afe0429d4a73"
+    },
+    {
+      "path": "resonance-status/next72/h_gate_hunks.json",
+      "blob": "f75d3f3226c53cdd6cca734c0753146c9527fb71"
+    },
+    {
+      "path": "resonance-status/next72/h_gate_peer.json",
+      "blob": "551201f97c9b8318933ae4cb9bde22489b0b091e"
+    },
+    {
+      "path": "resonance-status/next72/h_next8.json",
+      "blob": "fb00bcdf23268240251896141e0471ab68fdce4d"
+    },
+    {
+      "path": "resonance-status/next72/h_next8_peer.json",
+      "blob": "d7254eb9d60a6a615f7228c8763a28c326b4c020"
+    },
+    {
+      "path": "resonance-status/next72/h_asr.json",
+      "blob": "a5f8066b9eca65c024d5a1f932dd894fd5b81641"
+    },
+    {
+      "path": "resonance-status/next72/h_asr_peer.json",
+      "blob": "b08b16ca9d6aab87699c4b39a5505f776cbd3ae0"
+    },
+    {
+      "path": "resonance-status/next72/h_asr_six_candidate.json",
+      "blob": "6bbc35bb1b759f7e81a6ab14004a72a526e50b4b"
+    },
+    {
+      "path": "resonance-status/next72/h_asr_six.json",
+      "blob": "0e407e223178cfd6dd3c11c8343127b473be1d05"
+    },
+    {
+      "path": "resonance-status/next72/h_asr_six_peer.json",
+      "blob": "14739954118df9053a89be539da5f87e3d52ca99"
+    },
+    {
+      "path": "resonance-status/next72/h_epub_candidate.json",
+      "blob": "80134a02ad1e2ec1668f4bc564b6e6caae566d3b"
+    },
+    {
+      "path": "resonance-status/next72/h_epub.json",
+      "blob": "9e62bc235b0ad43b313c48796908aad99c7f4a3b"
+    },
+    {
+      "path": "resonance-status/next72/h_epub_peer.json",
+      "blob": "8ac73999850b2ca0e28fd13184ab047a7c541bc7"
+    },
+    {
+      "path": "resonance-status/next72/h_language.json",
+      "blob": "5a67d81c7dae12083498987ce462cb23ff9b7382"
+    },
+    {
+      "path": "resonance-status/next72/h_language_fixture_peer.json",
+      "blob": "294376dd25ca900bd14fb3e8a74781aad0a0554b"
+    },
+    {
+      "path": "resonance-status/next72/h_language_pin_peer.json",
+      "blob": "253c13cb5799d6cedb42e6dd703da7ae8b18b7d5"
+    },
+    {
+      "path": "resonance-status/next72/h_paging_envelope.json",
+      "blob": "a85ad49868cc3449b591f83f4aaf740a146396ad"
+    },
+    {
+      "path": "resonance-status/next72/paging_peer.json",
+      "blob": "02f432ef15fa5dcf2594f65703fff756a1c90653"
+    },
+    {
+      "path": "resonance-status/next72/h_envelope_peer.json",
+      "blob": "9bcffe7be1c389a9aacbce9a5244bd2a136a8b79"
+    },
+    {
+      "path": "resonance-status/next72/installed_envelope_assessment.json",
+      "blob": "6ccc5bdc963840d07f28b7a7d10b8d7b98e61a2d"
+    },
+    {
+      "path": "resonance-status/next72/h_main_language_peer.json",
+      "blob": "c7502b0395574b6a6e6f219945a2fe8c0ebced69"
+    },
+    {
+      "path": "resonance-status/next72/e_asr_analysis.json",
+      "blob": "3d3e475e2cb592db23bc5aac89d6df4726616e4e"
+    },
+    {
+      "path": "resonance-status/next72/e_late_partitions.json",
+      "blob": "ceee767497dcae0a9a2f94beb198c4769efe9bfc"
+    },
+    {
+      "path": "resonance-status/next72/b_full_installed.json",
+      "blob": "427bb013b89e87af03f3981326f49917b9c0a274"
+    },
+    {
+      "path": "resonance-status/next72/g_linux_capacity.json",
+      "blob": "4ed902b202488edd0597bceb3e413e8100ab03bf"
+    },
+    {
+      "path": "resonance-status/next72/g_windows_capacity.json",
+      "blob": "84926baa4a724fc982c248efae596d45e0a6e009"
+    },
+    {
+      "path": "resonance-status/next72/g_profile.json",
+      "blob": "5220aa54d9112642a6b473a10045b07bad22d3ee"
+    },
+    {
+      "path": "resonance-status/next72/g_1k.json",
+      "blob": "ee0faed60dd906688a49094c9eff71c59ef52efa"
+    },
+    {
+      "path": "resonance-status/next72/g_conversion.json",
+      "blob": "4d57d0e798f01fa5015c2bd7f787153f9f212d60"
+    },
+    {
+      "path": "resonance-status/next72/g_transcription.json",
+      "blob": "bf11e0c76f4eb0a5b17ba2052a4fb4fd297b562a"
+    },
+    {
+      "path": "resonance-status/next72/g_language_actual.json",
+      "blob": "141de50f4bc975c4fa1519fbcb13dafe19f31e90"
+    },
+    {
+      "path": "resonance-status/next72/g_bibliography.json",
+      "blob": "68ad8540c9ce3f63ef5fd93f21f3f719a4b09f58"
+    },
+    {
+      "path": "resonance-status/next72/g_zig_launcher.json",
+      "blob": "f4b0980006545876345f8301f7baca4d836ed24f"
+    },
+    {
+      "path": "resonance-status/next72/g_syntax_actual.json",
+      "blob": "19b4a3a7f591d59931862beb43929db9ef452297"
+    },
+    {
+      "path": "resonance-status/next72/g_launchers.json",
+      "blob": "ce5771e8f36833652a212bd4ce7d5886c385190a"
+    },
+    {
+      "path": "resonance-status/next72/h_review_input.json",
+      "blob": "b61417e5788f11ccf08e7d2ac47aae28118b4fb8"
+    },
+    {
+      "path": "resonance-status/next72/h_sqlite_candidate.json",
+      "blob": "067db10ada9fa04feafd2203c45f09336aba6501"
+    },
+    {
+      "path": "resonance-status/next72/h_final_composition_peer.json",
+      "blob": "765cfd3cab393c12d875ed1252a7e73f30c34d78"
+    }
+  ],
+  "inventory": {
+    "base_files": 2039,
+    "live_map_files": 2040,
+    "evidence_records_before_this_manifest": 42,
+    "files_before_this_manifest": 2082,
+    "files_including_this_manifest": 2083,
+    "tree_changes_including_manifest": 61,
+    "digest_before_this_manifest": {
+      "bytes": 209694,
+      "sha256": "2b4ebdb5bd41face3d80d3b798cebd13c5b05bace03230784760645fcbf57ba4"
+    },
+    "digest_encoding": "Sorted path NUL mode NUL git-blob LF, UTF-8; excludes this self-describing manifest only."
+  },
+  "execution": {
+    "H": "NOT_RUN",
+    "prior_G": "Prior results retain exact G or verified PR-merge tree identity; not promoted to H.",
+    "prior_B_E": "Observed failures retained as evidence for bounded changes.",
+    "planned": [
+      "Two-OS publication cursor preimage/postimage control",
+      "Required main and V3 acceptance",
+      "Capacity prerequisites and complete retained corpus geometries",
+      "Source and installed failure diagnostics"
+    ],
+    "production_release": "NOT_APPROVED",
+    "merge": "NOT_PERFORMED"
+  },
+  "preserved": {
+    "product_operation_deadlines": true,
+    "ordinary_whole_seconds": 600,
+    "admission_whole_seconds": 900,
+    "shared_fixture_seconds": 5,
+    "service_fixture_seconds": 5,
+    "six_positive_test_calls_seconds": 30,
+    "source_step_minutes": 60,
+    "source_job_minutes": 90,
+    "complete_installed_step_minutes": 210,
+    "desktop_job_minutes": 360,
+    "all_inner_native_watchdogs": true
+  },
+  "limitations": [
+    "The full source tree must still be executed on its exact published commit.",
+    "Physical audio, manual NVDA, private-engine/language quality and production publisher/signing remain separate explicit gates.",
+    "Neither static review nor historical successful results establish complete H acceptance."
+  ]
+}

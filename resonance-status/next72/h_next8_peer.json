@@ -1,0 +1,86 @@
+{
+  "schema": "carr-next8-book-scheduling-peer/1",
+  "created_utc": "2026-11-28 09:51:40 UTC",
+  "status": "ACCEPTED_STATIC_NOT_RUN",
+  "reviewer": "canonical_regression",
+  "path": ".github/workflows/carr-next8-source-verification.yml",
+  "preimage": "4f3f8a1f6112cc638d9087378900bf5ad5cf2e07",
+  "successor": "5b048c2482c20ef419cc13fb34d95187464fafb3",
+  "reviewed_head": "fc84f903dfe068b4eb816e5395cdbd3bf7aa7ad2",
+  "reviewed_tree": "b5155e3ee1efb09097a1b6759cb9d5374bffbd9a",
+  "inverse_hunks": [
+    {
+      "oldLine": 244,
+      "newLine": 244,
+      "before": [
+        "          & $env:CARR_COMPLETION_PYTHON scripts/ci_check.py --jobs 3 @completionSuites 2>&1 | Tee-Object 'ci-next8-source-results/source-regressions.txt'",
+        "          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }",
+        "          $summary = 'Required suites complete: ' + $completionSuites.Count + '; passed=' + $completionSuites.Count + '; failed=0'",
+        "          if (@(Select-String -LiteralPath 'ci-next8-source-results/source-regressions.txt' -SimpleMatch $summary).Count -ne 1) { throw 'The current composition source inventory is incomplete.' }"
+      ],
+      "after": [
+        "          # A3 completed the other 137 wholes but Book reached its unchanged 600-second limit.",
+        "          # Keep Book alone before the remaining pool; this tests the contention hypothesis.",
+        "          $completionUnique = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)",
+        "          foreach ($suite in $completionSuites) {",
+        "            if (-not $completionUnique.Add($suite)) { throw 'A required composed source suite is duplicated.' }",
+        "          }",
+        "          $bookSuite = 'tests/studio/test_book_batch.py'",
+        "          $remainingSuites = @($completionSuites | Where-Object { $_ -cne $bookSuite })",
+        "          if ($completionSuites.Count -ne 138 -or $completionSuites -cnotcontains $bookSuite -or $remainingSuites.Count -ne 137) { throw 'The complete 138-suite source groups differ from review.' }",
+        "          Write-Output ('Reviewed isolated composed source suite: ' + $bookSuite)",
+        "          $PSNativeCommandUseErrorActionPreference = $false",
+        "          & $env:CARR_COMPLETION_PYTHON scripts/ci_check.py --jobs 1 $bookSuite 2>&1 | Tee-Object 'ci-next8-source-results/source-regressions.txt'",
+        "          $bookExit = $LASTEXITCODE",
+        "          & $env:CARR_COMPLETION_PYTHON scripts/ci_check.py --jobs 3 @remainingSuites 2>&1 | Tee-Object -Append 'ci-next8-source-results/source-regressions.txt'",
+        "          $remainingExit = $LASTEXITCODE",
+        "          if ($bookExit -ne 0 -or $remainingExit -ne 0) { throw 'Required whole composed source suites failed.' }",
+        "          $bookPattern = '^PASS: tests/studio/test_book_batch\\.py: junit_passed=29, failed=0, skipped=0, pytest_exit=0$'",
+        "          if (@(Select-String -LiteralPath 'ci-next8-source-results/source-regressions.txt' -Pattern $bookPattern).Count -ne 1) { throw 'The complete 29-case Book source contract is missing or duplicated.' }",
+        "          foreach ($groupCount in @(1, $remainingSuites.Count)) {",
+        "            $summary = 'Required suites complete: ' + $groupCount + '; passed=' + $groupCount + '; failed=0'",
+        "            $pattern = '^' + [regex]::Escape($summary) + '$'",
+        "            if (@(Select-String -LiteralPath 'ci-next8-source-results/source-regressions.txt' -Pattern $pattern).Count -ne 1) { throw 'A real composed source group lacks its exact complete summary.' }",
+        "          }"
+      ]
+    }
+  ],
+  "inventory": {
+    "whole_count": 138,
+    "Book_count": 1,
+    "remaining_count": 137,
+    "Book_original_index": 58,
+    "input_array_byte_identical": true,
+    "remaining_order_preserved": true,
+    "complete_inverse": true,
+    "no_parse_or_execution": true
+  },
+  "actual_support": {
+    "A3_receipt": "8fa0b31a3a921d23106f1db04baee911dd586887",
+    "A3_result": "137 strict passing whole modules; Book failed at original600 seconds; complete138 aggregate remained FAIL",
+    "D_receipt": "ab2cf108fd1a4eaf47d5502f6b84b9de35ffc9c3",
+    "D_Book_source_cases": 29,
+    "D_Book_installed_cases": 29,
+    "D_source_parent_seconds": 398.859,
+    "D_installed_parent_seconds": 398.344,
+    "D_original_whole_limit_seconds": 600,
+    "D_diagnostic_status": "FAIL retained because its published expected30 was wrong and other modules had actual failures",
+    "D_and_G_identical_Book_blob": "860b5e112e803527add77983733b0f1833b465e5",
+    "static_Book_functions": 21,
+    "static_Book_cases": 29
+  },
+  "findings": [
+    "Only the single source-execution block changes; reversing it reconstructs the complete predecessor bytes.",
+    "The original138-path declaration is byte-identical and unique. Book occurs exactly once at original index58; remaining137 preserve their original relative order. Execution deliberately moves Book before the pool.",
+    "The two native exit codes are captured immediately and both groups run before the combined failure decision. Disabling PSNativeCommandUseErrorActionPreference preserves explicit exit-code handling.",
+    "The actual one-suite and137-suite complete summaries must each occur exactly once. The Book29 PASS row is separately anchored and exact. No fabricated138-suite completion line is written.",
+    "The same ci_check6ad default600-second child policy remains. Book uses jobs1; the remaining137 use the original jobs3.",
+    "All acquisition, source interpreter, original case arrays, artifact path and outer45-minute job declaration are unchanged."
+  ],
+  "limitations": [
+    "The scheduling change tests a contention hypothesis; actual A3 and D evidence does not establish contention as the cause of all earlier timeouts.",
+    "The original45-minute outer cap remains finite and may still fail if current work exceeds it; this review makes no runtime guarantee.",
+    "No PowerShell/YAML parse or execution was performed.",
+    "No refs, jobs, source or test files were mutated."
+  ]
+}

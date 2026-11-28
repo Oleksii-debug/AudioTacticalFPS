@@ -241,10 +241,29 @@ jobs:
             'tests/studio/test_publishing_handlers.py',
             'tests/studio/test_studio_controller.py'
           )
-          & $env:CARR_COMPLETION_PYTHON scripts/ci_check.py --jobs 3 @completionSuites 2>&1 | Tee-Object 'ci-next8-source-results/source-regressions.txt'
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          $summary = 'Required suites complete: ' + $completionSuites.Count + '; passed=' + $completionSuites.Count + '; failed=0'
-          if (@(Select-String -LiteralPath 'ci-next8-source-results/source-regressions.txt' -SimpleMatch $summary).Count -ne 1) { throw 'The current composition source inventory is incomplete.' }
+          # A3 completed the other 137 wholes but Book reached its unchanged 600-second limit.
+          # Keep Book alone before the remaining pool; this tests the contention hypothesis.
+          $completionUnique = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+          foreach ($suite in $completionSuites) {
+            if (-not $completionUnique.Add($suite)) { throw 'A required composed source suite is duplicated.' }
+          }
+          $bookSuite = 'tests/studio/test_book_batch.py'
+          $remainingSuites = @($completionSuites | Where-Object { $_ -cne $bookSuite })
+          if ($completionSuites.Count -ne 138 -or $completionSuites -cnotcontains $bookSuite -or $remainingSuites.Count -ne 137) { throw 'The complete 138-suite source groups differ from review.' }
+          Write-Output ('Reviewed isolated composed source suite: ' + $bookSuite)
+          $PSNativeCommandUseErrorActionPreference = $false
+          & $env:CARR_COMPLETION_PYTHON scripts/ci_check.py --jobs 1 $bookSuite 2>&1 | Tee-Object 'ci-next8-source-results/source-regressions.txt'
+          $bookExit = $LASTEXITCODE
+          & $env:CARR_COMPLETION_PYTHON scripts/ci_check.py --jobs 3 @remainingSuites 2>&1 | Tee-Object -Append 'ci-next8-source-results/source-regressions.txt'
+          $remainingExit = $LASTEXITCODE
+          if ($bookExit -ne 0 -or $remainingExit -ne 0) { throw 'Required whole composed source suites failed.' }
+          $bookPattern = '^PASS: tests/studio/test_book_batch\.py: junit_passed=29, failed=0, skipped=0, pytest_exit=0$'
+          if (@(Select-String -LiteralPath 'ci-next8-source-results/source-regressions.txt' -Pattern $bookPattern).Count -ne 1) { throw 'The complete 29-case Book source contract is missing or duplicated.' }
+          foreach ($groupCount in @(1, $remainingSuites.Count)) {
+            $summary = 'Required suites complete: ' + $groupCount + '; passed=' + $groupCount + '; failed=0'
+            $pattern = '^' + [regex]::Escape($summary) + '$'
+            if (@(Select-String -LiteralPath 'ci-next8-source-results/source-regressions.txt' -Pattern $pattern).Count -ne 1) { throw 'A real composed source group lacks its exact complete summary.' }
+          }
       - name: Retain source-only composition diagnostics
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9

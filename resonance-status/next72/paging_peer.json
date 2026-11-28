@@ -1,0 +1,127 @@
+{
+  "schema": "carr-h-paging-isolation-peer/1",
+  "created_utc": "2026-11-28 10:15:20 UTC",
+  "status": "ACCEPTED_STATIC_NOT_RUN",
+  "reviewer": "/root/progress_completion",
+  "base": {
+    "commit": "fc84f903dfe068b4eb816e5395cdbd3bf7aa7ad2",
+    "prior_gate_component_peer": "551201f97c9b8318933ae4cb9bde22489b0b091e"
+  },
+  "scope": "Only the paging whole's move into the existing sequential source group and the two-plus-one helper-pin cascade.",
+  "actual_evidence": "ceee767497dcae0a9a2f94beb198c4769efe9bfc",
+  "files": [
+    {
+      "path": "carr-library/scripts/check_integrated_source_shard.ps1",
+      "preimage": "ac0c5a209d4213fc1efbd0f27bce893b552c473f",
+      "blob": "dba0ffd3d3d8e0c5b695cbf7273b391f889ea138",
+      "operations": [
+        {
+          "old": "    'tests/audio/test_voice_package_management.py'",
+          "replacement": "    'tests/audio/test_voice_package_management.py',\n    'tests/search/test_search_paging.py'",
+          "occurrences": 1
+        }
+      ],
+      "full_inverse_exact": true
+    },
+    {
+      "path": ".github/workflows/carr-windows.yml",
+      "preimage": "d95bdbf17c5df824c003c98bcd353e9e6b645f50",
+      "blob": "0962f7c0329985d6bf2e44ed34bf15b260de265f",
+      "operations": [
+        {
+          "old": "ac0c5a209d4213fc1efbd0f27bce893b552c473f",
+          "replacement": "dba0ffd3d3d8e0c5b695cbf7273b391f889ea138",
+          "occurrences": 2
+        }
+      ],
+      "full_inverse_exact": true
+    },
+    {
+      "path": ".github/workflows/carr-integrated-source-shard.yml",
+      "preimage": "4b534feab260da01fd558fa8a64511de386d3c16",
+      "blob": "dd3bdcc80cd55745508cdb6d249c34ea9e44ae73",
+      "operations": [
+        {
+          "old": "ac0c5a209d4213fc1efbd0f27bce893b552c473f",
+          "replacement": "dba0ffd3d3d8e0c5b695cbf7273b391f889ea138",
+          "occurrences": 1
+        }
+      ],
+      "full_inverse_exact": true
+    }
+  ],
+  "partition_groups": [
+    {
+      "index": 0,
+      "total": 124,
+      "isolated": [
+        "tests/research/test_academic_library.py",
+        "tests/transcription/test_admission_boundaries.py"
+      ],
+      "parallel": 122,
+      "selection_sha256": "50a66d686dbe097b56cacdbd1969fc8cf83e2a228b522eb6537334443d6907d8"
+    },
+    {
+      "index": 1,
+      "total": 123,
+      "isolated": [
+        "tests/studio/test_book_batch.py"
+      ],
+      "parallel": 122,
+      "selection_sha256": "45c1e7ed1fb99810f18b04dbcc03e48acc7cd02b8dbea5043774cc6f26c28b6d"
+    },
+    {
+      "index": 2,
+      "total": 123,
+      "isolated": [],
+      "parallel": 123,
+      "selection_sha256": "3abe936ac9aa26b3eaafeeea6d203f043c487781813350fd8e48258a3115615c"
+    },
+    {
+      "index": 3,
+      "total": 123,
+      "isolated": [
+        "tests/search/test_search_paging.py",
+        "tests/audio/test_voice_package_management.py"
+      ],
+      "parallel": 121,
+      "selection_sha256": "e3ad969b33c264eaa8f119b22aef5c6b50a5b2fa867dabbe42b821f7ffbefcdf"
+    }
+  ],
+  "inventory": {
+    "total": 493,
+    "unique": 493,
+    "ordered_array_equal_G": true,
+    "all_partition_selection_hashes_equal_G": true,
+    "added_or_removed_selectors": 0,
+    "group_order_in_shard3": [
+      "tests/search/test_search_paging.py",
+      "tests/audio/test_voice_package_management.py"
+    ]
+  },
+  "preserved": {
+    "paging_child_seconds": 600,
+    "default_child_seconds": 600,
+    "ASR_child_seconds": 900,
+    "source_step_minutes": 60,
+    "source_job_minutes": 90,
+    "existing_case_assertions": true,
+    "existing_group_summaries_and_nonzero_exit_refusal": true,
+    "main_changes": "Exactly two helper hashes",
+    "reusable_changes": "Exactly one helper hash",
+    "fast_V3_next8_changes": 0,
+    "new_modules_cases_companions_or_origins": 0
+  },
+  "findings": [
+    "All three complete proposed bytes reconstruct their accepted immediate H preimages exactly.",
+    "The source493 array and all five partition anchors are unchanged; independent reconstruction reproduces the original four partition hashes.",
+    "The new group sizes are2+122,1+122,0+123,2+121. Paging runs first and the voice-package whole second under existing jobs1 in partition3; only the remaining121 enter jobs3.",
+    "No per-whole timeout, negative control, assertion, source/wheel proof, verdict grammar or artifact boundary changes.",
+    "The actual B27-case pass and E600-second timeout justify a bounded scheduling experiment; neither observation establishes CPU contention or guarantees a pass."
+  ],
+  "limits": [
+    "No PowerShell parser or runtime execution was performed by this peer.",
+    "Current G runs and refs remain unchanged.",
+    "Desktop outer-budget decisions are separate and not reviewed or changed here."
+  ]
+}

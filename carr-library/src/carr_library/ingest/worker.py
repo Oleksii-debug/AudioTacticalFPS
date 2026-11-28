@@ -176,16 +176,20 @@ def _publication_state(db, record, revision, *, check=lambda: None, max_payload=
         pages = db.execute('SELECT ordinal,physical,printed,verified,'
                            'CASE WHEN length(CAST(raw AS BLOB))<=? THEN raw END,digest '
                            'FROM page WHERE revision=? ORDER BY ordinal', (max_payload, revision))
-    for page in pages:
-        check()
-        completed += 1
-        # Extraction already enforces its format-specific capacity. This
-        # streaming verifier must not impose the PDF page limit on DOCX records.
-        if (page[0] != completed or not isinstance(page[4], str)
-                or sha256(page[4].encode('utf-8')).hexdigest() != page[5]):
-            raise ValueError('Import publication page integrity changed.')
-        digest.update(b'\n')
-        digest.update(canonical(list(page)).encode('utf-8'))
+    # A retained failure traceback can keep this cursor alive after the
+    # connection closes. Finalize its statement before leaving the snapshot so
+    # an interrupted recovery never retains a read lock until garbage collection.
+    with closing(pages):
+        for page in pages:
+            check()
+            completed += 1
+            # Extraction already enforces its format-specific capacity. This
+            # streaming verifier must not impose the PDF page limit on DOCX records.
+            if (page[0] != completed or not isinstance(page[4], str)
+                    or sha256(page[4].encode('utf-8')).hexdigest() != page[5]):
+                raise ValueError('Import publication page integrity changed.')
+            digest.update(b'\n')
+            digest.update(canonical(list(page)).encode('utf-8'))
     check()
     if completed == 0:
         raise ValueError('Import publication contains no source pages.')

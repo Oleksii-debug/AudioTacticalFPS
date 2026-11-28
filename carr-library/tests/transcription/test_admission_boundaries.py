@@ -52,7 +52,7 @@ def historical_job(setup):
 @pytest.mark.parametrize('mutation', ['same_size', 'grow', 'truncate'])
 def test_export_rejects_changed_payload_before_external_publication(setup, monkeypatch, mutation):
     service, runtime, profile, sources = setup
-    state = service.run(service.create_job(profile['id'], sources[:1])['id'])
+    state = service.run(service.create_job(profile['id'], sources[:1])['id'], timeout=30)
     assert state['status'] == 'complete', state['error']
     record = service._receipt(state, state['results'][0])['files']['txt']
     path = service._job_root(state['id']) / record['path']
@@ -178,7 +178,7 @@ def test_verified_json_preserves_strict_state_parsing(tmp_path, raw):
 @pytest.mark.parametrize('operation', ['read', 'export'])
 def test_edited_copy_decodes_only_the_bytes_it_verifies(setup, monkeypatch, operation):
     service, runtime, profile, sources = setup
-    state = service.run(service.create_job(profile['id'], sources[:1])['id'])
+    state = service.run(service.create_job(profile['id'], sources[:1])['id'], timeout=30)
     assert state['status'] == 'complete', state['error']
     source_id = state['results'][0]['source_id']
     edited = service.save_edit(state['id'], source_id, 'Verified edit')
@@ -235,7 +235,7 @@ def test_edited_copy_export_uses_the_captured_revision(setup, monkeypatch):
 
 def test_edited_copy_rejects_changed_bytes_and_observes_cancel(setup):
     service, runtime, profile, sources = setup
-    state = service.run(service.create_job(profile['id'], sources[:1])['id'])
+    state = service.run(service.create_job(profile['id'], sources[:1])['id'], timeout=30)
     assert state['status'] == 'complete', state['error']
     source_id = state['results'][0]['source_id']
     edited = service.save_edit(state['id'], source_id, 'Verified edit')
@@ -390,7 +390,7 @@ def test_runtime_change_rejects_attempt_without_resurrecting_cache(setup, monkey
         with pytest.raises(ValueError, match='No verified'):
             service.export(state['id'], destination)
     model.write_bytes(original_model)
-    resumed = service.resume(state['id'])
+    resumed = service.resume(state['id'], timeout=30)
     assert resumed['status'] == 'complete', resumed['error']
     assert starts(runtime) == before_starts + 2, 'A rejected raw checkpoint was resurrected instead of rerunning.'
     assert resumed['results'][:len(previous)] == previous
@@ -458,7 +458,7 @@ def test_actual_child_import_never_writes_or_replaces_python_bytecode(setup, exi
     before = cached.read_bytes() if cached.exists() else None
     probe.write_text("VALUE = 'current synthetic source value'\n", encoding='utf-8')
     runtime.options.write_text(json.dumps({'import_probe': str(probe)}), encoding='utf-8')
-    result = service.run(service.create_job(profile['id'], sources[:1])['id'])
+    result = service.run(service.create_job(profile['id'], sources[:1])['id'], timeout=30)
     assert result['status'] == 'complete', result['error']
     observed = read_json(service._job_root(result['id']) / 'worker/bytecode-probe.json')
     assert observed == {'dont_write_bytecode': True, 'value': 'current synthetic source value'}
@@ -517,7 +517,7 @@ def test_cancelled_post_admission_check_preserves_committed_valid_receipt(setup,
 def test_stop_during_historical_receipt_hash_preserves_durable_results(setup, monkeypatch, intent, completed):
     service, runtime, profile, sources = setup
     if completed:
-        state = service.run(service.create_job(profile['id'], sources[:1])['id'])
+        state = service.run(service.create_job(profile['id'], sources[:1])['id'], timeout=30)
         assert state['status'] == 'complete', state
     else:
         state = historical_job(setup)

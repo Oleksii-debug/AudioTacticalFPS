@@ -355,7 +355,8 @@ def test_unclean_runner_requires_explicit_review_before_resume(setup):
     assert service.get_job(created['id'])['status'] == 'interrupted'
     assert starts(runtime) == 0
     service.acknowledge_interruption(created['id'], worker_stopped=True)
-    assert service.resume(created['id'])['status'] == 'complete'
+    resumed = service.resume(created['id'])
+    assert resumed['status'] == 'complete', resumed
 
 
 def test_folder_selection_is_bounded_explicit_and_link_safe(tmp_path):

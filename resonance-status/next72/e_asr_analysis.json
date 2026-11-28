@@ -1,0 +1,986 @@
+{
+  "schema": "carr-closed-e-asr-failure-analysis/1",
+  "status": "OBSERVED_FAILURE_CAUSE_BOUNDED",
+  "source": {
+    "head": "a7e573b7a4d9cd8e4b96db0cb5230fac4229dd71",
+    "tree": "df8cf5ed243d4b170c0a0307c84972246e817a39",
+    "run": 46128930916
+  },
+  "unchanged_at_G": {
+    "head": "fc84f903dfe068b4eb816e5395cdbd3bf7aa7ad2",
+    "tree": "b5155e3ee1efb09097a1b6759cb9d5374bffbd9a",
+    "files": [
+      {
+        "path": "carr-library/tests/transcription/test_service.py",
+        "E": "7162ccfee03ede2e908d9292e12ebe2df8c30669",
+        "G": "7162ccfee03ede2e908d9292e12ebe2df8c30669",
+        "identical": true
+      },
+      {
+        "path": "carr-library/tests/transcription/test_admission_boundaries.py",
+        "E": "5fb6e519bfa27ea296aeee775985fc31ba4afc65",
+        "G": "5fb6e519bfa27ea296aeee775985fc31ba4afc65",
+        "identical": true
+      },
+      {
+        "path": "carr-library/src/carr_library/transcription.py",
+        "E": "641ea1c9c2e983b1cc2c4042db33d42e13bcae1e",
+        "G": "641ea1c9c2e983b1cc2c4042db33d42e13bcae1e",
+        "identical": true
+      },
+      {
+        "path": "carr-library/src/carr_library/integrations/transcription_protocol.py",
+        "E": "e1f49c8ba5e928234dd80de9157403de31eacb1e",
+        "G": "e1f49c8ba5e928234dd80de9157403de31eacb1e",
+        "identical": true
+      },
+      {
+        "path": "carr-library/src/carr_library/integrations/transcription_runtime.py",
+        "E": "4d73f5a609e9d1e2760072beca896464a2cb5827",
+        "G": "4d73f5a609e9d1e2760072beca896464a2cb5827",
+        "identical": true
+      },
+      {
+        "path": "carr-library/tests/transcription/fixture_runtime.py",
+        "E": "b4168929226bbe224e75a29f9899b3c63f237eda",
+        "G": "b4168929226bbe224e75a29f9899b3c63f237eda",
+        "identical": true
+      },
+      {
+        "path": "carr-library/tests/transcription/fixtures/protocol_worker.py",
+        "E": "db988156c9c16504a8b82f8b65d4349086fec388",
+        "G": "db988156c9c16504a8b82f8b65d4349086fec388",
+        "identical": true
+      },
+      {
+        "path": "carr-library/src/carr_library/audio/process.py",
+        "E": "480272d0224770f6b0ec9c8efc8e70d9aab42b0b",
+        "G": "480272d0224770f6b0ec9c8efc8e70d9aab42b0b",
+        "identical": true
+      },
+      {
+        "path": "carr-library/src/carr_library/audio/models.py",
+        "E": "35694ae7cb9ad00e6a37ee11e18cdf60c6b2d7f6",
+        "G": "35694ae7cb9ad00e6a37ee11e18cdf60c6b2d7f6",
+        "identical": true
+      }
+    ]
+  },
+  "results": [
+    {
+      "job": 140931167670,
+      "suite": "tests/transcription/test_service.py",
+      "passed": 27,
+      "failed": 1,
+      "skipped": 0,
+      "seconds": 420.63,
+      "start": 4455,
+      "end": 4485,
+      "failures": [
+        "test_unclean_runner_requires_explicit_review_before_resume"
+      ],
+      "job_name": "Required whole source partition 3 of 4 / Required integrated source 2 / Windows x64",
+      "job_status": "completed",
+      "job_conclusion": "failure",
+      "job_started": "2026-11-28T09:19:28Z",
+      "job_completed": "2026-11-28T09:45:59Z",
+      "raw_decoded_log": {
+        "bytes": 843111,
+        "sha256": "7b5ac840bf9dc5d4fc2efde50f8be9d995e23cacb26d2d64af610d5929e16fee",
+        "normalized_lines": 7320
+      },
+      "strict_row": [
+        "FAIL: tests/transcription/test_service.py: junit_passed=27, failed=1, skipped=0, pytest_exit=1"
+      ],
+      "pytest_failure_excerpt": [
+        {
+          "line": 4455,
+          "text": "================================== FAILURES ==================================="
+        },
+        {
+          "line": 4456,
+          "text": "_________ test_unclean_runner_requires_explicit_review_before_resume __________"
+        },
+        {
+          "line": 4457,
+          "text": ""
+        },
+        {
+          "line": 4458,
+          "text": "setup = (<carr_library.integrations.transcription_protocol.LocalFileJobProtocol object at 0x0000027861AEC910>, namespace(root=...wsPath('C:/Users/runneradmin/AppData/Local/Temp/carr-ci-91hhv14v/pytest/test_unclean_runner_requires_e0/Оригінал.wav'))"
+        },
+        {
+          "line": 4459,
+          "text": ""
+        },
+        {
+          "line": 4460,
+          "text": "    def test_unclean_runner_requires_explicit_review_before_resume(setup):"
+        },
+        {
+          "line": 4461,
+          "text": "        service, runtime, profile, audio = setup"
+        },
+        {
+          "line": 4462,
+          "text": "        created = job(setup)"
+        },
+        {
+          "line": 4463,
+          "text": "        path = service._job_root(created['id']) / 'job.json'"
+        },
+        {
+          "line": 4464,
+          "text": "        state = read_json(path)"
+        },
+        {
+          "line": 4465,
+          "text": "        state['status'] = 'running'"
+        },
+        {
+          "line": 4466,
+          "text": "        atomic_json(path, state, replace=True)"
+        },
+        {
+          "line": 4467,
+          "text": "        with pytest.raises(RuntimeError, match='prior runner'):"
+        },
+        {
+          "line": 4468,
+          "text": "            service.run(created['id'])"
+        },
+        {
+          "line": 4469,
+          "text": "        assert service.get_job(created['id'])['status'] == 'interrupted'"
+        },
+        {
+          "line": 4470,
+          "text": "        assert starts(runtime) == 0"
+        },
+        {
+          "line": 4471,
+          "text": "        service.acknowledge_interruption(created['id'], worker_stopped=True)"
+        },
+        {
+          "line": 4472,
+          "text": ">       assert service.resume(created['id'])['status'] == 'complete'"
+        },
+        {
+          "line": 4473,
+          "text": "E       AssertionError: assert 'partial' == 'complete'"
+        },
+        {
+          "line": 4474,
+          "text": "E         "
+        },
+        {
+          "line": 4475,
+          "text": "E         - complete"
+        },
+        {
+          "line": 4476,
+          "text": "E         + partial"
+        },
+        {
+          "line": 4477,
+          "text": ""
+        },
+        {
+          "line": 4478,
+          "text": "tests\\transcription\\test_service.py:358: AssertionError"
+        },
+        {
+          "line": 4479,
+          "text": "- generated xml file: C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\carr-ci-91hhv14v\\junit.xml -"
+        },
+        {
+          "line": 4480,
+          "text": "=========================== short test summary info ==========================="
+        },
+        {
+          "line": 4481,
+          "text": "FAILED tests/transcription/test_service.py::test_unclean_runner_requires_explicit_review_before_resume - AssertionError: assert 'partial' == 'complete'"
+        },
+        {
+          "line": 4482,
+          "text": "  "
+        },
+        {
+          "line": 4483,
+          "text": "  - complete"
+        },
+        {
+          "line": 4484,
+          "text": "  + partial"
+        },
+        {
+          "line": 4485,
+          "text": "================== 1 failed, 27 passed in 420.63s (0:07:00) ==================="
+        }
+      ]
+    },
+    {
+      "job": 140931167701,
+      "suite": "tests/transcription/test_admission_boundaries.py",
+      "passed": 35,
+      "failed": 5,
+      "skipped": 0,
+      "seconds": 643.01,
+      "start": 3244,
+      "end": 3415,
+      "failures": [
+        "test_export_rejects_changed_payload_before_external_publication[grow]",
+        "test_edited_copy_decodes_only_the_bytes_it_verifies[read]",
+        "test_edited_copy_rejects_changed_bytes_and_observes_cancel",
+        "test_runtime_change_rejects_attempt_without_resurrecting_cache[False-after_commit]",
+        "test_stop_during_historical_receipt_hash_preserves_durable_results[True-pause]"
+      ],
+      "job_name": "Required whole source partition 1 of 4 / Required integrated source 0 / Windows x64",
+      "job_status": "completed",
+      "job_conclusion": "failure",
+      "job_started": "2026-11-28T09:16:31Z",
+      "job_completed": "2026-11-28T09:44:34Z",
+      "raw_decoded_log": {
+        "bytes": 900391,
+        "sha256": "bdd4bd2bdec4e2b2915dfca3fa0f7e42193bccd66581e98a3a4183e3e3a510d6",
+        "normalized_lines": 7931
+      },
+      "strict_row": [
+        "FAIL: tests/transcription/test_admission_boundaries.py: junit_passed=35, failed=5, skipped=0, pytest_exit=1"
+      ],
+      "pytest_failure_excerpt": [
+        {
+          "line": 3244,
+          "text": "================================== FAILURES ==================================="
+        },
+        {
+          "line": 3245,
+          "text": "____ test_export_rejects_changed_payload_before_external_publication[grow] ____"
+        },
+        {
+          "line": 3246,
+          "text": ""
+        },
+        {
+          "line": 3247,
+          "text": "setup = (<carr_library.integrations.transcription_protocol.LocalFileJobProtocol object at 0x0000019DE315C250>, namespace(root=...owsPath('C:/Users/runneradmin/AppData/Local/Temp/carr-ci-10xrtlfm/pytest/test_export_rejects_changed_pa1/second.wav')])"
+        },
+        {
+          "line": 3248,
+          "text": "monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x0000019DE2EDCC50>"
+        },
+        {
+          "line": 3249,
+          "text": "mutation = 'grow'"
+        },
+        {
+          "line": 3250,
+          "text": ""
+        },
+        {
+          "line": 3251,
+          "text": "    @pytest.mark.parametrize('mutation', ['same_size', 'grow', 'truncate'])"
+        },
+        {
+          "line": 3252,
+          "text": "    def test_export_rejects_changed_payload_before_external_publication(setup, monkeypatch, mutation):"
+        },
+        {
+          "line": 3253,
+          "text": "        service, runtime, profile, sources = setup"
+        },
+        {
+          "line": 3254,
+          "text": "        state = service.run(service.create_job(profile['id'], sources[:1])['id'])"
+        },
+        {
+          "line": 3255,
+          "text": ">       assert state['status'] == 'complete', state['error']"
+        },
+        {
+          "line": 3256,
+          "text": "E       AssertionError: Audio worker exceeded its time allowance; completed chunks remain reusable."
+        },
+        {
+          "line": 3257,
+          "text": "E       assert 'partial' == 'complete'"
+        },
+        {
+          "line": 3258,
+          "text": "E         "
+        },
+        {
+          "line": 3259,
+          "text": "E         - complete"
+        },
+        {
+          "line": 3260,
+          "text": "E         + partial"
+        },
+        {
+          "line": 3261,
+          "text": ""
+        },
+        {
+          "line": 3262,
+          "text": "tests\\transcription\\test_admission_boundaries.py:56: AssertionError"
+        },
+        {
+          "line": 3263,
+          "text": "__________ test_edited_copy_decodes_only_the_bytes_it_verifies[read] __________"
+        },
+        {
+          "line": 3264,
+          "text": ""
+        },
+        {
+          "line": 3265,
+          "text": "setup = (<carr_library.integrations.transcription_protocol.LocalFileJobProtocol object at 0x0000019DE3084750>, namespace(root=...owsPath('C:/Users/runneradmin/AppData/Local/Temp/carr-ci-10xrtlfm/pytest/test_edited_copy_decodes_only_0/second.wav')])"
+        },
+        {
+          "line": 3266,
+          "text": "monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x0000019DE2159FD0>"
+        },
+        {
+          "line": 3267,
+          "text": "operation = 'read'"
+        },
+        {
+          "line": 3268,
+          "text": ""
+        },
+        {
+          "line": 3269,
+          "text": "    @pytest.mark.parametrize('operation', ['read', 'export'])"
+        },
+        {
+          "line": 3270,
+          "text": "    def test_edited_copy_decodes_only_the_bytes_it_verifies(setup, monkeypatch, operation):"
+        },
+        {
+          "line": 3271,
+          "text": "        service, runtime, profile, sources = setup"
+        },
+        {
+          "line": 3272,
+          "text": "        state = service.run(service.create_job(profile['id'], sources[:1])['id'])"
+        },
+        {
+          "line": 3273,
+          "text": ">       assert state['status'] == 'complete', state['error']"
+        },
+        {
+          "line": 3274,
+          "text": "E       AssertionError: Audio worker exceeded its time allowance; completed chunks remain reusable."
+        },
+        {
+          "line": 3275,
+          "text": "E       assert 'partial' == 'complete'"
+        },
+        {
+          "line": 3276,
+          "text": "E         "
+        },
+        {
+          "line": 3277,
+          "text": "E         - complete"
+        },
+        {
+          "line": 3278,
+          "text": "E         + partial"
+        },
+        {
+          "line": 3279,
+          "text": ""
+        },
+        {
+          "line": 3280,
+          "text": "tests\\transcription\\test_admission_boundaries.py:182: AssertionError"
+        },
+        {
+          "line": 3281,
+          "text": "_________ test_edited_copy_rejects_changed_bytes_and_observes_cancel __________"
+        },
+        {
+          "line": 3282,
+          "text": ""
+        },
+        {
+          "line": 3283,
+          "text": "setup = (<carr_library.integrations.transcription_protocol.LocalFileJobProtocol object at 0x0000019DE2D62750>, namespace(root=...owsPath('C:/Users/runneradmin/AppData/Local/Temp/carr-ci-10xrtlfm/pytest/test_edited_copy_rejects_chang0/second.wav')])"
+        },
+        {
+          "line": 3284,
+          "text": ""
+        },
+        {
+          "line": 3285,
+          "text": "    def test_edited_copy_rejects_changed_bytes_and_observes_cancel(setup):"
+        },
+        {
+          "line": 3286,
+          "text": "        service, runtime, profile, sources = setup"
+        },
+        {
+          "line": 3287,
+          "text": "        state = service.run(service.create_job(profile['id'], sources[:1])['id'])"
+        },
+        {
+          "line": 3288,
+          "text": ">       assert state['status'] == 'complete', state['error']"
+        },
+        {
+          "line": 3289,
+          "text": "E       AssertionError: Audio worker exceeded its time allowance; completed chunks remain reusable."
+        },
+        {
+          "line": 3290,
+          "text": "E       assert 'partial' == 'complete'"
+        },
+        {
+          "line": 3291,
+          "text": "E         "
+        },
+        {
+          "line": 3292,
+          "text": "E         - complete"
+        },
+        {
+          "line": 3293,
+          "text": "E         + partial"
+        },
+        {
+          "line": 3294,
+          "text": ""
+        },
+        {
+          "line": 3295,
+          "text": "tests\\transcription\\test_admission_boundaries.py:239: AssertionError"
+        },
+        {
+          "line": 3296,
+          "text": "_ test_runtime_change_rejects_attempt_without_resurrecting_cache[False-after_commit] _"
+        },
+        {
+          "line": 3297,
+          "text": ""
+        },
+        {
+          "line": 3298,
+          "text": "setup = (<carr_library.integrations.transcription_protocol.LocalFileJobProtocol object at 0x0000019DE31F3D90>, namespace(root=...owsPath('C:/Users/runneradmin/AppData/Local/Temp/carr-ci-10xrtlfm/pytest/test_runtime_change_rejects_at1/second.wav')])"
+        },
+        {
+          "line": 3299,
+          "text": "monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x0000019DE2B43F50>"
+        },
+        {
+          "line": 3300,
+          "text": "timing = 'after_commit', historical = False"
+        },
+        {
+          "line": 3301,
+          "text": ""
+        },
+        {
+          "line": 3302,
+          "text": "    @pytest.mark.parametrize('timing', ['before_commit', 'after_commit'])"
+        },
+        {
+          "line": 3303,
+          "text": "    @pytest.mark.parametrize('historical', [False, True])"
+        },
+        {
+          "line": 3304,
+          "text": "    def test_runtime_change_rejects_attempt_without_resurrecting_cache(setup, monkeypatch, timing, historical):"
+        },
+        {
+          "line": 3305,
+          "text": "        service, runtime, profile, sources = setup"
+        },
+        {
+          "line": 3306,
+          "text": "        state = historical_job(setup) if historical else service.create_job(profile['id'], sources[:1])"
+        },
+        {
+          "line": 3307,
+          "text": "        previous = list(state['results'])"
+        },
+        {
+          "line": 3308,
+          "text": "        before_starts = starts(runtime)"
+        },
+        {
+          "line": 3309,
+          "text": "        model = runtime.model / 'model.bin'"
+        },
+        {
+          "line": 3310,
+          "text": "        original_model = model.read_bytes()"
+        },
+        {
+          "line": 3311,
+          "text": "        publish, process = service._publish_result, module.run_process"
+        },
+        {
+          "line": 3312,
+          "text": "        archive = getattr(service, '_archive_worker', None)"
+        },
+        {
+          "line": 3313,
+          "text": "        active, mutated, archived, committed = [False], [False], [], []"
+        },
+        {
+          "line": 3314,
+          "text": "    "
+        },
+        {
+          "line": 3315,
+          "text": "        def actual_child(*args, **kwargs):"
+        },
+        {
+          "line": 3316,
+          "text": "            active[0] = True"
+        },
+        {
+          "line": 3317,
+          "text": "            try:"
+        },
+        {
+          "line": 3318,
+          "text": "                return process(*args, **kwargs)"
+        },
+        {
+          "line": 3319,
+          "text": "            finally:"
+        },
+        {
+          "line": 3320,
+          "text": "                active[0] = False  # Underlying runner already closed child/readers."
+        },
+        {
+          "line": 3321,
+          "text": "    "
+        },
+        {
+          "line": 3322,
+          "text": "        def mutate():"
+        },
+        {
+          "line": 3323,
+          "text": "            model.write_bytes(original_model + b' changed during current attempt')"
+        },
+        {
+          "line": 3324,
+          "text": "            mutated[0] = True"
+        },
+        {
+          "line": 3325,
+          "text": "    "
+        },
+        {
+          "line": 3326,
+          "text": "        def publication(state, source, result, provenance, **kwargs):"
+        },
+        {
+          "line": 3327,
+          "text": "            if not mutated[0] and timing == 'before_commit':"
+        },
+        {
+          "line": 3328,
+          "text": "                mutate()"
+        },
+        {
+          "line": 3329,
+          "text": "            publish(state, source, result, provenance, **kwargs)"
+        },
+        {
+          "line": 3330,
+          "text": "            committed.append(source['id'])"
+        },
+        {
+          "line": 3331,
+          "text": "            if not mutated[0]:"
+        },
+        {
+          "line": 3332,
+          "text": "                mutate()"
+        },
+        {
+          "line": 3333,
+          "text": "    "
+        },
+        {
+          "line": 3334,
+          "text": "        def inactive_archive(state, profile_id):"
+        },
+        {
+          "line": 3335,
+          "text": "            assert not active[0], 'A live worker workspace was moved.'"
+        },
+        {
+          "line": 3336,
+          "text": "            assert not ResourceBroker.for_app(service.library_root).snapshot()['leases']"
+        },
+        {
+          "line": 3337,
+          "text": "            archived.append(True)"
+        },
+        {
+          "line": 3338,
+          "text": "            return archive(state, profile_id)"
+        },
+        {
+          "line": 3339,
+          "text": "    "
+        },
+        {
+          "line": 3340,
+          "text": "        monkeypatch.setattr(module, 'run_process', actual_child)"
+        },
+        {
+          "line": 3341,
+          "text": "        monkeypatch.setattr(service, '_publish_result', publication)"
+        },
+        {
+          "line": 3342,
+          "text": "        monkeypatch.setattr(service, '_archive_worker', inactive_archive, raising=False)"
+        },
+        {
+          "line": 3343,
+          "text": "        rejected = service.resume(state['id'])"
+        },
+        {
+          "line": 3344,
+          "text": "        assert rejected['status'] == ('partial' if historical else 'failed'), rejected"
+        },
+        {
+          "line": 3345,
+          "text": "        assert rejected['results'] == previous and rejected['done'] == len(previous)"
+        },
+        {
+          "line": 3346,
+          "text": "        assert mutated[0] and archived == [True]"
+        },
+        {
+          "line": 3347,
+          "text": "        assert bool(committed) is (timing == 'after_commit')"
+        },
+        {
+          "line": 3348,
+          "text": "        assert 'New results from this attempt were rejected' in rejected['error']"
+        },
+        {
+          "line": 3349,
+          "text": "        root = service._job_root(state['id'])"
+        },
+        {
+          "line": 3350,
+          "text": "        assert list((root / 'worker-history').glob('*/logs/cache/**/*.cache.json'))"
+        },
+        {
+          "line": 3351,
+          "text": "        assert list((root / 'artifacts').glob('*/*/receipt.json')), 'Physical result evidence was removed.'"
+        },
+        {
+          "line": 3352,
+          "text": "        if previous:"
+        },
+        {
+          "line": 3353,
+          "text": "            assert service.read_transcript(state['id'], previous[0]['source_id'])['text']"
+        },
+        {
+          "line": 3354,
+          "text": "        else:"
+        },
+        {
+          "line": 3355,
+          "text": "            destination = runtime.root / 'rejected-export'; destination.mkdir()"
+        },
+        {
+          "line": 3356,
+          "text": "            with pytest.raises(ValueError, match='No verified'):"
+        },
+        {
+          "line": 3357,
+          "text": "                service.export(state['id'], destination)"
+        },
+        {
+          "line": 3358,
+          "text": "        model.write_bytes(original_model)"
+        },
+        {
+          "line": 3359,
+          "text": "        resumed = service.resume(state['id'])"
+        },
+        {
+          "line": 3360,
+          "text": ">       assert resumed['status'] == 'complete', resumed['error']"
+        },
+        {
+          "line": 3361,
+          "text": "E       AssertionError: Audio worker exceeded its time allowance; completed chunks remain reusable."
+        },
+        {
+          "line": 3362,
+          "text": "E       assert 'partial' == 'complete'"
+        },
+        {
+          "line": 3363,
+          "text": "E         "
+        },
+        {
+          "line": 3364,
+          "text": "E         - complete"
+        },
+        {
+          "line": 3365,
+          "text": "E         + partial"
+        },
+        {
+          "line": 3366,
+          "text": ""
+        },
+        {
+          "line": 3367,
+          "text": "tests\\transcription\\test_admission_boundaries.py:394: AssertionError"
+        },
+        {
+          "line": 3368,
+          "text": "_ test_stop_during_historical_receipt_hash_preserves_durable_results[True-pause] _"
+        },
+        {
+          "line": 3369,
+          "text": ""
+        },
+        {
+          "line": 3370,
+          "text": "setup = (<carr_library.integrations.transcription_protocol.LocalFileJobProtocol object at 0x0000019DE31ECC90>, namespace(root=...owsPath('C:/Users/runneradmin/AppData/Local/Temp/carr-ci-10xrtlfm/pytest/test_stop_during_historical_re3/second.wav')])"
+        },
+        {
+          "line": 3371,
+          "text": "monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x0000019DE3171D90>"
+        },
+        {
+          "line": 3372,
+          "text": "intent = 'pause', completed = True"
+        },
+        {
+          "line": 3373,
+          "text": ""
+        },
+        {
+          "line": 3374,
+          "text": "    @pytest.mark.parametrize('intent', ['pause', 'cancel', 'callback'])"
+        },
+        {
+          "line": 3375,
+          "text": "    @pytest.mark.parametrize('completed', [False, True])"
+        },
+        {
+          "line": 3376,
+          "text": "    def test_stop_during_historical_receipt_hash_preserves_durable_results(setup, monkeypatch, intent, completed):"
+        },
+        {
+          "line": 3377,
+          "text": "        service, runtime, profile, sources = setup"
+        },
+        {
+          "line": 3378,
+          "text": "        if completed:"
+        },
+        {
+          "line": 3379,
+          "text": "            state = service.run(service.create_job(profile['id'], sources[:1])['id'])"
+        },
+        {
+          "line": 3380,
+          "text": ">           assert state['status'] == 'complete', state"
+        },
+        {
+          "line": 3381,
+          "text": "E           AssertionError: {'created': 1795858432.0154073, 'done': 1, 'edits': {}, 'error': 'Audio worker exceeded its time allowance; completed chunks remain reusable.', ...}"
+        },
+        {
+          "line": 3382,
+          "text": "E           assert 'partial' == 'complete'"
+        },
+        {
+          "line": 3383,
+          "text": "E             "
+        },
+        {
+          "line": 3384,
+          "text": "E             - complete"
+        },
+        {
+          "line": 3385,
+          "text": "E             + partial"
+        },
+        {
+          "line": 3386,
+          "text": ""
+        },
+        {
+          "line": 3387,
+          "text": "tests\\transcription\\test_admission_boundaries.py:521: AssertionError"
+        },
+        {
+          "line": 3388,
+          "text": "- generated xml file: C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\carr-ci-10xrtlfm\\junit.xml -"
+        },
+        {
+          "line": 3389,
+          "text": "=========================== short test summary info ==========================="
+        },
+        {
+          "line": 3390,
+          "text": "FAILED tests/transcription/test_admission_boundaries.py::test_export_rejects_changed_payload_before_external_publication[grow] - AssertionError: Audio worker exceeded its time allowance; completed chunks remain reusable."
+        },
+        {
+          "line": 3391,
+          "text": "assert 'partial' == 'complete'"
+        },
+        {
+          "line": 3392,
+          "text": "  "
+        },
+        {
+          "line": 3393,
+          "text": "  - complete"
+        },
+        {
+          "line": 3394,
+          "text": "  + partial"
+        },
+        {
+          "line": 3395,
+          "text": "FAILED tests/transcription/test_admission_boundaries.py::test_edited_copy_decodes_only_the_bytes_it_verifies[read] - AssertionError: Audio worker exceeded its time allowance; completed chunks remain reusable."
+        },
+        {
+          "line": 3396,
+          "text": "assert 'partial' == 'complete'"
+        },
+        {
+          "line": 3397,
+          "text": "  "
+        },
+        {
+          "line": 3398,
+          "text": "  - complete"
+        },
+        {
+          "line": 3399,
+          "text": "  + partial"
+        },
+        {
+          "line": 3400,
+          "text": "FAILED tests/transcription/test_admission_boundaries.py::test_edited_copy_rejects_changed_bytes_and_observes_cancel - AssertionError: Audio worker exceeded its time allowance; completed chunks remain reusable."
+        },
+        {
+          "line": 3401,
+          "text": "assert 'partial' == 'complete'"
+        },
+        {
+          "line": 3402,
+          "text": "  "
+        },
+        {
+          "line": 3403,
+          "text": "  - complete"
+        },
+        {
+          "line": 3404,
+          "text": "  + partial"
+        },
+        {
+          "line": 3405,
+          "text": "FAILED tests/transcription/test_admission_boundaries.py::test_runtime_change_rejects_attempt_without_resurrecting_cache[False-after_commit] - AssertionError: Audio worker exceeded its time allowance; completed chunks remain reusable."
+        },
+        {
+          "line": 3406,
+          "text": "assert 'partial' == 'complete'"
+        },
+        {
+          "line": 3407,
+          "text": "  "
+        },
+        {
+          "line": 3408,
+          "text": "  - complete"
+        },
+        {
+          "line": 3409,
+          "text": "  + partial"
+        },
+        {
+          "line": 3410,
+          "text": "FAILED tests/transcription/test_admission_boundaries.py::test_stop_during_historical_receipt_hash_preserves_durable_results[True-pause] - AssertionError: {'created': 1795858432.0154073, 'done': 1, 'edits': {}, 'error': 'Audio worker exceeded its time allowance; completed chunks remain reusable.', ...}"
+        },
+        {
+          "line": 3411,
+          "text": "assert 'partial' == 'complete'"
+        },
+        {
+          "line": 3412,
+          "text": "  "
+        },
+        {
+          "line": 3413,
+          "text": "  - complete"
+        },
+        {
+          "line": 3414,
+          "text": "  + partial"
+        },
+        {
+          "line": 3415,
+          "text": "================== 5 failed, 35 passed in 643.01s (0:10:43) ==================="
+        }
+      ]
+    }
+  ],
+  "findings": [
+    {
+      "kind": "observed",
+      "finding": "Both whole suites completed with actual failure summaries; neither selected result is an outer whole-suite timeout."
+    },
+    {
+      "kind": "observed",
+      "finding": "All five admission failures explicitly report 'Audio worker exceeded its time allowance; completed chunks remain reusable.' Four occur while preparing positive prerequisite results; the runtime-mutation case reaches its prior rejection/archive assertions and then fails at positive recovery."
+    },
+    {
+      "kind": "observed",
+      "finding": "The completed=True historical-stop case retained done=1 before returning partial. The captured trace does not establish the detailed result state for every other failure."
+    },
+    {
+      "kind": "source",
+      "finding": "The exact service and admission setups select AudioBudget(timeout=5). Current audio.process starts its elapsed clock after creating the real Popen/JobProcess, invokes the genuine cancelled callback in check_control, and then tests the unchanged process budget."
+    },
+    {
+      "kind": "source",
+      "finding": "The genuine local-protocol callback performs source and checkpoint admission, including full runtime/profile identity verification before result acceptance and again after newly admitted commits. That verification remains inside the operation clock; pre-launch verification is outside it."
+    },
+    {
+      "kind": "limit",
+      "finding": "The service resume test asserts only the returned status and omits its error/result. Its exact underlying error is not proved by the observed partial-versus-complete failure."
+    },
+    {
+      "kind": "source",
+      "finding": "Two existing service positive cases and one admission positive case already opt into a finite30-second test run for actual inventory/receipt behavior; this receipt does not change those or the shared5-second fixtures."
+    },
+    {
+      "kind": "limit",
+      "finding": "No product deadline, authority, publication, cancellation or cleanup defect is established by these traces alone. They do not prove CPU contention or a blocked child."
+    }
+  ],
+  "retained_controls": [
+    "Both product sources and all current tests remain unchanged.",
+    "The admission whole retains its900-second child exception; service and all other wholes retain600.",
+    "Existing actual cancellation/stop controls retain five-second child budgets, stop_grace values, readiness barriers and explicit stop-response assertions.",
+    "The running G direct source and isolated installed diagnostic remains the actual new-head observation; old E failures are not reclassified.",
+    "No acoustic inference, device or manualNVDA result is claimed."
+  ],
+  "proposal_status": "No code or timeout change. Bounded independent fixture-contract review is pending.",
+  "created_utc": "2026-11-28 09:51:49 UTC"
+}

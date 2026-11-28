@@ -1,0 +1,35 @@
+{
+  "schema": "carr-H-main-language-workflow-pin-peer/1",
+  "created_utc": "2026-11-28 10:21:51 UTC",
+  "status": "ACCEPTED_STATIC_NOT_RUN",
+  "reviewer": "locate_project",
+  "path": ".github/workflows/carr-windows.yml",
+  "before": "f63e17f2c5607ddbfcadde666d0b52ba1a8fcdba",
+  "after": "8724a4036ec50037e44179e2dba939758ca1ebfb",
+  "replacement": {
+    "before": "5fb36eda5c859af0d8a4c304fafb1680feb4e3dc",
+    "after": "29bf8a261151818ed9b45695ef5cf356f8fc552d",
+    "occurrences": 1,
+    "line": 3863
+  },
+  "complete_inverse": "BYTE_EXACT",
+  "raw_readback": "EXACT",
+  "source_component": "a85ad49868cc3449b591f83f4aaf740a146396ad",
+  "language_source_peer": "294376dd25ca900bd14fb3e8a74781aad0a0554b",
+  "language_helper_workflow_peer": "253c13cb5799d6cedb42e6dd703da7ae8b18b7d5",
+  "utf8": {
+    "bytes": 404596,
+    "sha256": "21327b6d565095d5a37710ff7643a158968534b5eff8dcb2ab799c4c71630d79"
+  },
+  "preserved": [
+    "The sourcePSdba0 pins, full493/fast185 inventory and paging isolation bytes.",
+    "Complete-step210/desktop360 and every unchanged inner deadline/strict assertion.",
+    "Required-language reusable job, needs, always guard, failure-only verdict and exact workflow proof mechanism.",
+    "All other main bytes, including current native update binding, runtime/source/wheel checks and retention."
+  ],
+  "limits": [
+    "One exact workflow-blob binding only; no parser, tests, native or H runtime qualification claimed.",
+    "The full18-file H union audit remains Progress/root's separately owned review.",
+    "No refs changed."
+  ]
+}

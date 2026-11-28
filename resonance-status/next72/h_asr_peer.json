@@ -1,0 +1,188 @@
+{
+  "schema": "carr-asr-positive-allowance-peer/1",
+  "created_utc": "2026-11-28 09:57:33 UTC",
+  "reviewer": "canonical_regression",
+  "status": "ACCEPTED_STATIC_NOT_RUN",
+  "scope": "Five explicitly positive admission run/recovery calls, one unchanged service resume call with truthful error-state diagnostics, and two exact focused diagnostic pin substitutions.",
+  "actual_failure_receipt": "3d3e475e2cb592db23bc5aac89d6df4726616e4e",
+  "base": {
+    "head": "fc84f903dfe068b4eb816e5395cdbd3bf7aa7ad2",
+    "tree": "b5155e3ee1efb09097a1b6759cb9d5374bffbd9a"
+  },
+  "tests": [
+    {
+      "path": "carr-library/tests/transcription/test_admission_boundaries.py",
+      "cases": 40,
+      "functions": [
+        "test_export_rejects_changed_payload_before_external_publication",
+        "test_export_receipt_verification_observes_cancellation",
+        "test_export_payload_is_bounded_and_interruptible",
+        "test_saved_receipt_decodes_only_verified_bytes",
+        "test_saved_receipt_corruption_blocks_external_export",
+        "test_verified_json_preserves_strict_state_parsing",
+        "test_edited_copy_decodes_only_the_bytes_it_verifies",
+        "test_edited_copy_export_uses_the_captured_revision",
+        "test_edited_copy_rejects_changed_bytes_and_observes_cancel",
+        "test_stop_interrupts_admission_hash_and_reaches_child_cleanup",
+        "test_runtime_change_rejects_attempt_without_resurrecting_cache",
+        "test_failed_archive_keeps_durable_cache_rejection_until_retry",
+        "test_idle_inventory_is_cancellable_without_rehashing_runtime",
+        "test_actual_child_import_never_writes_or_replaces_python_bytecode",
+        "test_known_runtime_rejection_takes_precedence_over_simultaneous_stop",
+        "test_cancelled_post_admission_check_preserves_committed_valid_receipt",
+        "test_stop_during_historical_receipt_hash_preserves_durable_results",
+        "test_terminal_only_status_policy_keeps_real_child_checkpoint_progress",
+        "test_terminal_status_retains_strict_schema_and_exact_budget"
+      ],
+      "preimage": "5fb6e519bfa27ea296aeee775985fc31ba4afc65",
+      "successor": "35a73537c3672f0fdbfe2b25a3fd95eecb38a5ac",
+      "hunks": [
+        {
+          "oldLine": 55,
+          "newLine": 55,
+          "before": [
+            "    state = service.run(service.create_job(profile['id'], sources[:1])['id'])"
+          ],
+          "after": [
+            "    state = service.run(service.create_job(profile['id'], sources[:1])['id'], timeout=30)"
+          ]
+        },
+        {
+          "oldLine": 181,
+          "newLine": 181,
+          "before": [
+            "    state = service.run(service.create_job(profile['id'], sources[:1])['id'])"
+          ],
+          "after": [
+            "    state = service.run(service.create_job(profile['id'], sources[:1])['id'], timeout=30)"
+          ]
+        },
+        {
+          "oldLine": 238,
+          "newLine": 238,
+          "before": [
+            "    state = service.run(service.create_job(profile['id'], sources[:1])['id'])"
+          ],
+          "after": [
+            "    state = service.run(service.create_job(profile['id'], sources[:1])['id'], timeout=30)"
+          ]
+        },
+        {
+          "oldLine": 393,
+          "newLine": 393,
+          "before": [
+            "    resumed = service.resume(state['id'])"
+          ],
+          "after": [
+            "    resumed = service.resume(state['id'], timeout=30)"
+          ]
+        },
+        {
+          "oldLine": 520,
+          "newLine": 520,
+          "before": [
+            "        state = service.run(service.create_job(profile['id'], sources[:1])['id'])"
+          ],
+          "after": [
+            "        state = service.run(service.create_job(profile['id'], sources[:1])['id'], timeout=30)"
+          ]
+        }
+      ],
+      "complete_inverse": true
+    },
+    {
+      "path": "carr-library/tests/transcription/test_service.py",
+      "cases": 28,
+      "function_count": 23,
+      "preimage": "7162ccfee03ede2e908d9292e12ebe2df8c30669",
+      "successor": "0f23ffe48b509fea2a173c5b16676c7cf2c9bca5",
+      "hunks": [
+        {
+          "oldLine": 358,
+          "newLine": 358,
+          "before": [
+            "    assert service.resume(created['id'])['status'] == 'complete'"
+          ],
+          "after": [
+            "    resumed = service.resume(created['id'])",
+            "    assert resumed['status'] == 'complete', resumed"
+          ]
+        }
+      ],
+      "functions": [
+        "test_inspection_and_registration_never_execute_selected_code",
+        "test_untrusted_profile_cannot_start_a_process",
+        "test_stale_inspection_cannot_authorize_changed_dependency",
+        "test_changed_reviewed_bytes_block_execution_before_native_start",
+        "test_actual_process_receipts_reading_and_subtitle_rollover",
+        "test_isolated_worker_preserves_unicode_paths_and_diagnostics",
+        "test_invalid_worker_protocol_cannot_become_success",
+        "test_diagnostics_are_bounded_even_when_worker_exits_fast",
+        "test_cancel_stops_unresponsive_worker_and_releases_resource_lease",
+        "test_pause_intent_wins_over_ui_cancel_and_resume_reuses_verified_source",
+        "test_export_failure_preserves_recognition_and_retry_needs_no_second_inference",
+        "test_changed_profile_does_not_relabel_an_old_unaccepted_checkpoint",
+        "test_rebind_preserves_accepted_artifact_and_its_original_profile",
+        "test_rebind_cannot_move_an_unreviewed_interrupted_worker",
+        "test_retained_input_change_blocks_processing_without_touching_original",
+        "test_edit_is_versioned_derivative_and_reading_does_not_require_runtime_trust",
+        "test_export_never_overwrites_and_rejects_entire_private_library",
+        "test_saved_export_with_surviving_staging_link_remains_truthful_success",
+        "test_model_rebinding_cannot_mix_changed_weights_in_one_job",
+        "test_unclean_runner_requires_explicit_review_before_resume",
+        "test_folder_selection_is_bounded_explicit_and_link_safe",
+        "test_changed_dependency_after_resource_wait_is_rechecked_before_launch",
+        "test_cuda_mask_cannot_silently_target_a_different_reserved_gpu"
+      ],
+      "complete_inverse": true
+    }
+  ],
+  "gate_changes": [
+    {
+      "path": "carr-library/scripts/ci_installed_failure_contracts.py",
+      "preimage": "a9d0d3288746b2d7555db1029a6aa7205af6da66",
+      "blob": "342767eb8b6842bfede4489ae765196d046bdc0b",
+      "from": "5fb6e519bfa27ea296aeee775985fc31ba4afc65",
+      "to": "35a73537c3672f0fdbfe2b25a3fd95eecb38a5ac",
+      "occurrences": 1,
+      "complete_inverse": true
+    },
+    {
+      "path": ".github/workflows/carr-installed-failure-contracts.yml",
+      "preimage": "aee1a8fabc5c822c40915fb6d44caa11295669c4",
+      "blob": "61f954cb2b7f672cc9224a955fc90ba391c05ee8",
+      "from": "a9d0d3288746b2d7555db1029a6aa7205af6da66",
+      "to": "342767eb8b6842bfede4489ae765196d046bdc0b",
+      "occurrences": 1,
+      "complete_inverse": true
+    }
+  ],
+  "gate_pin_verification": {
+    "pin_count": 60,
+    "current_G_plus_single_admission_test": true
+  },
+  "findings": [
+    "The five modified calls are the exact observed positive prerequisite/recovery boundaries whose complete status failed with Audio worker exceeded its time allowance. They now select finite30 seconds through the existing per-call API.",
+    "The shared5-second fixture, historical_job helper, actual runtime-mutation rejection attempt, controlled blocked-hash stop/resume, joins, callback thresholds, real child/broker/receipt assertions and all other bytes are unchanged.",
+    "Protocol.run constructs a replaced per-call AudioBudget without mutating the service default. The audio clock starts after Popen/JobProcess; actual checkpoint/profile admission runs inside the current cancelled callback and remains inside that clock.",
+    "The bare service interruption-resume failure has no established underlying error in E. Its timeout remains5 seconds. The same returned object is now included in the complete-status assertion, so the next failure retains its actual reason.",
+    "Current service existing positive30-second calls and admission terminal-only positive30-second call are compatibility precedents, not evidence that all positive runs will complete in30 seconds.",
+    "Complete source inverses preserve every case/decorator/function; the diagnostic helper changes only the admission hash and its workflow only one helper hash."
+  ],
+  "preserved_contract": {
+    "diagnostic_cases": 112,
+    "functions": 66,
+    "pins": 60,
+    "origins": 42,
+    "companions": 5,
+    "Book_source_first": 29,
+    "remaining_source_cases": 83,
+    "ordinary_whole_seconds": 600,
+    "ASR_whole_seconds": 900
+  },
+  "limits": [
+    "No product source, authority check, process cleanup, elapsed clock, global test allowance or suite deadline is changed.",
+    "No runtime, parser, throughput, acoustic-quality or later-head PASS claim.",
+    "The service cause remains unknown and its positive requirement is not relaxed."
+  ]
+}

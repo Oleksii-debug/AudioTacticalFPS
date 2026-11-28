@@ -264,9 +264,14 @@ def test_final_callback_cannot_replace_state_or_scope_before_actual_publication(
     root = tmp_path / 'library'
     root.mkdir()
     store, value, snapshot, token = fixture.saved(root)
+    snapshot, token = fixture.assess(store, value, token)
+    assert status(snapshot, value) == 'verified' and len(snapshot.reviews) == 1
     before = store.path.read_bytes()
+    root_info, state_info = root.stat(), store.path.stat()
+    held_root = tmp_path / 'held-root'
     armed = False
     changed = False
+    rename_denied = propagated_denial = None
     replacement = encode(EvidenceSnapshot(snapshot.revision + 7).to_dict())
 
     def operation(current):
@@ -276,21 +281,56 @@ def test_final_callback_cannot_replace_state_or_scope_before_actual_publication(
                        observations=current.observations + (fixture.observation('unicode_text'),))
 
     def cancelled():
-        nonlocal changed
+        nonlocal changed, rename_denied
         if armed and not changed:
             changed = True
             if mutation == 'document':
                 store.path.write_bytes(replacement)
             else:
-                root.rename(tmp_path / 'held-root')
-                shutil.copytree(tmp_path / 'held-root', root)
+                try:
+                    root.rename(held_root)
+                except PermissionError as error:
+                    # Windows may refuse the actual ancestor rename while the
+                    # real state-lock handle is open. Retain only that exact denial.
+                    if os.name != 'nt' or getattr(error, 'winerror', None) != 5:
+                        raise
+                    rename_denied = error
+                    raise
+                shutil.copytree(held_root, root)
         return False
 
-    with pytest.raises(ValueError, match='changed'):
-        store._change(operation, token, cancelled)
-    assert changed
+    try:
+        with pytest.raises(ValueError, match='changed'):
+            store._change(operation, token, cancelled)
+    except PermissionError as error:
+        assert mutation == 'root' and error is rename_denied
+        propagated_denial = error
+    assert changed and propagated_denial is rename_denied
     assert store.path.read_bytes() == (replacement if mutation == 'document' else before)
     assert not list(store.path.parent.glob('.pending-*'))
+    if rename_denied is not None:
+        assert os.name == 'nt' and rename_denied.winerror == 5
+        assert not held_root.exists()
+        after_root, after_state = root.stat(), store.path.stat()
+        assert (after_root.st_dev, after_root.st_ino) == (root_info.st_dev, root_info.st_ino)
+        fields = ('st_dev', 'st_ino', 'st_size', 'st_mtime_ns')
+        assert tuple(getattr(after_state, name) for name in fields) == tuple(
+            getattr(state_info, name) for name in fields)
+        # The failed operation released its genuine lock and committed no candidate.
+        with module.state_lock(store.path.parent, 'language-evidence'):
+            restored, restored_token = store.load()
+        assert (restored, restored_token) == (snapshot, token)
+        assert restored.reviews == snapshot.reviews and status(restored, value) == 'verified'
+        assert tuple(row.capability for row in restored.observations) == ('tts',)
+    elif mutation == 'root':
+        after_root = root.stat()
+        assert (after_root.st_dev, after_root.st_ino) != (root_info.st_dev, root_info.st_ino)
+        assert (held_root / store.path.relative_to(root)).read_bytes() == before
+        with pytest.raises(ValueError, match='changed'):
+            store.load()
+        restored, restored_token = EvidenceStore(root).load()
+        assert (restored, restored_token) == (snapshot, token)
+        assert restored.reviews == snapshot.reviews and status(restored, value) == 'verified'
 
 
 def test_visible_late_commit_is_reported_without_repeating_or_erasing_it(tmp_path, monkeypatch):

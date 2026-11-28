@@ -583,7 +583,7 @@ $completedFeatureCounts = @{
   'tests/ui/test_federated_search.py' = 114
   'tests/search/test_search_paging.py' = 27
   'tests/ingest/test_scan_root_binding.py' = 4
-  'tests/ingest/test_large_source_intake.py' = 6
+  'tests/ingest/test_large_source_intake.py' = 7
   'tests/reader/test_export_reconciliation.py' = 28
   'tests/packaging/test_ci_check.py' = 35
   'tests/transcription/test_admission_boundaries.py' = 40
@@ -976,7 +976,8 @@ try {
     'tests/research/test_academic_library.py',
     'tests/transcription/test_admission_boundaries.py',
     'tests/studio/test_book_batch.py',
-    'tests/audio/test_voice_package_management.py'
+    'tests/audio/test_voice_package_management.py',
+    'tests/search/test_search_paging.py'
   )
   $isolatedSuites = @($suites | Where-Object { $isolatedSuiteNames -ccontains $_ })
   $parallelSuites = @($suites | Where-Object { $isolatedSuiteNames -cnotcontains $_ })

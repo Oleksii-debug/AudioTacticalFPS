@@ -1,0 +1,63 @@
+{
+  "schema": "carr-publication-cursor-control-workflow/1",
+  "status": "ACCEPTED_STATIC_NOT_RUN",
+  "base": {
+    "commit": "fc84f903dfe068b4eb816e5395cdbd3bf7aa7ad2",
+    "tree": "b5155e3ee1efb09097a1b6759cb9d5374bffbd9a"
+  },
+  "files": [
+    {
+      "path": ".github/workflows/carr-publication-cursor.yml",
+      "preimage": null,
+      "blob": "ffb211d36e4eb4ca49a480b160b720e50b44dae6",
+      "utf8": {
+        "bytes": 13942,
+        "sha256": "cdfcbf344be563d9b70a07cad391780753b0fef951381e7858076b7d1d17cb9c"
+      },
+      "readback_exact": true
+    }
+  ],
+  "peer": "4d5b96f0e67af78709aedffbfed7cd041d631bcb",
+  "product_component": "2b5baa3193508973f21fc6aafdc30de66a4104c7",
+  "product_peer": "2d29f2fac705cc1553e32c7d76f970ca77593777",
+  "controls": {
+    "platforms": [
+      "ubuntu-24.04",
+      "windows-2022"
+    ],
+    "source_pins": 11,
+    "old_head": "fc84f903dfe068b4eb816e5395cdbd3bf7aa7ad2",
+    "old_worker": "8ab4334be7f7728de84839a6a35cfae5a1347830",
+    "new_worker": "532cd6d0e0bdbeb55675eeb813aa1e39239df022",
+    "tests": "6f5f116cf54d3183d1edfc36bd58acc4e1de5c38",
+    "test": "test_interrupted_publication_read_releases_lock_with_retained_traceback",
+    "required_preimage": "Exactly one real SQLite locked failure at the actual pytest arrow writer.commit; pytest exit1; no skip/error",
+    "required_postimage": "Exactly one actual PASS with pytest exit0; no skip/error",
+    "copies": "Both independent copies match full original inventory except the intentional exact old worker; full inventories rechecked after each; pytest cache and temporary data stay outside copies",
+    "policy": "Canonical ci_check PYTEST_CHILD offline, XFAIL/XPASS and GIL timed-diagnostic policy with complete owned process cleanup",
+    "child_seconds": 180,
+    "control_step_minutes": 8,
+    "job_minutes": 45,
+    "declared_stages_minutes": 41,
+    "retention": {
+      "files": 7,
+      "formats": [
+        "txt",
+        "xml",
+        "json"
+      ],
+      "per_file_limit": 8388608,
+      "total_limit": 16777216,
+      "private_assets_or_binaries": false
+    },
+    "execution": "NOT_RUN"
+  },
+  "superseded_unpublished_candidates": [
+    "0b26458b4c850f88715cb6dc6b26852e3e9c1d6c",
+    "78914171b42d0b1b09b404d7511166aed4da003e"
+  ],
+  "limits": [
+    "The negative control establishes only this resource-lifetime defect once actually run.",
+    "Neither seven-case whole acceptance nor installed/native/full-product qualification is claimed by this one-test control."
+  ]
+}

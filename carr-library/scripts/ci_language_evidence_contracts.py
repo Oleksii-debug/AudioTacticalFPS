@@ -66,7 +66,7 @@ PINS = {
     "src/carr_library/ui/command_registry.py": "2fe71b6b3b7c46cef384d6fddb56997b30564e08",
     "tests/language_qualification/test_catalog.py": "eeee7e7b0bb1fad0aa7f9baa2209a3fddb9b1642",
     "tests/language_qualification/test_ui.py": "2e263b45440ed8ada0e443998885f69c48f3820c",
-    "tests/language_qualification/test_evidence.py": "8a5dfe80519194673b33eed77f87a5b1946d5906",
+    "tests/language_qualification/test_evidence.py": "6c5d52a8102d40842f23838a1eb65630626a2a9d",
     "tests/language_qualification/test_evidence_backup.py": "a40f8b1964fa0a2ccc66e06e46134701484adb38",
     "tests/language_qualification/test_evidence_ui.py": "a367681b16b41b161e9a581444cdb463220d1547",
     "tests/language_qualification/evidence_fixture.py": "72944369f7304650e8742f97372d41415e3e35da",

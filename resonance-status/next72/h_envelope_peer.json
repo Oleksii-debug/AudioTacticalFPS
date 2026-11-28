@@ -1,0 +1,164 @@
+{
+  "schema": "carr-static-peer/1",
+  "created_utc": "2026-11-28 10:19:32 UTC",
+  "status": "ACCEPTED_STATIC_NOT_RUN",
+  "reviewer": "progress_completion",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "scope": "Exact authorized complete-bundle outer envelope and comments over the separately accepted paging-isolation main. No product, child, native, selector, assertion, firewall, cleanup or seal changes.",
+  "basis": {
+    "root_authorization": "Explicit 210-minute complete-step / 360-minute desktop-job decision conveyed by root through locate_project; preserves the former150-minute allowance outside the complete step.",
+    "paging_peer": "02f432ef15fa5dcf2594f65703fff756a1c90653",
+    "assessment": "6ccc5bdc963840d07f28b7a7d10b8d7b98e61a2d",
+    "old_5b2_installed_receipt": "e96a34b97f94ce0c195222bf78c0365c2ba8eae6",
+    "B_installed_receipt": "427bb013b89e87af03f3981326f49917b9c0a274",
+    "old_V3_receipt": "ac2c27cc81c93726d37f219d52ef7fc0c26eb3a7"
+  },
+  "file": {
+    "path": ".github/workflows/carr-windows.yml",
+    "preimage": "0962f7c0329985d6bf2e44ed34bf15b260de265f",
+    "successor": "f63e17f2c5607ddbfcadde666d0b52ba1a8fcdba",
+    "forward_exact": true,
+    "inverse_exact": true,
+    "bytes": {
+      "sha256": "408fed8044ce067506220d5d84566e497ea22f85859afd8c3ba6fd344c9b375b",
+      "bytes": 404596
+    },
+    "operations": [
+      {
+        "old": "    # Actual V3 installed recovery needed 1198.78 seconds for 72 copied modules.\n    # This union retains 281 installed suites plus required native and lifecycle phases.\n",
+        "new": "    # Retain the helper's 342 selectors (339 whole modules), native phases and seals.\n    # The 210-minute complete step leaves the original 150 minutes for other job work.\n"
+      },
+      {
+        "old": "    timeout-minutes: 270",
+        "new": "    timeout-minutes: 360"
+      },
+      {
+        "old": "        # Retain all 281 installed suites, native phases and final payload seals.\n        # Actual V3 recovery alone needed 1198.78 seconds before final verification.\n        # Individual process/test budgets and native watchdogs remain unchanged.\n        timeout-minutes: 120",
+        "new": "        # Both 5b2 and B reached the 120-minute outer limit before installed pytest finished.\n        # B printed 7143 of 8719 results; retain all selectors, native phases and final seals.\n        # Inner deadlines and strict checks stay fixed; 210 minutes is no completion guarantee.\n        timeout-minutes: 210"
+      }
+    ]
+  },
+  "verified": {
+    "desktop_minutes": {
+      "before": 270,
+      "after": 360
+    },
+    "complete_step_minutes": {
+      "before": 120,
+      "after": 210
+    },
+    "outside_step_minutes": {
+      "before": 150,
+      "after": 150
+    },
+    "helper": {
+      "helper": "3b4981beac7d036d183eff16efd6f3adb26ae458",
+      "selectors": 342,
+      "whole_modules": 339,
+      "node_selectors": [
+        "tests/extract/test_ocr_runtime.py::test_unreadable_directory_rejects_entire_inventory",
+        "tests/extract/test_ocr_runtime.py::test_empty_directory_inventory_has_a_bound",
+        "tests/extract/test_ocr_runtime.py::test_directory_inventory_checks_budget_between_entries"
+      ],
+      "unique_selectors": 342,
+      "native_pins": [
+        {
+          "path": "carr-library/scripts/windows_desktop_integration_smoke.py",
+          "blob": "0cb5c0cc2e81d97a7e70d0847725e14123c0df3e",
+          "exact_g": true,
+          "seconds": 180
+        },
+        {
+          "path": "carr-library/scripts/windows_local_schedules_smoke.py",
+          "blob": "7581c232457c226b9f5f551afd7d3c7fcaaf221c",
+          "exact_g": true,
+          "seconds": 180
+        },
+        {
+          "path": "carr-library/scripts/hunspell_acceptance.py",
+          "blob": "20a824c9086696d8f26564c68c58cb386339f862",
+          "exact_g": true,
+          "seconds": null
+        },
+        {
+          "path": "carr-library/scripts/windows_hunspell_smoke.py",
+          "blob": "0499b35d3779694104f96da8d3b763f8e21b6bb4",
+          "exact_g": true,
+          "seconds": 180
+        },
+        {
+          "path": "carr-library/scripts/windows_translation_layout_smoke.py",
+          "blob": "3dff8332d0ee7507c9ee3dfaffac2eabff099796",
+          "exact_g": true,
+          "seconds": 180
+        },
+        {
+          "path": "carr-library/scripts/windows_word_bridge_smoke.py",
+          "blob": "33ef7bd2e5c710631a8cc93838cb8c74f44df169",
+          "exact_g": true,
+          "seconds": 180
+        },
+        {
+          "path": "carr-library/scripts/windows_google_oauth_smoke.py",
+          "blob": "a149b7efc95c65fc6d752b77b33cafcae22ae61f",
+          "exact_g": true,
+          "seconds": 180
+        },
+        {
+          "path": "carr-library/scripts/windows_translation_epub_smoke.py",
+          "blob": "4b26382f7f71449f896ec7f29afd75f2ebd63824",
+          "exact_g": true,
+          "seconds": 180
+        },
+        {
+          "path": "carr-library/scripts/translation_epubcheck_acceptance.py",
+          "blob": "f1ac42577e9d99051cc38330a8dad29edc882935",
+          "exact_g": true,
+          "seconds": null
+        },
+        {
+          "path": "carr-library/scripts/windows_translation_rich_docx_smoke.py",
+          "blob": "29a5c381a11a4ba64ac2ee6daca96029f8121c2b",
+          "exact_g": true,
+          "seconds": 180
+        },
+        {
+          "path": "carr-library/scripts/windows_backup_capacity_smoke.py",
+          "blob": "412bae4ad7ffe7600497ede1add0c9c4a14fbf4b",
+          "exact_g": true,
+          "seconds": 180
+        },
+        {
+          "path": "carr-library/scripts/windows_voice_management_smoke.py",
+          "blob": "7f1f806035ab334713a2b9c13c21bbca59bb09f0",
+          "exact_g": true,
+          "seconds": 300
+        }
+      ],
+      "watchdog_count": 10,
+      "watchdog_sum_seconds": 1920,
+      "qualified_remaining_work": "No completion guarantee or transfer from old source-only durations."
+    },
+    "observed_B": {
+      "collected": 8719,
+      "partial_progress_marks": 7143,
+      "explicit_outer_timeout_minutes": 120,
+      "final_pytest_summary": false,
+      "completed_junit_verdict": false
+    },
+    "old_V3_source_only": {
+      "overlap_wholes": 39,
+      "sum_reported_seconds": 1747.53,
+      "qualification": "Historical source timings only; no installed prediction or guaranteed total inferred."
+    },
+    "unchanged_source_helper": "dba0ffd3d3d8e0c5b695cbf7273b391f889ea138",
+    "unchanged_reusable": "dd3bdcc80cd55745508cdb6d249c34ea9e44ae73"
+  },
+  "qualifications": [
+    "The exact inverse proves that all existing inner600/900 controls, native phase bodies, watchdogs, strict case/function assertions, worker/Job cleanup, source-wheel identity, final seals and failure propagation remain unchanged.",
+    "The342 literal helper selectors include339 whole modules and3 explicit OCR nodes; the14 leading argv selectors in main are unchanged.",
+    "Ten existing native watchdogs sum to1920seconds. Their unchanged source pins match the exact G tree; this is not measured native completion time.",
+    "The new finite outer envelope is authorized to expose remaining required work. No full worst-case funding, successful completion, installed/native qualification or current hardware result is asserted.",
+    "The later language workflow digest change is outside this peer. No refs changed and no parser/runtime execution performed."
+  ]
+}

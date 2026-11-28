@@ -98,7 +98,7 @@ jobs:
         run: |
           $ErrorActionPreference = 'Stop'
           $helper = 'scripts/check_integrated_source_shard.ps1'
-          $expectedBlob = '6032567fb09dd4e235caca7a3480d27845fcf889'
+          $expectedBlob = 'dba0ffd3d3d8e0c5b695cbf7273b391f889ea138'
           $info = Get-Item -LiteralPath $helper -Force -ErrorAction Stop
           if ($info.PSIsContainer -or ($info.Attributes -band [IO.FileAttributes]::ReparsePoint) -or $info.Length -gt 131072) { throw 'The source shard helper is not an ordinary bounded file.' }
           $selectedBlob = (& git rev-parse 'HEAD:carr-library/scripts/check_integrated_source_shard.ps1').Trim()
@@ -194,7 +194,7 @@ jobs:
           $tree = (& git rev-parse 'HEAD^{tree}').Trim()
           if ($LASTEXITCODE -ne 0 -or $tree -cnotmatch '^[0-9a-f]{40}$') { throw 'The required source aggregate has no exact tree.' }
           $helper = 'scripts/check_integrated_source_shard.ps1'
-          $expectedBlob = '6032567fb09dd4e235caca7a3480d27845fcf889'
+          $expectedBlob = 'dba0ffd3d3d8e0c5b695cbf7273b391f889ea138'
           $info = Get-Item -LiteralPath $helper -Force -ErrorAction Stop
           if ($info.PSIsContainer -or ($info.Attributes -band [IO.FileAttributes]::ReparsePoint) -or $info.Length -gt 131072) { throw 'The source shard helper is not an ordinary bounded file.' }
           $selectedBlob = (& git rev-parse 'HEAD:carr-library/scripts/check_integrated_source_shard.ps1').Trim()
@@ -767,10 +767,10 @@ jobs:
     needs: source-syntax
     name: Windows x64 / CPython 3.11 / integrated desktop
     runs-on: windows-2022
-    # Actual V3 installed recovery needed 1198.78 seconds for 72 copied modules.
-    # This union retains 281 installed suites plus required native and lifecycle phases.
+    # Retain the helper's 342 selectors (339 whole modules), native phases and seals.
+    # The 210-minute complete step leaves the original 150 minutes for other job work.
     # Only orchestration headroom changes; all inner budgets and verdicts remain.
-    timeout-minutes: 270
+    timeout-minutes: 360
     defaults:
       run:
         shell: pwsh
@@ -1563,10 +1563,10 @@ jobs:
       - name: Build, install and exercise the complete bundle with runtime egress blocked
         id: complete_bundle
         if: ${{ !cancelled() && steps.local_model.conclusion == 'success' && steps.ocr_runtime.conclusion == 'success' && steps.audio_runtime.conclusion == 'success' && steps['publication-runtime'].conclusion == 'success' }}
-        # Retain all 281 installed suites, native phases and final payload seals.
-        # Actual V3 recovery alone needed 1198.78 seconds before final verification.
-        # Individual process/test budgets and native watchdogs remain unchanged.
-        timeout-minutes: 120
+        # Both 5b2 and B reached the 120-minute outer limit before installed pytest finished.
+        # B printed 7143 of 8719 results; retain all selectors, native phases and final seals.
+        # Inner deadlines and strict checks stay fixed; 210 minutes is no completion guarantee.
+        timeout-minutes: 210
         run: |
           if (!(Test-Path -LiteralPath $env:CARR_PUBLISHING_AUDIO_DIR -PathType Container) -or !(Test-Path -LiteralPath $env:CARR_EPUBCHECK_JAVA -PathType Leaf) -or !(Test-Path -LiteralPath $env:CARR_EPUBCHECK_ARCHIVE -PathType Leaf)) { throw 'Explicit pinned publication test runtime preparation did not complete.' }
           $bundleWork = Join-Path $env:RUNNER_TEMP 'carr-bundle-ci'
@@ -3860,7 +3860,7 @@ jobs:
           if ($LASTEXITCODE -ne 0 -or $tree -cnotmatch '^[0-9a-f]{40}$') { throw 'The required workflow aggregate has no exact tree.' }
           $languagePath = '.github/workflows/carr-language-evidence.yml'
           $languageBlob = (& git rev-parse ('HEAD:' + $languagePath)).Trim()
-          if ($LASTEXITCODE -ne 0 -or $languageBlob -cne '5fb36eda5c859af0d8a4c304fafb1680feb4e3dc') { throw 'The required language evidence workflow differs from its reviewed source.' }
+          if ($LASTEXITCODE -ne 0 -or $languageBlob -cne '29bf8a261151818ed9b45695ef5cf356f8fc552d') { throw 'The required language evidence workflow differs from its reviewed source.' }
           $configuredPath = '.github/workflows/carr-configured-update-native.yml'
           $configuredBlob = (& git rev-parse ('HEAD:' + $configuredPath)).Trim()
           if ($LASTEXITCODE -ne 0 -or $configuredBlob -cne '14517f2e4018942a2a0a4c56ce6c59f38de861a4') { throw 'The required configured native workflow differs from its reviewed source.' }

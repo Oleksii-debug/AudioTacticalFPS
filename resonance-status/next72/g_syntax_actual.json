@@ -1,0 +1,64 @@
+{
+  "schema": "carr-actual-G-source-syntax/1",
+  "created_utc": "2026-11-28 10:17:23 UTC",
+  "status": "ACTUAL_SUCCESS",
+  "source_commit": "fc84f903dfe068b4eb816e5395cdbd3bf7aa7ad2",
+  "source_tree": "b5155e3ee1efb09097a1b6759cb9d5374bffbd9a",
+  "run_id": 46131516678,
+  "job_id": 140937500196,
+  "started_at": "2026-11-28T10:02:57Z",
+  "completed_at": "2026-11-28T10:03:22Z",
+  "log": {
+    "bytes": 29156,
+    "sha256": "ed43d2837d99b8dbb48d921cb1d633339048e0b34f5d16dd65768261e45cd339"
+  },
+  "actual_reports": [
+    {
+      "line": 219,
+      "data": {
+        "explicit_packages": 31,
+        "inventory_sha256": "ebcbe3d5e20a888f9129c2633d20529892a4357cfd70666a6d42dbdbc0b8e086",
+        "python_files": 1142,
+        "scope": "Compilation and TOML only; no runtime qualification",
+        "source_commit": "fc84f903dfe068b4eb816e5395cdbd3bf7aa7ad2",
+        "status": "PASS"
+      }
+    },
+    {
+      "line": 231,
+      "data": {
+        "status": "PASS",
+        "source_commit": "fc84f903dfe068b4eb816e5395cdbd3bf7aa7ad2",
+        "parsed_bodies": 207,
+        "failed_bodies": 0,
+        "controls": 6,
+        "control_failures": 0,
+        "workflow_size_limit_bytes": 500000,
+        "workflow_size_controls": 4,
+        "report": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/ci-syntax-results/workflow-powershell.json",
+        "runtime_qualification": "NOT_RUN"
+      }
+    }
+  ],
+  "inventory_proof": [
+    {
+      "line": 265,
+      "text": "2026-11-28T10:03:20.3564969Z PASS: native source-shard parser, exact 493 selectors, four assignments, and every overlapping case count."
+    }
+  ],
+  "source_helper": "6032567fb09dd4e235caca7a3480d27845fcf889",
+  "whole_selectors": 493,
+  "shard_sizes": [
+    124,
+    123,
+    123,
+    123
+  ],
+  "artifact": {
+    "id": 15259035020,
+    "name": "carr-workflow-syntax-fc84f903dfe068b4eb816e5395cdbd3bf7aa7ad2-1",
+    "size": 28006,
+    "digest": "sha256:3c50b88ee5f32011cad03218520c593586d26965bfebac4287bfb258e34e7da4"
+  },
+  "qualification": "Actual compilation/TOML/PowerShell parsing and InventoryOnly only. No unit, native GUI, installed bundle, hardware, H successor or current-head completion transfer."
+}

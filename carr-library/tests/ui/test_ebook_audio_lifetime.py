@@ -352,8 +352,14 @@ def _recorded_start_case(host, tmp_path, *, failure_stage='device', deferred=Fal
         close=Mock(), chapter=SimpleNamespace(cues=(object(), object())))
     transport = OverlayPlayback(session, player)
     dialog.session, dialog.player, dialog.transport = session, player, transport
-    dialog.progress = SimpleNamespace(hold_audio=lambda: hold, refresh_audio_state=Mock(),
-        unregister_player=Mock())
+    class Progress:
+        # The real native progress owner has ordinary identity/hash semantics.
+        def __init__(self):
+            self.refresh_audio_state = Mock()
+            self.unregister_player = Mock()
+        def hold_audio(self):
+            return hold
+    dialog.progress = Progress()
     dialog.wx.CallLater = lambda delay, callback: scheduled.append((delay, callback))
     dialog._highlight = Mock()
     dialog.segments = SimpleNamespace(GetSelection=lambda: 1)

@@ -1,0 +1,158 @@
+{
+  "schema": "carr-independent-asr-positive-fixture-six-call-review/1",
+  "status": "ACCEPTED_STATIC_NOT_RUN",
+  "reviewer": "root",
+  "candidate": "6bbc35bb1b759f7e81a6ab14004a72a526e50b4b",
+  "prior_accepted_five_call_component": "a5f8066b9eca65c024d5a1f932dd894fd5b81641",
+  "prior_peer": "b08b16ca9d6aab87699c4b39a5505f776cbd3ae0",
+  "actuals": {
+    "E": "3d3e475e2cb592db23bc5aac89d6df4726616e4e",
+    "G": "bf11e0c76f4eb0a5b17ba2052a4fb4fd297b562a",
+    "new_failure": "test_actual_child_import_never_writes_or_replaces_python_bytecode[True]",
+    "observed_error": "Audio worker exceeded its time allowance; completed chunks remain reusable.",
+    "unchanged_service_observation": "G service28 passed at the existing 5-second fixture; no service timeout change is made."
+  },
+  "files": [
+    {
+      "path": "carr-library/tests/transcription/test_admission_boundaries.py",
+      "preimage": "5fb6e519bfa27ea296aeee775985fc31ba4afc65",
+      "blob": "aa4e03e782fbb34c19344e2b1911af38c9fac65e",
+      "operations": [
+        {
+          "function": "test_export_rejects_changed_payload_before_external_publication",
+          "old": "    state = service.run(service.create_job(profile['id'], sources[:1])['id'])",
+          "replacement": "    state = service.run(service.create_job(profile['id'], sources[:1])['id'], timeout=30)",
+          "preimage_offset": 2137,
+          "scope": "single occurrence in this test function",
+          "offset": 2137
+        },
+        {
+          "function": "test_edited_copy_decodes_only_the_bytes_it_verifies",
+          "old": "    state = service.run(service.create_job(profile['id'], sources[:1])['id'])",
+          "replacement": "    state = service.run(service.create_job(profile['id'], sources[:1])['id'], timeout=30)",
+          "preimage_offset": 7227,
+          "scope": "single occurrence in this test function",
+          "offset": 7239
+        },
+        {
+          "function": "test_edited_copy_rejects_changed_bytes_and_observes_cancel",
+          "old": "    state = service.run(service.create_job(profile['id'], sources[:1])['id'])",
+          "replacement": "    state = service.run(service.create_job(profile['id'], sources[:1])['id'], timeout=30)",
+          "preimage_offset": 9829,
+          "scope": "single occurrence in this test function",
+          "offset": 9853
+        },
+        {
+          "function": "test_runtime_change_rejects_attempt_without_resurrecting_cache",
+          "old": "    resumed = service.resume(state['id'])",
+          "replacement": "    resumed = service.resume(state['id'], timeout=30)",
+          "preimage_offset": 17352,
+          "scope": "single occurrence in this test function",
+          "offset": 17388
+        },
+        {
+          "function": "test_stop_during_historical_receipt_hash_preserves_durable_results",
+          "old": "        state = service.run(service.create_job(profile['id'], sources[:1])['id'])",
+          "replacement": "        state = service.run(service.create_job(profile['id'], sources[:1])['id'], timeout=30)",
+          "preimage_offset": 23706,
+          "scope": "single occurrence in this test function",
+          "offset": 23754
+        },
+        {
+          "function": "test_actual_child_import_never_writes_or_replaces_python_bytecode",
+          "old": "    result = service.run(service.create_job(profile['id'], sources[:1])['id'])",
+          "replacement": "    result = service.run(service.create_job(profile['id'], sources[:1])['id'], timeout=30)",
+          "preimage_offset": 20757,
+          "scope": "single occurrence in this test function",
+          "offset": 20805
+        }
+      ],
+      "complete_forward_and_inverse": true,
+      "readback_exact": true
+    },
+    {
+      "path": "carr-library/tests/transcription/test_service.py",
+      "preimage": "7162ccfee03ede2e908d9292e12ebe2df8c30669",
+      "blob": "0f23ffe48b509fea2a173c5b16676c7cf2c9bca5",
+      "operations": [
+        {
+          "old": "    service.acknowledge_interruption(created['id'], worker_stopped=True)\n    assert service.resume(created['id'])['status'] == 'complete'",
+          "replacement": "    service.acknowledge_interruption(created['id'], worker_stopped=True)\n    resumed = service.resume(created['id'])\n    assert resumed['status'] == 'complete', resumed",
+          "offset": 17358
+        }
+      ],
+      "complete_forward_and_inverse": true,
+      "readback_exact": true
+    },
+    {
+      "path": "carr-library/scripts/ci_installed_failure_contracts.py",
+      "preimage": "a9d0d3288746b2d7555db1029a6aa7205af6da66",
+      "blob": "4bd9331163cc3c342674aef37ee2ea8d5c74099f",
+      "operations": [
+        {
+          "path": "carr-library/scripts/ci_installed_failure_contracts.py",
+          "preimage": "a9d0d3288746b2d7555db1029a6aa7205af6da66",
+          "blob": "4bd9331163cc3c342674aef37ee2ea8d5c74099f",
+          "old": "5fb6e519bfa27ea296aeee775985fc31ba4afc65",
+          "replacement": "aa4e03e782fbb34c19344e2b1911af38c9fac65e",
+          "occurrences": 1,
+          "offset": 6595
+        }
+      ],
+      "complete_forward_and_inverse": true,
+      "readback_exact": true
+    },
+    {
+      "path": ".github/workflows/carr-installed-failure-contracts.yml",
+      "preimage": "aee1a8fabc5c822c40915fb6d44caa11295669c4",
+      "blob": "40b349eddaab341e56802674942f8b2dc9d2e6d3",
+      "operations": [
+        {
+          "path": ".github/workflows/carr-installed-failure-contracts.yml",
+          "preimage": "aee1a8fabc5c822c40915fb6d44caa11295669c4",
+          "blob": "40b349eddaab341e56802674942f8b2dc9d2e6d3",
+          "old": "a9d0d3288746b2d7555db1029a6aa7205af6da66",
+          "replacement": "4bd9331163cc3c342674aef37ee2ea8d5c74099f",
+          "occurrences": 1,
+          "offset": 1874
+        }
+      ],
+      "complete_forward_and_inverse": true,
+      "readback_exact": true
+    }
+  ],
+  "review": {
+    "sixth_delta_is_exact_one_positive_call": true,
+    "six_positive_calls_only": true,
+    "admission_cases": 40,
+    "admission_functions": 19,
+    "service_cases": 28,
+    "service_functions": 23,
+    "assertion_and_parametrization_lines_unchanged": 101,
+    "bytecode_probe_and_existing_cache_equality_assertions_exact": true,
+    "real_child_result_still_required_complete": true,
+    "product_sources_unchanged": true,
+    "shared_five_second_fixture_unchanged": true,
+    "negative_stop_timeout_mutation_checks_unchanged": true,
+    "service_change": "Retain returned resume state in the original complete assertion diagnostic only; the actual resume call still uses its original budget.",
+    "new_sixth_allowance_seconds": 30,
+    "whole_suite_bounds_seconds": [
+      600,
+      900
+    ]
+  },
+  "diagnostic": {
+    "helper_pins": 60,
+    "workflow_pins": 8,
+    "stale": 0,
+    "missing": 0,
+    "all_cases": 112,
+    "functions": 66,
+    "module_origins": 42
+  },
+  "limits": [
+    "Only closed logs establish the inner five-second error. No product deadline failure is concealed.",
+    "The finite positive fixture allowance follows existing30-second successful positive calls; it is not a performance acceptance claim.",
+    "Actual execution of the composed successor is pending."
+  ]
+}

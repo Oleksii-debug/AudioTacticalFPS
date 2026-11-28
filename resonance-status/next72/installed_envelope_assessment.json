@@ -1,0 +1,449 @@
+{
+  "schema": "carr-complete-bundle-outer-envelope-assessment/1",
+  "created_utc": "2026-11-28 10:16:29 UTC",
+  "status": "READ_ONLY_EVIDENCE_BOUND_ASSESSMENT",
+  "reviewer": "locate_project",
+  "basis": {
+    "old5b2_receipt": "e96a34b97f94ce0c195222bf78c0365c2ba8eae6",
+    "B_receipt": "427bb013b89e87af03f3981326f49917b9c0a274",
+    "old5b2_V3_receipt": "ac2c27cc81c93726d37f219d52ef7fc0c26eb3a7",
+    "G_main": "2f0ee50dd507be94424040d88e4807edd7c1ee62",
+    "G_installed_checker": "93eb4eab03bdb37ae09373ce1adee74632300167"
+  },
+  "observed": [
+    {
+      "head": "5b2c5a9237152d261ff541c9a2fd1fec8e75a114",
+      "phase_start": "2026-11-28T05:42:43Z",
+      "pytest_collection_at": "2026-11-28T05:55:26.831Z",
+      "outer_timeout_at": "2026-11-28T07:42:45.196Z",
+      "collection": 8439,
+      "visible_activity": 7035,
+      "visible_passed": 7029,
+      "visible_failed": 6,
+      "last_percent": 83,
+      "final_junit": false,
+      "outer_minutes": 120
+    },
+    {
+      "head": "26beb805aab1e9e202d134008441927523cdcb94",
+      "phase_start": "2026-11-28T07:56:48Z",
+      "pytest_collection_at": "2026-11-28T08:09:36.140Z",
+      "last_activity_at": "2026-11-28T09:53:06.236Z",
+      "outer_timeout_at": "2026-11-28T09:56:51.032Z",
+      "collection": 8719,
+      "visible_activity": 7143,
+      "visible_passed": 7138,
+      "visible_failed": 5,
+      "last_percent": 81,
+      "final_junit": false,
+      "outer_minutes": 120
+    }
+  ],
+  "remaining_work": {
+    "B_literal_contents_selectors": 339,
+    "G_literal_contents_selectors": 342,
+    "G_literal_whole_modules": 339,
+    "main_explicit_leading_selectors": 14,
+    "main_leading_selector_command": "Unchanged; these precede the helper contents list.",
+    "B_last_printed_path": "tests/packaging/test_library_capacity_measurement.py",
+    "B_literal_tail_selectors": [
+      "tests/storage/test_backup_capacity.py",
+      "tests/storage/test_backup_capacity_cli.py",
+      "tests/ui/test_backup_capacity.py",
+      "tests/studio/test_book_effects.py",
+      "tests/studio/test_measured_audio.py",
+      "tests/studio/test_measured_pcm.py",
+      "tests/studio/test_book_measured_cli.py",
+      "tests/ui/test_book_effects.py",
+      "tests/ui/test_book_duration_dialog.py",
+      "tests/conversion/test_selected_conversion.py",
+      "tests/conversion/test_calibre_admission.py",
+      "tests/conversion/test_office_admission.py",
+      "tests/ui/test_document_conversion.py",
+      "tests/extract/test_document_formats_xml.py",
+      "tests/transcription/test_native_profiles_fixture.py",
+      "tests/ui/test_native_backup_capacity_driver.py",
+      "tests/ui/test_native_studio_book_choices.py",
+      "tests/ui/test_native_book_publication_driver.py",
+      "tests/search/test_paged_candidate_work.py",
+      "tests/audio/test_live_metadata_retry.py",
+      "tests/ui/test_native_conversion_diagnostics.py",
+      "tests/audio/test_voice_package_management.py",
+      "tests/audio/test_voice_management_state.py",
+      "tests/audio/test_voice_reference_management.py",
+      "tests/audio/test_voice_protected_management.py",
+      "tests/audio/test_voice_publication_lifetime.py",
+      "tests/audio/test_voice_ownership.py",
+      "tests/integrations/test_dordiai_owner_lease.py",
+      "tests/integrations/test_dordiai_managed_authority.py",
+      "tests/ui/test_voice_packages.py",
+      "tests/ui/test_voice_reference.py",
+      "tests/integrations/test_dordiai_voices.py",
+      "tests/integrations/test_dordiai_speech.py",
+      "tests/integrations/test_dordiai_settings.py",
+      "tests/storage/test_library_backup.py",
+      "tests/storage/test_state_backup_portability.py",
+      "tests/search/test_window_catalog_projection.py",
+      "tests/ui/test_ebook_dialog.py",
+      "tests/ui/test_native_saved_audio_cleanup.py",
+      "tests/integrations/test_dordiai_reference_backends.py",
+      "tests/integrations/test_dordiai_managed_backends.py",
+      "tests/citations/test_attestation_cancellation.py",
+      "tests/packaging/test_library_scale_profile.py",
+      "tests/studio/test_daisy_schema_resolver.py",
+      "tests/assistant/test_transcription_provider.py",
+      "tests/transcription/test_remote_service.py",
+      "tests/ui/test_transcription_remote.py",
+      "tests/security/test_update_handoff.py",
+      "tests/security/test_update_runtime.py",
+      "tests/security/test_update_ui.py",
+      "tests/security/test_update_controller_actions.py",
+      "tests/audio/test_voice_scope_checks.py",
+      "tests/catalog/test_text_screen_work.py",
+      "tests/search/test_ascii_mapping_work.py",
+      "tests/studio/test_clip_preview_loop.py",
+      "tests/studio/test_project_markers.py",
+      "tests/studio/test_marker_consumers.py"
+    ],
+    "B_literal_tail_count": 57,
+    "G_literal_tail_count": 60,
+    "G_additional_tail_selectors": [
+      "tests/language_qualification/test_evidence.py",
+      "tests/language_qualification/test_evidence_backup.py",
+      "tests/language_qualification/test_evidence_ui.py"
+    ],
+    "prior_V3_source_overlap": {
+      "whole_modules": 39,
+      "sum_reported_pytest_seconds": 1747.53,
+      "rows": [
+        {
+          "path": "tests/storage/test_backup_capacity.py",
+          "seconds": 248.69,
+          "log_line": 10781
+        },
+        {
+          "path": "tests/storage/test_backup_capacity_cli.py",
+          "seconds": 2.72,
+          "log_line": 10794
+        },
+        {
+          "path": "tests/ui/test_backup_capacity.py",
+          "seconds": 4.27,
+          "log_line": 10821
+        },
+        {
+          "path": "tests/studio/test_book_effects.py",
+          "seconds": 46.15,
+          "log_line": 10860
+        },
+        {
+          "path": "tests/studio/test_measured_audio.py",
+          "seconds": 303.57,
+          "log_line": 10906
+        },
+        {
+          "path": "tests/studio/test_measured_pcm.py",
+          "seconds": 0.35,
+          "log_line": 10935
+        },
+        {
+          "path": "tests/studio/test_book_measured_cli.py",
+          "seconds": 42.68,
+          "log_line": 10954
+        },
+        {
+          "path": "tests/ui/test_book_effects.py",
+          "seconds": 3.03,
+          "log_line": 10969
+        },
+        {
+          "path": "tests/ui/test_book_duration_dialog.py",
+          "seconds": 141.76,
+          "log_line": 10996
+        },
+        {
+          "path": "tests/conversion/test_selected_conversion.py",
+          "seconds": 14.03,
+          "log_line": 11045
+        },
+        {
+          "path": "tests/conversion/test_calibre_admission.py",
+          "seconds": 3.07,
+          "log_line": 11104
+        },
+        {
+          "path": "tests/conversion/test_office_admission.py",
+          "seconds": 2.84,
+          "log_line": 11138
+        },
+        {
+          "path": "tests/ui/test_document_conversion.py",
+          "seconds": 2.37,
+          "log_line": 11168
+        },
+        {
+          "path": "tests/extract/test_document_formats_xml.py",
+          "seconds": 0.67,
+          "log_line": 11329
+        },
+        {
+          "path": "tests/ui/test_native_backup_capacity_driver.py",
+          "seconds": 0.21,
+          "log_line": 11350
+        },
+        {
+          "path": "tests/ui/test_native_studio_book_choices.py",
+          "seconds": 0.36,
+          "log_line": 11374
+        },
+        {
+          "path": "tests/ui/test_native_book_publication_driver.py",
+          "seconds": 0.25,
+          "log_line": 11392
+        },
+        {
+          "path": "tests/search/test_paged_candidate_work.py",
+          "seconds": 29.36,
+          "log_line": 11432
+        },
+        {
+          "path": "tests/audio/test_live_metadata_retry.py",
+          "seconds": 0.9,
+          "log_line": 11464
+        },
+        {
+          "path": "tests/ui/test_native_conversion_diagnostics.py",
+          "seconds": 0.76,
+          "log_line": 11504
+        },
+        {
+          "path": "tests/audio/test_voice_package_management.py",
+          "seconds": 297.39,
+          "log_line": 11544
+        },
+        {
+          "path": "tests/audio/test_voice_management_state.py",
+          "seconds": 15.69,
+          "log_line": 11579
+        },
+        {
+          "path": "tests/audio/test_voice_reference_management.py",
+          "seconds": 111.49,
+          "log_line": 11619
+        },
+        {
+          "path": "tests/audio/test_voice_protected_management.py",
+          "seconds": 116.98,
+          "log_line": 11644
+        },
+        {
+          "path": "tests/audio/test_voice_publication_lifetime.py",
+          "seconds": 1.29,
+          "log_line": 11669
+        },
+        {
+          "path": "tests/audio/test_voice_ownership.py",
+          "seconds": 2.67,
+          "log_line": 11709
+        },
+        {
+          "path": "tests/integrations/test_dordiai_owner_lease.py",
+          "seconds": 26.66,
+          "log_line": 11747
+        },
+        {
+          "path": "tests/integrations/test_dordiai_managed_authority.py",
+          "seconds": 289.22,
+          "log_line": 11775
+        },
+        {
+          "path": "tests/ui/test_voice_packages.py",
+          "seconds": 2.61,
+          "log_line": 11831
+        },
+        {
+          "path": "tests/ui/test_voice_reference.py",
+          "seconds": 0.75,
+          "log_line": 11873
+        },
+        {
+          "path": "tests/integrations/test_dordiai_voices.py",
+          "seconds": 9.34,
+          "log_line": 11923
+        },
+        {
+          "path": "tests/integrations/test_dordiai_speech.py",
+          "seconds": 4.05,
+          "log_line": 11943
+        },
+        {
+          "path": "tests/integrations/test_dordiai_settings.py",
+          "seconds": 3.77,
+          "log_line": 11970
+        },
+        {
+          "path": "tests/storage/test_library_backup.py",
+          "seconds": 7.56,
+          "log_line": 12096
+        },
+        {
+          "path": "tests/storage/test_state_backup_portability.py",
+          "seconds": 0.55,
+          "log_line": 12133
+        },
+        {
+          "path": "tests/search/test_window_catalog_projection.py",
+          "seconds": 1.64,
+          "log_line": 12170
+        },
+        {
+          "path": "tests/ui/test_ebook_dialog.py",
+          "seconds": 0.75,
+          "log_line": 12218
+        },
+        {
+          "path": "tests/ui/test_native_saved_audio_cleanup.py",
+          "seconds": 0.74,
+          "log_line": 12247
+        },
+        {
+          "path": "tests/integrations/test_dordiai_reference_backends.py",
+          "seconds": 6.34,
+          "log_line": 12297
+        }
+      ],
+      "qualification": "Actual old-head source timings only. They are not installed predictions, current-head runtimes or additive guaranteed completion budgets."
+    },
+    "post_pytest_native": [
+      {
+        "path": "carr-library/scripts/windows_desktop_integration_smoke.py",
+        "blob": "0cb5c0cc2e81d97a7e70d0847725e14123c0df3e",
+        "watchdog_seconds": 180,
+        "source_line": 348
+      },
+      {
+        "path": "carr-library/scripts/windows_local_schedules_smoke.py",
+        "blob": "7581c232457c226b9f5f551afd7d3c7fcaaf221c",
+        "watchdog_seconds": 180,
+        "source_line": 55
+      },
+      {
+        "path": "carr-library/scripts/hunspell_acceptance.py",
+        "blob": "20a824c9086696d8f26564c68c58cb386339f862",
+        "watchdog_seconds": null,
+        "source_line": null
+      },
+      {
+        "path": "carr-library/scripts/windows_hunspell_smoke.py",
+        "blob": "0499b35d3779694104f96da8d3b763f8e21b6bb4",
+        "watchdog_seconds": 180,
+        "source_line": 521
+      },
+      {
+        "path": "carr-library/scripts/windows_translation_layout_smoke.py",
+        "blob": "3dff8332d0ee7507c9ee3dfaffac2eabff099796",
+        "watchdog_seconds": 180,
+        "source_line": 218
+      },
+      {
+        "path": "carr-library/scripts/windows_word_bridge_smoke.py",
+        "blob": "33ef7bd2e5c710631a8cc93838cb8c74f44df169",
+        "watchdog_seconds": 180,
+        "source_line": 417
+      },
+      {
+        "path": "carr-library/scripts/windows_google_oauth_smoke.py",
+        "blob": "a149b7efc95c65fc6d752b77b33cafcae22ae61f",
+        "watchdog_seconds": 180,
+        "source_line": 642
+      },
+      {
+        "path": "carr-library/scripts/windows_translation_epub_smoke.py",
+        "blob": "4b26382f7f71449f896ec7f29afd75f2ebd63824",
+        "watchdog_seconds": 180,
+        "source_line": 219
+      },
+      {
+        "path": "carr-library/scripts/translation_epubcheck_acceptance.py",
+        "blob": "f1ac42577e9d99051cc38330a8dad29edc882935",
+        "watchdog_seconds": null,
+        "source_line": null
+      },
+      {
+        "path": "carr-library/scripts/windows_translation_rich_docx_smoke.py",
+        "blob": "29a5c381a11a4ba64ac2ee6daca96029f8121c2b",
+        "watchdog_seconds": 180,
+        "source_line": 220
+      },
+      {
+        "path": "carr-library/scripts/windows_backup_capacity_smoke.py",
+        "blob": "412bae4ad7ffe7600497ede1add0c9c4a14fbf4b",
+        "watchdog_seconds": 180,
+        "source_line": 679
+      },
+      {
+        "path": "carr-library/scripts/windows_voice_management_smoke.py",
+        "blob": "7f1f806035ab334713a2b9c13c21bbca59bb09f0",
+        "watchdog_seconds": 300,
+        "source_line": 896
+      }
+    ],
+    "post_pytest_watchdog_sum_seconds": 1920,
+    "post_pytest_non_watchdog_work": [
+      "Actual Hunspell C API acceptance, with its unchanged internal operation/child limits.",
+      "Formatted EPUB independent EPUBCheck acceptance through the unchanged validator.",
+      "Exact helper/fixture/origin/JUnit validation, complete payload seals and staged wheel/native-launcher proofs."
+    ],
+    "post_pytest_observation": "None of these later full-step obligations is qualified by the interrupted B pytest run. The32-minute watchdog sum is a reserve calculation from current source, not observed successful execution time."
+  },
+  "illustrative_rate_comparison": {
+    "old5b2": {
+      "observed_seconds": 6438.365,
+      "visible_marks": 7035,
+      "collected": 8439,
+      "illustrative_linear_total_seconds": 7723.292428571429
+    },
+    "B": {
+      "observed_seconds": 6434.892,
+      "visible_marks": 7143,
+      "collected": 8719,
+      "illustrative_linear_total_seconds": 7854.6581755564885
+    },
+    "limit": "Visible result marks have unequal cost, incomplete tests may already be running, and output is buffered. These ratios only demonstrate that120 cannot fund the observed continuation; they are not forecasts or admission criteria."
+  },
+  "authorized_recommendation": {
+    "complete_bundle_step_minutes": {
+      "before": 120,
+      "after": 210
+    },
+    "desktop_job_minutes": {
+      "before": 270,
+      "after": 360
+    },
+    "outside_complete_step_minutes": {
+      "before": 150,
+      "after": 150
+    },
+    "rationale": [
+      "Two independent closed exact-head runs explicitly hit the same120-minute outer step while installed pytest still had a substantial required tail.",
+      "Both consumed about107 minutes after collection before termination, and the later B head collected280 additional items.",
+      "The57-to60 literal tail includes measured heavy backup/audio/voice wholes;39 overlapping old V3 source modules alone took1747.53 seconds.",
+      "Ten existing later native watchdogs permit1920 seconds in total, with independent validators, final seals and unmeasured newer tail work still required.",
+      "210 minutes is a finite orchestration allowance that leaves room to observe the full required verdict; it is not a promise that every permitted worst-case child can finish.",
+      "Raising the desktop job by the same90 minutes preserves the original150-minute allowance for its other setup, native, no-audio/owner-input, standard-installer and retention work. The evidence does not claim360 minutes is a measured required duration."
+    ]
+  },
+  "preserved": [
+    "Every342 helper selector,339 whole-module membership,14 explicit leading selectors and all exact case/function assertions.",
+    "All600/900 source/whole envelopes, product operation timeouts, native watchdogs, worker/Job ownership and cleanup.",
+    "Source-wheel/installed-origin/fixture identity proofs, zero-failure/skip strictness, final seals, required aggregate and hardware qualification.",
+    "No pytest splitting, new executor, broad parallelization, result synthesis or skipped physical gate."
+  ],
+  "execution_plan": [
+    "Use the existing exact source-syntax PowerShell parser and sourcePS InventoryOnly checks on the composed successor.",
+    "Run the real complete installed suite and retain final JUnit before any complete-bundle PASS claim.",
+    "Every subsequent native/validator/seal remains required. Existing missing-device failures remain failures.",
+    "If210 minutes is still insufficient, retain the exact closed partial evidence and diagnose again; do not infer a pass or extend any inner deadline."
+  ],
+  "refs_changed": false
+}
