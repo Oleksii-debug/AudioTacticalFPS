@@ -166,7 +166,7 @@ jobs:
                   errors.append(dict(receipt_error=type(exc).__name__))
               receipt = dict(schema='carr-shortcut-inspection-evidence/1',
                   tested_commit=os.environ['GITHUB_SHA'],
-                  source_component_commit='6823bb9f4c3471944bfdb4e304bb9f57de0fdcc5',
+                  source_component_commit='8a0818edf11f437e0f8f5922e4a5f690ca233a2f',
                   ci_check_sha256=runner_sha, strict_runner_exit=exit_code,
                   suites=[suite], junit_reports=captured, verdict=verdict, errors=errors,
                   scope='Complete source controls with actual native Windows Shell links; no installed Inno lifecycle or ordinary acceptance verdict')

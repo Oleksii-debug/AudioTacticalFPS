@@ -130,6 +130,13 @@ internal interface CarrShortcutReadW {
 }
 
 public static class CarrShortcutInspector {
+    public static string ReadSha256(string filename) {
+        using (var algorithm = System.Security.Cryptography.SHA256.Create())
+        using (var source = System.IO.File.OpenRead(filename)) {
+            return BitConverter.ToString(algorithm.ComputeHash(source))
+                               .Replace("-", "").ToLowerInvariant();
+        }
+    }
     public static string ReadTarget(string filename) {
         object link = new CarrShortcutObject();
         try {
@@ -172,7 +179,7 @@ try {
             legacy_target = $legacy
             legacy_error = $legacyError
             link_bytes = (Get-Item -LiteralPath $path).Length
-            link_sha256 = (Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash.ToLowerInvariant()
+            link_sha256 = [CarrShortcutInspector]::ReadSha256($path)
         }
     }
 } finally {
