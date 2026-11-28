@@ -1,0 +1,323 @@
+name: Actual installed backup and import native access
+on:
+  push:
+    branches: [carr/backup-access-native-review-20261128]
+    paths: ['carr-library/**', '.github/workflows/carr-backup-access-native-review.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: backup-access-native-review-${{ github.ref_name }}
+  cancel-in-progress: true
+jobs:
+  review:
+    name: Installed native import, backup and command palette / ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-2022]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: carr-library
+        shell: bash
+    env:
+      PYTHONUTF8: '1'
+      PYTHONDONTWRITEBYTECODE: '1'
+      HF_HUB_OFFLINE: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      DO_NOT_TRACK: '1'
+      PYTEST_DISABLE_PLUGIN_AUTOLOAD: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+      - name: Install exact source and declared tests
+        id: backup_install
+        run: |
+          python -m pip install ".[test,sync]"
+          python -m pip install --only-binary=:all: --require-hashes -r packaging/trusted-client.lock
+      - name: Install actual Windows desktop
+        id: backup_desktop
+        if: runner.os == 'Windows'
+        run: python -m pip install ".[desktop]"
+      - name: Prepare actual Linux audio tools
+        if: runner.os == 'Linux'
+        run: |
+          mkdir -p ci-backup-resources
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y ffmpeg
+          ffmpeg -version > ci-backup-resources/ffmpeg-version.txt
+          ffprobe -version > ci-backup-resources/ffprobe-version.txt
+      - name: Prepare pinned Windows audio tools
+        id: backup_audio
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force 'ci-backup-resources' | Out-Null
+          $audio = Join-Path $env:RUNNER_TEMP 'carr-backup-resources-audio'
+          python packaging/prepare_windows_audio.py --cache (Join-Path $env:RUNNER_TEMP 'carr-audio-cache') --output $audio --download | Tee-Object 'ci-backup-resources/audio-runtime.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          (Join-Path $audio 'bin') | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          "CARR_PLAYBACK_QUEUE_AUDIO=$audio" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+      - name: Prepare actual Linux Tesseract and reviewed reading models
+        if: runner.os == 'Linux'
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends tesseract-ocr tesseract-ocr-eng tesseract-ocr-ukr tesseract-ocr-slk tesseract-ocr-osd fonts-dejavu-core
+          tesseract --version
+          tesseract --list-langs
+          python -m pip check
+      - name: Prepare existing verified Windows OCR distribution and native controls
+        id: backup_ocr
+        if: runner.os == 'Windows'
+        shell: pwsh
+        timeout-minutes: 10
+        run: |
+          $work = Join-Path $env:RUNNER_TEMP 'carr-backup-resources-ocr'
+          New-Item -ItemType Directory -Force $work | Out-Null
+          python -m pip install wxPython==4.2.4
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $ocr = Join-Path $work 'ocr'
+          python packaging/prepare_windows_ocr.py --cache (Join-Path $work 'ocr-cache') --output $ocr --source-archive (Join-Path $work 'ocr-corresponding-source.tar') --download
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          "CARR_CI_OCR_DIR=$ocr" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          $ocr | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          python -m pip check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Prepare complete installed bindings for both actual native probes
+        run: |
+          mkdir -p ci-backup-resources
+          cat > ci-backup-resources/native-bindings.py <<'PY'
+          from hashlib import sha256
+          import importlib
+          import importlib.util
+          import json
+          import os
+          from pathlib import Path
+          import sys
+          import sysconfig
+          
+          assert sys.flags.isolated and not os.environ.get('PYTHONPATH')
+          assert len(sys.argv) == 3
+          phase, label = sys.argv[1:]
+          assert phase in ('before', 'after') and label in ('access', 'palette')
+          root = Path.cwd().resolve()
+          source = (root / 'src' / 'carr_library').resolve()
+          installed = (Path(sysconfig.get_path('purelib')) / 'carr_library').resolve()
+          assert source != installed and not installed.is_relative_to(root / 'src')
+          selected = installed
+          mode = 'installed'
+          artifacts = root / 'ci-backup-resources'
+          names = ["carr_library.backup_budget","carr_library.library_backup","carr_library.pending_backup","carr_library.backup_sidecars","carr_library.backup_current","carr_library.backup_producers","carr_library.backup_transcription","carr_library.backup_document_batches","carr_library.backup_translation_batches","carr_library.backup_recordings","carr_library.backup_generated","carr_library.backup_compat.state","carr_library.state_backup","carr_library.ingest.catalog_asset_copy","carr_library.ingest.resource_budget","carr_library.ingest.worker","carr_library.ingest.batch_pages","carr_library.ingest.slices","carr_library.ingest.reconciliation","carr_library.ingest.session","carr_library.catalog.intake","carr_library.citations.text_attestation","carr_library.storage.revisions","carr_library.storage.publication","carr_library.speech.playlist","carr_library.speech.listening","carr_library.studio.clips","carr_library.studio.backup_inputs","carr_library.studio.render","carr_library.assistant.providers","carr_library.assistant.profiles","carr_library.assistant.translation","carr_library.assistant.translation_local","carr_library.assistant.translation_batch","carr_library.durable_state","carr_library.application","carr_library.backup_options","carr_library.backup_incremental","carr_library.backup_incremental_cli","carr_library.ui.backup_resources","carr_library.ui.backup_actions","carr_library.ui.backup_incremental_dialog","carr_library.ingest.batch_cli","carr_library.ui.import_resources","carr_library.ui.import_center","carr_library.__main__","carr_library.portable_entry","carr_library.ui.desktop_app"]
+          
+          def package_inventory(directory):
+              assert directory.is_dir() and not directory.is_symlink(), str(directory)
+              result = {}
+              for path in sorted(directory.rglob("*.py")):
+                  assert path.is_file() and not path.is_symlink(), str(path)
+                  result[path.relative_to(directory).as_posix()] = sha256(path.read_bytes()).hexdigest()
+              assert result and "__init__.py" in result, str(directory)
+              return result
+          
+          
+          expected = package_inventory(source)
+          assert package_inventory(installed) == expected, 'Installed Python file set/content differs from checkout.'
+          inventory_digest = sha256(json.dumps(expected, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
+          
+          def origins():
+              package = importlib.import_module("carr_library")
+              actual_package = Path(package.__file__).resolve()
+              assert actual_package == selected / "__init__.py", (mode, str(actual_package), str(selected))
+              result = {}
+              for name in names:
+                  spec = importlib.util.find_spec(name)
+                  assert spec is not None and spec.origin, name
+                  actual = Path(spec.origin).resolve()
+                  relative = Path(*name.split(".")[1:]).with_suffix(".py")
+                  assert actual == selected / relative, (name, str(actual), str(selected / relative))
+                  digest = sha256(actual.read_bytes()).hexdigest()
+                  assert digest == expected[relative.as_posix()], name
+                  result[name] = {"path": str(actual), "sha256": digest}
+              return result
+          
+          
+          scripts = [root / 'scripts' / name for name in (
+              'windows_backup_import_access_smoke.py', 'windows_command_palette_smoke.py')]
+          scripts.append(Path(__file__).resolve())
+          for name in names:
+              path = source.joinpath(*name.split('.')[1:]).with_suffix('.py')
+              compile(path.read_bytes(), str(path), 'exec')
+          for path in scripts:
+              compile(path.read_bytes(), str(path), 'exec')
+          proof = dict(schema='carr.native-installed-bindings/1',
+              source=str(source), installed=str(installed), package_files=expected,
+              package_inventory_sha256=inventory_digest, origins=origins(),
+              scripts={str(path): sha256(path.read_bytes()).hexdigest() for path in scripts})
+          before = artifacts / (label + '-bindings-before.json')
+          if phase == 'after':
+              assert before.is_file() and not before.is_symlink() and before.stat().st_size <= 8 * 1024**2
+              assert json.loads(before.read_bytes()) == proof, 'Installed/source/native binding changed during the actual probe.'
+          target = artifacts / (label + '-bindings-' + phase + '.json')
+          raw = (json.dumps(proof, ensure_ascii=False, sort_keys=True, allow_nan=False) + '\n').encode('utf-8')
+          assert len(raw) <= 8 * 1024**2
+          with target.open('xb') as stream:
+              stream.write(raw)
+              stream.flush()
+              os.fsync(stream.fileno())
+          print(json.dumps(dict(status='IDENTITY_VERIFIED', phase=phase, probe=label,
+              package_python_files=len(expected), origins=len(proof['origins']),
+              package_inventory_sha256=inventory_digest, script_count=len(scripts),
+              qualification='INSTALLED_BINDINGS_ONLY; actual native outcome is separate'), sort_keys=True), flush=True)
+          
+          PY
+      - name: Require actual native import and backup resource controls offline
+        if: "!cancelled() && runner.os == 'Windows' && steps.backup_install.outcome == 'success' && steps.backup_desktop.outcome == 'success' && steps.backup_audio.outcome == 'success' && steps.backup_ocr.outcome == 'success'"
+        timeout-minutes: 10
+        shell: pwsh
+        run: |
+          $scriptPath = 'scripts/windows_backup_import_access_smoke.py'
+          python -I -B -c "from pathlib import Path; p=Path('scripts/windows_backup_import_access_smoke.py'); compile(p.read_bytes(), str(p), 'exec')"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $scriptBefore = (Get-FileHash -LiteralPath $scriptPath -Algorithm SHA256).Hash.ToLowerInvariant()
+          $python = (Get-Command python.exe).Source
+          Remove-Item Env:PYTHONPATH, Env:PYTEST_ADDOPTS, Env:PYTEST_PLUGINS -ErrorAction SilentlyContinue
+          $bindingHelper = 'ci-backup-resources/native-bindings.py'
+          $bindingReceipt = 'ci-backup-resources/access-bindings-before.json'
+          $bindingHelperHash = (Get-FileHash -LiteralPath $bindingHelper -Algorithm SHA256).Hash
+          & $python -I -B -X utf8 $bindingHelper before access
+          if ($LASTEXITCODE -ne 0) { throw 'Required installed native bindings failed before execution.' }
+          $bindingReceiptHash = (Get-FileHash -LiteralPath $bindingReceipt -Algorithm SHA256).Hash
+          $basePython = (& $python -I -c "import sys; print(sys._base_executable)").Trim()
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $ocrPrograms = @(Get-ChildItem -LiteralPath $env:CARR_CI_OCR_DIR -Filter '*.exe' -Recurse -File -ErrorAction Stop | Select-Object -ExpandProperty FullName)
+          if ($ocrPrograms.Count -lt 1 -or $ocrPrograms.Count -gt 128) { throw 'Selected OCR executable inventory is outside its finite bound.' }
+          $programs = @(@($python, $basePython,
+            (Join-Path $env:SystemRoot 'System32/WindowsPowerShell/v1.0/powershell.exe'),
+            (Join-Path $env:SystemRoot 'SysWOW64/WindowsPowerShell/v1.0/powershell.exe'),
+            (Get-Process -Id $PID).Path,
+            (Join-Path $env:CARR_PLAYBACK_QUEUE_AUDIO 'bin/ffmpeg.exe'),
+            (Join-Path $env:CARR_PLAYBACK_QUEUE_AUDIO 'bin/ffprobe.exe')) + $ocrPrograms) | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } | ForEach-Object { [System.IO.Path]::GetFullPath($_) } | Sort-Object -Unique
+          $runtimeBefore = @{}
+          foreach ($program in $programs) { $runtimeBefore[$program] = (Get-FileHash -LiteralPath $program -Algorithm SHA256).Hash.ToLowerInvariant() }
+          $rulePrefix = 'CARR-backup-access-offline-' + [guid]::NewGuid().ToString('N')
+          $ruleNames = @()
+          $profilesBefore = @(Get-NetFirewallProfile -ErrorAction Stop | Select-Object Name, Enabled)
+          try {
+            Set-NetFirewallProfile -Profile Domain, Private, Public -Enabled True -ErrorAction Stop
+            foreach ($program in $programs) {
+              $ruleName = $rulePrefix + '-' + $ruleNames.Count
+              $ruleNames += $ruleName
+              New-NetFirewallRule -Name $ruleName -DisplayName $ruleName -Direction Outbound -Action Block -Profile Any -Program $program -Enabled True -ErrorAction Stop | Out-Null
+            }
+            $profiles = @(Get-NetFirewallProfile -ErrorAction Stop)
+            if (@($profiles | Where-Object { $_.Enabled -ne 'True' }).Count -ne 0) { throw 'Offline native checks require enabled firewall profiles.' }
+            $active = @(Get-NetFirewallRule -PolicyStore ActiveStore -Name $ruleNames -ErrorAction Stop)
+            if ($active.Count -ne $programs.Count -or @($active | Where-Object { $_.Enabled -ne 'True' -or $_.Direction -ne 'Outbound' -or $_.Action -ne 'Block' }).Count -ne 0) { throw 'Offline runtime rules are not active.' }
+            $filters = @($active | Get-NetFirewallApplicationFilter -ErrorAction Stop | Select-Object -ExpandProperty Program | ForEach-Object { [System.IO.Path]::GetFullPath($_) })
+            if (@(Compare-Object ($programs | Sort-Object) ($filters | Sort-Object)).Count -ne 0) { throw 'Offline rules do not cover the selected runtime programs.' }
+            @{ status='PASS'; blocked_programs=$filters; runtime_before=$runtimeBefore; scope='tested runtime executables, not a whole-machine network claim' } | ConvertTo-Json -Depth 5 | Set-Content 'ci-backup-resources/native-runtime-firewall.json'
+            & $python -I -B -X utf8 -X faulthandler $scriptPath 2>&1 | Tee-Object 'ci-backup-resources/native-import-backup.txt'
+            $probeExit = $LASTEXITCODE
+            if ((Get-FileHash -LiteralPath $bindingHelper -Algorithm SHA256).Hash -ne $bindingHelperHash) { throw 'Native binding helper bytes changed.' }
+            if ((Get-FileHash -LiteralPath $bindingReceipt -Algorithm SHA256).Hash -ne $bindingReceiptHash) { throw 'Native pre-execution binding receipt changed.' }
+            & $python -I -B -X utf8 $bindingHelper after access
+            if ($LASTEXITCODE -ne 0) { throw 'Required installed native bindings changed during execution.' }
+            if ((Get-FileHash -LiteralPath $bindingReceipt -Algorithm SHA256).Hash -ne $bindingReceiptHash) { throw 'Native binding receipt changed during final verification.' }
+            $scriptAfter = (Get-FileHash -LiteralPath $scriptPath -Algorithm SHA256).Hash.ToLowerInvariant()
+            if ($scriptAfter -ne $scriptBefore) { throw 'Native access probe bytes changed during execution.' }
+            $ocrAfter = @(Get-ChildItem -LiteralPath $env:CARR_CI_OCR_DIR -Filter '*.exe' -Recurse -File -ErrorAction Stop | Select-Object -ExpandProperty FullName)
+            if (@(Compare-Object ($ocrPrograms | Sort-Object) ($ocrAfter | Sort-Object)).Count -ne 0) { throw 'Selected OCR executable set changed during execution.' }
+            foreach ($program in $programs) {
+              if ((Get-FileHash -LiteralPath $program -Algorithm SHA256).Hash.ToLowerInvariant() -ne $runtimeBefore[$program]) { throw 'A selected native executable changed during execution.' }
+            }
+            @{ script_sha256=$scriptAfter; selected_runtime_bytes_unchanged=$true; exit_code=$probeExit } | ConvertTo-Json | Set-Content 'ci-backup-resources/native-runtime-final.json'
+            if ($probeExit -ne 0) { throw ('Required native import/backup access failed with exit ' + $probeExit) }
+          } finally {
+            foreach ($ruleName in $ruleNames) { Remove-NetFirewallRule -Name $ruleName -ErrorAction SilentlyContinue }
+            foreach ($profile in $profilesBefore) { Set-NetFirewallProfile -Profile $profile.Name -Enabled $profile.Enabled -ErrorAction Stop }
+          }
+      - name: Require actual installed command palette and legal modal cleanup offline
+        if: "!cancelled() && runner.os == 'Windows' && steps.backup_install.outcome == 'success' && steps.backup_desktop.outcome == 'success' && steps.backup_audio.outcome == 'success' && steps.backup_ocr.outcome == 'success'"
+        timeout-minutes: 5
+        shell: pwsh
+        run: |
+          $scriptPath = 'scripts/windows_command_palette_smoke.py'
+          python -I -B -c "from pathlib import Path; p=Path('scripts/windows_command_palette_smoke.py'); compile(p.read_bytes(), str(p), 'exec')"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $scriptBefore = (Get-FileHash -LiteralPath $scriptPath -Algorithm SHA256).Hash.ToLowerInvariant()
+          $python = (Get-Command python.exe).Source
+          Remove-Item Env:PYTHONPATH, Env:PYTEST_ADDOPTS, Env:PYTEST_PLUGINS -ErrorAction SilentlyContinue
+          $bindingHelper = 'ci-backup-resources/native-bindings.py'
+          $bindingReceipt = 'ci-backup-resources/palette-bindings-before.json'
+          $bindingHelperHash = (Get-FileHash -LiteralPath $bindingHelper -Algorithm SHA256).Hash
+          & $python -I -B -X utf8 $bindingHelper before palette
+          if ($LASTEXITCODE -ne 0) { throw 'Required installed native bindings failed before execution.' }
+          $bindingReceiptHash = (Get-FileHash -LiteralPath $bindingReceipt -Algorithm SHA256).Hash
+          $basePython = (& $python -I -c "import sys; print(sys._base_executable)").Trim()
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $ocrPrograms = @(Get-ChildItem -LiteralPath $env:CARR_CI_OCR_DIR -Filter '*.exe' -Recurse -File -ErrorAction Stop | Select-Object -ExpandProperty FullName)
+          if ($ocrPrograms.Count -lt 1 -or $ocrPrograms.Count -gt 128) { throw 'Selected OCR executable inventory is outside its finite bound.' }
+          $programs = @(@($python, $basePython,
+            (Join-Path $env:SystemRoot 'System32/WindowsPowerShell/v1.0/powershell.exe'),
+            (Join-Path $env:SystemRoot 'SysWOW64/WindowsPowerShell/v1.0/powershell.exe'),
+            (Get-Process -Id $PID).Path,
+            (Join-Path $env:CARR_PLAYBACK_QUEUE_AUDIO 'bin/ffmpeg.exe'),
+            (Join-Path $env:CARR_PLAYBACK_QUEUE_AUDIO 'bin/ffprobe.exe')) + $ocrPrograms) | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } | ForEach-Object { [System.IO.Path]::GetFullPath($_) } | Sort-Object -Unique
+          $runtimeBefore = @{}
+          foreach ($program in $programs) { $runtimeBefore[$program] = (Get-FileHash -LiteralPath $program -Algorithm SHA256).Hash.ToLowerInvariant() }
+          $rulePrefix = 'CARR-backup-palette-offline-' + [guid]::NewGuid().ToString('N')
+          $ruleNames = @()
+          $profilesBefore = @(Get-NetFirewallProfile -ErrorAction Stop | Select-Object Name, Enabled)
+          try {
+            Set-NetFirewallProfile -Profile Domain, Private, Public -Enabled True -ErrorAction Stop
+            foreach ($program in $programs) {
+              $ruleName = $rulePrefix + '-' + $ruleNames.Count
+              $ruleNames += $ruleName
+              New-NetFirewallRule -Name $ruleName -DisplayName $ruleName -Direction Outbound -Action Block -Profile Any -Program $program -Enabled True -ErrorAction Stop | Out-Null
+            }
+            $profiles = @(Get-NetFirewallProfile -ErrorAction Stop)
+            if (@($profiles | Where-Object { $_.Enabled -ne 'True' }).Count -ne 0) { throw 'Offline native checks require enabled firewall profiles.' }
+            $active = @(Get-NetFirewallRule -PolicyStore ActiveStore -Name $ruleNames -ErrorAction Stop)
+            if ($active.Count -ne $programs.Count -or @($active | Where-Object { $_.Enabled -ne 'True' -or $_.Direction -ne 'Outbound' -or $_.Action -ne 'Block' }).Count -ne 0) { throw 'Offline runtime rules are not active.' }
+            $filters = @($active | Get-NetFirewallApplicationFilter -ErrorAction Stop | Select-Object -ExpandProperty Program | ForEach-Object { [System.IO.Path]::GetFullPath($_) })
+            if (@(Compare-Object ($programs | Sort-Object) ($filters | Sort-Object)).Count -ne 0) { throw 'Offline rules do not cover the selected runtime programs.' }
+            @{ status='PASS'; blocked_programs=$filters; runtime_before=$runtimeBefore; scope='tested runtime executables, not a whole-machine network claim' } | ConvertTo-Json -Depth 5 | Set-Content 'ci-backup-resources/palette-runtime-firewall.json'
+            & $python -I -B -X utf8 -X faulthandler $scriptPath 2>&1 | Tee-Object 'ci-backup-resources/native-command-palette.txt'
+            $probeExit = $LASTEXITCODE
+            if ((Get-FileHash -LiteralPath $bindingHelper -Algorithm SHA256).Hash -ne $bindingHelperHash) { throw 'Native binding helper bytes changed.' }
+            if ((Get-FileHash -LiteralPath $bindingReceipt -Algorithm SHA256).Hash -ne $bindingReceiptHash) { throw 'Native pre-execution binding receipt changed.' }
+            & $python -I -B -X utf8 $bindingHelper after palette
+            if ($LASTEXITCODE -ne 0) { throw 'Required installed native bindings changed during execution.' }
+            if ((Get-FileHash -LiteralPath $bindingReceipt -Algorithm SHA256).Hash -ne $bindingReceiptHash) { throw 'Native binding receipt changed during final verification.' }
+            $scriptAfter = (Get-FileHash -LiteralPath $scriptPath -Algorithm SHA256).Hash.ToLowerInvariant()
+            if ($scriptAfter -ne $scriptBefore) { throw 'Native command palette probe bytes changed during execution.' }
+            $ocrAfter = @(Get-ChildItem -LiteralPath $env:CARR_CI_OCR_DIR -Filter '*.exe' -Recurse -File -ErrorAction Stop | Select-Object -ExpandProperty FullName)
+            if (@(Compare-Object ($ocrPrograms | Sort-Object) ($ocrAfter | Sort-Object)).Count -ne 0) { throw 'Selected OCR executable set changed during execution.' }
+            foreach ($program in $programs) {
+              if ((Get-FileHash -LiteralPath $program -Algorithm SHA256).Hash.ToLowerInvariant() -ne $runtimeBefore[$program]) { throw 'A selected native executable changed during execution.' }
+            }
+            @{ script_sha256=$scriptAfter; selected_runtime_bytes_unchanged=$true; exit_code=$probeExit } | ConvertTo-Json | Set-Content 'ci-backup-resources/palette-runtime-final.json'
+            if ($probeExit -ne 0) { throw ('Required native command palette failed with exit ' + $probeExit) }
+          } finally {
+            foreach ($ruleName in $ruleNames) { Remove-NetFirewallRule -Name $ruleName -ErrorAction SilentlyContinue }
+            foreach ($profile in $profilesBefore) { Set-NetFirewallProfile -Profile $profile.Name -Enabled $profile.Enabled -ErrorAction Stop }
+          }
+      - name: Preserve exact identity
+        if: always()
+        run: |
+          mkdir -p ci-backup-resources
+          git rev-parse HEAD > ci-backup-resources/commit.txt
+          git rev-parse HEAD^{tree} > ci-backup-resources/tree.txt
+          python -m pip freeze > ci-backup-resources/packages.txt
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always()
+        with:
+          name: backup-access-native-${{ matrix.os }}-${{ github.sha }}
+          path: carr-library/ci-backup-resources
+          if-no-files-found: error

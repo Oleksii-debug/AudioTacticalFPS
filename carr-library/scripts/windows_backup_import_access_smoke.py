@@ -311,9 +311,33 @@ def _run_native():
         top.Raise()
         user32.SetForegroundWindow(top.GetHandle())
         control.SetFocus()
-        pump(lambda: inside(wx.Window.FindFocus(), control)
-             and user32.GetForegroundWindow() == top.GetHandle() and visible(control),
-             'A named native control did not receive visible foreground focus.')
+        try:
+            pump(lambda: inside(wx.Window.FindFocus(), control)
+                 and user32.GetForegroundWindow() == top.GetHandle() and visible(control),
+                 'A named native control did not receive visible foreground focus.')
+        except TimeoutError as error:
+            # Keep a bounded actual geometry/focus observation if this native
+            # prerequisite fails; never fabricate focus or a selected row.
+            if control and top:
+                current = wx.Window.FindFocus()
+                parents, peer = [], control.GetParent()
+                for _ in range(64):
+                    if peer is None:
+                        break
+                    if isinstance(peer, wx.ScrolledWindow):
+                        parents.append(dict(name=peer.GetName(),
+                            screen=tuple(peer.GetScreenRect()),
+                            client=tuple(peer.GetClientSize()),
+                            view=tuple(peer.GetViewStart())))
+                    peer = peer.GetParent()
+                detail = dict(control=control.GetName(), screen=tuple(control.GetScreenRect()),
+                    shown=control.IsShownOnScreen(), enabled=control.IsEnabled(),
+                    focused=current.GetName() if current else None,
+                    modal=top.IsModal() if isinstance(top, wx.Dialog) else None,
+                    foreground=int(user32.GetForegroundWindow()), expected=int(top.GetHandle()),
+                    viewports=parents)
+                raise TimeoutError(str(error) + ' ' + json.dumps(detail, ensure_ascii=True)) from error
+            raise
         check('visible native focus: ' + control.GetName(), visible(control))
 
     def key(control, code, *, modifiers=()):
@@ -769,6 +793,15 @@ def _run_native():
         selections = [index for index, row in enumerate(center.summaries)
                       if row['batch_id'] == third_queued['batch_id']]
         check('the actual saved third page can be selected once', len(selections) == 1)
+        yield waiting(lambda: center.IsModal() and center.IsShownOnScreen() and center.IsEnabled(),
+                      'The reopened Import Center has not entered its actual modal loop', 8)
+        settled = threading.Event()
+        # ScrolledPanel.SetupScrolling queues _SetupAfter(scrollToTop=True).
+        # The constructor also focuses batches. Wait for deferred setup, then
+        # make a real focus transition so its normal child-focus scrolling runs.
+        wx.CallAfter(settled.set)
+        yield waiting(settled.is_set, 'Deferred Import Center scrolling setup did not return', 8)
+        focus(named(center, 'Close Import Center'))
         key(center.batches, wx.WXK_HOME)
         yield waiting(lambda: center.batches.GetSelection() == 0, 'Native saved-page list first selection', 8)
         for index in range(selections[0]):
