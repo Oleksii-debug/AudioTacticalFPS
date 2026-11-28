@@ -25,6 +25,7 @@ JOINED = (" FROM active a JOIN revision r ON r.id=a.revision "
 PAGE_JOINED = (" FROM page p CROSS JOIN revision r ON r.id=p.revision "
                "CROSS JOIN active a ON a.workspace=r.workspace "
                "AND a.edition=r.edition AND a.revision=r.id ")
+PAGED_SOURCE = ("(SELECT p.*,r.workspace,r.edition,r.asset" + PAGE_JOINED + ")")
 OLD_COLUMNS = "id,workspace,edition,revision,asset,ordinal,physical,printed,verified,raw,digest"
 NEW_COLUMNS = "p.id,r.workspace,r.edition,p.revision,r.asset,p.ordinal,p.physical,p.printed,p.verified,p.raw,p.digest"
 
@@ -160,6 +161,44 @@ def sql_diagnosis(module, directory, state):
                  marks + ") ORDER BY edition,ordinal,id",
                  "SELECT " + NEW_COLUMNS + PAGE_JOINED + "WHERE a.workspace=? AND p.id IN (" +
                  marks + ") ORDER BY r.edition,p.ordinal,p.id", (workspace, *ids))
+            for scope_label, scope_editions in (
+                    ("catalog_candidates", editions),
+                    ("selected_editions", sorted({row[1] for row in rows[:100]}))):
+                scope_marks = ",".join("?" for _ in scope_editions)
+                where = (" WHERE workspace=? AND edition IN (" + scope_marks +
+                         ") AND id IN (" + marks + ") ORDER BY edition,ordinal,id")
+                pair(db, records, "paged_" + scope_label + "_" + label,
+                     "SELECT " + OLD_COLUMNS + " FROM active_page" + where,
+                     "SELECT " + OLD_COLUMNS + " FROM " + PAGED_SOURCE + where,
+                     (workspace, *scope_editions, *ids))
+        empty_where = (" WHERE workspace=? AND edition IN (" + placeholders +
+                       ") AND 0 ORDER BY edition,ordinal,id")
+        assert pair(db, records, "paged_empty_ids",
+                    "SELECT " + OLD_COLUMNS + " FROM active_page" + empty_where,
+                    "SELECT " + OLD_COLUMNS + " FROM " + PAGED_SOURCE + empty_where,
+                    (workspace, *editions)) == []
+        revision = db.execute("SELECT revision FROM active WHERE workspace=? AND edition=?",
+                              (workspace, editions[0])).fetchone()[0]
+        missing_revision = "missing-revision-for-readonly-diagnostic"
+        assert db.execute("SELECT 1 FROM revision WHERE id=?", (missing_revision,)).fetchone() is None
+        for label, checked_revision in (("current", revision), ("wrong_revision", missing_revision)):
+            found = pair(db, records, "original_scalar_" + label,
+                         "SELECT 1 FROM active_page WHERE workspace=? AND edition=? AND revision=? LIMIT 1",
+                         "SELECT 1" + JOINED +
+                         "WHERE a.workspace=? AND a.edition=? AND p.revision=? LIMIT 1",
+                         (workspace, editions[0], checked_revision))
+            assert found == ([(1,)] if label == "current" else [])
+            assert pair(db, records, "original_derived_scalar_" + label,
+                        "SELECT 1 FROM active_page WHERE workspace=? AND edition=? AND revision=? LIMIT 1",
+                        "SELECT 1 FROM " + PAGED_SOURCE +
+                        " WHERE workspace=? AND edition=? AND revision=? LIMIT 1",
+                        (workspace, editions[0], checked_revision)) == found
+        foreign_workspace = state["foreign_workspaces"][0]
+        assert pair(db, records, "original_derived_scalar_foreign_scope",
+                    "SELECT 1 FROM active_page WHERE workspace=? AND edition=? AND revision=? LIMIT 1",
+                    "SELECT 1 FROM " + PAGED_SOURCE +
+                    " WHERE workspace=? AND edition=? AND revision=? LIMIT 1",
+                    (foreign_workspace, editions[0], revision)) == []
         absent = "0" * 32
         assert db.execute("SELECT 1 FROM active WHERE workspace=? AND edition=?",
                           (workspace, absent)).fetchone() is None
@@ -289,10 +328,12 @@ def main():
     prior = module.read_json(directory / "benchmark" / "catalog-verification.json", maximum=module.MAX_STATE)
     assert prior["status"] == "CATALOG_VERIFIED" and prior["source_segments"] == state["segments"]
     sql = sql_diagnosis(module, directory, state)
-    ranked = rank_diagnosis(module, directory, state, generation)
+    # The completed prior round already attributed rank phases; this round is
+    # only the remaining exact paged fetch and current-original SQL comparison.
+    ranked = []
     originals = module.fixture.verify_originals(directory, generation)
     assert identity() == before
-    report = {"status":"DIAGNOSTIC_COMPLETE", "qualification":"READONLY_SQL_AND_ACTUAL_RANK_DIAGNOSIS",
+    report = {"status":"DIAGNOSTIC_COMPLETE", "qualification":"READONLY_PAGED_SOURCE_QUERY_DIAGNOSIS",
               "final_release":"NOT_QUALIFIED", "commit":current["commit"],"run":current["run"],
               "books":state["books"],"segments":state["segments"],"sql":sql,"ranked":ranked,
               "originals":originals,"product_sql_changed":False}
