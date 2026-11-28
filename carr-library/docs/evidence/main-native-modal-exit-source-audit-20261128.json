@@ -1,0 +1,584 @@
+{
+  "schema": "carr-main-native-modal-exit-source-audit/1",
+  "status": "SOURCE_REVIEW_ONLY",
+  "review_date_utc": "2026-11-28",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "source_commit": "d4ea02c32d88d803311c7ae0f454c17dee185c4c",
+  "source_tree": "cadf68003399b0b53ed865b6bfe588da3b1199c0",
+  "workflow": {
+    "path": ".github/workflows/carr-windows.yml",
+    "git_blob": "6a826f25a0a4724b5665b3cfbcf34ab97336971d",
+    "sha256": "70befd739fd9cac7467fcbfdaf57e0153404d9fd7e843e5edab707aa6c3581fd"
+  },
+  "scope": {
+    "actual_main_steps_inclusive": [
+      25,
+      43
+    ],
+    "step_count": 19,
+    "direct_probe_count": 20,
+    "direct_helper_count": 1,
+    "why_twenty_probes": "Actual step 31 invokes both windows_v3_reading_smoke.py and windows_ocr_languages_smoke.py.",
+    "excluded": "No other probe, product service or release requirement was audited."
+  },
+  "conclusion": {
+    "second_basic_style_success_path_match_found": false,
+    "immediate_failure_or_deadline_matches": 4,
+    "related_queued_failure_only_match": 1,
+    "observed_additional_runtime_failures": 0,
+    "observed_product_bugs_claimed": 0,
+    "new_release_gate": false,
+    "action": "Leave these probes unchanged. Their existing workflow time bounds and unchanged verdict checks prevent a stuck run from qualifying. Actual full-main execution and any resulting trace determine whether a later narrow correction is needed."
+  },
+  "probes": [
+    {
+      "main_step": 25,
+      "step_name": "Exercise installed Advanced translation with real native controls and synthetic provider",
+      "workflow_timeout_minutes": 4,
+      "path": "carr-library/scripts/windows_translation_v3_smoke.py",
+      "git_blob": "59d7b4361d2704c657d6e3d7f45e521b3d9b36dd",
+      "sha256": "b4322ba881f67e6938f89177386a018e093c447776ab7b20c44cd8805321fd1a",
+      "source_finding": null,
+      "disposition": "NO_ADDITIONAL_MATCH",
+      "note": "Explicit show_owned_modal finally posts the outer exit after show_translation returns."
+    },
+    {
+      "main_step": 26,
+      "step_name": "Exercise installed search continuation with actual native keys and retained sources",
+      "workflow_timeout_minutes": 4,
+      "path": "carr-library/tests/ui/probe_search_continuation_native.py",
+      "git_blob": "a71a2f0e553a222817d485c8602f1bd85abba6ad",
+      "sha256": "d3a32334721fbfacc7d7d0b192c8406d52813bf731d909343234be80c7b1d11a",
+      "source_finding": "search-continuation-failure",
+      "disposition": "FAILURE_ONLY_SOURCE_RISK",
+      "note": "See exact source-only finding."
+    },
+    {
+      "main_step": 27,
+      "step_name": "Exercise installed signed-client controls with a synthetic authority",
+      "workflow_timeout_minutes": 3,
+      "path": "carr-library/tests/ui/native_trust_status_smoke.py",
+      "git_blob": "08c35c4ae5618a17dca08f782fb837dad1f4b1e9",
+      "sha256": "02b42f1f69f048997a186fad6a1ae9506969202d3326449744ac0968b72c7ab5",
+      "source_finding": null,
+      "disposition": "NO_ADDITIONAL_MATCH",
+      "note": "Reviewed scenario uses nonmodal Show calls; no nested ShowModal in its outer-loop control path."
+    },
+    {
+      "main_step": 28,
+      "step_name": "Record actual Office qualification or explicit Word unavailability",
+      "workflow_timeout_minutes": 3,
+      "path": "carr-library/scripts/windows_word_citations_smoke.py",
+      "git_blob": "2a4d304b1c811c4140571d7435e07372d859bfa4",
+      "sha256": "8b15da0b15657f72f3d5096a68877b3bca40ca5f9b1e8443d4d535e5ae995acb",
+      "source_finding": null,
+      "disposition": "NO_ENCLOSING_APP_MAINLOOP_EXIT_PAIR",
+      "note": "Direct modal invocation, Yield-driven inspection, or non-wx operation; no second Basic-style nested-loop exit seam in this probe."
+    },
+    {
+      "main_step": 29,
+      "step_name": "Exercise installed language evidence and explicit native voice refresh",
+      "workflow_timeout_minutes": 3,
+      "path": "carr-library/scripts/windows_language_matrix_smoke.py",
+      "git_blob": "77a34d7b94386f6c262a917a648442adaaf94e41",
+      "sha256": "45a1aca03a4dfe151af634336c15faa1039782dc15938f2597aee12729bbf611",
+      "source_finding": null,
+      "disposition": "NO_ENCLOSING_APP_MAINLOOP_EXIT_PAIR",
+      "note": "Direct modal invocation, Yield-driven inspection, or non-wx operation; no second Basic-style nested-loop exit seam in this probe."
+    },
+    {
+      "main_step": 30,
+      "step_name": "Exercise native Import Center and durable batch workflow",
+      "workflow_timeout_minutes": 3,
+      "path": "carr-library/tests/ui/native_import_center_smoke.py",
+      "git_blob": "a74e2ab5dc844d36bbf99085c76a1a03ec9e29c7",
+      "sha256": "1b08b1b0b02df57746204b1edee4730e616a660b44a7796cb089b77608400c98",
+      "source_finding": null,
+      "disposition": "NO_ENCLOSING_APP_MAINLOOP_EXIT_PAIR",
+      "note": "Direct modal invocation, Yield-driven inspection, or non-wx operation; no second Basic-style nested-loop exit seam in this probe."
+    },
+    {
+      "main_step": 31,
+      "step_name": "Exercise native reading copies, save commands and keyboard preferences",
+      "workflow_timeout_minutes": 3,
+      "path": "carr-library/scripts/windows_v3_reading_smoke.py",
+      "git_blob": "2844dcb6f87e871bc77a07b22ce7a9b5743c3a0e",
+      "sha256": "d1ce660eb8c1a78d4119c953f08aea1ed9ab457d2fb9e1dce81deee869fef490",
+      "source_finding": null,
+      "disposition": "NO_ENCLOSING_APP_MAINLOOP_EXIT_PAIR",
+      "note": "Direct modal invocation, Yield-driven inspection, or non-wx operation; no second Basic-style nested-loop exit seam in this probe."
+    },
+    {
+      "main_step": 31,
+      "step_name": "Exercise native reading copies, save commands and keyboard preferences",
+      "workflow_timeout_minutes": 3,
+      "path": "carr-library/scripts/windows_ocr_languages_smoke.py",
+      "git_blob": "d71618bdc69568e06444a9a1030cfac0cdf7c0a7",
+      "sha256": "c4a29611098d0e0592db7514ee54cbad9d83788c69f698362c1a5db555c32717",
+      "source_finding": null,
+      "disposition": "NO_ENCLOSING_APP_MAINLOOP_EXIT_PAIR",
+      "note": "Direct modal invocation, Yield-driven inspection, or non-wx operation; no second Basic-style nested-loop exit seam in this probe."
+    },
+    {
+      "main_step": 32,
+      "step_name": "Exercise installed document formats and native accessible reading",
+      "workflow_timeout_minutes": 3,
+      "path": "carr-library/tests/ui/native_document_formats_smoke.py",
+      "git_blob": "6e997f37ce6dc8b25a47171bca73f21e2e1ddf17",
+      "sha256": "a24f415796b7d1a6d971fb26cae948df6a7f1332939a22737d68ca2b255e2bce",
+      "source_finding": null,
+      "disposition": "NO_ENCLOSING_APP_MAINLOOP_EXIT_PAIR",
+      "note": "Direct modal invocation, Yield-driven inspection, or non-wx operation; no second Basic-style nested-loop exit seam in this probe."
+    },
+    {
+      "main_step": 33,
+      "step_name": "Exercise the installed native OCR catalogue and shared model manager",
+      "workflow_timeout_minutes": 3,
+      "path": "carr-library/scripts/windows_ocr_models_smoke.py",
+      "git_blob": "32e5b608fc29b88b267bff63b9d7da2d4f1e1921",
+      "sha256": "85a3fbd8f3c0541931c54d9e56ae816b3ef466def7b934a41abdf0ce190243ce",
+      "source_finding": null,
+      "disposition": "NO_ENCLOSING_APP_MAINLOOP_EXIT_PAIR",
+      "note": "Direct modal invocation, Yield-driven inspection, or non-wx operation; no second Basic-style nested-loop exit seam in this probe."
+    },
+    {
+      "main_step": 34,
+      "step_name": "Exercise native wx startup and source-opening events",
+      "workflow_timeout_minutes": 3,
+      "path": "carr-library/tests/ui/probe_source_open_native.py",
+      "git_blob": "1035939697c06967cbc0de6fce58c10bb369192f",
+      "sha256": "2f615c3bde959e2edf85ba90f95f407c0df6b83488db64b213aaaabf793df115",
+      "source_finding": null,
+      "disposition": "NO_ADDITIONAL_MATCH",
+      "note": "The directly loaded federated helper invokes completed/failed only after native.show returns; see the bound helper."
+    },
+    {
+      "main_step": 35,
+      "step_name": "Exercise native saved-evidence page selection and note recovery",
+      "workflow_timeout_minutes": 3,
+      "path": "carr-library/tests/ui/native_evidence_pages_smoke.py",
+      "git_blob": "b27e9998350a053f56a7dd19e5c43c855bb78240",
+      "sha256": "25577cbca731418c54499137004d169a2c39d0fc9d8179ed59f677077a986ca4",
+      "source_finding": null,
+      "disposition": "NO_ENCLOSING_APP_MAINLOOP_EXIT_PAIR",
+      "note": "Direct modal invocation, Yield-driven inspection, or non-wx operation; no second Basic-style nested-loop exit seam in this probe."
+    },
+    {
+      "main_step": 36,
+      "step_name": "Exercise native reference metadata review and historical outline export",
+      "workflow_timeout_minutes": 3,
+      "path": "carr-library/tests/ui/native_academic_smoke.py",
+      "git_blob": "36a5eedab29b80a8c59ceaa93709c1802ef7288f",
+      "sha256": "e75def6ed73fb5f2c113abae482a25873f5a6cf69128c448209b014dc10054ef",
+      "source_finding": "academic-review-timeout",
+      "disposition": "FAILURE_ONLY_SOURCE_RISK",
+      "note": "See exact source-only finding."
+    },
+    {
+      "main_step": 37,
+      "step_name": "Exercise native academic comparison, bibliography and catalog review",
+      "workflow_timeout_minutes": 3,
+      "path": "carr-library/tests/ui/native_academic_comparison_smoke.py",
+      "git_blob": "b20f2962c4b2807eb761474f8da6900413cda538",
+      "sha256": "05282939acf95ef49f51f4075ec49a895999c3b0d563d1bba413e33a0554dca6",
+      "source_finding": "academic-comparison-timeout",
+      "disposition": "FAILURE_ONLY_SOURCE_RISK",
+      "note": "See exact source-only finding."
+    },
+    {
+      "main_step": 38,
+      "step_name": "Exercise native research-notebook search and keyboard actions",
+      "workflow_timeout_minutes": 3,
+      "path": "carr-library/tests/ui/native_notebook_search_smoke.py",
+      "git_blob": "8a8830046719410492a88813f720a3673dd7bac8",
+      "sha256": "aebe3062ba48b856077af649721ded766513bbd28879051d9cf004a2caf3e91c",
+      "source_finding": "notebook-search-timeout",
+      "disposition": "FAILURE_ONLY_SOURCE_RISK",
+      "note": "See exact source-only finding."
+    },
+    {
+      "main_step": 39,
+      "step_name": "Exercise native EPUB section navigation and image descriptions",
+      "workflow_timeout_minutes": 3,
+      "path": "carr-library/tests/ui/native_ebook_reader_smoke.py",
+      "git_blob": "bfd9ac8f900ee6ce939600d689546797d0e6433e",
+      "sha256": "9595080202a4757a9c34735bd1390387ed84f6108af94e5a87cb5044aed0f25e",
+      "source_finding": null,
+      "disposition": "NO_ENCLOSING_APP_MAINLOOP_EXIT_PAIR",
+      "note": "Direct modal invocation, Yield-driven inspection, or non-wx operation; no second Basic-style nested-loop exit seam in this probe."
+    },
+    {
+      "main_step": 40,
+      "step_name": "Exercise native library reports and academic exports",
+      "workflow_timeout_minutes": 3,
+      "path": "carr-library/tests/ui/native_catalog_tools_smoke.py",
+      "git_blob": "53d29f8b4816238456c1c6375b79f193840d7063",
+      "sha256": "4e8f7d8289adc17982f77b25d8c604fcfece83c508a0d7b5d10685fbd019eec8",
+      "source_finding": null,
+      "disposition": "NO_ENCLOSING_APP_MAINLOOP_EXIT_PAIR",
+      "note": "Direct modal invocation, Yield-driven inspection, or non-wx operation; no second Basic-style nested-loop exit seam in this probe."
+    },
+    {
+      "main_step": 41,
+      "step_name": "Exercise native EPUB contents and exact chapter search",
+      "workflow_timeout_minutes": 3,
+      "path": "carr-library/tests/ui/probe_ebook_native.py",
+      "git_blob": "86ee349e64a0693fe63475246ca18bdded01d659",
+      "sha256": "3b1efe947eb7d1e25fcb8b82de93130379b8f6cd30040aeb3a8fa922c15c242e",
+      "source_finding": null,
+      "disposition": "NO_ENCLOSING_APP_MAINLOOP_EXIT_PAIR",
+      "note": "Direct modal invocation, Yield-driven inspection, or non-wx operation; no second Basic-style nested-loop exit seam in this probe."
+    },
+    {
+      "main_step": 42,
+      "step_name": "Exercise native full-source reader and page bookmarks",
+      "workflow_timeout_minutes": 3,
+      "path": "carr-library/tests/ui/native_reading_desk_smoke.py",
+      "git_blob": "91dcc1b3cb8660349618c5e4162e407332e7f3b5",
+      "sha256": "e08eeea8bc9f4319a253d559eec7d4bc453f0b86f56c49a6aa6c706281910cb6",
+      "source_finding": null,
+      "disposition": "NO_ENCLOSING_APP_MAINLOOP_EXIT_PAIR",
+      "note": "Direct modal invocation, Yield-driven inspection, or non-wx operation; no second Basic-style nested-loop exit seam in this probe."
+    },
+    {
+      "main_step": 43,
+      "step_name": "Exercise native catalog reports and source comparison export",
+      "workflow_timeout_minutes": 3,
+      "path": "carr-library/tests/ui/probe_catalog_insights_native.py",
+      "git_blob": "c96bfacf9f5d3bf161acb13a204c56daf3c58cfd",
+      "sha256": "5dea9807b3d1bb10b84caa1eda0299c5122524150ae94a5cc0eb8e77f0884b86",
+      "source_finding": "catalog-insights-queued-failure-exit",
+      "disposition": "FAILURE_ONLY_SOURCE_RISK",
+      "note": "See exact source-only finding."
+    }
+  ],
+  "direct_helper": {
+    "path": "carr-library/tests/ui/federated_native_smoke.py",
+    "git_blob": "4240ebe61fa763de0fbbdd1648643833e3054bf6",
+    "sha256": "5c3c9be12668ffc614339ead23c52213a054e9caf1fc5d2edbcbe9269e9a620e",
+    "caller": "carr-library/tests/ui/probe_source_open_native.py",
+    "locations": {
+      "owned_modal_return": [
+        245,
+        255
+      ],
+      "deepest_child_first_cleanup": [
+        16,
+        35,
+        68,
+        77
+      ]
+    },
+    "disposition": "completed/failed callbacks occur after native.show has returned; the helper does not request an inner app.ExitMainLoop."
+  },
+  "findings": [
+    {
+      "id": "search-continuation-failure",
+      "step": 26,
+      "path": "carr-library/tests/ui/probe_search_continuation_native.py",
+      "binding": "a71a2f0e553a222817d485c8602f1bd85abba6ad",
+      "locations": {
+        "inner_abort": [
+          72,
+          77
+        ],
+        "returned_modal_failure_branch": [
+          226,
+          232
+        ],
+        "guard_suppression": [
+          98,
+          100
+        ],
+        "watchdog": [
+          295,
+          296
+        ]
+      },
+      "mechanism": "abort ends the active modal then immediately calls gui.ExitMainLoop. After form.show returns, only the no-failure branch exits the outer loop. guarded suppresses later callbacks, including the watchdog, once failures is set.",
+      "finding": "A failure during the Search Center modal has no guaranteed outer-loop exit after unwind.",
+      "evidence_status": "SOURCE_INFERENCE_NOT_EXECUTED",
+      "success_path_failure_observed": false
+    },
+    {
+      "id": "academic-review-timeout",
+      "step": 36,
+      "path": "carr-library/tests/ui/native_academic_smoke.py",
+      "binding": "36a5eedab29b80a8c59ceaa93709c1802ef7288f",
+      "locations": {
+        "inner_abort": [
+          50,
+          55
+        ],
+        "modal_returns": [
+          167,
+          173,
+          199,
+          205
+        ],
+        "watchdog": [
+          223,
+          226
+        ]
+      },
+      "mechanism": "abort ends the active dialog then immediately calls gui.ExitMainLoop. Both ShowModal callers return on failures. An earlier assertion can reach a later watchdog, but a watchdog firing while the modal is active has no subsequent guaranteed outer exit.",
+      "finding": "Source-only deadline/failure cleanup risk; normal success exits after the modal returns.",
+      "evidence_status": "SOURCE_INFERENCE_NOT_EXECUTED",
+      "success_path_failure_observed": false
+    },
+    {
+      "id": "academic-comparison-timeout",
+      "step": 37,
+      "path": "carr-library/tests/ui/native_academic_comparison_smoke.py",
+      "binding": "b20f2962c4b2807eb761474f8da6900413cda538",
+      "locations": {
+        "inner_fail": [
+          48,
+          53
+        ],
+        "guard_suppression": [
+          55,
+          57
+        ],
+        "ris_modal_return": [
+          304,
+          311
+        ],
+        "watchdog": [
+          363,
+          366
+        ]
+      },
+      "mechanism": "fail ends modal dialogs then immediately calls gui.ExitMainLoop. Later guarded callbacks stop on failures, and the 60-second watchdog invokes the same fail path. The direct RIS ShowModal caller returns on failure.",
+      "finding": "Source-only deadline/failure cleanup risk; no second Basic-style success-path inner exit was found.",
+      "evidence_status": "SOURCE_INFERENCE_NOT_EXECUTED",
+      "success_path_failure_observed": false
+    },
+    {
+      "id": "notebook-search-timeout",
+      "step": 38,
+      "path": "carr-library/tests/ui/native_notebook_search_smoke.py",
+      "binding": "8a8830046719410492a88813f720a3673dd7bac8",
+      "locations": {
+        "inner_abort": [
+          40,
+          43
+        ],
+        "modal_returns": [
+          196,
+          200,
+          223,
+          229,
+          248,
+          253
+        ],
+        "watchdog": [
+          283,
+          290
+        ]
+      },
+      "mechanism": "abort ends the active dialog then immediately calls gui.ExitMainLoop. Each modal-return path continues or exits only when failures is empty. The 70-second watchdog invokes this same abort.",
+      "finding": "Source-only deadline/failure cleanup risk; successful completion exits after search_saved_research returns.",
+      "evidence_status": "SOURCE_INFERENCE_NOT_EXECUTED",
+      "success_path_failure_observed": false
+    },
+    {
+      "id": "catalog-insights-queued-failure-exit",
+      "step": 43,
+      "path": "carr-library/tests/ui/probe_catalog_insights_native.py",
+      "binding": "c96bfacf9f5d3bf161acb13a204c56daf3c58cfd",
+      "locations": {
+        "inner_stop": [
+          37,
+          44
+        ],
+        "watchdog": [
+          266,
+          269
+        ]
+      },
+      "mechanism": "stop ends modal dialogs and posts CallAfter(gui.ExitMainLoop) while still in the modal callback. The queued exit is not explicitly owned by the return of the modal invocation.",
+      "finding": "Related queued failure-only risk. This source review does not prove that the queued callback executes before unwind or that this probe hangs.",
+      "evidence_status": "SOURCE_INFERENCE_NOT_EXECUTED",
+      "success_path_failure_observed": false
+    }
+  ],
+  "actual_prior_main": {
+    "run_id": 46109011419,
+    "job_id": 140868122250,
+    "source_commit": "424cc456992c69c1ee945bc4d5ab73bc21e4e7b8",
+    "run_attempt": 1,
+    "job_status": "completed",
+    "job_conclusion": "failure",
+    "steps": [
+      {
+        "number": 25,
+        "name": "Exercise installed Advanced translation with real native controls and synthetic provider",
+        "status": "completed",
+        "conclusion": "skipped",
+        "started_at": "2026-11-28T06:13:59Z",
+        "completed_at": "2026-11-28T06:13:59Z"
+      },
+      {
+        "number": 26,
+        "name": "Exercise installed search continuation with actual native keys and retained sources",
+        "status": "completed",
+        "conclusion": "skipped",
+        "started_at": "2026-11-28T06:13:59Z",
+        "completed_at": "2026-11-28T06:13:59Z"
+      },
+      {
+        "number": 27,
+        "name": "Exercise installed signed-client controls with a synthetic authority",
+        "status": "completed",
+        "conclusion": "skipped",
+        "started_at": "2026-11-28T06:13:59Z",
+        "completed_at": "2026-11-28T06:13:59Z"
+      },
+      {
+        "number": 28,
+        "name": "Record actual Office qualification or explicit Word unavailability",
+        "status": "completed",
+        "conclusion": "skipped",
+        "started_at": "2026-11-28T06:13:59Z",
+        "completed_at": "2026-11-28T06:13:59Z"
+      },
+      {
+        "number": 29,
+        "name": "Exercise installed language evidence and explicit native voice refresh",
+        "status": "completed",
+        "conclusion": "skipped",
+        "started_at": "2026-11-28T06:13:59Z",
+        "completed_at": "2026-11-28T06:13:59Z"
+      },
+      {
+        "number": 30,
+        "name": "Exercise native Import Center and durable batch workflow",
+        "status": "completed",
+        "conclusion": "skipped",
+        "started_at": "2026-11-28T06:13:59Z",
+        "completed_at": "2026-11-28T06:13:59Z"
+      },
+      {
+        "number": 31,
+        "name": "Exercise native reading copies, save commands and keyboard preferences",
+        "status": "completed",
+        "conclusion": "skipped",
+        "started_at": "2026-11-28T06:13:59Z",
+        "completed_at": "2026-11-28T06:13:59Z"
+      },
+      {
+        "number": 32,
+        "name": "Exercise installed document formats and native accessible reading",
+        "status": "completed",
+        "conclusion": "skipped",
+        "started_at": "2026-11-28T06:13:59Z",
+        "completed_at": "2026-11-28T06:13:59Z"
+      },
+      {
+        "number": 33,
+        "name": "Exercise the installed native OCR catalogue and shared model manager",
+        "status": "completed",
+        "conclusion": "skipped",
+        "started_at": "2026-11-28T06:13:59Z",
+        "completed_at": "2026-11-28T06:13:59Z"
+      },
+      {
+        "number": 34,
+        "name": "Exercise native wx startup and source-opening events",
+        "status": "completed",
+        "conclusion": "skipped",
+        "started_at": "2026-11-28T06:13:59Z",
+        "completed_at": "2026-11-28T06:13:59Z"
+      },
+      {
+        "number": 35,
+        "name": "Exercise native saved-evidence page selection and note recovery",
+        "status": "completed",
+        "conclusion": "skipped",
+        "started_at": "2026-11-28T06:13:59Z",
+        "completed_at": "2026-11-28T06:13:59Z"
+      },
+      {
+        "number": 36,
+        "name": "Exercise native reference metadata review and historical outline export",
+        "status": "completed",
+        "conclusion": "skipped",
+        "started_at": "2026-11-28T06:13:59Z",
+        "completed_at": "2026-11-28T06:13:59Z"
+      },
+      {
+        "number": 37,
+        "name": "Exercise native academic comparison, bibliography and catalog review",
+        "status": "completed",
+        "conclusion": "skipped",
+        "started_at": "2026-11-28T06:13:59Z",
+        "completed_at": "2026-11-28T06:13:59Z"
+      },
+      {
+        "number": 38,
+        "name": "Exercise native research-notebook search and keyboard actions",
+        "status": "completed",
+        "conclusion": "skipped",
+        "started_at": "2026-11-28T06:13:59Z",
+        "completed_at": "2026-11-28T06:13:59Z"
+      },
+      {
+        "number": 39,
+        "name": "Exercise native EPUB section navigation and image descriptions",
+        "status": "completed",
+        "conclusion": "skipped",
+        "started_at": "2026-11-28T06:13:59Z",
+        "completed_at": "2026-11-28T06:13:59Z"
+      },
+      {
+        "number": 40,
+        "name": "Exercise native library reports and academic exports",
+        "status": "completed",
+        "conclusion": "skipped",
+        "started_at": "2026-11-28T06:13:59Z",
+        "completed_at": "2026-11-28T06:13:59Z"
+      },
+      {
+        "number": 41,
+        "name": "Exercise native EPUB contents and exact chapter search",
+        "status": "completed",
+        "conclusion": "skipped",
+        "started_at": "2026-11-28T06:13:59Z",
+        "completed_at": "2026-11-28T06:13:59Z"
+      },
+      {
+        "number": 42,
+        "name": "Exercise native full-source reader and page bookmarks",
+        "status": "completed",
+        "conclusion": "skipped",
+        "started_at": "2026-11-28T06:13:59Z",
+        "completed_at": "2026-11-28T06:13:59Z"
+      },
+      {
+        "number": 43,
+        "name": "Exercise native catalog reports and source comparison export",
+        "status": "completed",
+        "conclusion": "skipped",
+        "started_at": "2026-11-28T06:13:59Z",
+        "completed_at": "2026-11-28T06:13:59Z"
+      }
+    ]
+  },
+  "actual_basic_timeout_reference": {
+    "evidence_commit": "a0fd6348833f2661e7f6dee39a39d26dc24b49a2",
+    "path": "carr-library/docs/evidence/basic-translation-focused-timeout-d4ea-20261128.json",
+    "run_id": 46117284580,
+    "job_id": 140893828731,
+    "conclusion": "FAIL",
+    "cause": "The observed output silence alone does not establish the blocked phase or cause."
+  },
+  "limits": [
+    "No probes, application files, tests, workflows, counters, time bounds or refs were changed.",
+    "No local executor, Windows execution, new test, diagnostic run, archive decoding or workflow launch was used for this source audit.",
+    "All twenty direct probe blobs and the single helper were independently read and matched to the immutable d4ea tree.",
+    "The current 424cc main skipped all selected steps after Basic failed. Separate auxiliary outcomes use other native probe files and are not transferred as coverage of these failure paths.",
+    "Historical native results remain attached to their original source heads; this audit neither invalidates nor transfers them.",
+    "Existing per-step workflow bounds remain three or four minutes. A stuck or failed step cannot yield accepted PASS; the audit introduces no new release gate."
+  ]
+}
