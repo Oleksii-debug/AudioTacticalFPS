@@ -37,6 +37,7 @@ SOURCE_BINDINGS = {
     "reader/reading_desk.py": "43ae80bab2fcfa73dc8a64d80fb11ffda7a0a3650b861f543cb2326558d19706"
 }
 CI_CHECK_SHA256 = "70281591d047dbe5f464db95457c35604b988b2aa0994e0706e4b317385a6ca6"
+SQLITE_OBSERVER_SHA256 = "1ee483e2c79fa2f71c271136a2a9d329485f8672f241aee5409e8ce7a92aaeb5"
 MAX_BOOKS = 1000
 SEGMENTS = 40
 CHILD_SECONDS = 900
@@ -556,8 +557,76 @@ def profile_call(directory, source, label, call_identity, function, *args, **kwa
     return result, save("returned")
 
 
+
+def sqlite_profile_call(directory, source, label, call_identity, function, *args, **kwargs):
+    """Opt-in native SQL attribution; never nested with the cProfile owner."""
+    from carr_library.application import _CatalogPublisher
+    from carr_library.storage.revisions import Storage
+
+    require(label in PROFILE_LABELS and label.startswith("import-"),
+            "Native SQL observation is limited to the three selected imports.")
+    require(type(call_identity) is dict and len(canonical(call_identity)) <= 64 * 1024,
+            "Profile argument identity exceeds its bound.")
+    helper_path = Path(__file__).with_name("sqlite_call_observer.py")
+    with helper_path.open("rb") as stream:
+        helper_bytes = stream.read(MAX_REPORT_BYTES + 1)
+    require(len(helper_bytes) <= MAX_REPORT_BYTES
+            and sha256(helper_bytes).hexdigest() == SQLITE_OBSERVER_SHA256,
+            "The reviewed native SQLite observer changed.")
+    namespace = {"__name__": "_carr_growth_sqlite_observer", "__file__": str(helper_path)}
+    exec(compile(helper_bytes, str(helper_path), "exec"), namespace)
+    package = Path(source["package_root"]).resolve()
+    expected = {package / relative: SOURCE_BINDINGS[relative]
+                for relative in ("storage/revisions.py", "application.py")}
+    observer = namespace["NativeSQLiteObserver"](
+        (Storage._check, Storage._check_locators), expected,
+        context_functions=(Storage.stage_revision, Storage.check, _CatalogPublisher.publish_revision))
+    path = Path(directory) / ("profile-" + label + ".json")
+    require(not path.exists(), "Profile receipt already exists; do not repeat the operation.")
+    started = perf_counter()
+
+    def save(outcome, error=None):
+        elapsed = perf_counter() - started
+        observation = observer.record()
+        record = dict(schema="carr-library-selected-native-sqlite-profile/1",
+            source=source, sample=label,
+            call_identity_sha256=sha256(canonical(call_identity)).hexdigest(),
+            callable=dict(module=function.__module__, name=function.__qualname__),
+            outcome=outcome, wall_seconds_with_observation=elapsed,
+            observer_source_sha256=SQLITE_OBSERVER_SHA256,
+            native_sqlite=observation,
+            scope="Opt-in native SQL intervals for this actual import. Existing cProfile is not "
+                  "running concurrently. Public-call identity is hashed; no SQL binding/locals "
+                  "are read. Other threads and implicit cursor iteration are excluded. "
+                  "Times include diagnostic overhead and are not uninstrumented query costs.")
+        if error is not None:
+            record["exception_type"] = type(error).__name__
+        digest = write_record(path, record)
+        receipt = dict(path=path.name, sha256=digest, bytes=path.stat().st_size,
+                       sample=label, outcome=outcome)
+        print(json.dumps(dict(event="pilot-native-sqlite-profile", **receipt,
+                              observation_status=observation["status"]), ensure_ascii=True), flush=True)
+        return receipt, observation
+
+    try:
+        result = observer.run(function, *args, **kwargs)
+    except BaseException as exc:
+        try:
+            save("exception", exc)
+        except Exception as receipt_error:
+            print(json.dumps(dict(event="pilot-native-sqlite-profile-failed", sample=label,
+                receipt_error=type(receipt_error).__name__,
+                original_error=type(exc).__name__), ensure_ascii=True), flush=True)
+        raise
+    receipt, observation = save("returned")
+    require(observation["status"] == "COMPLETE",
+            "Native SQLite observation failed; the returned operation is not profile evidence.")
+    return result, receipt
+
 def run_case(directory, books, proof_path, tested_commit, *, segments=SEGMENTS,
-             seconds=CHILD_SECONDS, require_installed=False, temporary_root=None):
+             seconds=CHILD_SECONDS, require_installed=False, temporary_root=None,
+             profile_mode="cprofile"):
+    require(profile_mode in ("cprofile", "sqlite"), "Unknown call attribution mode.")
     require(type(books) is int and 1 <= books <= MAX_BOOKS, "Invalid book count.")
     require(type(segments) is int and 2 <= segments <= SEGMENTS, "Invalid segment count.")
     require(type(seconds) in (int, float) and math.isfinite(seconds) and 0 < seconds <= CHILD_SECONDS,
@@ -583,12 +652,16 @@ def run_case(directory, books, proof_path, tested_commit, *, segments=SEGMENTS,
         enabled=books == 1000, selected_samples=sorted(PROFILE_LABELS) if books == 1000 else [],
         receipts=[], timing_scope="Selected calls and the case aggregate are instrumentation-affected; "
         "no uninstrumented speed or SQL-only causality claim.")
+    if profile_mode == "sqlite":
+        report["call_attribution"]["mode"] = "sqlite"
 
     def observed(label, describe, function, *args, **kwargs):
         if books != 1000 or label not in PROFILE_LABELS:
             return function(*args, **kwargs)
-        result, receipt = profile_call(directory, identity, label, describe(),
-                                       function, *args, **kwargs)
+        selected_profiler = (sqlite_profile_call if profile_mode == "sqlite"
+                             and label.startswith("import-") else profile_call)
+        result, receipt = selected_profiler(directory, identity, label, describe(),
+                                            function, *args, **kwargs)
         report["call_attribution"]["receipts"].append(receipt)
         return result
 
@@ -869,11 +942,14 @@ def cleanup_owner():
     return module._terminate_process_tree
 
 
-def validate_profile_receipts(directory, report, identity):
+def validate_profile_receipts(directory, report, identity, *, profile_mode="cprofile"):
     """A completed instrumented case must retain all four exact sample receipts."""
+    require(profile_mode in ("cprofile", "sqlite"), "Unknown call attribution mode.")
     attribution = report.get("call_attribution")
     require(type(attribution) is dict and attribution.get("enabled") is True,
             "Completed instrumented case omitted its profile scope.")
+    require(attribution.get("mode", "cprofile") == profile_mode,
+            "Completed profile mode differs from the selected observation.")
     receipts = attribution.get("receipts")
     require(type(receipts) is list and len(receipts) == len(PROFILE_LABELS)
             and {row.get("sample") for row in receipts if type(row) is dict} == PROFILE_LABELS,
@@ -884,14 +960,25 @@ def validate_profile_receipts(directory, report, identity):
                 "Completed profile receipt has an invalid path or outcome.")
         path = Path(directory) / row["path"]
         profile, digest = read_record(path)
+        native_sqlite = profile_mode == "sqlite" and row["sample"].startswith("import-")
+        expected_schema = ("carr-library-selected-native-sqlite-profile/1" if native_sqlite
+                           else "carr-library-selected-call-profile/1")
+        if native_sqlite:
+            require(profile.get("observer_source_sha256") == SQLITE_OBSERVER_SHA256
+                    and profile.get("native_sqlite", {}).get("status") == "COMPLETE"
+                    and profile.get("native_sqlite", {}).get("errors") == []
+                    and profile.get("native_sqlite", {}).get("rows"),
+                    "Native SQLite profile is incomplete or differs from its reviewed observer.")
         require(digest == row.get("sha256") and path.stat().st_size == row.get("bytes")
-                and profile.get("schema") == "carr-library-selected-call-profile/1"
+                and profile.get("schema") == expected_schema
                 and profile.get("source") == identity and profile.get("sample") == row["sample"]
                 and profile.get("outcome") == "returned",
                 "Completed profile sample changed after measurement.")
 
 
-def run_child(directory, books, proof_path, tested_commit, *, seconds=CHILD_SECONDS):
+def run_child(directory, books, proof_path, tested_commit, *, seconds=CHILD_SECONDS,
+              profile_mode="cprofile"):
+    require(profile_mode in ("cprofile", "sqlite"), "Unknown call attribution mode.")
     directory = Path(directory).resolve()
     require(not directory.exists(), "Child case directory already exists.")
     identity = source_identity(proof_path, tested_commit, require_installed=True)
@@ -905,6 +992,8 @@ def run_child(directory, books, proof_path, tested_commit, *, seconds=CHILD_SECO
                "--source-proof", str(Path(proof_path).resolve()), "--tested-commit", tested_commit,
                "--seconds", str(seconds), "--expected-harness-sha256", identity["harness_sha256"],
                "--temporary-root", str(temporary)]
+    if profile_mode == "sqlite":
+        command.extend(("--profile-mode", "sqlite"))
     env = dict(os.environ, TMP=str(temporary), TEMP=str(temporary), TMPDIR=str(temporary),
                PYTHONUTF8="1", PYTHONUNBUFFERED="1")
     options = ({"creationflags": subprocess.CREATE_NEW_PROCESS_GROUP}
@@ -941,7 +1030,7 @@ def run_child(directory, books, proof_path, tested_commit, *, seconds=CHILD_SECO
             if process.returncode == 0 and not timed_out and cleanup_error is None:
                 validate_success(report, books, identity)
                 if books == 1000:
-                    validate_profile_receipts(directory, report, identity)
+                    validate_profile_receipts(directory, report, identity, profile_mode=profile_mode)
                 result["status"] = "PASS"
         except (ValueError, OSError, TypeError, KeyError) as exc:
             result["receipt_error"] = str(exc)[:2048]
@@ -969,6 +1058,8 @@ def main(argv=None):
     parser.add_argument("--source-proof", type=Path, required=True)
     parser.add_argument("--tested-commit", required=True)
     parser.add_argument("--sizes", nargs="+", type=int, choices=(100, 1000), default=[100, 1000])
+    parser.add_argument("--profile-mode", choices=("cprofile", "sqlite"), default="cprofile",
+                        help="Default cProfile; opt-in native SQLite intervals for selected imports.")
     parser.add_argument("--child", action="store_true", help=argparse.SUPPRESS)
     parser.add_argument("--books", type=int, help=argparse.SUPPRESS)
     parser.add_argument("--seconds", type=float, default=CHILD_SECONDS, help=argparse.SUPPRESS)
@@ -983,7 +1074,7 @@ def main(argv=None):
                 and args.temporary_root.is_dir(), "Child temporary directory is not owned by this case.")
         report = run_case(args.output_dir, args.books, args.source_proof, args.tested_commit,
                           seconds=args.seconds, require_installed=True,
-                          temporary_root=args.temporary_root)
+                          temporary_root=args.temporary_root, profile_mode=args.profile_mode)
         print(json.dumps(dict(status=report["status"], requested_books=args.books,
                               completed_books=report["completed_books"],
                               phase=report["phase"]), ensure_ascii=True), flush=True)
@@ -1002,7 +1093,8 @@ def main(argv=None):
                                  reason="The smaller requested case did not complete successfully."))
             continue
         try:
-            outcome = run_child(root / f"books-{books}", books, args.source_proof, args.tested_commit)
+            outcome = run_child(root / f"books-{books}", books, args.source_proof, args.tested_commit,
+                                profile_mode=args.profile_mode)
         except BaseException as exc:
             outcome = dict(requested_books=books, status="FAIL", error_type=type(exc).__name__,
                            error=str(exc)[:2048], source=identity)
