@@ -1,6 +1,6 @@
 {
   "schema": "carr-final-run-execution-state/1",
-  "updated_utc": "2026-11-28T09:49:51Z",
+  "updated_utc": "2026-11-28T10:24:50Z",
   "product": "Resonance",
   "repository": "Oleksii-debug/AudioTacticalFPS",
   "canonical_branch": "carr-library",
@@ -10,7 +10,7 @@
     "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/pull/210",
     "branch": "carr/v3-final-fixture-424cc-20261128-d3a",
     "head": "7c991dac1581faa63cb32eaaa5e21cf548287b38",
-    "body_current_record": "r39_pr210:2701_failure_body"
+    "body_current_record": "r41_pr210:prepared_body"
   },
   "predecessor": {
     "commit": "424cc456992c69c1ee945bc4d5ab73bc21e4e7b8",
@@ -137,16 +137,17 @@
   },
   "evidence": {
     "branch": "carr/final-evidence-d3a-20261127",
-    "head": "606b7ef2eeb26052a5e2950c58054ee0bc49b95f",
-    "tree": "19d21963816ffa981bad5292e826add212e315c2",
+    "head": "38463a1eb077a7cc6a0d8e546408b1fb219026ea",
+    "tree": "d4a92a896b64194f50bd321f34bd8203b86bf086",
     "warning": "Evidence tree retains historical application source; never promote it as the application candidate.",
     "checkpoint_path": "carr-library/docs/validation/FINAL_RUN_EXECUTION_STATE_20261128.json",
     "auxiliary_proof_commit": "7520e3d5d6f118517dae3bb4fa15e1ab1386e865",
     "auxiliary_root_review_path": "carr-library/docs/evidence/pr210-7c991-auxiliary-independent-review-20261128.json",
-    "files": 1829,
-    "current_source_composition": "09ac4c06ec6cfc88805ea4673a7767a934b80f9b",
-    "current_independent_review_path": "carr-library/docs/evidence/import-center-final-independent-review-20261128.json",
-    "focused_2701_review_path": "carr-library/docs/evidence/2701-focused-independent-review-20261128.json"
+    "files": 1831,
+    "current_source_composition": "87d1ec6a05963531c5c1907f74884faddac2093e",
+    "current_independent_review_path": "carr-library/docs/evidence/reading-native-final-independent-review-20261128.json",
+    "focused_2701_review_path": "carr-library/docs/evidence/2701-focused-independent-review-20261128.json",
+    "checkpoint_head_semantics": "head identifies the observed parent evidence ref; the containing commit anchors this updated checkpoint"
   },
   "finish_requirements": [
     "Review final composed source and additive focused gate independently.",
@@ -159,15 +160,16 @@
   "full_platform_status": "NOT_QUALIFIED",
   "external_acceptance": "Real owner engines/models/authorized samples, language/acoustics, Windows11/NVDA and physical devices, lawful corpora, private authority/signing and distribution rights.",
   "next_repair": {
-    "base": "2701b5717360996d706199e370ce1d1cc47f3a61",
-    "component": "c2b0fca4133c29858d973211f30f6d6c6d708af4",
-    "composition": "09ac4c06ec6cfc88805ea4673a7767a934b80f9b",
-    "tree": "3f00a232a7ff2af3a4df2f681db5e92da0db9220",
-    "status": "COMPOSED_AND_THREE_FOCUSED_GATES_LAUNCHED",
-    "root_source_checks": 17,
+    "base": "09ac4c06ec6cfc88805ea4673a7767a934b80f9b",
+    "component": "58370c0b7d10c01b5e249baee77a1fd9f7b48c9e",
+    "status": "ROOT_SOURCE_GO_PENDING_FINAL_COMPOSITION_PEER",
+    "root_source_checks": 16,
+    "application_files_changed": 0,
+    "execution": "NOT_RUN",
+    "composition": "87d1ec6a05963531c5c1907f74884faddac2093e",
+    "tree": "f28841240a6d5163e6d8e1bdea4e8117b30650e2",
     "root_composition_checks": 25,
-    "source_peer": "capacity_measurements SOURCE_GO_NOT_EXECUTED",
-    "execution": "PENDING"
+    "remaining_consumer_audit": "SOURCE_ONLY_NO_CONCRETE_ADDITIONAL_API_MISMATCH"
   },
   "next_candidate": {
     "commit": "7c991dac1581faa63cb32eaaa5e21cf548287b38",
@@ -440,7 +442,7 @@
     "new_release_gate": false,
     "root_review": "22 source hashes,20 workflow mappings/bounds,19 skipped actual steps and all baseline blobs verified"
   },
-  "canonical_observed_at": "2026-11-28 09:24:38 UTC",
+  "canonical_observed_at": "2026-11-28 10:19:11 UTC",
   "delivery_template": {
     "path": "carr-library/docs/validation/FINAL_RUN_DELIVERY_TEMPLATE_20261128_UK.md",
     "status": "DRAFT_PLACEHOLDERS_REQUIRE_ACTUAL_FINAL_OUTCOME",
@@ -464,7 +466,7 @@
     "commit": "09ac4c06ec6cfc88805ea4673a7767a934b80f9b",
     "tree": "3f00a232a7ff2af3a4df2f681db5e92da0db9220",
     "files": 1824,
-    "status": "THREE_FOCUSED_GATES_QUEUED",
+    "status": "FAILED_NATIVE_FOCUS_NOT_INTEGRATABLE",
     "root_review": "SOURCE_GO_NOT_EXECUTED",
     "peer_review": "SOURCE_COMPOSITION_GO_NOT_EXECUTED",
     "focused": {
@@ -473,28 +475,41 @@
         "job": 140937577072,
         "attempt": 1,
         "branch": "carr/native-main-final-09ac-20261128-d3a",
-        "status": "queued",
-        "conclusion": null
+        "status": "completed",
+        "conclusion": "failure",
+        "last_active_step": 15,
+        "failed_step": 29,
+        "failure": "Obsolete frame.keyboard_actions fixture owner",
+        "import_center": "PASS_SOURCE_NATIVE",
+        "search_checks": 21,
+        "proof_commit": "75a8c30549b50af7d2a3d4ca5ade8e768da559e6",
+        "root_checks": 22
       },
       "basic": {
         "run": 46131541968,
         "job": 140937577696,
         "attempt": 1,
         "branch": "carr/local-translation-final-09ac-20261128-d3a",
-        "status": "queued",
-        "conclusion": null
+        "status": "completed",
+        "conclusion": "success",
+        "last_active_step": null,
+        "proof_commit": "8091e4455645587ef037d285fc3b84ef36448eea",
+        "root_checks": 21
       },
       "inspection": {
         "run": 46131543810,
         "job": 140937583241,
         "attempt": 1,
         "branch": "carr/silence-inspection-final-09ac-20261128-d3a",
-        "status": "queued",
-        "conclusion": null
+        "status": "completed",
+        "conclusion": "success",
+        "last_active_step": null,
+        "proof_commit": "330fb74a2c75461b1db9d0412afcc24190caaca3",
+        "root_checks": 26
       }
     },
-    "main": "NOT_LAUNCHED_PENDING_FOCUSED_RESULTS",
-    "auxiliary": "NOT_LAUNCHED_PENDING_FOCUSED_RESULTS",
+    "main": "NOT_LAUNCHED_NATIVE_FOCUS_FAILED",
+    "auxiliary": "NOT_LAUNCHED_NATIVE_FOCUS_FAILED",
     "no_historical_pass_transfer": true
   },
   "observed_2701": {
@@ -564,6 +579,57 @@
     "separate_09ac_inventory_sha256": "b32f7133cc842876397db21c86938793c5f99015b7d69aabb7abc4b240d4e66c",
     "root_checks": 18,
     "exact_consumers": 4,
-    "original_digest_disposition": "INVALID_AS_CURRENT_2701_INVENTORY; retained and explicitly corrected."
+    "original_digest_disposition": "INVALID_AS_CURRENT_2701_INVENTORY; retained and explicitly corrected.",
+    "evidence_head": "38463a1eb077a7cc6a0d8e546408b1fb219026ea"
+  },
+  "observed_09ac": {
+    "commit": "09ac4c06ec6cfc88805ea4673a7767a934b80f9b",
+    "tree": "3f00a232a7ff2af3a4df2f681db5e92da0db9220",
+    "files": 1824,
+    "status": "FAILED_NATIVE_FOCUS_NOT_INTEGRATABLE",
+    "root_review": "SOURCE_GO_NOT_EXECUTED",
+    "peer_review": "SOURCE_COMPOSITION_GO_NOT_EXECUTED",
+    "focused": {
+      "native": {
+        "run": 46131541694,
+        "job": 140937577072,
+        "attempt": 1,
+        "branch": "carr/native-main-final-09ac-20261128-d3a",
+        "status": "completed",
+        "conclusion": "failure",
+        "last_active_step": 15,
+        "failed_step": 29,
+        "failure": "Obsolete frame.keyboard_actions fixture owner",
+        "import_center": "PASS_SOURCE_NATIVE",
+        "search_checks": 21,
+        "proof_commit": "75a8c30549b50af7d2a3d4ca5ade8e768da559e6",
+        "root_checks": 22
+      },
+      "basic": {
+        "run": 46131541968,
+        "job": 140937577696,
+        "attempt": 1,
+        "branch": "carr/local-translation-final-09ac-20261128-d3a",
+        "status": "completed",
+        "conclusion": "success",
+        "last_active_step": null,
+        "proof_commit": "8091e4455645587ef037d285fc3b84ef36448eea",
+        "root_checks": 21
+      },
+      "inspection": {
+        "run": 46131543810,
+        "job": 140937583241,
+        "attempt": 1,
+        "branch": "carr/silence-inspection-final-09ac-20261128-d3a",
+        "status": "completed",
+        "conclusion": "success",
+        "last_active_step": null,
+        "proof_commit": "330fb74a2c75461b1db9d0412afcc24190caaca3",
+        "root_checks": 26
+      }
+    },
+    "main": "NOT_LAUNCHED_NATIVE_FOCUS_FAILED",
+    "auxiliary": "NOT_LAUNCHED_NATIVE_FOCUS_FAILED",
+    "no_historical_pass_transfer": true
   }
 }

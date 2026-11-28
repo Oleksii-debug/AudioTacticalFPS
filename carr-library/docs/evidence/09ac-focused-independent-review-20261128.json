@@ -1,0 +1,653 @@
+{
+  "schema": "carr-09ac-focused-independent-review/1",
+  "status": "OBSERVED_NATIVE_FAILURE_AND_TWO_SEPARATE_FOCUSED_PASSES",
+  "source": "09ac4c06ec6cfc88805ea4673a7767a934b80f9b",
+  "tree": "3f00a232a7ff2af3a4df2f681db5e92da0db9220",
+  "reviewed_at_utc": "2026-11-28T10:19:11Z",
+  "raw_log_method": "Freshly fetched complete completed logs, exact run/job/artifact metadata; hash raw decoded UTF8 without normalization. Source identities freshly read/reused only within this exact-head root review.",
+  "native": {
+    "component": "75a8c30549b50af7d2a3d4ca5ade8e768da559e6",
+    "root_checks": {
+      "run_identity": true,
+      "job_identity": true,
+      "only_failed_step": true,
+      "earlier_steps_pass": true,
+      "later_steps_skipped": true,
+      "before_binding": true,
+      "no_after_binding": true,
+      "search21": true,
+      "search_wrapper": true,
+      "search_origin_hashes": true,
+      "import_four_field_receipt": true,
+      "import_two_viewports": true,
+      "import_original_sizes": true,
+      "import_bounded_outer": true,
+      "import_vertical_overflow": true,
+      "reading_four_labels": true,
+      "reading_exact_trace": true,
+      "not_timeout": true,
+      "raw_hash": true,
+      "artifact": true,
+      "artifact_log": true,
+      "source_bindings": true
+    },
+    "readback_checks": {
+      "parent": true,
+      "tree": true,
+      "leaves": true,
+      "baseline": true,
+      "docs": true
+    },
+    "independent_peer": {
+      "reviewer": "durable_payload_composition",
+      "status": "INDEPENDENT_ACTUAL_EVIDENCE_GO",
+      "checks": 32,
+      "scope": "Fresh current raw log/API/artifact and13source hashes; exact steps/trace/labels/viewport/source origins/before-only binder, erratum/current88GitIDs and original digest reconstruction. No second88-body rehash or ZIP read."
+    }
+  },
+  "translation": {
+    "component": "8091e4455645587ef037d285fc3b84ef36448eea",
+    "root_checks": {
+      "parent": true,
+      "tree": true,
+      "two_additions": true,
+      "exact_raw_hash": true,
+      "run": true,
+      "job": true,
+      "artifact": true,
+      "artifact_log": true,
+      "exact_steps": true,
+      "receipt": true,
+      "diagnostics": true,
+      "diagnostic_event_order": true,
+      "cleanup_order": true,
+      "phases": true,
+      "summary": true,
+      "source24": true,
+      "pins18": true,
+      "wheel": true,
+      "no_zip_claim": true,
+      "proof_sha": true,
+      "md_sha": true
+    },
+    "author_independent_reconciliation_checks": 20,
+    "source24": "All24 current-source SHA256 bindings freshly matched;13-field actual receipt,33diagnostics,12phases,324/324/8."
+  },
+  "inspection": {
+    "component": "330fb74a2c75461b1db9d0412afcc24190caaca3",
+    "root_checks": {
+      "parent": true,
+      "tree": true,
+      "two_additions": true,
+      "exact_raw_hash": true,
+      "run": true,
+      "job": true,
+      "artifact": true,
+      "artifact_log": true,
+      "exact_steps": true,
+      "all_six_actual_receipts": true,
+      "pins_before_after": true,
+      "counts": true,
+      "source_counter": true,
+      "installed_counter": true,
+      "source33": true,
+      "source_map375": true,
+      "installed_map373": true,
+      "source_reuse_explicit": true,
+      "no_zip_claim": true,
+      "pins56": true,
+      "proof_sha": true,
+      "counter_expected_117": true,
+      "native29_metrics12_origins13": true,
+      "native_outer_receipt_crlf": true,
+      "reader21": true,
+      "native_origins13": true
+    },
+    "author_independent_validation_checks": 77,
+    "root_method": "Fresh33 selected source hashes, all375Git identities, complete373actual installed map, actualsource/installedCounters/29native checks/12metrics/13origins/56pins/outerCRLFreceipt reconstructed.374 unchanged source body hashes are explicitly reused byimmutable blob from2701;fresh import_center hash."
+  },
+  "current_source_rows": [
+    {
+      "path": ".github/workflows/carr-local-translation.yml",
+      "git_blob": "e4dafee258246fc14f039d72908136434a20465c",
+      "sha256": "83c1f2ff166671f3ee4e0f81af8b88cd0950344b4eb46cb9437ad0cdc14c6d2c",
+      "utf8_bytes": 11326,
+      "match": true,
+      "reused_current09ac_read": false
+    },
+    {
+      "path": "carr-library/scripts/windows_translation_smoke.py",
+      "git_blob": "781a38e2f02d2209db5333e6421b7873bf6e35e1",
+      "sha256": "ec8afc47fc1d293871d1255491aafdedc80635d33d036349dc1b5921202af2fb",
+      "utf8_bytes": 14852,
+      "match": true,
+      "reused_current09ac_read": false
+    },
+    {
+      "path": "carr-library/scripts/local_translation_acceptance.py",
+      "git_blob": "8ab561e746748d5f36fdb30d3f053b7daf8621f9",
+      "sha256": "e68a36a9b635c21ab45f5721f47ab76ebd7bd65d52a6ed2361822454b148f5a8",
+      "utf8_bytes": 11739,
+      "match": true,
+      "reused_current09ac_read": false
+    },
+    {
+      "path": "carr-library/scripts/translation_scope_acceptance.py",
+      "git_blob": "60d841da5b74fde0ee8491899c12aa516b461851",
+      "sha256": "a27bcea6d5570cab5764828c861c033e75e8906d397b3daed1794add82aa3f82",
+      "utf8_bytes": 16375,
+      "match": true,
+      "reused_current09ac_read": false
+    },
+    {
+      "path": "carr-library/scripts/local_translation_oracles.json",
+      "git_blob": "a954839a9e373b60f13f35b16c57d7160e43750c",
+      "sha256": "2f6dd44568ea2e85e661bcc08f01fbd00a7b1aed446002fd593a7656a77dd9b6",
+      "utf8_bytes": 1926,
+      "match": true,
+      "reused_current09ac_read": false
+    },
+    {
+      "path": "carr-library/scripts/translation_scope_oracles.json",
+      "git_blob": "2f2f032e4e3b8d3263e1a7bec1e5fe731bfab9d2",
+      "sha256": "d3a99994e83ccf97eb0dd7228fbfd189a8b98b2be29bafda915acb0abb10b046",
+      "utf8_bytes": 9227,
+      "match": true,
+      "reused_current09ac_read": false
+    },
+    {
+      "path": "carr-library/scripts/windows_translation_v3_smoke.py",
+      "git_blob": "59d7b4361d2704c657d6e3d7f45e521b3d9b36dd",
+      "sha256": "b4322ba881f67e6938f89177386a018e093c447776ab7b20c44cd8805321fd1a",
+      "utf8_bytes": 18845,
+      "match": true,
+      "reused_current09ac_read": false
+    },
+    {
+      "path": "carr-library/scripts/windows_translation_local_smoke.py",
+      "git_blob": "dcb1fb940f078ecd7ff779eb9768056af63d8946",
+      "sha256": "7aa919464804f7acac897379c072a3ad8207eabf7ecc346d908ae399925def2e",
+      "utf8_bytes": 18733,
+      "match": true,
+      "reused_current09ac_read": false
+    },
+    {
+      "path": "carr-library/scripts/windows_translation_scope_smoke.py",
+      "git_blob": "d3b0aa6ad304431863826fda71909fcbf088b651",
+      "sha256": "055f3fccdc166cc0d990a1bd5e5235b978db5985fcd54f5ef1811111223a03fc",
+      "utf8_bytes": 26168,
+      "match": true,
+      "reused_current09ac_read": false
+    },
+    {
+      "path": "carr-library/packaging/windows-cp311.lock",
+      "git_blob": "9e29ea98f8d280f86de78948de002e5593c4850c",
+      "sha256": "4e49bacae7e7b805d5f9219ca4baeb14b413786c3db787d5aba4ab72a48397c5",
+      "utf8_bytes": 34471,
+      "match": true,
+      "reused_current09ac_read": false
+    },
+    {
+      "path": "carr-library/src/carr_library/providers.py",
+      "git_blob": "5f2df7784f9d7f235695ac7f0b27695c071fe36e",
+      "sha256": "aa4933b4c85ff2d58436d447f0765a852492b27281bb4872d9c35b5f66c47bc5",
+      "utf8_bytes": 67576,
+      "match": true,
+      "reused_current09ac_read": false
+    },
+    {
+      "path": "carr-library/tests/assistant/test_translation.py",
+      "git_blob": "1bc4d65f2e49753ec2da982c3ac400b91002ceed",
+      "sha256": "a0fb178e1028271c22ac12e7baccef083ec2c13d454da61f75ef8487037413e1",
+      "utf8_bytes": 35317,
+      "match": true,
+      "reused_current09ac_read": false
+    },
+    {
+      "path": "carr-library/tests/assistant/test_translation_advanced.py",
+      "git_blob": "2865908807b09a531f657c68bad90629256a047f",
+      "sha256": "b4d91de42abe609a0d68a8e86a092c7e224e02f045989ff40a96f79391deeb3b",
+      "utf8_bytes": 17148,
+      "match": true,
+      "reused_current09ac_read": false
+    },
+    {
+      "path": "carr-library/tests/ui/test_translation_dialog.py",
+      "git_blob": "b500a8891738435b08beb5e0cb1b1d71f4f92ed0",
+      "sha256": "2b48e0049ac480cb3d4810210f5809e8b6c681e57789be858ff32e85a21cb1be",
+      "utf8_bytes": 9379,
+      "match": true,
+      "reused_current09ac_read": false
+    },
+    {
+      "path": "carr-library/tests/ui/test_translation_advanced.py",
+      "git_blob": "c00833c2081fad99289201e2e1f3fa9b1e176c12",
+      "sha256": "8ebfb2e33e5cd492076c77ec79ab854b2d0f17f2a0faba5a0ce3eb9fdc766ba4",
+      "utf8_bytes": 8637,
+      "match": true,
+      "reused_current09ac_read": false
+    },
+    {
+      "path": "carr-library/tests/e2e/test_google_translation_gateway.py",
+      "git_blob": "5f2d1a494bcc22cbecf3f490b1c70205d263340c",
+      "sha256": "fc2c95db69e720c7b8405841a9166690dcb482cb521780a70a03c5cd9c77b6dd",
+      "utf8_bytes": 22579,
+      "match": true,
+      "reused_current09ac_read": false
+    },
+    {
+      "path": "carr-library/tests/e2e/test_google_translation_v3.py",
+      "git_blob": "41a491f7ec6a096c9347a6ea80e198d6a6cc69b6",
+      "sha256": "474c372b0749617079ae2945e171c0f8f4f0bddb44138b66664b1b3df6c65e3c",
+      "utf8_bytes": 21079,
+      "match": true,
+      "reused_current09ac_read": false
+    },
+    {
+      "path": "carr-library/tests/assistant/test_translation_scopes.py",
+      "git_blob": "8f539dd55f732d4762dbc7b8c2de6e03febe6f10",
+      "sha256": "545fd8c4c19029a05b6d754c2aae6cd59bb0f73222705069fa833297bb009f92",
+      "utf8_bytes": 22729,
+      "match": true,
+      "reused_current09ac_read": false
+    },
+    {
+      "path": "carr-library/tests/ui/test_translation_scopes.py",
+      "git_blob": "dd0289bae13dafcc22ae9ac204b735dbe445013a",
+      "sha256": "bae455efa3e340582860be8f7cf93a9b6fb1e07ecb6b0aa1237152b9b3e73ad4",
+      "utf8_bytes": 4890,
+      "match": true,
+      "reused_current09ac_read": false
+    },
+    {
+      "path": "carr-library/tests/loopback/test_translation_local_adapter.py",
+      "git_blob": "ca81a9116171340822d01817ae7da19140c2b243",
+      "sha256": "2e913e3d138e82a66eaa41354272485a169ff8fc966817a09d1bd947cddcd1cc",
+      "utf8_bytes": 22480,
+      "match": true,
+      "reused_current09ac_read": false
+    },
+    {
+      "path": "carr-library/tests/reader/test_ebook_reader.py",
+      "git_blob": "1f9e8be4bd03dfc15b55e4d76858d0e29f8f4e84",
+      "sha256": "33ea4426a840d0f6536a33efdb406a8930d5b412a183254b539436d5cc97e59a",
+      "utf8_bytes": 16412,
+      "match": true,
+      "reused_current09ac_read": false
+    },
+    {
+      "path": "carr-library/scripts/ci_check.py",
+      "git_blob": "2d04b9b269ae85c24349ae8d4ad9b295737866fb",
+      "sha256": "f337e72d4ee043d6ff01ad3e9124557d7a24823628584bfbcc4bd597e6e170b7",
+      "utf8_bytes": 16851,
+      "match": true,
+      "reused_current09ac_read": false
+    },
+    {
+      "path": "carr-library/scripts/ci_watchdog.py",
+      "git_blob": "10482b73dca31ab90796f4c2c2dcc105c20c9969",
+      "sha256": "e02be6a6c3406bdf1d9d4c24673363894d03a1ee7948b3b77d6b20fcc2bfc057",
+      "utf8_bytes": 6303,
+      "match": true,
+      "reused_current09ac_read": false
+    },
+    {
+      "path": "carr-library/packaging/source_wheel.py",
+      "git_blob": "bba3d0cda29b475d51347434d832af9187840547",
+      "sha256": "fbac5259cba4dc89269d114482f2f0af8ae464ecac84e2505860263f64375d85",
+      "utf8_bytes": 15068,
+      "match": true,
+      "reused_current09ac_read": false
+    },
+    {
+      "path": "carr-library/tests/audio/test_production_integrity.py",
+      "git_blob": "df9a2ae107d686a9cb66ee8d97be00d65c83d44b",
+      "sha256": "f214b921c3a89bf67169a0f3f6cf2d38c0189663663bef513957b607ae020013",
+      "utf8_bytes": 27815,
+      "match": true,
+      "reused_current09ac_read": false
+    },
+    {
+      "path": "carr-library/tests/ui/test_audio_studio.py",
+      "git_blob": "e9e2ecc1258e0dc7c508f5e294204c1a5b1f9e8b",
+      "sha256": "9d004eb4d62d57b6d9789e10157412edda0d7bd978cc08fd9d8a2350fbbe2855",
+      "utf8_bytes": 68912,
+      "match": true,
+      "reused_current09ac_read": false
+    },
+    {
+      "path": "carr-library/tests/e2e/test_audio_cli_resources.py",
+      "git_blob": "4aee2aa513f4db6771298945be93e8fe51ec680d",
+      "sha256": "94469ff3fb7591c108ef4c9d4b777ab974723518ba694d2f35049c50293372d6",
+      "utf8_bytes": 22020,
+      "match": true,
+      "reused_current09ac_read": false
+    },
+    {
+      "path": "carr-library/tests/audio/test_local_voice_helper.py",
+      "git_blob": "85edae85f0de7f1fdce09d34f32be2e163edd9e7",
+      "sha256": "04cc704966a6a66151071ae8a97df7ee0828fb9a6773de51f4b645ab38d27893",
+      "utf8_bytes": 32109,
+      "match": true,
+      "reused_current09ac_read": false
+    },
+    {
+      "path": "carr-library/tests/__init__.py",
+      "git_blob": "6cb70d1a964de7a5d84e0cef9e1cbc075d3fa331",
+      "sha256": "bda1d1b86fa69f604fb87c19f27628942b6bd77aa46b605efbc9cb9d4457183d",
+      "utf8_bytes": 78,
+      "match": true,
+      "reused_current09ac_read": false
+    },
+    {
+      "path": "carr-library/scripts/local_voice_contract_fixture.py",
+      "git_blob": "1134b755b1c54e7c061c6cc328c72c7004231aff",
+      "sha256": "cdd525bba513c4f58ace97b99882f2045ce87f387ab80ba366d487ea79d344f5",
+      "utf8_bytes": 7672,
+      "match": true,
+      "reused_current09ac_read": false
+    },
+    {
+      "path": "carr-library/tests/ui/native_audio_silence_inspection_smoke.py",
+      "git_blob": "51c40dd9d75d2b5afc8fd7a7020a4ee0ea92bca8",
+      "sha256": "0deac9c8c65cc7c632e5973d734d9b356ef6fd6ead6de7e9d194b1a310e9891a",
+      "utf8_bytes": 28174,
+      "match": true,
+      "reused_current09ac_read": false
+    },
+    {
+      "path": "carr-library/scripts/audio_batch_acceptance.py",
+      "git_blob": "597fbef8d9d3ff9af0651214f101f346142dc19e",
+      "sha256": "3fcb217a7ed9d535ea9d277191a27504f8e6f452bef235b728036358f9e6e003",
+      "utf8_bytes": 24020,
+      "match": true,
+      "reused_current09ac_read": false
+    },
+    {
+      "path": "carr-library/scripts/workflow_template_acceptance.py",
+      "git_blob": "d3e4b4fd1eb849901b3509d9e1d20be267100db4",
+      "sha256": "c095652581bd3571bac7156910db13dbe4fa5d572f107175a6a3897b7341a8ab",
+      "utf8_bytes": 12302,
+      "match": true,
+      "reused_current09ac_read": false
+    },
+    {
+      "path": "carr-library/scripts/silence_inspection_acceptance.py",
+      "git_blob": "5d945d40ba582a3fc6e899f273f340af9a108e9b",
+      "sha256": "574b1f840966f9393e230813b4ea7cff69da6ea49cb0fd302db1c44be5118459",
+      "utf8_bytes": 1239,
+      "match": true,
+      "reused_current09ac_read": false
+    },
+    {
+      "path": "carr-library/scripts/silence_inspection_oracle.json",
+      "git_blob": "2e740ff0e02d6ec18ec48fd798ed73d963c8d9a5",
+      "sha256": "b838995fdb1fda7be230c0ad54d8a2bd47824991e0696f2c9205bed30e26e85c",
+      "utf8_bytes": 14653,
+      "match": true,
+      "reused_current09ac_read": false
+    },
+    {
+      "path": "carr-library/packaging/windows-integrated-cp311.lock",
+      "git_blob": "d2ced1652d80b33680a7247ca1afa47fd271d8f4",
+      "sha256": "12d587307f4ca4ebfadc881726ee9f0710b2f58af797fdebd5d4a732cc803edd",
+      "utf8_bytes": 97564,
+      "match": true,
+      "reused_current09ac_read": false
+    },
+    {
+      "path": "carr-library/packaging/prepare_ffmpeg_runtime.py",
+      "git_blob": "4ed56f7a1eecc6cfe9d7750c32abd2b7400925a4",
+      "sha256": "f291e9679676ed41ff0638747f92a79f2d25aeab97e8233f110fd14bf54087a6",
+      "utf8_bytes": 15859,
+      "match": true,
+      "reused_current09ac_read": false
+    },
+    {
+      "path": "carr-library/pyproject.toml",
+      "git_blob": "c1615aa86ec88a7732c1d6227407077b05a0fb6c",
+      "sha256": "767e951a2761ce308509b4bef6c2fc984ae0a701ba7b7522a15b22eb6c3f444e",
+      "utf8_bytes": 3757,
+      "match": true,
+      "reused_current09ac_read": false
+    },
+    {
+      "path": ".github/workflows/carr-silence-inspection.yml",
+      "git_blob": "44d03a19bff33dead624d9e9a2fda6c6bbca1b87",
+      "sha256": "fe526ab2ce475b4e4191ea0c99aadd187227302e65ca5b040453872afbe34021",
+      "utf8_bytes": 20179,
+      "match": true,
+      "reused_current09ac_read": false
+    },
+    {
+      "path": "carr-library/src/carr_library/audio/runtime.py",
+      "git_blob": "4b8dd520d74375e3d9e43303fe971d5236ed44e6",
+      "sha256": "21fed0c421384166fdc47eac47ee393f1cb53e8f037bf15df856b6e0853481a9",
+      "utf8_bytes": 13703,
+      "match": true,
+      "reused_current09ac_read": false
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/audio_studio.py",
+      "git_blob": "6abb5c173dfe3ceec79733b571f92fc620ca7568",
+      "sha256": "ea3d54e782c0f34cffa10cd281b48d4693e54646cdb6a17a4a045d9172b3ac9a",
+      "utf8_bytes": 142004,
+      "match": true,
+      "reused_current09ac_read": false
+    },
+    {
+      "path": "carr-library/src/carr_library/audio/production.py",
+      "git_blob": "cb9b916cb1376a9f6a7f5c6e867c52744939e157",
+      "sha256": "39d571d7b8f638d3d986f0ffe8fb4395bc876e70ed6b7fe426b50a6c872a98ed",
+      "utf8_bytes": 85480,
+      "match": true,
+      "reused_current09ac_read": false
+    },
+    {
+      "path": "carr-library/src/carr_library/audio/ffmpeg.py",
+      "git_blob": "d076e29af23e845fdeafd750be14f83af5ab79b3",
+      "sha256": "e48e9414bdd3c716443a87f2f53db8656a273b97fa0dfb27f326b13aaa0e488e",
+      "utf8_bytes": 34205,
+      "match": true,
+      "reused_current09ac_read": false
+    },
+    {
+      "path": "carr-library/src/carr_library/audio/jobs.py",
+      "git_blob": "f903172a16ac537f6f29adf213a1174ac737a69a",
+      "sha256": "0477b216e50c45aa19892b8bd0d7b9002ccd2172c8d6b3bce1fb5c6191506b8b",
+      "utf8_bytes": 29473,
+      "match": true,
+      "reused_current09ac_read": false
+    },
+    {
+      "path": "carr-library/src/carr_library/audio/models.py",
+      "git_blob": "7f9f9034ac8dbb985bd3e3eaa95a3e0133283c20",
+      "sha256": "a3ccea83ae8c72e531dfd2adfcf09438ee9ba234454b2a8080c62039611f2f2b",
+      "utf8_bytes": 22943,
+      "match": true,
+      "reused_current09ac_read": false
+    },
+    {
+      "path": "carr-library/src/carr_library/research/export_file.py",
+      "git_blob": "6ded800099f0a02574c5d45bd1f73265ca6ca409",
+      "sha256": "8e3c7bbeaea57f43d61496659017cbf9c57378f085e2d249bcbd4e212de912da",
+      "utf8_bytes": 18812,
+      "match": true,
+      "reused_current09ac_read": false
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/export_destination.py",
+      "git_blob": "14ea86babd1426902c6fd2f09982e5b04147c544",
+      "sha256": "4f209c8495d377ee07246d2263f40a4292edc612b07576de53ed70bbea34a747",
+      "utf8_bytes": 1405,
+      "match": true,
+      "reused_current09ac_read": false
+    },
+    {
+      "path": "carr-library/src/carr_library/reader/narration_text.py",
+      "git_blob": "989922d0495ffa07ad3e6404a6496d2fc7ecd87f",
+      "sha256": "603ffd27411c25db0974d9e43f8c317e13929962f4e31c08bf3666e226d0f793",
+      "utf8_bytes": 16778,
+      "match": true,
+      "reused_current09ac_read": false
+    },
+    {
+      "path": "carr-library/src/carr_library/native_file_metadata.py",
+      "git_blob": "3f18a718bc05fb0d1c0f148d0fbcde585a9e2d8a",
+      "sha256": "cabb32f0f8b5a6eb717fba829ffe1e4ab060be59cf12ca911208cf78a79fb4c9",
+      "utf8_bytes": 1919,
+      "match": true,
+      "reused_current09ac_read": false
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/operation_progress.py",
+      "git_blob": "184bafc318e701f4001e5d3d45c558292541efe2",
+      "sha256": "cb78d07d04401631aea942828c75ce2b98fb93edc6dfe9c8f84f980aa539dd24",
+      "utf8_bytes": 35501,
+      "match": true,
+      "reused_current09ac_read": false
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/save_all.py",
+      "git_blob": "92aab94e53df97d5aeabe62538ddebc71cfee09d",
+      "sha256": "88bd92eeca43127b8ec553f7e8c7201bbd7657a60c7118fa3c09f342bbe942d3",
+      "utf8_bytes": 10019,
+      "match": true,
+      "reused_current09ac_read": false
+    },
+    {
+      "path": "carr-library/src/carr_library/audio/managed.py",
+      "git_blob": "b574fc7cfbffbd88d7705b325ff471486956d5a6",
+      "sha256": "ce79f657b238dae30a683774a44674269a31689591d440c471f900d9d6952045",
+      "utf8_bytes": 6800,
+      "match": true,
+      "reused_current09ac_read": false
+    },
+    {
+      "path": "carr-library/src/carr_library/application.py",
+      "git_blob": "f38c7b02abc0bd0a9fbbfe5c494a5a5f60633a34",
+      "sha256": "0e0a13835767b2a64f8cdcfa0f09e7dc78ed9f148afb0f5635b513c06a9a41d8",
+      "utf8_bytes": 77559,
+      "match": true,
+      "reused_current09ac_read": true
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/import_center.py",
+      "git_blob": "f757c8748ef273938992a1518f327012616d5ec1",
+      "sha256": "62ded099ed5c712f009447a0981407b721b323838d7e611106a1a8a643af7966",
+      "utf8_bytes": 28407,
+      "match": true,
+      "reused_current09ac_read": true
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/desktop_app.py",
+      "git_blob": "94fde0a14c7243983e3b1fa0ee1362bc014e2100",
+      "sha256": "ee90a47c87d43c6d3556e427eeb52954b12425f6b85540952e7e169d82d5ca17",
+      "utf8_bytes": 74039,
+      "match": true,
+      "reused_current09ac_read": true
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/productivity.py",
+      "git_blob": "348cc35dd963e99d01659dc89a85bea1e95e299f",
+      "sha256": "a88afba19542aa23368865d592b3e37e77a32ec46013455793e135fae800a767",
+      "utf8_bytes": 17321,
+      "match": true,
+      "reused_current09ac_read": true
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/keyboard_settings.py",
+      "git_blob": "58912be85954a059c680783ccda66769757ec491",
+      "sha256": "be9aacf22fc20b0e40a7d11046d639b7f8b545d31808d378817e29947c960548",
+      "utf8_bytes": 30759,
+      "match": true,
+      "reused_current09ac_read": true
+    },
+    {
+      "path": "carr-library/src/carr_library/keyboard_preferences.py",
+      "git_blob": "6d2b28b2a5c9704d0b4ea99ffb107d0937523aa4",
+      "sha256": "851a3c01f47c8ed92438149f34ad34fb1350bd68d6ff0254b2bf40268635bd1d",
+      "utf8_bytes": 8992,
+      "match": true,
+      "reused_current09ac_read": false
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/builtin_keyboard_commands.py",
+      "git_blob": "3d1e5a6c7e394a4896a9701afb77ff917a5d3e78",
+      "sha256": "cefc1920c5e91e1c0470f12677f00145965e873cd1f65211402f9c7df1cc99d0",
+      "utf8_bytes": 5209,
+      "match": true,
+      "reused_current09ac_read": false
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/federated_search.py",
+      "git_blob": "81b8b88bba516cfbe3629ecd2bb7a6e0f2a14664",
+      "sha256": "b61ffd724d7bd7ecebe9e8017a3db2d49d1a48ab9cf1011f594452616f86bbf8",
+      "utf8_bytes": 33642,
+      "match": true,
+      "reused_current09ac_read": true
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/academic_tools.py",
+      "git_blob": "aac69e501226314d4280ca1d74ac866a79a11614",
+      "sha256": "334296c00848f8aa64772866f2f8b13af827c03ce6d2f5756fcb344344787871",
+      "utf8_bytes": 13869,
+      "match": true,
+      "reused_current09ac_read": false
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/reading_desk.py",
+      "git_blob": "19a0d6fc34a32de00a77e6bf20f98f84250207be",
+      "sha256": "5f492095683669e6f07ae1bef0bd2a6b7054e6ab2c04883587fb045aca4be796",
+      "utf8_bytes": 32283,
+      "match": true,
+      "reused_current09ac_read": false
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/ebook_reader.py",
+      "git_blob": "d42215174b7c764cda36b6a835bb0f7e7b01c193",
+      "sha256": "011415a49a25442de823d6966e5017f3ab35807cb776dd11f61191bf881cf3bc",
+      "utf8_bytes": 11267,
+      "match": true,
+      "reused_current09ac_read": false
+    },
+    {
+      "path": "carr-library/src/carr_library/library_backup.py",
+      "git_blob": "d89f91ba63904cc052fdd6d7ffd3853f267bc61e",
+      "sha256": "d5c2806d503b1bc431ca58755b253a900391142f7e0f26862309a3eb5b448d3f",
+      "utf8_bytes": 78758,
+      "match": true,
+      "reused_current09ac_read": false
+    },
+    {
+      "path": "carr-library/src/carr_library/reader/narration.py",
+      "git_blob": "24848da175fff5d5cd260ecacf9854ed807e79b2",
+      "sha256": "7e4c0ac9bbf99407105b02ee6a3e66382b43f8c7a80fe94f9529a5582955a41b",
+      "utf8_bytes": 43824,
+      "match": true,
+      "reused_current09ac_read": false
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/narration_editor.py",
+      "git_blob": "da98eddc262c4fff582d742fc66a05b2985883d0",
+      "sha256": "70f88f59beb37485f0dbdf6bd8aa9c94b8d1d3de82d2ac22ad35a86e316911d9",
+      "utf8_bytes": 37745,
+      "match": true,
+      "reused_current09ac_read": false
+    },
+    {
+      "path": "carr-library/tests/ui/native_keyboard_settings_smoke.py",
+      "git_blob": "a14da51e452274ad5fda7a5c0b16e2ec16396231",
+      "sha256": "8f2042e5c828a17ba6e09242d846db85691305bbf143aed1b3d71e8efdd8161c",
+      "utf8_bytes": 20087,
+      "match": true,
+      "reused_current09ac_read": false
+    }
+  ],
+  "limits": [
+    "No focused ZIP independently read.",
+    "Import Center runtime is current checkout source; installed formats step skipped.",
+    "Native focusedFAIL means09ac is notintegratable; fullmain/aux notlaunched.",
+    "No historical result transfers to87d1; fullplatform remainsNOT_QUALIFIED."
+  ]
+}

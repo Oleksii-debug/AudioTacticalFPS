@@ -1,0 +1,141 @@
+{
+  "schema": "carr-reading-native-final-composition/1",
+  "status": "SOURCE_COMPOSED_NOT_EXECUTED",
+  "baseline": {
+    "commit": "09ac4c06ec6cfc88805ea4673a7767a934b80f9b",
+    "tree": "3f00a232a7ff2af3a4df2f681db5e92da0db9220",
+    "tracked_files": 1824
+  },
+  "components": {
+    "reading_fixture": "58370c0b7d10c01b5e249baee77a1fd9f7b48c9e",
+    "observed_native": "75a8c30549b50af7d2a3d4ca5ade8e768da559e6",
+    "observed_translation": "8091e4455645587ef037d285fc3b84ef36448eea",
+    "observed_inspection": "330fb74a2c75461b1db9d0412afcc24190caaca3",
+    "audit_erratum": "ec70134c192f35d59a09821116d0a8c2214053dd"
+  },
+  "changed_paths_excluding_this_manifest": [
+    {
+      "path": "carr-library/docs/evidence/09ac-native-main-observed-failure-20261128.json",
+      "operation": "add",
+      "previous_git_blob": null,
+      "selected_git_blob": "e749080612fcbf2ea244b0150cb8f6ede39b1b36"
+    },
+    {
+      "path": "carr-library/docs/evidence/09ac-native-main-observed-failure-20261128.md",
+      "operation": "add",
+      "previous_git_blob": null,
+      "selected_git_blob": "175d958e6566cef11c16ca9a3d189c17770db3e8"
+    },
+    {
+      "path": "carr-library/docs/evidence/basic-and-local-translation-focused-observed-09ac-20261128.json",
+      "operation": "add",
+      "previous_git_blob": null,
+      "selected_git_blob": "60321da244f991c9a6c833dbd391398e300f7a8f"
+    },
+    {
+      "path": "carr-library/docs/evidence/basic-and-local-translation-focused-observed-09ac-20261128.md",
+      "operation": "add",
+      "previous_git_blob": null,
+      "selected_git_blob": "d1b788bbf64dd6a41b50871779fddc7262b68d01"
+    },
+    {
+      "path": "carr-library/docs/evidence/completed-audio-inspection-helper-09ac-observed-20261128.json",
+      "operation": "add",
+      "previous_git_blob": null,
+      "selected_git_blob": "e0027fd0c585da21ebc241f46e78429cd92d6f90"
+    },
+    {
+      "path": "carr-library/docs/evidence/completed-audio-inspection-helper-09ac-observed-20261128.md",
+      "operation": "add",
+      "previous_git_blob": null,
+      "selected_git_blob": "26552f467f2ab83da50359fc33a4ee9925b8cda9"
+    },
+    {
+      "path": "carr-library/docs/evidence/import-center-audit-inventory-erratum-20261128.json",
+      "operation": "add",
+      "previous_git_blob": null,
+      "selected_git_blob": "5cd8c388c45f8bdfbb696501bebb30722ba4ad08"
+    },
+    {
+      "path": "carr-library/docs/evidence/reading-native-keyboard-owner-fixture-repair-20261128.json",
+      "operation": "add",
+      "previous_git_blob": null,
+      "selected_git_blob": "8d6544183becd8b49955b32734a55652d6e22876"
+    },
+    {
+      "path": "carr-library/docs/V3_RELEASE_READINESS.md",
+      "operation": "modify",
+      "previous_git_blob": "6d33a90fd391f95a68f9a374735b7e840be0f191",
+      "selected_content_sha256": "59de7c99aec11b0cdd7ebff9cd6640ad2a6b37ac51105cf33f76bf331fb2b13e"
+    },
+    {
+      "path": "carr-library/docs/validation/RESONANCE_REQUIREMENT_STATUS_20261127.json",
+      "operation": "modify",
+      "previous_git_blob": "20d6dad3e6c41a9542c5d7de7a8bc5e56e123ba4",
+      "selected_content_sha256": "d6e2e5300d3688a3ca0e2f163b1d67c26ec20994b7c80027e37ca866b847cc99"
+    },
+    {
+      "path": "carr-library/scripts/windows_v3_reading_smoke.py",
+      "operation": "modify",
+      "previous_git_blob": "2844dcb6f87e871bc77a07b22ce7a9b5743c3a0e",
+      "selected_git_blob": "c395b238c2ebc8aac7d98aa94a7028bb4b479439"
+    }
+  ],
+  "composition_record_path": "carr-library/docs/evidence/reading-native-final-composition-20261128.json",
+  "expected_tree": {
+    "tracked_files": 1833,
+    "modified_paths": 3,
+    "added_paths": 9,
+    "deleted_paths": 0
+  },
+  "preservation": {
+    "application_package_files": 425,
+    "application_changed": 0,
+    "test_tree_files": 628,
+    "test_tree_changed": 0,
+    "regression_test_filename_files": 569,
+    "regression_test_filename_scope": "carr-library/tests/**/test_*.py",
+    "other_test_filename_files_outside_tests": 7,
+    "regression_test_filename_files_changed": 0,
+    "baseline_workflows": 49,
+    "baseline_workflows_changed": 0,
+    "reader_source_pins": 21,
+    "reader_source_pins_changed": 0,
+    "requirement_objects": 24,
+    "requirement_objects_changed": 0,
+    "all_prior_matrix_properties_retained": true,
+    "readiness_update": "Pure insertion; exact inverse reconstructs09ac.",
+    "reading_literal_check_sites": 24,
+    "reading_expected_shortcuts": 8,
+    "reading_change_hunks": 9,
+    "reading_narration_and_final_cleanup": "BYTE_IDENTICAL"
+  },
+  "observed_parent": {
+    "native_focus": "FAILURE",
+    "search_checks": 21,
+    "import_center": "PASS_CURRENT_CHECKOUT_SOURCE",
+    "reading_labels_before_failure": 4,
+    "failed_focused_step": 29,
+    "equivalent_main_step": 31,
+    "later_focused_steps_30_through_47": "SKIPPED",
+    "basic_translation": "PASS324/324/8",
+    "inspection": "PASS274/274/29",
+    "full_main": "NOT_LAUNCHED"
+  },
+  "provenance_erratum": "The included append-only erratum corrects historical2701 metadata and records separate09ac inventory; source review uses current immutable blobs. No runtime pass transfers.",
+  "next_acceptance": {
+    "execution": "NOT_RUN",
+    "focused": [
+      "Exact existing main native blocks with before/after source and installed binding",
+      "Basic plus complete local translation324/324/8",
+      "Completed-audio inspection/helper274/274/29"
+    ],
+    "required_after_focused": [
+      "Full exact-source main and five auxiliary jobs",
+      "Successful-main artifact binding and independent inert reading",
+      "Fresh canonical/protection/ancestry read, expected-head integration and readback"
+    ],
+    "no_historical_success_transfer": true
+  },
+  "full_platform_status": "NOT_QUALIFIED"
+}

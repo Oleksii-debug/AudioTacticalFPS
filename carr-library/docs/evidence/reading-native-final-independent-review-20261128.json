@@ -1,0 +1,507 @@
+{
+  "schema": "carr-reading-native-final-independent-review/1",
+  "status": "ROOT_SOURCE_GO_PENDING_FINAL_COMPOSITION_PEER_NOT_EXECUTED",
+  "source_commit": "87d1ec6a05963531c5c1907f74884faddac2093e",
+  "source_tree": "f28841240a6d5163e6d8e1bdea4e8117b30650e2",
+  "reviewed_at_utc": "2026-11-28T10:24:50Z",
+  "root_source_checks": {
+    "sole_parent": true,
+    "tree": true,
+    "exact_two_paths": true,
+    "no_deletions": true,
+    "all_app425_unchanged": true,
+    "all_workflows_unchanged": true,
+    "all_tests_unchanged": true,
+    "nine_hunk_inverse": true,
+    "source_hashes": true,
+    "all24labels": true,
+    "expected_eight_block": true,
+    "narration_flow": true,
+    "final_cleanup_receipt": true,
+    "retained_waits": true,
+    "current_source13": true,
+    "erratum_current": true
+  },
+  "component_peer": {
+    "reviewer": "capacity_measurements",
+    "status": "SOURCE_GO_NOT_EXECUTED",
+    "scope": "Fresh current owner/store/registry/backup sources; exact9hunk inverse;24checks and8shortcuts; current Save stableID and same native item, Ctrl+I refusal, persistence and same restored library-relative path; all app/test/workflow bytes unchanged."
+  },
+  "root_composition_checks": {
+    "unique_paths": true,
+    "delta12": true,
+    "modifications3": true,
+    "adds9": true,
+    "readiness_inverse": true,
+    "matrix_inverse": true,
+    "only_script_non_document": true,
+    "ordered_parents": true,
+    "tree": true,
+    "leaves1833": true,
+    "no_deletions": true,
+    "selected_blobs": true,
+    "generated_docs_exact": true,
+    "all_app425": true,
+    "all_test_tree628": true,
+    "all_workflows49": true,
+    "oracle_named42": true,
+    "reader21": true,
+    "canonical_still_e5": true,
+    "pr_still_7c": true,
+    "no_runs_yet": true,
+    "readiness_links": true,
+    "requirements24": true,
+    "regression569": true,
+    "other_regression7": true
+  },
+  "readiness_relative_links": [
+    {
+      "href": "evidence/09ac-native-main-observed-failure-20261128.md",
+      "path": "carr-library/docs/evidence/09ac-native-main-observed-failure-20261128.md"
+    },
+    {
+      "href": "evidence/basic-and-local-translation-focused-observed-09ac-20261128.md",
+      "path": "carr-library/docs/evidence/basic-and-local-translation-focused-observed-09ac-20261128.md"
+    },
+    {
+      "href": "evidence/completed-audio-inspection-helper-09ac-observed-20261128.md",
+      "path": "carr-library/docs/evidence/completed-audio-inspection-helper-09ac-observed-20261128.md"
+    },
+    {
+      "href": "evidence/reading-native-keyboard-owner-fixture-repair-20261128.json",
+      "path": "carr-library/docs/evidence/reading-native-keyboard-owner-fixture-repair-20261128.json"
+    },
+    {
+      "href": "evidence/import-center-audit-inventory-erratum-20261128.json",
+      "path": "carr-library/docs/evidence/import-center-audit-inventory-erratum-20261128.json"
+    },
+    {
+      "href": "evidence/reading-native-final-composition-20261128.json",
+      "path": "carr-library/docs/evidence/reading-native-final-composition-20261128.json"
+    },
+    {
+      "href": "evidence/2701-native-main-observed-failure-20261128.md",
+      "path": "carr-library/docs/evidence/2701-native-main-observed-failure-20261128.md"
+    },
+    {
+      "href": "evidence/basic-and-local-translation-focused-observed-2701-20261128.md",
+      "path": "carr-library/docs/evidence/basic-and-local-translation-focused-observed-2701-20261128.md"
+    },
+    {
+      "href": "evidence/completed-audio-inspection-helper-2701-observed-20261128.md",
+      "path": "carr-library/docs/evidence/completed-audio-inspection-helper-2701-observed-20261128.md"
+    },
+    {
+      "href": "evidence/import-center-scroll-layout-repair-20261128.json",
+      "path": "carr-library/docs/evidence/import-center-scroll-layout-repair-20261128.json"
+    },
+    {
+      "href": "evidence/import-center-final-composition-20261128.json",
+      "path": "carr-library/docs/evidence/import-center-final-composition-20261128.json"
+    },
+    {
+      "href": "evidence/7c991-main-observed-failure-20261128.md",
+      "path": "carr-library/docs/evidence/7c991-main-observed-failure-20261128.md"
+    },
+    {
+      "href": "evidence/search-continuation-copy-completion-fixture-repair-20261128.json",
+      "path": "carr-library/docs/evidence/search-continuation-copy-completion-fixture-repair-20261128.json"
+    },
+    {
+      "href": "../../.github/workflows/carr-native-main-final.yml",
+      "path": ".github/workflows/carr-native-main-final.yml"
+    },
+    {
+      "href": "evidence/main-native-early-focus-source-parity-20261128.json",
+      "path": "carr-library/docs/evidence/main-native-early-focus-source-parity-20261128.json"
+    },
+    {
+      "href": "evidence/search-native-final-composition-20261128.json",
+      "path": "carr-library/docs/evidence/search-native-final-composition-20261128.json"
+    },
+    {
+      "href": "START_UK.txt",
+      "path": "carr-library/docs/START_UK.txt"
+    },
+    {
+      "href": "UNIVERSAL_SCOPE_V3_FINALIZATION.md",
+      "path": "carr-library/docs/UNIVERSAL_SCOPE_V3_FINALIZATION.md"
+    },
+    {
+      "href": "UNIVERSAL_SCOPE_V3_AUDIO_AGENT.md",
+      "path": "carr-library/docs/UNIVERSAL_SCOPE_V3_AUDIO_AGENT.md"
+    },
+    {
+      "href": "UNIVERSAL_SCOPE_V2.md",
+      "path": "carr-library/docs/UNIVERSAL_SCOPE_V2.md"
+    },
+    {
+      "href": "acceptance.md",
+      "path": "carr-library/docs/acceptance.md"
+    },
+    {
+      "href": "validation/RESONANCE_REQUIREMENT_STATUS_20261127.json",
+      "path": "carr-library/docs/validation/RESONANCE_REQUIREMENT_STATUS_20261127.json"
+    },
+    {
+      "href": "evidence/basic-translation-focused-timeout-d4ea-20261128.md",
+      "path": "carr-library/docs/evidence/basic-translation-focused-timeout-d4ea-20261128.md"
+    },
+    {
+      "href": "evidence/basic-translation-modal-owner-repair-20261128.json",
+      "path": "carr-library/docs/evidence/basic-translation-modal-owner-repair-20261128.json"
+    },
+    {
+      "href": "evidence/424CC_MAIN_OBSERVED_FAILURE_20261128.md",
+      "path": "carr-library/docs/evidence/424CC_MAIN_OBSERVED_FAILURE_20261128.md"
+    },
+    {
+      "href": "evidence/basic-translation-native-root-fixture-repair-20261128.json",
+      "path": "carr-library/docs/evidence/basic-translation-native-root-fixture-repair-20261128.json"
+    },
+    {
+      "href": "evidence/basic-translation-focused-gate-addition-20261128.json",
+      "path": "carr-library/docs/evidence/basic-translation-focused-gate-addition-20261128.json"
+    },
+    {
+      "href": "evidence/completed-audio-inspection-focused-failure-e9-20261128.md",
+      "path": "carr-library/docs/evidence/completed-audio-inspection-focused-failure-e9-20261128.md"
+    },
+    {
+      "href": "evidence/local-voice-helper-deny-delete-fixture-repair-20261128.json",
+      "path": "carr-library/docs/evidence/local-voice-helper-deny-delete-fixture-repair-20261128.json"
+    },
+    {
+      "href": "evidence/post-c31-main-reader-parser-controls-observed-20261128.json",
+      "path": "carr-library/docs/evidence/post-c31-main-reader-parser-controls-observed-20261128.json"
+    },
+    {
+      "href": "evidence/C31_MAIN_OBSERVED_FAILURE_20261128.md",
+      "path": "carr-library/docs/evidence/C31_MAIN_OBSERVED_FAILURE_20261128.md"
+    },
+    {
+      "href": "evidence/local-voice-owned-directory-cleanup-repair-20261128.json",
+      "path": "carr-library/docs/evidence/local-voice-owned-directory-cleanup-repair-20261128.json"
+    },
+    {
+      "href": "AUDIO_STUDIO_V3.md",
+      "path": "carr-library/docs/AUDIO_STUDIO_V3.md"
+    },
+    {
+      "href": "evidence/pr209-c31-auxiliary-observed-results-20261128.md",
+      "path": "carr-library/docs/evidence/pr209-c31-auxiliary-observed-results-20261128.md"
+    },
+    {
+      "href": "evidence/windows-concurrency-preflight-c31-observed-20261128.md",
+      "path": "carr-library/docs/evidence/windows-concurrency-preflight-c31-observed-20261128.md"
+    },
+    {
+      "href": "evidence/completed-audio-silence-inspection-backend-20261128.json",
+      "path": "carr-library/docs/evidence/completed-audio-silence-inspection-backend-20261128.json"
+    },
+    {
+      "href": "evidence/completed-silence-cli-source-20261128.json",
+      "path": "carr-library/docs/evidence/completed-silence-cli-source-20261128.json"
+    },
+    {
+      "href": "evidence/completed-audio-inspection-studio-source-20261128.json",
+      "path": "carr-library/docs/evidence/completed-audio-inspection-studio-source-20261128.json"
+    },
+    {
+      "href": "evidence/r7-publication-independent-windows-20261127.json",
+      "path": "carr-library/docs/evidence/r7-publication-independent-windows-20261127.json"
+    },
+    {
+      "href": "evidence/MAIN_014B_SOURCE_FAILURE_20261128.md",
+      "path": "carr-library/docs/evidence/MAIN_014B_SOURCE_FAILURE_20261128.md"
+    },
+    {
+      "href": "evidence/resource-ephemeral-lock-resolution-repair-20261128.json",
+      "path": "carr-library/docs/evidence/resource-ephemeral-lock-resolution-repair-20261128.json"
+    },
+    {
+      "href": "evidence/idle-renewal-observation-fixture-repair-20261128.json",
+      "path": "carr-library/docs/evidence/idle-renewal-observation-fixture-repair-20261128.json"
+    },
+    {
+      "href": "evidence/assistant-suite-measured-deadline-20261128.json",
+      "path": "carr-library/docs/evidence/assistant-suite-measured-deadline-20261128.json"
+    },
+    {
+      "href": "evidence/resource-regression-gate-alignment-20261128.json",
+      "path": "carr-library/docs/evidence/resource-regression-gate-alignment-20261128.json"
+    },
+    {
+      "href": "evidence/pr209-014-auxiliary-observed-results-20261128.md",
+      "path": "carr-library/docs/evidence/pr209-014-auxiliary-observed-results-20261128.md"
+    },
+    {
+      "href": "evidence/main-source-f77-loopback-boundary-20261128.json",
+      "path": "carr-library/docs/evidence/main-source-f77-loopback-boundary-20261128.json"
+    },
+    {
+      "href": "evidence/local-planning-loopback-cancellation-fixture-repair-20261128.json",
+      "path": "carr-library/docs/evidence/local-planning-loopback-cancellation-fixture-repair-20261128.json"
+    },
+    {
+      "href": "evidence/STANDARD_NATIVE_MANAGED_LIBRARY_FINAL_20261127.md",
+      "path": "carr-library/docs/evidence/STANDARD_NATIVE_MANAGED_LIBRARY_FINAL_20261127.md"
+    },
+    {
+      "href": "evidence/pr209-f77-auxiliary-observed-results-20261127.md",
+      "path": "carr-library/docs/evidence/pr209-f77-auxiliary-observed-results-20261127.md"
+    },
+    {
+      "href": "evidence/final-main-reader-parser-controls-observed-20261127.json",
+      "path": "carr-library/docs/evidence/final-main-reader-parser-controls-observed-20261127.json"
+    },
+    {
+      "href": "validation/SHARED_CONTRACTS_805_WINDOWS_20261127.json",
+      "path": "carr-library/docs/validation/SHARED_CONTRACTS_805_WINDOWS_20261127.json"
+    },
+    {
+      "href": "evidence/canonical-dordiai-focused-909-observed-20261127.json",
+      "path": "carr-library/docs/evidence/canonical-dordiai-focused-909-observed-20261127.json"
+    },
+    {
+      "href": "evidence/chm-ordinary-admission-independent-read-20261127.json",
+      "path": "carr-library/docs/evidence/chm-ordinary-admission-independent-read-20261127.json"
+    },
+    {
+      "href": "evidence/r7-installed-capacity-20261127.json",
+      "path": "carr-library/docs/evidence/r7-installed-capacity-20261127.json"
+    },
+    {
+      "href": "NATIVE_SAPI_OWNED_SHUTDOWN_RESULTS_20261127.md",
+      "path": "carr-library/docs/NATIVE_SAPI_OWNED_SHUTDOWN_RESULTS_20261127.md"
+    },
+    {
+      "href": "validation/ASSISTANT_TRANSCRIPTION_WINDOWS_20261127.md",
+      "path": "carr-library/docs/validation/ASSISTANT_TRANSCRIPTION_WINDOWS_20261127.md"
+    },
+    {
+      "href": "evidence/standard-managed-health-library-failure-independent-read-20261127.json",
+      "path": "carr-library/docs/evidence/standard-managed-health-library-failure-independent-read-20261127.json"
+    },
+    {
+      "href": "evidence/standard-qualification-child-failure-independent-read-20261127.json",
+      "path": "carr-library/docs/evidence/standard-qualification-child-failure-independent-read-20261127.json"
+    },
+    {
+      "href": "evidence/standard-qualification-executable-classification-repair-20261127.json",
+      "path": "carr-library/docs/evidence/standard-qualification-executable-classification-repair-20261127.json"
+    },
+    {
+      "href": "STANDARD_SIGNED_UPDATES.md",
+      "path": "carr-library/docs/STANDARD_SIGNED_UPDATES.md"
+    },
+    {
+      "href": "evidence/office-ordinary-admission-independent-read-20261127.json",
+      "path": "carr-library/docs/evidence/office-ordinary-admission-independent-read-20261127.json"
+    },
+    {
+      "href": "OPTIONAL_CONVERTER_QUALIFICATION.md",
+      "path": "carr-library/docs/OPTIONAL_CONVERTER_QUALIFICATION.md"
+    },
+    {
+      "href": "validation/STUDIO_ROLE_OUTPUT_CONTROLS_20261127.json",
+      "path": "carr-library/docs/validation/STUDIO_ROLE_OUTPUT_CONTROLS_20261127.json"
+    },
+    {
+      "href": "validation/STUDIO_FORM_PREVIEW_DISPLAY_20261127.json",
+      "path": "carr-library/docs/validation/STUDIO_FORM_PREVIEW_DISPLAY_20261127.json"
+    },
+    {
+      "href": "validation/KEYBOARD_NATIVE_PR209_WINDOWS_20261127.json",
+      "path": "carr-library/docs/validation/KEYBOARD_NATIVE_PR209_WINDOWS_20261127.json"
+    },
+    {
+      "href": "evidence/audio-r34-observed-results-20261127.json",
+      "path": "carr-library/docs/evidence/audio-r34-observed-results-20261127.json"
+    },
+    {
+      "href": "evidence/pr209-auxiliary-observed-results-20261127.json",
+      "path": "carr-library/docs/evidence/pr209-auxiliary-observed-results-20261127.json"
+    },
+    {
+      "href": "validation/INTEGRATED_SOURCE_F169_FAILURE_20261127.json",
+      "path": "carr-library/docs/validation/INTEGRATED_SOURCE_F169_FAILURE_20261127.json"
+    },
+    {
+      "href": "DOCUMENT_CONVERSION.md",
+      "path": "carr-library/docs/DOCUMENT_CONVERSION.md"
+    },
+    {
+      "href": "READING_PREPARATION.md",
+      "path": "carr-library/docs/READING_PREPARATION.md"
+    },
+    {
+      "href": "LOCAL_VOICES_AND_MUSIC.md",
+      "path": "carr-library/docs/LOCAL_VOICES_AND_MUSIC.md"
+    },
+    {
+      "href": "AUDIO_STUDIO_V3.md",
+      "path": "carr-library/docs/AUDIO_STUDIO_V3.md"
+    },
+    {
+      "href": "STUDIO_CLIP_EDITING.md",
+      "path": "carr-library/docs/STUDIO_CLIP_EDITING.md"
+    },
+    {
+      "href": "COMPLETE_BACKUP.md",
+      "path": "carr-library/docs/COMPLETE_BACKUP.md"
+    },
+    {
+      "href": "LIBRARY_CAPACITY.md",
+      "path": "carr-library/docs/LIBRARY_CAPACITY.md"
+    },
+    {
+      "href": "V3_BIBLIOGRAPHY.md",
+      "path": "carr-library/docs/V3_BIBLIOGRAPHY.md"
+    },
+    {
+      "href": "LOCAL_PLANNING_RECONCILIATION.md",
+      "path": "carr-library/docs/LOCAL_PLANNING_RECONCILIATION.md"
+    },
+    {
+      "href": "KEYBOARD_SETTINGS.md",
+      "path": "carr-library/docs/KEYBOARD_SETTINGS.md"
+    },
+    {
+      "href": "PROVIDER_RECOVERY.md",
+      "path": "carr-library/docs/PROVIDER_RECOVERY.md"
+    },
+    {
+      "href": "LOCAL_MUSIC_ADAPTERS.md",
+      "path": "carr-library/docs/LOCAL_MUSIC_ADAPTERS.md"
+    },
+    {
+      "href": "ASSISTANT_WORKFLOW_TEMPLATES.md",
+      "path": "carr-library/docs/ASSISTANT_WORKFLOW_TEMPLATES.md"
+    },
+    {
+      "href": "MEASURED_BOOK_DURATION.md",
+      "path": "carr-library/docs/MEASURED_BOOK_DURATION.md"
+    },
+    {
+      "href": "language_qualification.md",
+      "path": "carr-library/docs/language_qualification.md"
+    },
+    {
+      "href": "TRUSTED_CLIENT.md",
+      "path": "carr-library/docs/TRUSTED_CLIENT.md"
+    },
+    {
+      "href": "ABOUT_COMPONENT_NOTICES.md",
+      "path": "carr-library/docs/ABOUT_COMPONENT_NOTICES.md"
+    },
+    {
+      "href": "STANDARD_SIGNED_UPDATES.md",
+      "path": "carr-library/docs/STANDARD_SIGNED_UPDATES.md"
+    },
+    {
+      "href": "SHARED_NATIVE_PROGRESS.md",
+      "path": "carr-library/docs/SHARED_NATIVE_PROGRESS.md"
+    },
+    {
+      "href": "SYNCHRONIZED_PUBLICATION_READING.md",
+      "path": "carr-library/docs/SYNCHRONIZED_PUBLICATION_READING.md"
+    },
+    {
+      "href": "AUDIO_STUDIO_V3.md",
+      "path": "carr-library/docs/AUDIO_STUDIO_V3.md"
+    },
+    {
+      "href": "LOCAL_ENGINE_PROFILES.md",
+      "path": "carr-library/docs/LOCAL_ENGINE_PROFILES.md"
+    },
+    {
+      "href": "DELIVERY_INTEGRATION_CONTRACT.md",
+      "path": "carr-library/docs/DELIVERY_INTEGRATION_CONTRACT.md"
+    },
+    {
+      "href": "TRANSCRIPTION_INTEGRATION_REVIEW.md",
+      "path": "carr-library/docs/TRANSCRIPTION_INTEGRATION_REVIEW.md"
+    },
+    {
+      "href": "UNIVERSAL_SCOPE_V2.md",
+      "path": "carr-library/docs/UNIVERSAL_SCOPE_V2.md"
+    },
+    {
+      "href": "validation/CANONICAL_FINAL_RECONCILIATION_20261127.json",
+      "path": "carr-library/docs/validation/CANONICAL_FINAL_RECONCILIATION_20261127.json"
+    },
+    {
+      "href": "validation/CANONICAL_GENERAL_SOURCE_DISPOSITION_20261127.json",
+      "path": "carr-library/docs/validation/CANONICAL_GENERAL_SOURCE_DISPOSITION_20261127.json"
+    },
+    {
+      "href": "validation/CANONICAL_DOMAIN_SOURCE_PATH_DISPOSITION_20261127.json",
+      "path": "carr-library/docs/validation/CANONICAL_DOMAIN_SOURCE_PATH_DISPOSITION_20261127.json"
+    },
+    {
+      "href": "validation/CANONICAL_DOCUMENTATION_DISPOSITION_20261127.json",
+      "path": "carr-library/docs/validation/CANONICAL_DOCUMENTATION_DISPOSITION_20261127.json"
+    },
+    {
+      "href": "RESONANCE_INTEGRATION_CHECKPOINT_20261127.md",
+      "path": "carr-library/docs/RESONANCE_INTEGRATION_CHECKPOINT_20261127.md"
+    }
+  ],
+  "bounded_remaining_consumer_audit": [
+    {
+      "status": "SOURCE_COMPATIBILITY_ONLY_NO_ADDITIONAL_CONCRETE_API_MISMATCH",
+      "source": "09ac4c06ec6cfc88805ea4673a7767a934b80f9b",
+      "reviewer": "durable_native_composition",
+      "scopes": [
+        "Reading fixture unchanged narration continuation",
+        "Second OCR-language command within focused29",
+        "Focused30 document formats",
+        "Focused31 OCR model manager",
+        "Focused32 source-open and adjacent federated helper",
+        "Focused33 evidence pages",
+        "Focused42–46 launcher and model prerequisites"
+      ],
+      "findings": "Current owners, constructors, controls, helper signatures, retained-source fields, CLI flags, native event handlers and receipt labels match. Document formats uses reviewed bounded Start-descendant lookup; source-open's actual copy helper already waits for completion.",
+      "runtime": "NOT_RUN; no qualification of previously skipped steps."
+    },
+    {
+      "status": "SOURCE_COMPATIBILITY_ONLY_NO_ADDITIONAL_CONCRETE_API_MISMATCH",
+      "source": "09ac4c06ec6cfc88805ea4673a7767a934b80f9b",
+      "reviewer": "durable_payload_composition",
+      "focused_steps": [
+        34,
+        35,
+        36,
+        37,
+        38,
+        39,
+        40,
+        41
+      ],
+      "scopes": [
+        "Reference metadata and historical outline",
+        "Academic comparison/bibliography/catalog review",
+        "Notebook search and keyboard actions",
+        "EPUB sections/image descriptions",
+        "Library reports/academic exports",
+        "EPUB contents/chapter search",
+        "Full-source reader/page bookmarks",
+        "Catalog reports/source comparison export"
+      ],
+      "findings": "Current frame/menu wiring, constructor/callback/control names, inherited WorkspaceFrame selection/open, scope owner, asynchronous save/modal completion, reference metadata and ReadingDialog navigation/bookmark/history methods match. No additional concrete current-owner/API mismatch.",
+      "runtime": "NOT_RUN; no qualification of previously skipped steps."
+    }
+  ],
+  "composition_peer": "PENDING",
+  "observed_parent_review": "09ac-focused-independent-review-20261128.json",
+  "preserved_boundaries": {
+    "full_platform": "NOT_QUALIFIED",
+    "current_execution": "NOT_RUN",
+    "historical_success_transfer": false,
+    "canonical": "UNCHANGED",
+    "pr_head": "UNCHANGED_7C",
+    "reader": "HISTORICAL_FAILED_7C_UNBOUND"
+  },
+  "scope": "The evidence branch deliberately retains its historical application tree. The source candidate is87d1; never promote this evidence tree."
+}

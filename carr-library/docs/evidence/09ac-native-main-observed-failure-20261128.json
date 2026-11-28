@@ -1,0 +1,934 @@
+{
+  "schema": "carr-early-native-observed-failure/2",
+  "status": "FAILURE_OBSERVED_NOT_INTEGRATABLE",
+  "observed_at_utc": "2026-11-28T10:14:26Z",
+  "scope": "Only completed exact09ac early native focused run; no full main, successor or manual qualification inferred.",
+  "source": {
+    "repository": "Oleksii-debug/AudioTacticalFPS",
+    "commit": "09ac4c06ec6cfc88805ea4673a7767a934b80f9b",
+    "tree": "3f00a232a7ff2af3a4df2f681db5e92da0db9220",
+    "tracked_files": 1824
+  },
+  "execution": {
+    "run": {
+      "id": 46131541694,
+      "attempt": 1,
+      "event": "push",
+      "branch": "carr/native-main-final-09ac-20261128-d3a",
+      "head_sha": "09ac4c06ec6cfc88805ea4673a7767a934b80f9b",
+      "status": "completed",
+      "conclusion": "failure",
+      "created_at": "2026-11-28T09:40:11Z",
+      "updated_at": "2026-11-28T10:04:21Z",
+      "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46131541694"
+    },
+    "job": {
+      "id": 140937577072,
+      "name": "Windows x64 / CPython 3.11 / exact main native gates",
+      "head_sha": "09ac4c06ec6cfc88805ea4673a7767a934b80f9b",
+      "status": "completed",
+      "conclusion": "failure",
+      "started_at": "2026-11-28T09:56:52Z",
+      "completed_at": "2026-11-28T10:04:21Z",
+      "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46131541694/job/140937577072",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-11-28T09:56:53Z",
+          "completed_at": "2026-11-28T09:56:54Z"
+        },
+        {
+          "name": "Preserve the exact committed source bytes",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-11-28T09:56:54Z",
+          "completed_at": "2026-11-28T09:56:55Z"
+        },
+        {
+          "name": "Enable complete reviewed Git history on the Windows runner",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-11-28T09:56:55Z",
+          "completed_at": "2026-11-28T09:56:55Z"
+        },
+        {
+          "name": "Check out the exact event commit",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-11-28T09:56:55Z",
+          "completed_at": "2026-11-28T09:57:06Z"
+        },
+        {
+          "name": "Set up native x64 CPython",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 5,
+          "started_at": "2026-11-28T09:57:06Z",
+          "completed_at": "2026-11-28T09:57:06Z"
+        },
+        {
+          "name": "Compile the exact source and regression entrypoints",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 6,
+          "started_at": "2026-11-28T09:57:06Z",
+          "completed_at": "2026-11-28T09:57:14Z"
+        },
+        {
+          "name": "Install the actual desktop package in a fresh environment",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 7,
+          "started_at": "2026-11-28T09:57:14Z",
+          "completed_at": "2026-11-28T09:57:50Z"
+        },
+        {
+          "name": "Bind the complete installed package and checkout before native gates",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 8,
+          "started_at": "2026-11-28T09:57:50Z",
+          "completed_at": "2026-11-28T09:57:53Z"
+        },
+        {
+          "name": "Check the installed application through its self-test entrypoint",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 9,
+          "started_at": "2026-11-28T09:57:53Z",
+          "completed_at": "2026-11-28T09:57:55Z"
+        },
+        {
+          "name": "Check the installed offline OCR catalogue and console entrypoint",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 10,
+          "started_at": "2026-11-28T09:57:55Z",
+          "completed_at": "2026-11-28T09:57:56Z"
+        },
+        {
+          "name": "Exercise native academic references and reading controls",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 11,
+          "started_at": "2026-11-28T09:57:56Z",
+          "completed_at": "2026-11-28T09:57:59Z"
+        },
+        {
+          "name": "Exercise native advanced query builder and source search",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 12,
+          "started_at": "2026-11-28T09:57:59Z",
+          "completed_at": "2026-11-28T09:58:03Z"
+        },
+        {
+          "name": "Retain explicit core-only fallback and offline startup coverage",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 13,
+          "started_at": "2026-11-28T09:58:03Z",
+          "completed_at": "2026-11-28T09:58:05Z"
+        },
+        {
+          "name": "Match production dependencies before required source suites",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 14,
+          "started_at": "2026-11-28T09:58:05Z",
+          "completed_at": "2026-11-28T09:58:23Z"
+        },
+        {
+          "name": "Prove fixed PowerShell native classification before bundle work",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 15,
+          "started_at": "2026-11-28T09:58:23Z",
+          "completed_at": "2026-11-28T09:59:33Z"
+        },
+        {
+          "name": "Prepare the verified OCR engine before its required source regression",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 16,
+          "started_at": "2026-11-28T09:59:33Z",
+          "completed_at": "2026-11-28T10:01:18Z"
+        },
+        {
+          "name": "Exercise actual managed OCR with Unicode Windows paths",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 17,
+          "started_at": "2026-11-28T10:01:18Z",
+          "completed_at": "2026-11-28T10:01:46Z"
+        },
+        {
+          "name": "Require Windows OCR script models and reviewed publication boundaries early",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 18,
+          "started_at": "2026-11-28T10:01:46Z",
+          "completed_at": "2026-11-28T10:03:08Z"
+        },
+        {
+          "name": "Prepare the sealed local FFmpeg runtime before audio regressions",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 19,
+          "started_at": "2026-11-28T10:03:08Z",
+          "completed_at": "2026-11-28T10:03:27Z"
+        },
+        {
+          "name": "Exercise only the explicit synthetic local-planning HTTP fixture",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 20,
+          "started_at": "2026-11-28T10:03:27Z",
+          "completed_at": "2026-11-28T10:03:41Z"
+        },
+        {
+          "name": "Exercise actual native citations and destination confirmation",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 21,
+          "started_at": "2026-11-28T10:03:41Z",
+          "completed_at": "2026-11-28T10:03:49Z"
+        },
+        {
+          "name": "Exercise installed native translation approval and immutable derivatives",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 22,
+          "started_at": "2026-11-28T10:03:49Z",
+          "completed_at": "2026-11-28T10:03:50Z"
+        },
+        {
+          "name": "Exercise installed Advanced translation with real native controls and synthetic provider",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 23,
+          "started_at": "2026-11-28T10:03:50Z",
+          "completed_at": "2026-11-28T10:03:52Z"
+        },
+        {
+          "name": "Exercise installed search continuation with actual native keys and retained sources",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 24,
+          "started_at": "2026-11-28T10:03:52Z",
+          "completed_at": "2026-11-28T10:04:04Z"
+        },
+        {
+          "name": "Exercise installed signed-client controls with a synthetic authority",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 25,
+          "started_at": "2026-11-28T10:04:04Z",
+          "completed_at": "2026-11-28T10:04:08Z"
+        },
+        {
+          "name": "Record actual Office qualification or explicit Word unavailability",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 26,
+          "started_at": "2026-11-28T10:04:08Z",
+          "completed_at": "2026-11-28T10:04:08Z"
+        },
+        {
+          "name": "Exercise installed language evidence and explicit native voice refresh",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 27,
+          "started_at": "2026-11-28T10:04:08Z",
+          "completed_at": "2026-11-28T10:04:11Z"
+        },
+        {
+          "name": "Exercise native Import Center and durable batch workflow",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 28,
+          "started_at": "2026-11-28T10:04:11Z",
+          "completed_at": "2026-11-28T10:04:14Z"
+        },
+        {
+          "name": "Exercise native reading copies, save commands and keyboard preferences",
+          "status": "completed",
+          "conclusion": "failure",
+          "number": 29,
+          "started_at": "2026-11-28T10:04:14Z",
+          "completed_at": "2026-11-28T10:04:15Z"
+        },
+        {
+          "name": "Exercise installed document formats and native accessible reading",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 30,
+          "started_at": "2026-11-28T10:04:15Z",
+          "completed_at": "2026-11-28T10:04:15Z"
+        },
+        {
+          "name": "Exercise the installed native OCR catalogue and shared model manager",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 31,
+          "started_at": "2026-11-28T10:04:15Z",
+          "completed_at": "2026-11-28T10:04:15Z"
+        },
+        {
+          "name": "Exercise native wx startup and source-opening events",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 32,
+          "started_at": "2026-11-28T10:04:15Z",
+          "completed_at": "2026-11-28T10:04:15Z"
+        },
+        {
+          "name": "Exercise native saved-evidence page selection and note recovery",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 33,
+          "started_at": "2026-11-28T10:04:15Z",
+          "completed_at": "2026-11-28T10:04:15Z"
+        },
+        {
+          "name": "Exercise native reference metadata review and historical outline export",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 34,
+          "started_at": "2026-11-28T10:04:15Z",
+          "completed_at": "2026-11-28T10:04:15Z"
+        },
+        {
+          "name": "Exercise native academic comparison, bibliography and catalog review",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 35,
+          "started_at": "2026-11-28T10:04:15Z",
+          "completed_at": "2026-11-28T10:04:15Z"
+        },
+        {
+          "name": "Exercise native research-notebook search and keyboard actions",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 36,
+          "started_at": "2026-11-28T10:04:15Z",
+          "completed_at": "2026-11-28T10:04:15Z"
+        },
+        {
+          "name": "Exercise native EPUB section navigation and image descriptions",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 37,
+          "started_at": "2026-11-28T10:04:15Z",
+          "completed_at": "2026-11-28T10:04:15Z"
+        },
+        {
+          "name": "Exercise native library reports and academic exports",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 38,
+          "started_at": "2026-11-28T10:04:15Z",
+          "completed_at": "2026-11-28T10:04:15Z"
+        },
+        {
+          "name": "Exercise native EPUB contents and exact chapter search",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 39,
+          "started_at": "2026-11-28T10:04:15Z",
+          "completed_at": "2026-11-28T10:04:15Z"
+        },
+        {
+          "name": "Exercise native full-source reader and page bookmarks",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 40,
+          "started_at": "2026-11-28T10:04:15Z",
+          "completed_at": "2026-11-28T10:04:15Z"
+        },
+        {
+          "name": "Exercise native catalog reports and source comparison export",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 41,
+          "started_at": "2026-11-28T10:04:15Z",
+          "completed_at": "2026-11-28T10:04:15Z"
+        },
+        {
+          "name": "Locate installed Microsoft x64 development tools",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 42,
+          "started_at": "2026-11-28T10:04:15Z",
+          "completed_at": "2026-11-28T10:04:15Z"
+        },
+        {
+          "name": "Compile private native launcher and test child with MSVC",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 43,
+          "started_at": "2026-11-28T10:04:15Z",
+          "completed_at": "2026-11-28T10:04:15Z"
+        },
+        {
+          "name": "Execute exact launcher on native Windows with synthetic child",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 44,
+          "started_at": "2026-11-28T10:04:15Z",
+          "completed_at": "2026-11-28T10:04:15Z"
+        },
+        {
+          "name": "Require the exact nine native launcher checks",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 45,
+          "started_at": "2026-11-28T10:04:15Z",
+          "completed_at": "2026-11-28T10:04:15Z"
+        },
+        {
+          "name": "Prepare the pinned local model through the existing upstream verifier",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 46,
+          "started_at": "2026-11-28T10:04:15Z",
+          "completed_at": "2026-11-28T10:04:15Z"
+        },
+        {
+          "name": "Require unchanged source and installed payload after every copied gate",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 47,
+          "started_at": "2026-11-28T10:04:15Z",
+          "completed_at": "2026-11-28T10:04:15Z"
+        },
+        {
+          "name": "Preserve exact-commit early native receipts and raw logs",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 48,
+          "started_at": "2026-11-28T10:04:15Z",
+          "completed_at": "2026-11-28T10:04:17Z"
+        },
+        {
+          "name": "Post Set up native x64 CPython",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 95,
+          "started_at": "2026-11-28T10:04:17Z",
+          "completed_at": "2026-11-28T10:04:17Z"
+        },
+        {
+          "name": "Post Check out the exact event commit",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 96,
+          "started_at": "2026-11-28T10:04:17Z",
+          "completed_at": "2026-11-28T10:04:19Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 97,
+          "started_at": "2026-11-28T10:04:19Z",
+          "completed_at": "2026-11-28T10:04:19Z"
+        }
+      ]
+    }
+  },
+  "failure": {
+    "focused_step": 29,
+    "copied_main_step": 31,
+    "name": "Exercise native reading copies, save commands and keyboard preferences",
+    "producer": "carr-library/scripts/windows_v3_reading_smoke.py",
+    "producer_line": 88,
+    "exception": "AttributeError",
+    "exact_expression": "keyboard = frame.keyboard_actions",
+    "traceback": [
+      "Traceback (most recent call last):",
+      "  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_v3_reading_smoke.py\", line 222, in <module>",
+      "    raise SystemExit(main())",
+      "                     ^^^^^^",
+      "  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_v3_reading_smoke.py\", line 88, in main",
+      "    keyboard = frame.keyboard_actions",
+      "               ^^^^^^^^^^^^^^^^^^^^^^",
+      "AttributeError: 'DesktopFrame' object has no attribute 'keyboard_actions'. Did you mean: 'ebook_actions'?",
+      "##[error]Process completed with exit code 1."
+    ],
+    "actual_pass_labels": [
+      "productivity and editor load from the installed wheel",
+      "real Windows wx runtime",
+      "File is the first Alt menu",
+      "Options and Reading remain accessible"
+    ],
+    "final_reading_receipt": "ABSENT",
+    "source_diagnosis": "The fixture uses the retired frame.keyboard_actions owner. Current install_productivity_actions returns and attaches frame.keyboard_commands; its binding/store APIs also differ. This record establishes the failed expression; the separate repair component documents migration of all dependent fixture operations.",
+    "timeout": "NO_TIMEOUT_OBSERVED",
+    "same_step_ocr_language_command": "NOT_INVOKED_AFTER_FIRST_COMMAND_EXIT1",
+    "later_focused_steps_30_through_47": "SKIPPED",
+    "after_payload_binding": "SKIPPED"
+  },
+  "import_center": {
+    "focused_step": 28,
+    "copied_main_step": 30,
+    "status": "PASS",
+    "receipt": {
+      "raw_log_line": 3955,
+      "value": {
+        "status": "PASS",
+        "native_controls": "PASS",
+        "planned_import_search_reopen": "PASS",
+        "nvda": "NOT_RUN"
+      }
+    },
+    "viewport_diagnostics": [
+      {
+        "raw_log_line": 3953,
+        "value": {
+          "phase": "default",
+          "window": [
+            920,
+            760
+          ],
+          "client": [
+            904,
+            721
+          ],
+          "outer_minimum": [
+            240,
+            284
+          ],
+          "viewport": [
+            887,
+            637
+          ],
+          "content_minimum": [
+            639,
+            673
+          ],
+          "virtual": [
+            887,
+            673
+          ]
+        }
+      },
+      {
+        "raw_log_line": 3954,
+        "value": {
+          "phase": "minimum",
+          "window": [
+            800,
+            650
+          ],
+          "client": [
+            784,
+            611
+          ],
+          "outer_minimum": [
+            240,
+            284
+          ],
+          "viewport": [
+            767,
+            527
+          ],
+          "content_minimum": [
+            639,
+            673
+          ],
+          "virtual": [
+            767,
+            673
+          ]
+        }
+      }
+    ],
+    "execution_origin": "CURRENT_CHECKOUT_SOURCE: native_import_center_smoke.py prepends current src; isolated interpreter alone does not make this an installed-package probe.",
+    "source_contract": "All41 assert statements are retained in the source-bound probe (23 original plus18 added). These are assertion sites, not41 emitted check labels. The final four-field PASS follows the minimum-size deferred-layout path, focus to bottom Save report action with visible controls, actual UIActionSimulator Tab to fixed status, focus back to top collection with upward scrolling, restore size, planned import, exact quote/search, reopen and close-veto flow.",
+    "native_focus_basis": "Source-bound serial callbacks must complete before original plan/import final receipt. Individual focus assertions are not separately emitted as labels.",
+    "installed_document_format_probe": "SKIPPED_AT_FOCUSED_STEP30; not qualified by source-native Import Center success.",
+    "nvda": "NOT_RUN"
+  },
+  "search_continuation": {
+    "focused_step": 24,
+    "copied_main_step": 26,
+    "status": "PASS",
+    "inner_receipt": {
+      "raw_log_line": 3783,
+      "value": {
+        "result": "PASS",
+        "checks": [
+          "desktop-navigation-accessible-and-initially-disabled",
+          "desktop-first-page-bounded-100",
+          "desktop-first-page-accessible-counts",
+          "desktop-next-native-key-reaches-final-21",
+          "desktop-forward-results-have-no-overlap",
+          "desktop-old-page-source-handle-withdrawn",
+          "desktop-previous-native-key-reruns-first-page",
+          "desktop-previous-allocates-fresh-source-handles",
+          "desktop-native-copy-rechecks-exact-source",
+          "center-native-space-selects-explicit-second-library",
+          "center-navigation-accessible",
+          "center-first-page-bounded-10",
+          "center-accessible-counts-and-batch-order",
+          "center-next-native-key-reaches-page-two",
+          "center-next-results-have-no-overlap",
+          "center-previous-native-key-reruns-first-page",
+          "center-old-page-source-handle-withdrawn",
+          "center-native-copy-rechecks-exact-source",
+          "center-query-change-withdraws-results-and-navigation",
+          "center-escape-preserves-host-library",
+          "synthetic-original-bytes-unchanged"
+        ],
+        "actual_native_keys": true,
+        "actual_source_copy": true,
+        "synthetic_corpus": true,
+        "nvda": "NOT_RUN",
+        "real_corpus_benchmark": "NOT_RUN",
+        "platform": "Windows-10-10.0.20348-SP0",
+        "python": "3.11.9",
+        "module_origins": {
+          "carr_library.application": {
+            "path": "D:\\a\\_temp\\carr-windows-python\\Lib\\site-packages\\carr_library\\application.py",
+            "sha256": "0e0a13835767b2a64f8cdcfa0f09e7dc78ed9f148afb0f5635b513c06a9a41d8"
+          },
+          "carr_library.search.pagination": {
+            "path": "D:\\a\\_temp\\carr-windows-python\\Lib\\site-packages\\carr_library\\search\\pagination.py",
+            "sha256": "48ca2455388b1e192a0f83d0503a890ca7ab6252b829a57a973a71348159e071"
+          },
+          "carr_library.ui.search_paging": {
+            "path": "D:\\a\\_temp\\carr-windows-python\\Lib\\site-packages\\carr_library\\ui\\search_paging.py",
+            "sha256": "c822aab930b9073c2828992f7cde690706b946abf3a9b4256ff7335f3039e88d"
+          },
+          "carr_library.ui.federated_search": {
+            "path": "D:\\a\\_temp\\carr-windows-python\\Lib\\site-packages\\carr_library\\ui\\federated_search.py",
+            "sha256": "b61ffd724d7bd7ecebe9e8017a3db2d49d1a48ab9cf1011f594452616f86bbf8"
+          }
+        }
+      }
+    },
+    "wrapper_receipt": {
+      "raw_log_line": 3784,
+      "value": {
+        "actual_native_keys": true,
+        "actual_source_copy": true,
+        "checks": [
+          "desktop-navigation-accessible-and-initially-disabled",
+          "desktop-first-page-bounded-100",
+          "desktop-first-page-accessible-counts",
+          "desktop-next-native-key-reaches-final-21",
+          "desktop-forward-results-have-no-overlap",
+          "desktop-old-page-source-handle-withdrawn",
+          "desktop-previous-native-key-reruns-first-page",
+          "desktop-previous-allocates-fresh-source-handles",
+          "desktop-native-copy-rechecks-exact-source",
+          "center-native-space-selects-explicit-second-library",
+          "center-navigation-accessible",
+          "center-first-page-bounded-10",
+          "center-accessible-counts-and-batch-order",
+          "center-next-native-key-reaches-page-two",
+          "center-next-results-have-no-overlap",
+          "center-previous-native-key-reruns-first-page",
+          "center-old-page-source-handle-withdrawn",
+          "center-native-copy-rechecks-exact-source",
+          "center-query-change-withdraws-results-and-navigation",
+          "center-escape-preserves-host-library",
+          "synthetic-original-bytes-unchanged"
+        ],
+        "installed_package": true,
+        "module_origins": {
+          "carr_library.application": {
+            "path": "D:\\a\\_temp\\carr-windows-python\\Lib\\site-packages\\carr_library\\application.py",
+            "sha256": "0e0a13835767b2a64f8cdcfa0f09e7dc78ed9f148afb0f5635b513c06a9a41d8"
+          },
+          "carr_library.search.pagination": {
+            "path": "D:\\a\\_temp\\carr-windows-python\\Lib\\site-packages\\carr_library\\search\\pagination.py",
+            "sha256": "48ca2455388b1e192a0f83d0503a890ca7ab6252b829a57a973a71348159e071"
+          },
+          "carr_library.ui.federated_search": {
+            "path": "D:\\a\\_temp\\carr-windows-python\\Lib\\site-packages\\carr_library\\ui\\federated_search.py",
+            "sha256": "b61ffd724d7bd7ecebe9e8017a3db2d49d1a48ab9cf1011f594452616f86bbf8"
+          },
+          "carr_library.ui.search_paging": {
+            "path": "D:\\a\\_temp\\carr-windows-python\\Lib\\site-packages\\carr_library\\ui\\search_paging.py",
+            "sha256": "c822aab930b9073c2828992f7cde690706b946abf3a9b4256ff7335f3039e88d"
+          }
+        },
+        "nvda": "NOT_RUN",
+        "platform": "Windows-10-10.0.20348-SP0",
+        "python": "3.11.9",
+        "real_corpus_benchmark": "NOT_RUN",
+        "result": "PASS",
+        "source_commit": "09ac4c06ec6cfc88805ea4673a7767a934b80f9b",
+        "synthetic_corpus": true
+      }
+    },
+    "actual_label_counter": {
+      "desktop-navigation-accessible-and-initially-disabled": 1,
+      "desktop-first-page-bounded-100": 1,
+      "desktop-first-page-accessible-counts": 1,
+      "desktop-next-native-key-reaches-final-21": 1,
+      "desktop-forward-results-have-no-overlap": 1,
+      "desktop-old-page-source-handle-withdrawn": 1,
+      "desktop-previous-native-key-reruns-first-page": 1,
+      "desktop-previous-allocates-fresh-source-handles": 1,
+      "desktop-native-copy-rechecks-exact-source": 1,
+      "center-native-space-selects-explicit-second-library": 1,
+      "center-navigation-accessible": 1,
+      "center-first-page-bounded-10": 1,
+      "center-accessible-counts-and-batch-order": 1,
+      "center-next-native-key-reaches-page-two": 1,
+      "center-next-results-have-no-overlap": 1,
+      "center-previous-native-key-reruns-first-page": 1,
+      "center-old-page-source-handle-withdrawn": 1,
+      "center-native-copy-rechecks-exact-source": 1,
+      "center-query-change-withdraws-results-and-navigation": 1,
+      "center-escape-preserves-host-library": 1,
+      "synthetic-original-bytes-unchanged": 1
+    },
+    "expected_check_count": 21,
+    "exact_counter_match": true,
+    "source_origins_rehashed": [
+      {
+        "path": "carr-library/src/carr_library/application.py",
+        "git_blob": "f38c7b02abc0bd0a9fbbfe5c494a5a5f60633a34",
+        "sha256": "0e0a13835767b2a64f8cdcfa0f09e7dc78ed9f148afb0f5635b513c06a9a41d8",
+        "utf8_bytes": 77559,
+        "actual_installed_path": "D:\\a\\_temp\\carr-windows-python\\Lib\\site-packages\\carr_library\\application.py",
+        "actual_installed_sha256": "0e0a13835767b2a64f8cdcfa0f09e7dc78ed9f148afb0f5635b513c06a9a41d8"
+      },
+      {
+        "path": "carr-library/src/carr_library/search/pagination.py",
+        "git_blob": "2441f3f8b4895309467d6e18fbe08152af4d38c5",
+        "sha256": "48ca2455388b1e192a0f83d0503a890ca7ab6252b829a57a973a71348159e071",
+        "utf8_bytes": 18579,
+        "actual_installed_path": "D:\\a\\_temp\\carr-windows-python\\Lib\\site-packages\\carr_library\\search\\pagination.py",
+        "actual_installed_sha256": "48ca2455388b1e192a0f83d0503a890ca7ab6252b829a57a973a71348159e071"
+      },
+      {
+        "path": "carr-library/src/carr_library/ui/search_paging.py",
+        "git_blob": "f16b026c0ec71405e4f20e56a311bfd05a65df0d",
+        "sha256": "c822aab930b9073c2828992f7cde690706b946abf3a9b4256ff7335f3039e88d",
+        "utf8_bytes": 2505,
+        "actual_installed_path": "D:\\a\\_temp\\carr-windows-python\\Lib\\site-packages\\carr_library\\ui\\search_paging.py",
+        "actual_installed_sha256": "c822aab930b9073c2828992f7cde690706b946abf3a9b4256ff7335f3039e88d"
+      },
+      {
+        "path": "carr-library/src/carr_library/ui/federated_search.py",
+        "git_blob": "81b8b88bba516cfbe3629ecd2bb7a6e0f2a14664",
+        "sha256": "b61ffd724d7bd7ecebe9e8017a3db2d49d1a48ab9cf1011f594452616f86bbf8",
+        "utf8_bytes": 33642,
+        "actual_installed_path": "D:\\a\\_temp\\carr-windows-python\\Lib\\site-packages\\carr_library\\ui\\federated_search.py",
+        "actual_installed_sha256": "b61ffd724d7bd7ecebe9e8017a3db2d49d1a48ab9cf1011f594452616f86bbf8"
+      }
+    ],
+    "native_keyboard": true,
+    "manual_nvda": "NOT_RUN",
+    "real_corpus_benchmark": "NOT_RUN"
+  },
+  "bindings": {
+    "before_receipt": {
+      "line": 1590,
+      "value": {
+        "installed_package_files": 442,
+        "phase": "before",
+        "receipt_sha256": "0dcde41c95230b0efc347d5615aee2d84cefc05f3adfb1959dea6c4fcb773d39",
+        "source_commit": "09ac4c06ec6cfc88805ea4673a7767a934b80f9b",
+        "source_tree": "3f00a232a7ff2af3a4df2f681db5e92da0db9220",
+        "status": "PASS",
+        "tracked_files": 1824
+      }
+    },
+    "producer_enforcement": "Source-reviewed binder streams exact Git bytes and complete installed payload before copied gates; current receipt reports1824 tracked/442 installed. This is the compact producer receipt.",
+    "full_map_read": "NOT_INDEPENDENTLY_READ_FROM_ARTIFACT",
+    "after_receipt": "ABSENT_STEP_SKIPPED",
+    "source_files": [
+      {
+        "path": "carr-library/src/carr_library/application.py",
+        "git_blob": "f38c7b02abc0bd0a9fbbfe5c494a5a5f60633a34",
+        "sha256": "0e0a13835767b2a64f8cdcfa0f09e7dc78ed9f148afb0f5635b513c06a9a41d8",
+        "utf8_bytes": 77559
+      },
+      {
+        "path": "carr-library/src/carr_library/search/pagination.py",
+        "git_blob": "2441f3f8b4895309467d6e18fbe08152af4d38c5",
+        "sha256": "48ca2455388b1e192a0f83d0503a890ca7ab6252b829a57a973a71348159e071",
+        "utf8_bytes": 18579
+      },
+      {
+        "path": "carr-library/src/carr_library/ui/search_paging.py",
+        "git_blob": "f16b026c0ec71405e4f20e56a311bfd05a65df0d",
+        "sha256": "c822aab930b9073c2828992f7cde690706b946abf3a9b4256ff7335f3039e88d",
+        "utf8_bytes": 2505
+      },
+      {
+        "path": "carr-library/src/carr_library/ui/federated_search.py",
+        "git_blob": "81b8b88bba516cfbe3629ecd2bb7a6e0f2a14664",
+        "sha256": "b61ffd724d7bd7ecebe9e8017a3db2d49d1a48ab9cf1011f594452616f86bbf8",
+        "utf8_bytes": 33642
+      },
+      {
+        "path": ".github/workflows/carr-native-main-final.yml",
+        "git_blob": "3971121f4239d14590ee92e1cc5eeb09afff6573",
+        "sha256": "1afeb19bb2c9dce472858427844a8917f1c59b477674b8ad4eacda9ac8418295",
+        "utf8_bytes": 39814
+      },
+      {
+        "path": "carr-library/tests/ui/probe_search_continuation_native.py",
+        "git_blob": "3cff32ca38b7097a943cf92d36512356076dede6",
+        "sha256": "375cc9124b9673d9a9295cc74b01110fa284fb44272e2054c87f7d5797954df8",
+        "utf8_bytes": 15359
+      },
+      {
+        "path": "carr-library/src/carr_library/ui/import_center.py",
+        "git_blob": "f757c8748ef273938992a1518f327012616d5ec1",
+        "sha256": "62ded099ed5c712f009447a0981407b721b323838d7e611106a1a8a643af7966",
+        "utf8_bytes": 28407
+      },
+      {
+        "path": "carr-library/tests/ui/native_import_center_smoke.py",
+        "git_blob": "baded3dff24d2974e9ba8bd6633b79a6d5e50985",
+        "sha256": "657ed4a78d17e5b46b078972c0b6aaaea2e528924ee79f58aabb5792d552b462",
+        "utf8_bytes": 9382
+      },
+      {
+        "path": "carr-library/tests/ui/native_document_formats_smoke.py",
+        "git_blob": "40ba40266b5b8d2954563c60d965c61985b8257b",
+        "sha256": "5827314af7add0cbf816f9957ea47fdc9bf68fd7f8271f725b849bee8b256ca6",
+        "utf8_bytes": 14333
+      },
+      {
+        "path": "carr-library/scripts/windows_v3_reading_smoke.py",
+        "git_blob": "2844dcb6f87e871bc77a07b22ce7a9b5743c3a0e",
+        "sha256": "d1ce660eb8c1a78d4119c953f08aea1ed9ab457d2fb9e1dce81deee869fef490",
+        "utf8_bytes": 11643
+      },
+      {
+        "path": "carr-library/src/carr_library/ui/productivity.py",
+        "git_blob": "348cc35dd963e99d01659dc89a85bea1e95e299f",
+        "sha256": "a88afba19542aa23368865d592b3e37e77a32ec46013455793e135fae800a767",
+        "utf8_bytes": 17321
+      },
+      {
+        "path": "carr-library/src/carr_library/ui/keyboard_settings.py",
+        "git_blob": "58912be85954a059c680783ccda66769757ec491",
+        "sha256": "be9aacf22fc20b0e40a7d11046d639b7f8b545d31808d378817e29947c960548",
+        "utf8_bytes": 30759
+      },
+      {
+        "path": "carr-library/src/carr_library/ui/desktop_app.py",
+        "git_blob": "94fde0a14c7243983e3b1fa0ee1362bc014e2100",
+        "sha256": "ee90a47c87d43c6d3556e427eeb52954b12425f6b85540952e7e169d82d5ca17",
+        "utf8_bytes": 74039
+      }
+    ]
+  },
+  "other_early_steps": {
+    "basis": "Complete API outcomes above; no independent qualification of every inner receipt.",
+    "office": [
+      {
+        "raw_log_line": 3898,
+        "value": {
+          "actual_nvda": "NOT_RUN",
+          "actual_office": "NOT_RUN",
+          "check_names": [],
+          "checks": 0,
+          "reason": "Desktop Microsoft Word is not installed/registered.",
+          "schema": "carr-native-word-citations/1",
+          "status": "NOT_RUN"
+        }
+      },
+      {
+        "raw_log_line": 3899,
+        "value": {
+          "actual_nvda": "NOT_RUN",
+          "actual_office": "NOT_RUN",
+          "check_names": [],
+          "checks": 0,
+          "reason": "Desktop Microsoft Word is not installed/registered.",
+          "schema": "carr-native-word-citations/1",
+          "source_commit": "09ac4c06ec6cfc88805ea4673a7767a934b80f9b",
+          "status": "NOT_RUN"
+        }
+      }
+    ],
+    "basic_and_audio": "Separate current09ac focused proofs retain324/324/8 and274/274/29; neither qualifies this failed lane."
+  },
+  "raw_log": {
+    "transport": "GitHub decoded workflow job log",
+    "characters": 579471,
+    "utf8_bytes": 579473,
+    "sha256": "bb7a4fed4d433b79cbca2ff540031a04cd7f0bb8494337a5052d856800fb1c2e",
+    "first_timestamp": "2026-11-28T09:56:53.1437108Z",
+    "last_timestamp": "2026-11-28T10:04:19.3380071Z",
+    "complete_log_read": true,
+    "parsing": "Raw BOM/line endings retained for hash; separate interpretation copy strips timestamp prefixes and ANSI."
+  },
+  "artifact": {
+    "metadata": {
+      "id": 15257579427,
+      "name": "carr-native-main-final-09ac4c06ec6cfc88805ea4673a7767a934b80f9b-1",
+      "size_in_bytes": 246817,
+      "url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15257579427",
+      "archive_download_url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15257579427/zip",
+      "expired": false,
+      "created_at": "2026-11-28T10:04:17Z",
+      "expires_at": "2026-12-05T10:04:16Z",
+      "updated_at": "2026-11-28T10:04:17Z",
+      "digest": "sha256:cf3b7bcb5b39b0be8eeab694aa8eb1a1d016e329baa1508259ac36251d51575d",
+      "workflow_run": {
+        "id": 46131541694,
+        "repository_id": 1341777614,
+        "head_repository_id": 1341777614,
+        "head_branch": "carr/native-main-final-09ac-20261128-d3a",
+        "head_sha": "09ac4c06ec6cfc88805ea4673a7767a934b80f9b"
+      }
+    },
+    "upload_reported_files": 40,
+    "zip_independently_read": false,
+    "digest_and_size_match_upload_log": true
+  },
+  "provenance_erratum": {
+    "commit": "ec70134c192f35d59a09821116d0a8c2214053dd",
+    "path": "carr-library/docs/evidence/import-center-audit-inventory-erratum-20261128.json",
+    "original_2701_inventory_sha256": "9d9b1b46fcff7d00c8cc2e8ade2186bc74f52b9c138ea763d67668b6ac1b34b4",
+    "original_disposition": "INVALID_AS_CURRENT_2701_INVENTORY; one stale search-probe body in historical c2b audit",
+    "corrected_2701_inventory_sha256": "a286ab1f4a2d072c2b60d80bdd643d18055b139266f79c76339bf2fe4d2089c0",
+    "separate_09ac_inventory_sha256": "b32f7133cc842876397db21c86938793c5f99015b7d69aabb7abc4b240d4e66c",
+    "impact": "No product/gate mutation or pass transfer; corrected88-file provenance separately reviewed and anchored on38463a1. This observed record freshly binds13 actual inputs."
+  },
+  "root_checks": {
+    "run_identity": true,
+    "job_identity": true,
+    "only_failed_step": true,
+    "earlier_steps_pass": true,
+    "later_steps_skipped": true,
+    "before_binding": true,
+    "no_after_binding": true,
+    "search21": true,
+    "search_wrapper": true,
+    "search_origin_hashes": true,
+    "import_four_field_receipt": true,
+    "import_two_viewports": true,
+    "import_original_sizes": true,
+    "import_bounded_outer": true,
+    "import_vertical_overflow": true,
+    "reading_four_labels": true,
+    "reading_exact_trace": true,
+    "not_timeout": true,
+    "raw_hash": true,
+    "artifact": true,
+    "artifact_log": true,
+    "source_bindings": true
+  },
+  "full_main": "NOT_LAUNCHED",
+  "full_platform_status": "NOT_QUALIFIED",
+  "mutation_scope": "Two evidence documents only; no application, fixture, workflow, ref or earlier evidence mutation."
+}
