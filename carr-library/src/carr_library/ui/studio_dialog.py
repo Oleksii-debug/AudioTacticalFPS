@@ -100,6 +100,7 @@ class StudioController:
 def show_studio(frame):
     import wx
     controller = StudioController(frame.library)
+    library_at_open = frame.library
     library_root = frame.library.root
     service = controller.service
     class StudioDialog(wx.Dialog):
@@ -166,13 +167,16 @@ def show_studio(frame):
                  ('preview', 'Listen to &output'), ('close', '&Close')),
                 (('progress_voice', 'Use voice for progress...'),
                  ('navigation', 'Playback navigation...'), ('pause_preview', 'Pause/resume playback'),
-                 ('stop_preview', 'Stop playback'), ('output_device', 'Playback output...'))):
+                 ('stop_preview', 'Stop playback'), ('output_device', 'Playback output...')),
+                (('queue', 'Playback queue...'),)):
         box = wx.BoxSizer(wx.HORIZONTAL)
         for identity, label in row:
             button = wx.Button(dialog, label=label)
             buttons[identity] = button
             if identity == 'progress_voice':
                 button.SetName('Use selected local voice for progress')
+            elif identity == 'queue':
+                button.SetName('Playback queue')
             box.Add(button, 0, wx.ALL, 4)
         layout.Add(box, 0, wx.EXPAND)
     dialog.SetSizer(layout)
@@ -214,7 +218,7 @@ def show_studio(frame):
             return
         dialog.working = busy
         progress_panel.settings_button.Enable(not busy)
-        for name in ('render', 'open', 'roles', 'jobs'):
+        for name in ('render', 'open', 'roles', 'jobs', 'queue'):
             buttons[name].Enable(not busy)
         buttons['pause'].Enable(busy)
         buttons['preview'].Enable(not busy and current_job is not None)
@@ -361,7 +365,7 @@ def show_studio(frame):
 
         try:
             future = executor.submit(perform)
-        except Exception as exc:
+        except (Exception, KeyboardInterrupt) as exc:
             finished.set()
             busy = False
             controls()
@@ -808,6 +812,64 @@ def show_studio(frame):
                 state_root=expected_root / 'state', cancelled=stopped)
         return run(work, completed, phase='Preparing independent playback settings', on_failed=failed)
 
+    def playback_queue(event=None):
+        if not alive:
+            return
+        try:
+            if busy:
+                raise ValueError('Wait for the current Studio operation before opening its playback queue.')
+            if frame.library is not library_at_open or frame.library.root != library_root:
+                raise ValueError('The library changed. Reopen Studio before editing its playback queue.')
+            from ..speech.player import WavePlayer
+            from .playback_navigation import PlaybackNavigationHost
+            player = getattr(dialog, '_audio_player', None)
+            if player is None:
+                player = WavePlayer()
+                dialog._audio_player = player
+                selected_output = getattr(dialog, '_output_device', None)
+                if selected_output is not None:
+                    player.select_output(selected_output)
+            if not hasattr(dialog, '_playback_generation'):
+                dialog._playback_generation = 0
+            navigation = getattr(dialog, '_playback_navigation', None)
+            if navigation is None:
+                navigation = PlaybackNavigationHost(dialog, player,
+                    generation=lambda: dialog._playback_generation, alive=lambda: alive,
+                    stop_current=stop_preview, progress=(progress, parent_progress),
+                    report=report, wx_module=wx, prepare=prepare_playback)
+                dialog._playback_navigation = navigation
+            progress.register_player(player)
+            if parent_progress is not None:
+                parent_progress.register_player(player)
+
+            def guard_queue():
+                if (not alive or getattr(frame, '_closing', False)
+                        or frame.library is not library_at_open or frame.library.root != library_root):
+                    raise ValueError('The Studio or its library is no longer current.')
+
+            def submit_queue(phase, operation, completed, failed):
+                guard_queue()
+                return run(operation, completed, phase=phase, on_failed=failed)
+
+            def retain_queue(source, *, expected_sha256, cancelled):
+                # The same service, runtime admission and retained cleanup owner
+                # remain on this Studio's existing executor.
+                from ..studio.clips import ClipEditor
+                borrowed = ClipEditor(library_root, service=service)
+                try:
+                    return borrowed.retain(source, expected_sha256=expected_sha256,
+                        cancelled=lambda: cancelled() or cancel.is_set() or not alive)
+                finally:
+                    borrowed.close()
+
+            navigation.enable_queue(library_at_open, submit=submit_queue,
+                retain=retain_queue, guard=guard_queue, busy=lambda: busy)
+            navigation.show_queue()
+            if alive:
+                controls()
+        except (Exception, KeyboardInterrupt) as exc:
+            report(f'Playback queue needs attention: {exc}', True)
+
     def playback_navigation(event=None):
         if not alive:
             return
@@ -998,7 +1060,8 @@ def show_studio(frame):
     for name, callback in {'save': save, 'open': open_project, 'saveas': save_as, 'roles': edit_roles,
                            'render': render, 'pause': lambda event: cancel.set(), 'jobs': jobs,
                            'preview': preview, 'help': help_text, 'close': close,
-                           'navigation': playback_navigation, 'pause_preview': pause_preview,
+                           'navigation': playback_navigation, 'queue': playback_queue,
+                           'pause_preview': pause_preview,
                            'stop_preview': stop_preview, 'output_device': choose_playback_output,
                            'progress_voice': select_progress_voice}.items():
         buttons[name].Bind(wx.EVT_BUTTON, callback)

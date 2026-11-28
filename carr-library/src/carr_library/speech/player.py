@@ -44,6 +44,10 @@ class WavePlayer:
         self._wave = None
         self._live_controls = False
         self._levels = None
+        self._playlist = ()
+        self._playlist_index = None
+        self._playlist_armed = False
+        self._playlist_epoch = 0
         self.backend = 'Windows MCI' if os.name == 'nt' else 'ffplay'
         self.position_is_approximate = os.name != 'nt'
         self._executable = shutil.which('ffplay') if os.name != 'nt' else None
@@ -95,6 +99,7 @@ class WavePlayer:
             self.stop()
             raise ValueError('The current recording changed. Select it again.')
         self._check_listening()
+        queued = self._playlist_armed
         self._close_transport()  # Old MCI alias must acknowledge closure first.
         if self._stamp(path) != identity:
             raise ValueError('The recording changed before switching playback controls.')
@@ -114,7 +119,132 @@ class WavePlayer:
         self._started = time.monotonic() if state == 'playing' else None
         self._play_start = position
         self._end_seconds = end
+        self._playlist_armed = queued
         return levels
+
+    @staticmethod
+    def prepare_playlist(paths, *, cancelled=lambda: False):
+        from .playlist import prepare_playlist
+        return prepare_playlist(paths, cancelled=cancelled)
+
+    @property
+    def playlist(self):
+        return self._playlist
+
+    @property
+    def playlist_index(self):
+        return self._playlist_index
+
+    @property
+    def queue_active(self):
+        return self._playlist_armed
+
+    @property
+    def queue_token(self):
+        """A live transition ticket; never a saved playback capability."""
+        return self._playlist_epoch, id(self._playlist), self._playlist_index
+
+    def set_playlist(self, items):
+        """Adopt reviewed entries silently on this existing transport owner."""
+        from .playlist import MAX_ITEMS, MAX_TOTAL_BYTES, PlaylistItem
+        if (type(items) not in (list, tuple) or len(items) > MAX_ITEMS
+                or any(type(item) is not PlaylistItem for item in items)
+                or sum(item.identity[2] for item in items) > MAX_TOTAL_BYTES):
+            raise ValueError('Use a bounded, explicitly reviewed session playlist.')
+        for item in items:
+            if self._stamp(item.path) != item.identity:
+                raise ValueError('A reviewed playlist file changed. Review the selection again.')
+        if self.close() is False:
+            raise RuntimeError('The current playback device has not confirmed closure.')
+        self._playlist, self._playlist_index = tuple(items), None
+        self.path, self._identity, self.duration_seconds = None, None, 0
+        self._end_seconds = None
+
+    def select_queue(self, index):
+        """Select silently; a separate explicit Play queue starts audio."""
+        if type(index) is not int or not 0 <= index < len(self._playlist):
+            raise ValueError('Choose an existing playlist item.')
+        item = self._playlist[index]
+        if self._stamp(item.path) != item.identity:
+            self.stop()
+            raise ValueError('The selected playlist file changed. Review it again.')
+        if self.close() is False:
+            raise RuntimeError('The current playback device has not confirmed closure.')
+        if self._stamp(item.path) != item.identity:
+            raise ValueError('The selected playlist changed while closing the previous recording.')
+        self.path, self._identity = item.path, item.identity
+        self.duration_seconds, self._playlist_index = item.duration_seconds, index
+        self._end_seconds = None
+
+    def play_queue(self, index=None):
+        """Explicit playback arms later separately admitted EOF transitions."""
+        index = self._playlist_index if index is None else index
+        if index is None:
+            index = 0
+        if type(index) is not int or not 0 <= index < len(self._playlist):
+            raise ValueError('Choose an item in a reviewed playlist.')
+        item = self._playlist[index]
+        if self._playlist_index == index and self.path == item.path and self._identity == item.identity:
+            state = self.state
+            if state == 'paused':
+                resumed = self.resume()
+                self._playlist_armed = bool(resumed)
+                return resumed
+            if state == 'playing':
+                if self._stamp(item.path) != item.identity:
+                    self.stop()
+                    raise ValueError('The current playlist file changed. Review it again.')
+                self._playlist_armed = True
+                return False
+            started = self.play_current()
+            self._playlist_armed = bool(started)
+            return started
+        return self._play_queue_item(index)
+
+    def _play_queue_item(self, index):
+        item = self._playlist[index]
+        self._playlist_armed = False
+        try:
+            self._play(item.path, expected=item.identity, new_recording=True)
+        except BaseException:
+            self.stop()
+            raise
+        self._playlist_index, self._playlist_armed = index, True
+        return True
+
+    @property
+    def queue_pending(self):
+        return bool(self._playlist_armed and self.state == 'stopped' and self._ended
+            and self._playlist_index is not None and self._playlist_index + 1 < len(self._playlist))
+
+    def advance_if_ready(self, *, expected_token=None):
+        """Admission only; observing EOF never opens the next file."""
+        if expected_token is not None and expected_token != self.queue_token:
+            return False
+        if not self.queue_pending:
+            return False
+        return self._play_queue_item(self._playlist_index + 1)
+
+    def move_queue(self, direction, *, play=False):
+        if type(direction) is not int or direction not in (-1, 1) or type(play) is not bool:
+            raise ValueError('Choose the previous or next queue item explicitly.')
+        current = (-1 if direction == 1 else len(self._playlist)) if self._playlist_index is None else self._playlist_index
+        index = current + direction
+        if not 0 <= index < len(self._playlist):
+            return False
+        if play:
+            return self._play_queue_item(index)
+        self.select_queue(index)
+        return True
+
+    def poll(self):
+        """Observe natural EOF; the native host admits a transition separately."""
+        state = self.state
+        if self.queue_pending:
+            return 'queue-pending'
+        if state == 'stopped' and self._ended and self._playlist_index == len(self._playlist) - 1:
+            self._playlist_armed = False
+        return None
 
     @property
     def listening_settings(self):
@@ -259,6 +389,8 @@ class WavePlayer:
 
     def open(self, path):
         """Select checked PCM silently; no native device is opened or started."""
+        self._playlist_armed = False
+        self._playlist_epoch += 1
         from .listening import _opened
         target = local_file(path)
         identity = self._stamp(target)
@@ -276,6 +408,8 @@ class WavePlayer:
 
     def play(self, path, *, start_seconds=0, end_seconds=None):
         """Explicitly play a new recording; prior private listening preparation is released."""
+        self._playlist_armed = False
+        self._playlist_epoch += 1
         return self._play(path, start_seconds=start_seconds, end_seconds=end_seconds, new_recording=True)
 
     def _play(self, path, *, start_seconds=0, end_seconds=None, expected=None, new_recording=False):
@@ -358,7 +492,9 @@ class WavePlayer:
         if identity is None or self._stamp(path) != identity:
             self.stop()
             raise ValueError('The opened recording changed. Select its current version explicitly.')
+        queued = self._playlist_armed
         self._play(path, start_seconds=seconds, end_seconds=end, expected=identity)
+        self._playlist_armed = queued
         return True
 
     def play_current(self):
@@ -391,6 +527,8 @@ class WavePlayer:
         self._ended = False
 
     def pause(self):
+        self._playlist_armed = False
+        self._playlist_epoch = getattr(self, '_playlist_epoch', 0) + 1
         if self.state != 'playing':
             return False
         position = self.position_seconds
@@ -446,6 +584,8 @@ class WavePlayer:
         self._restart(seconds)
 
     def stop(self):
+        self._playlist_armed = False
+        self._playlist_epoch = getattr(self, '_playlist_epoch', 0) + 1
         self._listening_request = None
         self._ended = False
         if self._wave is not None:

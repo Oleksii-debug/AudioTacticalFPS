@@ -61,9 +61,10 @@ def studio(tmp_path):
         def __bool__(self): return not self.destroyed
 
     class Timer:
-        def __init__(self, owner): self.running = False
+        def __init__(self, owner): self.owner, self.running = owner, False
         def Start(self, milliseconds): self.running = True
         def Stop(self): self.running = False
+        def SetOwner(self, owner): self.owner = owner
 
     scheduler = _shared['Scheduler']()
     local, parent = _shared['Progress']('studio'), _shared['Progress']('main')
@@ -76,10 +77,10 @@ def studio(tmp_path):
         wx=SimpleNamespace(CallLater=scheduler, CallAfter=lambda action: action(), Timer=Timer,
                            EVT_TIMER='timer', EVT_WINDOW_DESTROY='destroy', ID_CLOSE=3),
         controls=Mock(), alive=True, busy=False, autosave=lambda: None,
-        run=work, library_root=tmp_path,
+        run=work, library_root=tmp_path, library_at_open=frame.library,
         cancel=threading.Event(), timer=Mock(), executor=Mock(), cleanup_started=False, frame=frame)
     handlers = _shared['callbacks']('studio_dialog.py', 'show_studio',
-        ['prepare_playback', 'preview', 'pause_preview', 'stop_preview', 'playback_navigation', 'choose_playback_output',
+        ['prepare_playback', 'preview', 'pause_preview', 'stop_preview', 'playback_navigation', 'playback_queue', 'choose_playback_output',
          'cleanup', 'release_service', 'dispose', 'close'], values)
     fixture = SimpleNamespace(handlers=handlers, player=dialog._audio_player, dialog=dialog,
         local=local, parent=parent, scheduler=scheduler, reports=reports, path=path, values=values)
@@ -217,3 +218,29 @@ def test_output_change_revokes_already_queued_quiet_start(studio, monkeypatch):
     studio.scheduler.tick()
     assert studio.player.calls == before
     assert not any(call[0] == 'play' for call in studio.player.calls)
+
+
+def test_playlist_entry_borrows_exact_existing_studio_player_host_and_service(studio, monkeypatch):
+    from carr_library.ui import playback_queue
+    shown = []
+    monkeypatch.setattr(playback_queue, 'show_playlist', shown.append)
+    host = start(studio)
+    studio.handlers.playback_queue()
+    assert len(shown) == 1
+    session = shown[0]
+    assert session.host is host and session.player is studio.player
+    assert session.library is studio.values['frame'].library
+    assert session.submit.__qualname__.endswith('playback_queue.<locals>.submit_queue')
+    assert session.retain.__qualname__.endswith('playback_queue.<locals>.retain_queue')
+    assert studio.player.calls == [('play', studio.path)]
+    studio.handlers.playback_queue()
+    assert shown == [session, session] and host._queue_session is session
+
+
+def test_playlist_entry_refuses_changed_library_before_opening_any_view(studio, monkeypatch):
+    from carr_library.ui import playback_queue
+    monkeypatch.setattr(playback_queue, 'show_playlist',
+                        lambda *args: pytest.fail('Stale Studio opened a new queue.'))
+    studio.values['frame'].library = SimpleNamespace(root=studio.values['library_root'])
+    studio.handlers.playback_queue()
+    assert studio.player.calls == [] and 'library changed' in studio.reports[-1]

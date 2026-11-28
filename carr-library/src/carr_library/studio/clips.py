@@ -99,7 +99,8 @@ class ClipEditor:
                 with self.service._audio_admission(runtime, operation_id='clip-retain:' + uuid4().hex,
                         disk_bytes=2 * before.st_size, disk_path=inputs, cancelled=cancelled) as stopped:
                     digest, count = sha256(), 0
-                    with source.open('rb') as reader, staged.open('xb') as writer:
+                    from ..speech.listening import _opened
+                    with _opened(source, _stamp(before)) as reader, staged.open('xb') as writer:
                         if _stamp(os.fstat(reader.fileno())) != _stamp(before):
                             raise ValueError('Selected audio changed before retention.')
                         while block := reader.read(1024 * 1024):
