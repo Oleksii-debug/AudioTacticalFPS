@@ -1,0 +1,674 @@
+{
+  "schema": "carr-configured-update-native-actual/1",
+  "status": "CANCELLED_PARTIAL",
+  "observed_utc": "2026-11-28 10:32:09 UTC",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "source_a": {
+    "commit": "7bfdbe2ce454bfa83bb2309ee897aaf131d3411f",
+    "tree": "900774226367870b3bf1c2afd34b5e3fcc1e16ea",
+    "actual_checkout_log_line": 261
+  },
+  "source_b": {
+    "commit": "fc84f903dfe068b4eb816e5395cdbd3bf7aa7ad2",
+    "tree": "b5155e3ee1efb09097a1b6759cb9d5374bffbd9a",
+    "actual_checkout_log_line": 134
+  },
+  "workflow": {
+    "path": ".github/workflows/carr-configured-update-native.yml",
+    "blob": "14517f2e4018942a2a0a4c56ce6c59f38de861a4"
+  },
+  "probe": {
+    "path": "carr-library/scripts/windows_configured_update_smoke.py",
+    "blob": "247f3cb36da4d9cec36f383ce40ad51a78ce8e91"
+  },
+  "run": {
+    "id": 46131516678,
+    "event": "pull_request",
+    "head_sha": "fc84f903dfe068b4eb816e5395cdbd3bf7aa7ad2",
+    "observed_run_status": "queued",
+    "qualification": "Only the named native job is closed. The enclosing main run may still have queued required aggregates."
+  },
+  "job": {
+    "id": 140943104840,
+    "name": "Required configured native Apply and checked restart / Windows x64 / actual configured Apply and checked restart",
+    "status": "completed",
+    "conclusion": "cancelled",
+    "started_at": "2026-11-28T10:10:00Z",
+    "completed_at": "2026-11-28T10:30:24Z",
+    "steps": [
+      {
+        "name": "Set up job",
+        "number": 1,
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-28T10:10:01Z",
+        "completed_at": "2026-11-28T10:10:02Z"
+      },
+      {
+        "name": "Check out exact B source",
+        "number": 2,
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-28T10:10:02Z",
+        "completed_at": "2026-11-28T10:10:10Z"
+      },
+      {
+        "name": "Check out immutable reviewed A source",
+        "number": 3,
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-28T10:10:10Z",
+        "completed_at": "2026-11-28T10:10:16Z"
+      },
+      {
+        "name": "Set up native x64 build host",
+        "number": 4,
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-28T10:10:16Z",
+        "completed_at": "2026-11-28T10:10:16Z"
+      },
+      {
+        "name": "Pin the host profile and record both actual source identities",
+        "number": 5,
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-28T10:10:16Z",
+        "completed_at": "2026-11-28T10:10:40Z"
+      },
+      {
+        "name": "Acquire the existing pinned compilers and original Python/native runtime",
+        "number": 6,
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-28T10:10:40Z",
+        "completed_at": "2026-11-28T10:11:18Z"
+      },
+      {
+        "name": "Build two exact trusted-client distributions and actual standard setups",
+        "number": 7,
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-28T10:11:18Z",
+        "completed_at": "2026-11-28T10:15:56Z"
+      },
+      {
+        "name": "Require real configured native Apply, full A retention and checked B restart",
+        "number": 8,
+        "status": "completed",
+        "conclusion": "cancelled",
+        "started_at": "2026-11-28T10:15:56Z",
+        "completed_at": "2026-11-28T10:30:09Z"
+      },
+      {
+        "name": "Require unchanged exact source and installed host payload after native work",
+        "number": 9,
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-28T10:30:09Z",
+        "completed_at": "2026-11-28T10:30:11Z"
+      },
+      {
+        "name": "Retain only the bounded public diagnostic contract",
+        "number": 10,
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-28T10:30:11Z",
+        "completed_at": "2026-11-28T10:30:12Z"
+      },
+      {
+        "name": "Preserve bounded configured-update text evidence",
+        "number": 11,
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-28T10:30:12Z",
+        "completed_at": "2026-11-28T10:30:14Z"
+      },
+      {
+        "name": "Post Set up native x64 build host",
+        "number": 20,
+        "status": "completed",
+        "conclusion": "skipped",
+        "started_at": "2026-11-28T10:30:14Z",
+        "completed_at": "2026-11-28T10:30:14Z"
+      },
+      {
+        "name": "Post Check out immutable reviewed A source",
+        "number": 21,
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-28T10:30:14Z",
+        "completed_at": "2026-11-28T10:30:16Z"
+      },
+      {
+        "name": "Post Check out exact B source",
+        "number": 22,
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-28T10:30:16Z",
+        "completed_at": "2026-11-28T10:30:18Z"
+      },
+      {
+        "name": "Complete job",
+        "number": 23,
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-28T10:30:18Z",
+        "completed_at": "2026-11-28T10:30:18Z"
+      }
+    ]
+  },
+  "decoded_log": {
+    "sha256": "2d6b9a0a46d93442f1477f8f0e8d45d8d25955ca9c984eab729e8d2df4354372",
+    "bytes": 208688,
+    "lines": 1850,
+    "normalization": "Line evidence strips only GitHub timestamps and ANSI color codes. Hash and bytes bind the original decoded job log."
+  },
+  "artifact": {
+    "id": 15259298320,
+    "name": "configured-update-fc84f903dfe068b4eb816e5395cdbd3bf7aa7ad2-1",
+    "bytes": 565887,
+    "digest": "sha256:62cfb8f179c4ba1a6a65edb68713c8f9a2bc6086b095b8604a340ba97096eab4",
+    "expired": false,
+    "head_sha": "fc84f903dfe068b4eb816e5395cdbd3bf7aa7ad2",
+    "archive_inspected": false
+  },
+  "compiled_bundle_receipts": [
+    {
+      "line": 1105,
+      "value": {
+        "bundle_manifest_sha256": "3659029091309d1ff93f0fe8fbfe271c61f618923766cd10c3113cdd8c585acf",
+        "payload_files": 485,
+        "project_name": "universal-research-library",
+        "project_version": "0.2.0.dev2",
+        "required_runtime_files": 414,
+        "source_commit": "7bfdbe2ce454bfa83bb2309ee897aaf131d3411f",
+        "source_tree": "900774226367870b3bf1c2afd34b5e3fcc1e16ea",
+        "wheel_sha256": "22bf7b08b1542a4868ed198e76299a9a28a160d05bf633581afd56f1bc416ceb"
+      }
+    },
+    {
+      "line": 1403,
+      "value": {
+        "bundle_manifest_sha256": "ca3739cd6e39363c61c7ed1c7c6bf75f6854387ccfde7ef2311256f861202f90",
+        "payload_files": 487,
+        "project_name": "universal-research-library",
+        "project_version": "0.2.0.dev2",
+        "required_runtime_files": 416,
+        "source_commit": "fc84f903dfe068b4eb816e5395cdbd3bf7aa7ad2",
+        "source_tree": "b5155e3ee1efb09097a1b6759cb9d5374bffbd9a",
+        "wheel_sha256": "4799cea3ab8951724daf453a41c615d1efa7553840d184f9c1df2878e4b0d488"
+      }
+    }
+  ],
+  "actual_stages": [
+    {
+      "line": 1563,
+      "text": "CONFIGURED_STAGE install-exact-A"
+    },
+    {
+      "line": 1566,
+      "text": "CONFIGURED_STAGE actual-A-main-prepare-review-cancel-apply-restart"
+    }
+  ],
+  "actual_completed_parent_checks": [
+    {
+      "line": 1564,
+      "text": "CHECK: both compiled source receipts and full owned A payload are exact"
+    },
+    {
+      "line": 1565,
+      "text": "CHECK: temporary actual Windows vault anchor begins at A"
+    }
+  ],
+  "observed_results": {
+    "both_exact_source_and_bundle_builds": "PASS",
+    "isolated_B_whole_payload_before_native": "PASS",
+    "actual_A_installation_and_initial_payload_check": "PASS",
+    "actual_temporary_windows_vault_anchor_at_A": "PASS",
+    "native_UI15": "NOT_OBSERVED",
+    "complete_parent10": "NOT_OBSERVED",
+    "configured_Apply_and_checked_restart": "NOT_PROVEN_CANCELLED",
+    "native_owner_family_settlement": "NOT_PROVEN",
+    "final_source_and_admitted_installed_payload_identity": "PASS",
+    "retention": {
+      "retained_files": 36,
+      "status": "PASS",
+      "total_bytes": 2358992,
+      "log_line": 1775
+    }
+  },
+  "excerpts": {
+    "B_checkout": {
+      "start_line": 129,
+      "end_line": 135,
+      "lines": [
+        {
+          "line": 129,
+          "text": "Turn off this advice by setting config variable advice.detachedHead to false",
+          "truncated": false,
+          "original_characters": 76
+        },
+        {
+          "line": 130,
+          "text": "",
+          "truncated": false,
+          "original_characters": 0
+        },
+        {
+          "line": 131,
+          "text": "HEAD is now at fc84f90 Close Windows language fixtures and preserve complete bounded acceptance",
+          "truncated": false,
+          "original_characters": 95
+        },
+        {
+          "line": 132,
+          "text": "##[endgroup]",
+          "truncated": false,
+          "original_characters": 12
+        },
+        {
+          "line": 133,
+          "text": "[command]\"C:\\Program Files\\Git\\bin\\git.exe\" log -1 --format=%H",
+          "truncated": false,
+          "original_characters": 62
+        },
+        {
+          "line": 134,
+          "text": "fc84f903dfe068b4eb816e5395cdbd3bf7aa7ad2",
+          "truncated": false,
+          "original_characters": 40
+        },
+        {
+          "line": 135,
+          "text": "##[group]Removing auth",
+          "truncated": false,
+          "original_characters": 22
+        }
+      ]
+    },
+    "A_checkout": {
+      "start_line": 256,
+      "end_line": 262,
+      "lines": [
+        {
+          "line": 256,
+          "text": "Turn off this advice by setting config variable advice.detachedHead to false",
+          "truncated": false,
+          "original_characters": 76
+        },
+        {
+          "line": 257,
+          "text": "",
+          "truncated": false,
+          "original_characters": 0
+        },
+        {
+          "line": 258,
+          "text": "HEAD is now at 7bfdbe2 Bind the updater to its sealed runtime and close Studio and search regression boundaries",
+          "truncated": false,
+          "original_characters": 111
+        },
+        {
+          "line": 259,
+          "text": "##[endgroup]",
+          "truncated": false,
+          "original_characters": 12
+        },
+        {
+          "line": 260,
+          "text": "[command]\"C:\\Program Files\\Git\\bin\\git.exe\" log -1 --format=%H",
+          "truncated": false,
+          "original_characters": 62
+        },
+        {
+          "line": 261,
+          "text": "7bfdbe2ce454bfa83bb2309ee897aaf131d3411f",
+          "truncated": false,
+          "original_characters": 40
+        },
+        {
+          "line": 262,
+          "text": "##[group]Removing auth",
+          "truncated": false,
+          "original_characters": 22
+        }
+      ]
+    },
+    "native_partial_and_cancellation": {
+      "start_line": 1563,
+      "end_line": 1567,
+      "lines": [
+        {
+          "line": 1563,
+          "text": "CONFIGURED_STAGE install-exact-A",
+          "truncated": false,
+          "original_characters": 32
+        },
+        {
+          "line": 1564,
+          "text": "CHECK: both compiled source receipts and full owned A payload are exact",
+          "truncated": false,
+          "original_characters": 71
+        },
+        {
+          "line": 1565,
+          "text": "CHECK: temporary actual Windows vault anchor begins at A",
+          "truncated": false,
+          "original_characters": 56
+        },
+        {
+          "line": 1566,
+          "text": "CONFIGURED_STAGE actual-A-main-prepare-review-cancel-apply-restart",
+          "truncated": false,
+          "original_characters": 66
+        },
+        {
+          "line": 1567,
+          "text": "##[error]The operation was canceled.",
+          "truncated": false,
+          "original_characters": 36
+        }
+      ]
+    },
+    "source_installed_after": {
+      "start_line": 1693,
+      "end_line": 1695,
+      "lines": [
+        {
+          "line": 1693,
+          "text": "  CARR_CONFIGURED_ZIG: D:\\a\\_temp\\carr-configured-upgrade-private\\zig\\zig-x86_64-windows-0.14.1\\zig.exe",
+          "truncated": false,
+          "original_characters": 103
+        },
+        {
+          "line": 1694,
+          "text": "##[endgroup]",
+          "truncated": false,
+          "original_characters": 12
+        },
+        {
+          "line": 1695,
+          "text": "PASS: exact admitted source and any admitted installed payload remain unchanged.",
+          "truncated": false,
+          "original_characters": 80
+        }
+      ]
+    },
+    "retention_and_artifact": {
+      "start_line": 1775,
+      "end_line": 1818,
+      "lines": [
+        {
+          "line": 1775,
+          "text": "{\"retained_files\": 36, \"status\": \"PASS\", \"total_bytes\": 2358992}",
+          "truncated": false,
+          "original_characters": 64
+        },
+        {
+          "line": 1776,
+          "text": "##[group]Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+          "truncated": false,
+          "original_characters": 77
+        },
+        {
+          "line": 1777,
+          "text": "with:",
+          "truncated": false,
+          "original_characters": 5
+        },
+        {
+          "line": 1778,
+          "text": "  name: configured-update-fc84f903dfe068b4eb816e5395cdbd3bf7aa7ad2-1",
+          "truncated": false,
+          "original_characters": 68
+        },
+        {
+          "line": 1779,
+          "text": "  path: source-b/carr-library/configured-update-results/",
+          "truncated": false,
+          "original_characters": 56
+        },
+        {
+          "line": 1780,
+          "text": "  if-no-files-found: error",
+          "truncated": false,
+          "original_characters": 26
+        },
+        {
+          "line": 1781,
+          "text": "  retention-days: 7",
+          "truncated": false,
+          "original_characters": 19
+        },
+        {
+          "line": 1782,
+          "text": "  compression-level: 6",
+          "truncated": false,
+          "original_characters": 22
+        },
+        {
+          "line": 1783,
+          "text": "  overwrite: false",
+          "truncated": false,
+          "original_characters": 18
+        },
+        {
+          "line": 1784,
+          "text": "  include-hidden-files: false",
+          "truncated": false,
+          "original_characters": 29
+        },
+        {
+          "line": 1785,
+          "text": "  archive: true",
+          "truncated": false,
+          "original_characters": 15
+        },
+        {
+          "line": 1786,
+          "text": "env:",
+          "truncated": false,
+          "original_characters": 4
+        },
+        {
+          "line": 1787,
+          "text": "  CARR_CONFIGURED_SOURCE_A: 7bfdbe2ce454bfa83bb2309ee897aaf131d3411f",
+          "truncated": false,
+          "original_characters": 68
+        },
+        {
+          "line": 1788,
+          "text": "  PYTHONUTF8: 1",
+          "truncated": false,
+          "original_characters": 15
+        },
+        {
+          "line": 1789,
+          "text": "  PYTHONUNBUFFERED: 1",
+          "truncated": false,
+          "original_characters": 21
+        },
+        {
+          "line": 1790,
+          "text": "  PYTHONDONTWRITEBYTECODE: 1",
+          "truncated": false,
+          "original_characters": 28
+        },
+        {
+          "line": 1791,
+          "text": "  PIP_DISABLE_PIP_VERSION_CHECK: 1",
+          "truncated": false,
+          "original_characters": 34
+        },
+        {
+          "line": 1792,
+          "text": "  HF_HUB_OFFLINE: 1",
+          "truncated": false,
+          "original_characters": 19
+        },
+        {
+          "line": 1793,
+          "text": "  TRANSFORMERS_OFFLINE: 1",
+          "truncated": false,
+          "original_characters": 25
+        },
+        {
+          "line": 1794,
+          "text": "  HF_HUB_DISABLE_TELEMETRY: 1",
+          "truncated": false,
+          "original_characters": 29
+        },
+        {
+          "line": 1795,
+          "text": "  ORT_DISABLE_TELEMETRY: 1",
+          "truncated": false,
+          "original_characters": 26
+        },
+        {
+          "line": 1796,
+          "text": "  DO_NOT_TRACK: 1",
+          "truncated": false,
+          "original_characters": 17
+        },
+        {
+          "line": 1797,
+          "text": "  pythonLocation: C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64",
+          "truncated": false,
+          "original_characters": 62
+        },
+        {
+          "line": 1798,
+          "text": "  PKG_CONFIG_PATH: C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64/lib/pkgconfig",
+          "truncated": false,
+          "original_characters": 77
+        },
+        {
+          "line": 1799,
+          "text": "  Python_ROOT_DIR: C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64",
+          "truncated": false,
+          "original_characters": 63
+        },
+        {
+          "line": 1800,
+          "text": "  Python2_ROOT_DIR: C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64",
+          "truncated": false,
+          "original_characters": 64
+        },
+        {
+          "line": 1801,
+          "text": "  Python3_ROOT_DIR: C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64",
+          "truncated": false,
+          "original_characters": 64
+        },
+        {
+          "line": 1802,
+          "text": "  CARR_CONFIGURED_PYTHON: D:\\a\\_temp\\carr-configured-upgrade-private\\host\\Scripts\\python.exe",
+          "truncated": false,
+          "original_characters": 92
+        },
+        {
+          "line": 1803,
+          "text": "  CARR_CONFIGURED_PRIVATE: D:\\a\\_temp\\carr-configured-upgrade-private",
+          "truncated": false,
+          "original_characters": 69
+        },
+        {
+          "line": 1804,
+          "text": "  CARR_CONFIGURED_SOURCE_B: fc84f903dfe068b4eb816e5395cdbd3bf7aa7ad2",
+          "truncated": false,
+          "original_characters": 68
+        },
+        {
+          "line": 1805,
+          "text": "  CARR_CONFIGURED_ZIG: D:\\a\\_temp\\carr-configured-upgrade-private\\zig\\zig-x86_64-windows-0.14.1\\zig.exe",
+          "truncated": false,
+          "original_characters": 103
+        },
+        {
+          "line": 1806,
+          "text": "##[endgroup]",
+          "truncated": false,
+          "original_characters": 12
+        },
+        {
+          "line": 1807,
+          "text": "With the provided path, there will be 37 files uploaded",
+          "truncated": false,
+          "original_characters": 55
+        },
+        {
+          "line": 1808,
+          "text": "Artifact name is valid!",
+          "truncated": false,
+          "original_characters": 23
+        },
+        {
+          "line": 1809,
+          "text": "Root directory input is valid!",
+          "truncated": false,
+          "original_characters": 30
+        },
+        {
+          "line": 1810,
+          "text": "Uploading artifact: configured-update-fc84f903dfe068b4eb816e5395cdbd3bf7aa7ad2-1.zip",
+          "truncated": false,
+          "original_characters": 84
+        },
+        {
+          "line": 1811,
+          "text": "Beginning upload of artifact content to blob storage",
+          "truncated": false,
+          "original_characters": 52
+        },
+        {
+          "line": 1812,
+          "text": "Uploaded bytes 565887",
+          "truncated": false,
+          "original_characters": 21
+        },
+        {
+          "line": 1813,
+          "text": "Finished uploading artifact content to blob storage!",
+          "truncated": false,
+          "original_characters": 52
+        },
+        {
+          "line": 1814,
+          "text": "SHA256 digest of uploaded artifact is 62cfb8f179c4ba1a6a65edb68713c8f9a2bc6086b095b8604a340ba97096eab4",
+          "truncated": false,
+          "original_characters": 102
+        },
+        {
+          "line": 1815,
+          "text": "Finalizing artifact upload",
+          "truncated": false,
+          "original_characters": 26
+        },
+        {
+          "line": 1816,
+          "text": "Artifact configured-update-fc84f903dfe068b4eb816e5395cdbd3bf7aa7ad2-1 successfully finalized. Artifact ID 15259298320",
+          "truncated": false,
+          "original_characters": 117
+        },
+        {
+          "line": 1817,
+          "text": "Artifact configured-update-fc84f903dfe068b4eb816e5395cdbd3bf7aa7ad2-1 has been successfully uploaded! Final size is 565887 bytes. Artifact ID is 15259298320",
+          "truncated": false,
+          "original_characters": 156
+        },
+        {
+          "line": 1818,
+          "text": "Artifact download URL: https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46131516678/artifacts/15259298320",
+          "truncated": false,
+          "original_characters": 119
+        }
+      ]
+    }
+  },
+  "supersession_context": {
+    "published_successor": "becba92dbb68df16654112847d29ec7af0c905d0",
+    "note": "The job was cancelled after the authorized H head progression. This receipt records cancellation and does not infer a new product failure or qualify the incomplete cycle."
+  },
+  "qualification": "Actual compile, initial installation and partial native-stage evidence only. The original log contains two parent CHECK rows, no native UI15/final parent10 report, and an explicit operation-cancelled error. Retained source/wheel identity and36 closed report files do not establish completed Apply, checked restart, native cleanup or acoustic/NVDA/private-production qualification. Historical A3-to-B success remains separately scoped; no result transfers to H."
+}

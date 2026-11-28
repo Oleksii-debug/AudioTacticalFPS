@@ -1,0 +1,157 @@
+{
+  "schema": "carr-actual-language-evidence-failure/1",
+  "recorded_utc": "2026-11-28 10:25:05 UTC",
+  "pr_head": "fc84f903dfe068b4eb816e5395cdbd3bf7aa7ad2",
+  "pr_source_tree": "b5155e3ee1efb09097a1b6759cb9d5374bffbd9a",
+  "actual_checkout": "2b3cb9f0e73b18baf1fc70672b897876b500dc16",
+  "actual_checkout_tree": "b5155e3ee1efb09097a1b6759cb9d5374bffbd9a",
+  "checkout_kind": "GitHub PR173 synthetic merge; exact tree equals the published G source tree",
+  "checkout_parents": [
+    "e5c64a5245583f8f8b404a0f042f6ca438c24d7f",
+    "fc84f903dfe068b4eb816e5395cdbd3bf7aa7ad2"
+  ],
+  "tree_binding": {
+    "full_G_tree_file_count": 2039,
+    "same_immutable_tree": true,
+    "no_other_checkout_claimed": true
+  },
+  "run_id": 46131516678,
+  "job_id": 140943105055,
+  "job_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46131516678/job/140943105055",
+  "platform": "windows-2022",
+  "job_conclusion": "FAILURE",
+  "helper_blob": "460e6ba9397c956660b9658b8f29047952e4243d",
+  "workflow_blob": "5fb36eda5c859af0d8a4c304fafb1680feb4e3dc",
+  "source_rows": [
+    {
+      "status": "PASS",
+      "path": "tests/language_qualification/test_catalog.py",
+      "passed": 31,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "path": "tests/language_qualification/test_ui.py",
+      "passed": 7,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "FAIL",
+      "path": "tests/language_qualification/test_evidence.py",
+      "passed": 53,
+      "failed": 1,
+      "skipped": 0,
+      "exit": 1
+    },
+    {
+      "status": "PASS",
+      "path": "tests/language_qualification/test_evidence_backup.py",
+      "passed": 27,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "path": "tests/language_qualification/test_evidence_ui.py",
+      "passed": 28,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    }
+  ],
+  "source_cases": {
+    "required": 147,
+    "passed": 146,
+    "failed": 1,
+    "skipped": 0
+  },
+  "strict_tail": "Required suites complete: 5; passed=4; failed=1",
+  "installed": "NOT_RUN",
+  "native75": "NOT_RUN",
+  "failure": {
+    "node": "tests/language_qualification/test_evidence.py::test_final_callback_cannot_replace_state_or_scope_before_actual_publication[root]",
+    "exception": "PermissionError",
+    "winerror": 5,
+    "message": "Access is denied",
+    "operation": "Actual root.rename(tmp_path / 'held-root') in the final cancelled callback, before shutil.copytree or publication.",
+    "actual_product_boundary": "EvidenceStore._change -> self._check(cancelled), line473, while inside real state_lock(self.path.parent, 'language-evidence').",
+    "observed_scope": "The actual root substitution did not occur; the old post-callback byte/staging assertions were not reached.",
+    "diagnosis": "A fixture assumed that an ancestor containing the live Windows state-lock handle could be renamed. Actual Windows denied that rename. No product publication or scope-admission defect is established.",
+    "bounded_trace": [
+      "        with pytest.raises(ValueError, match='changed'):",
+      ">           store._change(operation, token, cancelled)",
+      "",
+      "tests\\language_qualification\\test_evidence.py:290: ",
+      "_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _",
+      "src\\carr_library\\language_qualification\\evidence.py:473: in _change",
+      "    self._check(cancelled)",
+      "src\\carr_library\\language_qualification\\evidence.py:431: in _check",
+      "    _check(cancelled)",
+      "src\\carr_library\\language_qualification\\evidence.py:67: in _check",
+      "    if cancelled():",
+      "       ^^^^^^^^^^^",
+      "tests\\language_qualification\\test_evidence.py:285: in cancelled",
+      "    root.rename(tmp_path / 'held-root')",
+      "_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _",
+      "",
+      "self = WindowsPath('C:/Users/runneradmin/AppData/Local/Temp/carr-ci-icisg2hu/pytest/test_final_callback_cannot_rep1/library')",
+      "target = WindowsPath('C:/Users/runneradmin/AppData/Local/Temp/carr-ci-icisg2hu/pytest/test_final_callback_cannot_rep1/held-root')",
+      "",
+      "    def rename(self, target):",
+      "        \"\"\"",
+      "        Rename this path to the target path.",
+      "    ",
+      "        The target path may be absolute or relative. Relative paths are",
+      "        interpreted relative to the current working directory, *not* the",
+      "        directory of the Path object.",
+      "    ",
+      "        Returns the new Path instance pointing to the target path.",
+      "        \"\"\"",
+      ">       os.rename(self, target)",
+      "E       PermissionError: [WinError 5] Access is denied: 'C:\\\\Users\\\\runneradmin\\\\AppData\\\\Local\\\\Temp\\\\carr-ci-icisg2hu\\\\pytest\\\\test_final_callback_cannot_rep1\\\\library' -> 'C:\\\\Users\\\\runneradmin\\\\AppData\\\\Local\\\\Temp\\\\carr-ci-icisg2hu\\\\pytest\\\\test_final_callback_cannot_rep1\\\\held-root'",
+      "",
+      "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\pathlib.py:1175: PermissionError",
+      "- generated xml file: C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\carr-ci-icisg2hu\\junit.xml -",
+      "=========================== short test summary info ===========================",
+      "FAILED tests/language_qualification/test_evidence.py::test_final_callback_cannot_replace_state_or_scope_before_actual_publication[root] - PermissionError: [WinError 5] Access is denied: 'C:\\\\Users\\\\runneradmin\\\\AppData\\\\Local\\\\Temp\\\\carr-ci-icisg2hu\\\\pytest\\\\test_final_callback_cannot_rep1\\\\library' -> 'C:\\\\Users\\\\runneradmin\\\\AppData\\\\Local\\\\Temp\\\\carr-ci-icisg2hu\\\\pytest\\\\test_final_callback_cannot_rep1\\\\held-root'",
+      "======================== 1 failed, 53 passed in 4.46s ========================="
+    ]
+  },
+  "other_scope_checks": [
+    "tests/language_qualification/test_evidence.py::test_real_directory_substitution_is_not_silently_adopted[library] PASSED [ 28%]",
+    "tests/language_qualification/test_evidence.py::test_real_directory_substitution_is_not_silently_adopted[state] PASSED [ 75%]",
+    "tests/language_qualification/test_evidence.py::test_real_directory_substitution_is_not_silently_adopted[namespace] PASSED [ 77%]"
+  ],
+  "source_binding": {
+    "core_test": "8a5dfe80519194673b33eed77f87a5b1946d5906",
+    "evidence": "befc09f3b9ac1724baf37d1d4016bb59b27f956c",
+    "durable_state": "d2b95bde04aa72cdd21ee6b4f0092d3350f84fcb",
+    "native_fixture": "72944369f7304650e8742f97372d41415e3e35da"
+  },
+  "decoded_log_utf8": {
+    "sha256": "d31257162d5ee755843a50a72e401aa2127541a595d1ccd5e67c582b92ab4e4e",
+    "bytes": 84246
+  },
+  "artifact": {
+    "id": 15259860568,
+    "name": "language-evidence-windows-2b3cb9f0e73b18baf1fc70672b897876b500dc16-1",
+    "size_in_bytes": 9778,
+    "sha256": "f703de8f308cc2d22c1b6a8c293c7d052db052fbed08bdb2f5d04b65ad7647dc",
+    "created_at": "2026-11-28T10:22:58Z",
+    "head_sha": "fc84f903dfe068b4eb816e5395cdbd3bf7aa7ad2"
+  },
+  "artifact_upload_log_matches_api": true,
+  "previous_actual_failure": "9295e76b00785f830810661d6de4c0f80df17331",
+  "limits": [
+    "Only closed main-call job140943105055 is reported; V3 caller has its own exact receipt141de50f4bc975c4fa1519fbcb13dafe19f31e90.",
+    "No result transfers to accepted fixture successor6c5d or the forthcoming H source candidate.",
+    "Synthetic language observations do not establish real language quality or reviewer authentication.",
+    "Archive member bytes were not separately downloaded; exact metadata matches the closed upload log."
+  ],
+  "same_source_other_caller_receipt": "141de50f4bc975c4fa1519fbcb13dafe19f31e90"
+}

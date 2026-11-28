@@ -1,0 +1,598 @@
+{
+  "schema": "carr-focused-installed-failures-actual/1",
+  "status": "PASS",
+  "observed_utc": "2026-11-28 10:46:02 UTC",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "source": {
+    "commit": "fc84f903dfe068b4eb816e5395cdbd3bf7aa7ad2",
+    "tree": "b5155e3ee1efb09097a1b6759cb9d5374bffbd9a",
+    "actual_checkout": "DIRECT_HEAD_NOT_SYNTHETIC_MERGE",
+    "checkout_ref_line": 37,
+    "git_log_command_line": 132,
+    "git_log_output_line": 133,
+    "passed": 112,
+    "failed": 0,
+    "skipped": 0,
+    "whole_modules": 4
+  },
+  "workflow": {
+    "path": ".github/workflows/carr-installed-failure-contracts.yml",
+    "blob": "aee1a8fabc5c822c40915fb6d44caa11295669c4"
+  },
+  "helper": {
+    "path": "carr-library/scripts/ci_installed_failure_contracts.py",
+    "blob": "a9d0d3288746b2d7555db1029a6aa7205af6da66",
+    "pins": 60,
+    "origin_modules": [
+      "bootstrap",
+      "carr_library.application",
+      "carr_library.durable_state",
+      "carr_library.library_backup",
+      "carr_library.backup_producers",
+      "carr_library.state_backup",
+      "carr_library.runtime_settings",
+      "carr_library.speech.runtime",
+      "carr_library.speech.reading",
+      "carr_library.speech.source",
+      "carr_library.speech.marks",
+      "carr_library.catalog.intake",
+      "carr_library.operations.broker",
+      "carr_library.operations._locks",
+      "carr_library.audio.models",
+      "carr_library.audio.process",
+      "carr_library.audio.windows_job",
+      "carr_library.audio.cleanup",
+      "carr_library.assistant.models",
+      "carr_library.assistant.profiles",
+      "carr_library.assistant.providers",
+      "carr_library.assistant.translation",
+      "carr_library.assistant.translation_local",
+      "carr_library.assistant.translation_documents",
+      "carr_library.assistant.translation_cli",
+      "carr_library.transcription",
+      "carr_library.integrations.transcription_protocol",
+      "carr_library.integrations.transcription_runtime",
+      "carr_library.integrations.transcription_scope",
+      "carr_library.integrations.transcription_values",
+      "carr_library.integrations.transcription_exports",
+      "carr_library.integrations.transcription_backup",
+      "carr_library.ingest.restore",
+      "carr_library.studio.book_batch",
+      "carr_library.studio.book_audio",
+      "carr_library.studio.project",
+      "carr_library.studio.render",
+      "carr_library.studio.publishing",
+      "carr_library.studio.managed_inputs",
+      "carr_library.audio.dsp",
+      "carr_library.reader.ebook",
+      "carr_library.reader.reading_desk"
+    ],
+    "fixture_companions": [
+      "tests/assistant/test_translation_local.py",
+      "tests/transcription/fixture_runtime.py",
+      "tests/transcription/fixtures/protocol_worker.py",
+      "tests/studio/test_book_audio.py",
+      "tests/reader/test_ebook_reader.py"
+    ]
+  },
+  "run": {
+    "id": 46131630234,
+    "event": "push",
+    "head_sha": "fc84f903dfe068b4eb816e5395cdbd3bf7aa7ad2",
+    "head_branch": "carr/ci-installed-failures-g-20261128-5a9e",
+    "status": "completed",
+    "conclusion": "success"
+  },
+  "job": {
+    "id": 140937849958,
+    "name": "Windows Book29 alone, then83 source and112 isolated installed",
+    "status": "completed",
+    "conclusion": "success",
+    "started_at": "2026-11-28T10:05:53Z",
+    "completed_at": "2026-11-28T10:41:40Z",
+    "steps": [
+      {
+        "number": 1,
+        "name": "Set up job",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-28T10:05:54Z",
+        "completed_at": "2026-11-28T10:05:55Z"
+      },
+      {
+        "number": 2,
+        "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-28T10:05:55Z",
+        "completed_at": "2026-11-28T10:06:04Z"
+      },
+      {
+        "number": 3,
+        "name": "Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-28T10:06:04Z",
+        "completed_at": "2026-11-28T10:06:04Z"
+      },
+      {
+        "number": 4,
+        "name": "Verify source and acquire the existing hashed test and codec inputs",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-28T10:06:04Z",
+        "completed_at": "2026-11-28T10:06:34Z"
+      },
+      {
+        "number": 5,
+        "name": "Require112 source and112 isolated installed whole cases",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-28T10:06:34Z",
+        "completed_at": "2026-11-28T10:41:34Z"
+      },
+      {
+        "number": 6,
+        "name": "Admit only bounded diagnostic text and JSON evidence",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-28T10:41:34Z",
+        "completed_at": "2026-11-28T10:41:34Z"
+      },
+      {
+        "number": 7,
+        "name": "Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-28T10:41:34Z",
+        "completed_at": "2026-11-28T10:41:36Z"
+      },
+      {
+        "number": 13,
+        "name": "Post Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-28T10:41:36Z",
+        "completed_at": "2026-11-28T10:41:36Z"
+      },
+      {
+        "number": 14,
+        "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-28T10:41:36Z",
+        "completed_at": "2026-11-28T10:41:38Z"
+      },
+      {
+        "number": 15,
+        "name": "Complete job",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-28T10:41:38Z",
+        "completed_at": "2026-11-28T10:41:38Z"
+      }
+    ]
+  },
+  "whole_contracts": {
+    "suites": {
+      "tests/studio/test_book_batch.py": 29,
+      "tests/assistant/test_translation_documents.py": 20,
+      "tests/transcription/test_admission_boundaries.py": 40,
+      "tests/speech/test_voice_preferences.py": 23
+    },
+    "functions": {
+      "tests/studio/test_book_batch.py": [
+        "test_batch_preview_prepare_and_reopen_reuse_existing_jobs_without_speech",
+        "test_actual_two_book_render_and_reopened_resume_verify_original_outputs",
+        "test_changed_review_cannot_reuse_preparation_approval",
+        "test_scope_duplicate_and_missing_plan_bindings_are_rejected",
+        "test_source_change_in_later_book_keeps_first_outputs_and_stops_before_second",
+        "test_active_control_stops_current_item_and_never_starts_later_books",
+        "test_pause_between_books_retains_verified_first_book_and_resume_does_not_duplicate",
+        "test_old_invocation_signal_cannot_stop_a_new_explicit_run",
+        "test_observer_failure_does_not_relabel_or_repeat_completed_books",
+        "test_backup_restore_preserves_order_and_requires_new_explicit_destination_review",
+        "test_passive_backup_refuses_unbound_batch_membership",
+        "test_plan_save_then_prepare_uses_one_lock_at_a_time",
+        "test_stop_between_books_does_not_signal_a_foreign_locked_job",
+        "test_failure_in_second_part_preserves_actual_first_part_receipt_and_resume",
+        "test_postcommit_control_cleanup_failure_retains_results_and_does_not_repeat_audio",
+        "test_primary_failure_is_not_masked_by_control_cleanup_failure",
+        "test_selection_postcommit_sync_warning_requires_real_confirmation_before_jobs",
+        "test_competing_same_bytes_selection_is_not_adopted_as_our_commit",
+        "test_same_path_library_replacement_invalidates_existing_batch_service_before_writes",
+        "test_saved_batch_inventory_never_silently_omits_unreadable_directory",
+        "test_active_invocation_tamper_after_real_pcm_refuses_publication_and_later_books"
+      ],
+      "tests/assistant/test_translation_documents.py": [
+        "test_paragraph_chunks_preserve_exact_unicode_and_all_source_separators",
+        "test_paragraph_limit_is_inclusive_and_rejects_more_before_job_creation",
+        "test_batch_review_and_prepare_never_contact_provider_or_mutate_originals",
+        "test_old_batch_review_never_authorizes_different_selection_or_profile",
+        "test_duplicate_and_modified_reading_copies_are_not_batch_sources",
+        "test_actual_job_resume_and_structured_export_keep_original_lineage",
+        "test_source_revocation_during_preparation_returns_already_saved_jobs",
+        "test_cancel_after_first_document_preserves_completion_and_resumes_remaining_once",
+        "test_changed_current_profile_blocks_new_calls_but_completed_work_stays_offline",
+        "test_partial_batch_export_returns_real_committed_directories_and_never_deletes_them",
+        "test_local_structured_state_uses_passive_complete_backup_and_restores_without_server",
+        "test_restored_pending_batch_needs_fresh_source_approval_before_any_provider_call",
+        "test_cli_document_capture_enforces_remaining_batch_budget_during_reads",
+        "test_direct_local_resume_rereads_current_catalog_before_any_request"
+      ],
+      "tests/transcription/test_admission_boundaries.py": [
+        "test_export_rejects_changed_payload_before_external_publication",
+        "test_export_receipt_verification_observes_cancellation",
+        "test_export_payload_is_bounded_and_interruptible",
+        "test_saved_receipt_decodes_only_verified_bytes",
+        "test_saved_receipt_corruption_blocks_external_export",
+        "test_verified_json_preserves_strict_state_parsing",
+        "test_edited_copy_decodes_only_the_bytes_it_verifies",
+        "test_edited_copy_export_uses_the_captured_revision",
+        "test_edited_copy_rejects_changed_bytes_and_observes_cancel",
+        "test_stop_interrupts_admission_hash_and_reaches_child_cleanup",
+        "test_runtime_change_rejects_attempt_without_resurrecting_cache",
+        "test_failed_archive_keeps_durable_cache_rejection_until_retry",
+        "test_idle_inventory_is_cancellable_without_rehashing_runtime",
+        "test_actual_child_import_never_writes_or_replaces_python_bytecode",
+        "test_known_runtime_rejection_takes_precedence_over_simultaneous_stop",
+        "test_cancelled_post_admission_check_preserves_committed_valid_receipt",
+        "test_stop_during_historical_receipt_hash_preserves_durable_results",
+        "test_terminal_only_status_policy_keeps_real_child_checkpoint_progress",
+        "test_terminal_status_retains_strict_schema_and_exact_budget"
+      ],
+      "tests/speech/test_voice_preferences.py": [
+        "test_legacy_load_does_not_rewrite_bytes_or_probe_optional_engines",
+        "test_reload_persists_exact_ids_profiles_and_external_declarations",
+        "test_two_windows_refuse_stale_preference_save_without_overwriting",
+        "test_engine_window_cannot_overwrite_a_later_voice_preference_change",
+        "test_shared_settings_lock_refuses_overlapping_changes",
+        "test_explicit_voice_beats_default_but_not_exact_language_guard",
+        "test_profile_controls_are_not_applied_to_a_different_voice_or_language",
+        "test_no_region_or_script_fallback_to_similarly_named_voice",
+        "test_adapter_underscore_tag_and_request_case_use_one_exact_language",
+        "test_removed_voice_and_unsupported_controls_do_not_pick_another_voice",
+        "test_invalid_preferences_keep_prior_bytes_and_do_not_echo_values",
+        "test_owner_guard_is_rechecked_after_latest_settings_read_before_commit"
+      ]
+    },
+    "total_cases_per_mode": 112,
+    "functions_per_mode": 66,
+    "counts_unchanged": true
+  },
+  "actual_whole_results": [
+    {
+      "line": 518,
+      "cases": 29,
+      "elapsed_seconds": 418.906,
+      "exit": 0,
+      "failed": 0,
+      "failure_names": [],
+      "mode": "source",
+      "passed": 29,
+      "skipped": 0,
+      "status": "PASS",
+      "suite": "tests/studio/test_book_batch.py"
+    },
+    {
+      "line": 623,
+      "cases": 23,
+      "elapsed_seconds": 1.485,
+      "exit": 0,
+      "failed": 0,
+      "failure_names": [],
+      "mode": "source",
+      "passed": 23,
+      "skipped": 0,
+      "status": "PASS",
+      "suite": "tests/speech/test_voice_preferences.py"
+    },
+    {
+      "line": 716,
+      "cases": 20,
+      "elapsed_seconds": 8.656,
+      "exit": 0,
+      "failed": 0,
+      "failure_names": [],
+      "mode": "source",
+      "passed": 20,
+      "skipped": 0,
+      "status": "PASS",
+      "suite": "tests/assistant/test_translation_documents.py"
+    },
+    {
+      "line": 889,
+      "cases": 40,
+      "elapsed_seconds": 612.906,
+      "exit": 0,
+      "failed": 0,
+      "failure_names": [],
+      "mode": "source",
+      "passed": 40,
+      "skipped": 0,
+      "status": "PASS",
+      "suite": "tests/transcription/test_admission_boundaries.py"
+    },
+    {
+      "line": 1198,
+      "cases": 29,
+      "elapsed_seconds": 419.187,
+      "exit": 0,
+      "failed": 0,
+      "failure_names": [],
+      "mode": "installed",
+      "passed": 29,
+      "skipped": 0,
+      "status": "PASS",
+      "suite": "tests/studio/test_book_batch.py"
+    },
+    {
+      "line": 1291,
+      "cases": 20,
+      "elapsed_seconds": 7.704,
+      "exit": 0,
+      "failed": 0,
+      "failure_names": [],
+      "mode": "installed",
+      "passed": 20,
+      "skipped": 0,
+      "status": "PASS",
+      "suite": "tests/assistant/test_translation_documents.py"
+    },
+    {
+      "line": 1464,
+      "cases": 40,
+      "elapsed_seconds": 613.39,
+      "exit": 0,
+      "failed": 0,
+      "failure_names": [],
+      "mode": "installed",
+      "passed": 40,
+      "skipped": 0,
+      "status": "PASS",
+      "suite": "tests/transcription/test_admission_boundaries.py"
+    },
+    {
+      "line": 1569,
+      "cases": 23,
+      "elapsed_seconds": 0.953,
+      "exit": 0,
+      "failed": 0,
+      "failure_names": [],
+      "mode": "installed",
+      "passed": 23,
+      "skipped": 0,
+      "status": "PASS",
+      "suite": "tests/speech/test_voice_preferences.py"
+    }
+  ],
+  "actual_final_summary": {
+    "line": 1570,
+    "value": {
+      "inputs_unchanged": true,
+      "installed_passed": 112,
+      "source_commit": "fc84f903dfe068b4eb816e5395cdbd3bf7aa7ad2",
+      "source_passed": 112,
+      "source_tree": "b5155e3ee1efb09097a1b6759cb9d5374bffbd9a",
+      "status": "PASS"
+    }
+  },
+  "installed": {
+    "passed": 112,
+    "failed": 0,
+    "skipped": 0,
+    "whole_modules": 4,
+    "isolated_per_whole": true
+  },
+  "ordering": {
+    "source": "Real Book29 alone first; the remaining83 cases in three whole modules use the existing jobs3 group.",
+    "installed": "Each of the four whole modules runs in a separate installed child, in the fixed contract order."
+  },
+  "bounds": {
+    "ordinary_whole_seconds": 600,
+    "admission_whole_seconds": 900,
+    "helper_minutes": 100,
+    "job_minutes": 145,
+    "product_and_test_fixture_budgets": "Unchanged G source. The H/I positive allowance and API correction are not part of this G execution."
+  },
+  "identity_proof": {
+    "inputs_unchanged": true,
+    "source_and_installed_before_after_guard": "Every printed PASS whole row follows the helper's required source-origin or full installed-payload/origin receipt checks. The final input check also passed.",
+    "module_count": 42,
+    "companion_count": 5,
+    "complete_source_wheel_mapping_required": true,
+    "archive_receipt_files_independently_inspected": false,
+    "installed_source_injection": false
+  },
+  "decoded_log": {
+    "sha256": "28bfdecc28a7fb1425a64760b947b00868f8b6621789e72022fa1306af2fab3d",
+    "bytes": 224053,
+    "lines": 1683
+  },
+  "artifact": {
+    "id": 15259284994,
+    "name": "focused-installed-windows-fc84f903dfe068b4eb816e5395cdbd3bf7aa7ad2-1",
+    "bytes": 108847,
+    "digest": "sha256:2d00ba32b0060fead1e9b357f281940c68441cd568667a6446cfd314cddba9f1",
+    "expired": false,
+    "head": "fc84f903dfe068b4eb816e5395cdbd3bf7aa7ad2",
+    "archive_inspected": false
+  },
+  "excerpts": {
+    "checkout": {
+      "start_line": 128,
+      "end_line": 134,
+      "lines": [
+        {
+          "line": 128,
+          "text": "Turn off this advice by setting config variable advice.detachedHead to false",
+          "truncated": false,
+          "original_characters": 76
+        },
+        {
+          "line": 129,
+          "text": "",
+          "truncated": false,
+          "original_characters": 0
+        },
+        {
+          "line": 130,
+          "text": "HEAD is now at fc84f90 Close Windows language fixtures and preserve complete bounded acceptance",
+          "truncated": false,
+          "original_characters": 95
+        },
+        {
+          "line": 131,
+          "text": "##[endgroup]",
+          "truncated": false,
+          "original_characters": 12
+        },
+        {
+          "line": 132,
+          "text": "[command]\"C:\\Program Files\\Git\\bin\\git.exe\" log -1 --format=%H",
+          "truncated": false,
+          "original_characters": 62
+        },
+        {
+          "line": 133,
+          "text": "fc84f903dfe068b4eb816e5395cdbd3bf7aa7ad2",
+          "truncated": false,
+          "original_characters": 40
+        },
+        {
+          "line": 134,
+          "text": "##[group]Removing auth",
+          "truncated": false,
+          "original_characters": 22
+        }
+      ]
+    },
+    "source_book": {
+      "start_line": 516,
+      "end_line": 518,
+      "lines": [
+        {
+          "line": 516,
+          "text": "======================= 29 passed in 417.73s (0:06:57) ========================",
+          "truncated": false,
+          "original_characters": 79
+        },
+        {
+          "line": 517,
+          "text": "",
+          "truncated": false,
+          "original_characters": 0
+        },
+        {
+          "line": 518,
+          "text": "FOCUSED_WHOLE {\"cases\": 29, \"elapsed_seconds\": 418.906, \"exit\": 0, \"failed\": 0, \"failure_names\": [], \"mode\": \"source\", \"passed\": 29, \"skipped\": 0, \"status\": \"PASS\", \"suite\": \"tests/studio/test_book_batch.py\"}",
+          "truncated": false,
+          "original_characters": 208
+        }
+      ]
+    },
+    "source_admission": {
+      "start_line": 887,
+      "end_line": 889,
+      "lines": [
+        {
+          "line": 887,
+          "text": "======================= 40 passed in 611.75s (0:10:11) ========================",
+          "truncated": false,
+          "original_characters": 79
+        },
+        {
+          "line": 888,
+          "text": "",
+          "truncated": false,
+          "original_characters": 0
+        },
+        {
+          "line": 889,
+          "text": "FOCUSED_WHOLE {\"cases\": 40, \"elapsed_seconds\": 612.906, \"exit\": 0, \"failed\": 0, \"failure_names\": [], \"mode\": \"source\", \"passed\": 40, \"skipped\": 0, \"status\": \"PASS\", \"suite\": \"tests/transcription/test_admission_boundaries.py\"}",
+          "truncated": false,
+          "original_characters": 225
+        }
+      ]
+    },
+    "installed_book": {
+      "start_line": 1196,
+      "end_line": 1198,
+      "lines": [
+        {
+          "line": 1196,
+          "text": "======================= 29 passed in 418.43s (0:06:58) ========================",
+          "truncated": false,
+          "original_characters": 79
+        },
+        {
+          "line": 1197,
+          "text": "",
+          "truncated": false,
+          "original_characters": 0
+        },
+        {
+          "line": 1198,
+          "text": "FOCUSED_WHOLE {\"cases\": 29, \"elapsed_seconds\": 419.187, \"exit\": 0, \"failed\": 0, \"failure_names\": [], \"mode\": \"installed\", \"passed\": 29, \"skipped\": 0, \"status\": \"PASS\", \"suite\": \"tests/studio/test_book_batch.py\"}",
+          "truncated": false,
+          "original_characters": 211
+        }
+      ]
+    },
+    "installed_admission": {
+      "start_line": 1462,
+      "end_line": 1464,
+      "lines": [
+        {
+          "line": 1462,
+          "text": "======================= 40 passed in 612.63s (0:10:12) ========================",
+          "truncated": false,
+          "original_characters": 79
+        },
+        {
+          "line": 1463,
+          "text": "",
+          "truncated": false,
+          "original_characters": 0
+        },
+        {
+          "line": 1464,
+          "text": "FOCUSED_WHOLE {\"cases\": 40, \"elapsed_seconds\": 613.39, \"exit\": 0, \"failed\": 0, \"failure_names\": [], \"mode\": \"installed\", \"passed\": 40, \"skipped\": 0, \"status\": \"PASS\", \"suite\": \"tests/transcription/test_admission_boundaries.py\"}",
+          "truncated": false,
+          "original_characters": 227
+        }
+      ]
+    },
+    "final_summary": {
+      "start_line": 1567,
+      "end_line": 1570,
+      "lines": [
+        {
+          "line": 1567,
+          "text": "============================= 23 passed in 0.22s ==============================",
+          "truncated": false,
+          "original_characters": 79
+        },
+        {
+          "line": 1568,
+          "text": "",
+          "truncated": false,
+          "original_characters": 0
+        },
+        {
+          "line": 1569,
+          "text": "FOCUSED_WHOLE {\"cases\": 23, \"elapsed_seconds\": 0.953, \"exit\": 0, \"failed\": 0, \"failure_names\": [], \"mode\": \"installed\", \"passed\": 23, \"skipped\": 0, \"status\": \"PASS\", \"suite\": \"tests/speech/test_voice_preferences.py\"}",
+          "truncated": false,
+          "original_characters": 216
+        },
+        {
+          "line": 1570,
+          "text": "{\"inputs_unchanged\": true, \"installed_passed\": 112, \"source_commit\": \"fc84f903dfe068b4eb816e5395cdbd3bf7aa7ad2\", \"source_passed\": 112, \"source_tree\": \"b5155e3ee1efb09097a1b6759cb9d5374bffbd9a\", \"status\": \"PASS\"}",
+          "truncated": false,
+          "original_characters": 211
+        }
+      ]
+    }
+  },
+  "qualification": "Four exact whole modules only, with observed112 source and112 isolated-installed PASS. Book/admission timings are helper elapsed seconds including their wrapper/verification work, not throughput or per-case measurements. This resolves the selected G whole contracts and the two explicit UTF-8 fixture regressions, but does not establish absence of full-suite interaction, replace the mandatory complete installed gate, or qualify H/I code, native desktop, actual ASR inference, listening, model quality or NVDA."
+}

@@ -1,0 +1,163 @@
+{
+  "schema": "carr-actual-language-evidence-failure/1",
+  "recorded_utc": "2026-11-28 10:50:42 UTC",
+  "pr_head": "becba92dbb68df16654112847d29ec7af0c905d0",
+  "pr_source_tree": "cd339ad7cdfb97d2b60065b02f1fce42b9dddc92",
+  "actual_checkout": "234b83be02a4517f616cd14d0158e3d24016a8b4",
+  "actual_checkout_tree": "cd339ad7cdfb97d2b60065b02f1fce42b9dddc92",
+  "checkout_kind": "GitHub PR173 synthetic merge; exact immutable tree equals published H",
+  "checkout_parents": [
+    "e5c64a5245583f8f8b404a0f042f6ca438c24d7f",
+    "becba92dbb68df16654112847d29ec7af0c905d0"
+  ],
+  "tree_binding": {
+    "full_H_tree_file_count": 2083,
+    "same_immutable_tree": true
+  },
+  "run_id": 46135458240,
+  "job_id": 140949732081,
+  "job_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46135458240/job/140949732081",
+  "platform": "windows-2022",
+  "job_conclusion": "FAILURE",
+  "helper_blob": "9a75188ec6a583aade9a5970dc548d3d35724b9d",
+  "workflow_blob": "29bf8a261151818ed9b45695ef5cf356f8fc552d",
+  "source_rows": [
+    {
+      "status": "PASS",
+      "path": "tests/language_qualification/test_catalog.py",
+      "passed": 31,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "path": "tests/language_qualification/test_ui.py",
+      "passed": 7,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "path": "tests/language_qualification/test_evidence.py",
+      "passed": 54,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "path": "tests/language_qualification/test_evidence_backup.py",
+      "passed": 27,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "status": "PASS",
+      "path": "tests/language_qualification/test_evidence_ui.py",
+      "passed": 28,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    }
+  ],
+  "source_cases": {
+    "required": 147,
+    "passed": 147,
+    "failed": 0,
+    "skipped": 0
+  },
+  "strict_source_tail": "Required suites complete: 5; passed=5; failed=0",
+  "installed": {
+    "status": "FAIL",
+    "completed_wholes": 1,
+    "required_wholes": 5,
+    "first_whole": "tests/language_qualification/test_catalog.py",
+    "required_cases": 31,
+    "passed": 30,
+    "failed": 1,
+    "skipped": 0,
+    "remaining_wholes": "NOT_RUN",
+    "total_required_cases": 147
+  },
+  "native75": "NOT_RUN",
+  "final_whole_wheel_and_source_after_proof": "NOT_REACHED",
+  "failure": {
+    "node": "tests/language_qualification/test_catalog.py::test_source_lines_reconstruct_every_selected_geographic_row",
+    "line": 51,
+    "exception": "UnicodeDecodeError",
+    "codec": "cp1252",
+    "operation": "The test reads the actual installed SELECTED_LANGUAGES_UK.md with Path.read_text() and no explicit encoding.",
+    "diagnosis": "The pinned catalog source is UTF-8. Production catalog.py reads bytes and strictly decodes UTF-8; only this independent test-source reconstruction used the platform locale. Source-mode subprocess passed; the isolated installed subprocess used cp1252 and failed before its row equality assertions.",
+    "bounded_trace": [
+      "_________ test_source_lines_reconstruct_every_selected_geographic_row _________",
+      "",
+      "    def test_source_lines_reconstruct_every_selected_geographic_row():",
+      "        catalog = load_catalog()",
+      ">       source = (module._DATA / 'SELECTED_LANGUAGES_UK.md').read_text().splitlines()",
+      "                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^",
+      "",
+      "tests\\language_qualification\\test_catalog.py:51: ",
+      "_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _",
+      "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\pathlib.py:1059: in read_text",
+      "    return f.read()",
+      "           ^^^^^^^^",
+      "_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _",
+      "",
+      "self = <encodings.cp1252.IncrementalDecoder object at 0x0000026CE0FB6110>",
+      "input = b'# \\xd0\\x92\\xd0\\xb8\\xd0\\xb1\\xd1\\x80\\xd0\\xb0\\xd0\\xbd\\xd1\\x96 \\xd0\\xba\\xd0\\xbe\\xd1\\x80\\xd0\\xb8\\xd1\\x81\\xd1\\x82\\xd1\\x83\\...f\\xd0\\xb0\\xd0\\xbf\\xd1\\x83\\xd0\\xb0 \\xd0\\x9d\\xd0\\xbe\\xd0\\xb2\\xd0\\xb0 \\xd0\\x93\\xd0\\xb2\\xd1\\x96\\xd0\\xbd\\xd0\\xb5\\xd1\\x8f.\\n'",
+      "final = True",
+      "",
+      "    def decode(self, input, final=False):",
+      ">       return codecs.charmap_decode(input,self.errors,decoding_table)[0]",
+      "               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^",
+      "E       UnicodeDecodeError: 'charmap' codec can't decode byte 0x81 in position 26: character maps to <undefined>",
+      "",
+      "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\encodings\\cp1252.py:23: UnicodeDecodeError",
+      "- generated xml file: D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\ci-language-evidence\\contracts\\installed-1.xml -",
+      "=========================== short test summary info ===========================",
+      "FAILED tests/language_qualification/test_catalog.py::test_source_lines_reconstruct_every_selected_geographic_row - UnicodeDecodeError: 'charmap' codec can't decode byte 0x81 in position 26: character maps to <undefined>",
+      "======================== 1 failed, 30 passed in 0.22s =========================",
+      "",
+      "Traceback (most recent call last):",
+      "  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\ci_language_evidence_contracts.py\", line 563, in <module>",
+      "    main()",
+      "  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\ci_language_evidence_contracts.py\", line 538, in main",
+      "    require(result == 0 and passed == expected_count and failed == skipped == 0",
+      "  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\ci_language_evidence_contracts.py\", line 123, in require",
+      "    raise ValueError(message)",
+      "ValueError: Installed whole contract failed: tests/language_qualification/test_catalog.py"
+    ]
+  },
+  "source_binding": {
+    "catalog_test": "eeee7e7b0bb1fad0aa7f9baa2209a3fddb9b1642",
+    "catalog": "236a61ecb765b544ca4e0005fb94e6b462256996",
+    "corrected_H_core_test": "6c5d52a8102d40842f23838a1eb65630626a2a9d",
+    "evidence": "befc09f3b9ac1724baf37d1d4016bb59b27f956c",
+    "native_script": "1a0358e96abb435b6b944c8a69046e8f3f178c1b"
+  },
+  "decoded_log_utf8": {
+    "sha256": "d94abcd5f99f45320c11ceacc753a581ac34a3afe0f62207efc040c5c534b338",
+    "bytes": 102398
+  },
+  "artifact": {
+    "id": 15259917033,
+    "name": "language-evidence-windows-234b83be02a4517f616cd14d0158e3d24016a8b4-1",
+    "size_in_bytes": 17391,
+    "sha256": "69e68aaaeea967d88a79cf1d3c3a444c452cc6841f77ed7a18645a78d9ca3869",
+    "created_at": "2026-11-28T10:44:13Z",
+    "head_sha": "becba92dbb68df16654112847d29ec7af0c905d0"
+  },
+  "artifact_upload_log_matches_api": true,
+  "uploaded_files": 12,
+  "previous_G_source_failure": "141de50f4bc975c4fa1519fbcb13dafe19f31e90",
+  "limits": [
+    "This is actual H source-only 147 PASS followed by installed first-whole failure; no installed147 or native75 qualification is claimed.",
+    "No transfer to I, the proposed explicit-UTF8 fixture, or the separate H main caller.",
+    "Synthetic evidence does not establish real language quality, authenticated reviewer independence, or current-device qualification.",
+    "Archive member bytes were not downloaded; the artifact metadata matches the closed upload log.",
+    "The final after-operation source/wheel snapshot and native flow were not reached."
+  ]
+}

@@ -1,0 +1,279 @@
+{
+  "schema": "carr-actual-G-cancelled-source-partials/1",
+  "created_utc": "2026-11-28 10:35:18 UTC",
+  "status": "CLOSED_JOB_PARTIALS_OVERALL_CANCELLED_NO_GATE_PASS",
+  "source_commit": "fc84f903dfe068b4eb816e5395cdbd3bf7aa7ad2",
+  "source_tree": "b5155e3ee1efb09097a1b6759cb9d5374bffbd9a",
+  "run_id": 46131516678,
+  "run_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46131516678",
+  "run_status_observed": "queued",
+  "run_conclusion_observed": null,
+  "run_status_note": "The three selected jobs are completed/cancelled. The parent run is still queued because its original strict aggregate is queued; this record does not report the entire run as concluded.",
+  "exact_source_bindings": {
+    ".github/workflows/carr-windows.yml": "2f0ee50dd507be94424040d88e4807edd7c1ee62",
+    "carr-library/scripts/check_integrated_source_shard.ps1": "6032567fb09dd4e235caca7a3480d27845fcf889",
+    "carr-library/tests/studio/test_book_batch.py": "860b5e112e803527add77983733b0f1833b465e5",
+    "carr-library/tests/audio/test_voice_package_management.py": "f37fb8af516898fed38b26cdebe7fd943e188db7",
+    "carr-library/tests/ingest/test_large_source_intake.py": "e97c4d77f398349153ef7dd95b7bb57b2b0aa2a5"
+  },
+  "jobs": [
+    {
+      "job_id": 140943104669,
+      "name": "Required current composition / Windows source regressions",
+      "status": "completed",
+      "conclusion": "cancelled",
+      "log": {
+        "bytes": 83223,
+        "sha256": "843ddbed895d92269cd6bbf174eb1367086d16b214a3948385e34caba7f2c83f",
+        "lines": 869
+      },
+      "observations": {
+        "book_whole_pytest": {
+          "path": "tests/studio/test_book_batch.py",
+          "passed": 29,
+          "duration_seconds": 583.54,
+          "named_pass_rows": 29,
+          "strict_ci_row_present": false,
+          "reason": "The jobs1 invocation contains Book then voice; cancellation during voice prevents that invocation's end-of-group strict rows and summary."
+        },
+        "voice_incomplete": {
+          "path": "tests/audio/test_voice_package_management.py",
+          "visible_named_pass_rows": 26,
+          "expected": 30,
+          "no_final_pytest_or_ci_result": true
+        },
+        "strict_ci_rows": 0,
+        "required_fast185_complete": false
+      },
+      "evidence": [
+        {
+          "line": 773,
+          "text": "2026-11-28T10:23:22.9373979Z tests/studio/test_book_batch.py::test_same_path_library_replacement_invalidates_existing_batch_service_before_writes PASSED [ 89%]"
+        },
+        {
+          "line": 774,
+          "text": "2026-11-28T10:23:24.2413331Z tests/studio/test_book_batch.py::test_saved_batch_inventory_never_silently_omits_unreadable_directory PASSED [ 93%]"
+        },
+        {
+          "line": 775,
+          "text": "2026-11-28T10:23:28.1874509Z tests/studio/test_book_batch.py::test_active_invocation_tamper_after_real_pcm_refuses_publication_and_later_books[replace-token] PASSED [ 96%]"
+        },
+        {
+          "line": 776,
+          "text": "2026-11-28T10:23:32.1463269Z tests/studio/test_book_batch.py::test_active_invocation_tamper_after_real_pcm_refuses_publication_and_later_books[remove-active] PASSED [100%]"
+        },
+        {
+          "line": 777,
+          "text": "2026-11-28T10:23:32.1464370Z "
+        },
+        {
+          "line": 778,
+          "text": "2026-11-28T10:23:32.1465248Z - generated xml file: C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\carr-ci-5un19_1e\\junit.xml -"
+        },
+        {
+          "line": 779,
+          "text": "2026-11-28T10:23:32.1466145Z ======================= 29 passed in 583.54s (0:09:43) ========================"
+        },
+        {
+          "line": 780,
+          "text": "2026-11-28T10:23:32.8427949Z ============================= test session starts ============================="
+        },
+        {
+          "line": 781,
+          "text": "2026-11-28T10:23:32.8459063Z platform win32 -- Python 3.11.9, pytest-9.0.2, pluggy-1.7.0 -- D:\\a\\_temp\\carr-completion-python\\Scripts\\python.exe"
+        },
+        {
+          "line": 782,
+          "text": "2026-11-28T10:23:32.8460555Z cachedir: .pytest_cache"
+        },
+        {
+          "line": 783,
+          "text": "2026-11-28T10:23:32.8461239Z rootdir: D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library"
+        },
+        {
+          "line": 784,
+          "text": "2026-11-28T10:23:32.8462275Z configfile: pyproject.toml"
+        },
+        {
+          "line": 785,
+          "text": "2026-11-28T10:23:33.0559241Z collecting ... collected 30 items"
+        },
+        {
+          "line": 786,
+          "text": "2026-11-28T10:23:33.0569028Z "
+        },
+        {
+          "line": 787,
+          "text": "2026-11-28T10:23:35.6276457Z tests/audio/test_voice_package_management.py::test_registration_adds_only_owner_lock_and_exact_current_binding PASSED [  3%]"
+        },
+        {
+          "line": 788,
+          "text": "2026-11-28T10:23:41.7944673Z tests/audio/test_voice_package_management.py::test_install_requires_exact_rights_before_owner_mutation[unchecked] PASSED [  6%]"
+        },
+        {
+          "line": 789,
+          "text": "2026-11-28T10:23:47.9647603Z tests/audio/test_voice_package_management.py::test_install_requires_exact_rights_before_owner_mutation[null] PASSED [ 10%]"
+        },
+        {
+          "line": 808,
+          "text": "2026-11-28T10:28:14.9279998Z tests/audio/test_voice_package_management.py::test_actual_revoke_or_delete_retains_local_revocation_without_legacy_fallback[revoke] PASSED [ 73%]"
+        },
+        {
+          "line": 809,
+          "text": "2026-11-28T10:28:45.1174391Z tests/audio/test_voice_package_management.py::test_actual_revoke_or_delete_retains_local_revocation_without_legacy_fallback[delete] PASSED [ 76%]"
+        },
+        {
+          "line": 810,
+          "text": "2026-11-28T10:29:10.3359667Z tests/audio/test_voice_package_management.py::test_delete_needs_exact_reviewed_action_before_child[DELETE wrong] PASSED [ 80%]"
+        },
+        {
+          "line": 811,
+          "text": "2026-11-28T10:29:35.5485984Z tests/audio/test_voice_package_management.py::test_delete_needs_exact_reviewed_action_before_child[yes] PASSED [ 83%]"
+        },
+        {
+          "line": 812,
+          "text": "2026-11-28T10:30:00.7922380Z tests/audio/test_voice_package_management.py::test_delete_needs_exact_reviewed_action_before_child[REVOKE fixture] PASSED [ 86%]"
+        },
+        {
+          "line": 813,
+          "text": "2026-11-28T10:30:13.9367053Z ##[error]The operation was canceled."
+        }
+      ]
+    },
+    {
+      "job_id": 140943104833,
+      "name": "Required whole source partition 4 of 4 / Required integrated source 3 / Windows x64",
+      "status": "completed",
+      "conclusion": "cancelled",
+      "log": {
+        "bytes": 194840,
+        "sha256": "ea6dbe29e626bb5916758d77e0919cf49f4e2aa59d0c05018ed9c179ebdb57a5",
+        "lines": 1674
+      },
+      "observations": {
+        "completed_isolated_group": {
+          "path": "tests/audio/test_voice_package_management.py",
+          "passed": 30,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0,
+          "duration_seconds": 465.45,
+          "actual_group_summary": {
+            "complete": 1,
+            "passed": 1,
+            "failed": 0
+          }
+        },
+        "remaining_pool_count": 122,
+        "remaining_pool_complete": false,
+        "required_partition123_complete": false
+      },
+      "evidence": [
+        {
+          "line": 745,
+          "text": "2026-11-28T10:26:30.8865415Z tests/audio/test_voice_package_management.py::test_removal_rechecks_review_after_the_actual_owner_lock_is_acquired PASSED [ 90%]"
+        },
+        {
+          "line": 746,
+          "text": "2026-11-28T10:26:39.8278562Z tests/audio/test_voice_package_management.py::test_changed_ancestor_alias_is_refused_with_same_reference_and_lock_leaf_identities PASSED [ 93%]"
+        },
+        {
+          "line": 747,
+          "text": "2026-11-28T10:26:54.4911667Z tests/audio/test_voice_package_management.py::test_real_concurrent_stream_lock_waits_before_hashing_administrative_byte[before-owner-child] PASSED [ 96%]"
+        },
+        {
+          "line": 748,
+          "text": "2026-11-28T10:27:09.0412108Z tests/audio/test_voice_package_management.py::test_real_concurrent_stream_lock_waits_before_hashing_administrative_byte[after-owner-child] PASSED [100%]"
+        },
+        {
+          "line": 749,
+          "text": "2026-11-28T10:27:09.0413391Z "
+        },
+        {
+          "line": 750,
+          "text": "2026-11-28T10:27:09.0413972Z - generated xml file: C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\carr-ci-zp3zv378\\junit.xml -"
+        },
+        {
+          "line": 751,
+          "text": "2026-11-28T10:27:09.0414905Z ======================= 30 passed in 465.45s (0:07:45) ========================"
+        },
+        {
+          "line": 752,
+          "text": "2026-11-28T10:27:09.3540443Z "
+        },
+        {
+          "line": 753,
+          "text": "2026-11-28T10:27:09.3542386Z PASS: tests/audio/test_voice_package_management.py: junit_passed=30, failed=0, skipped=0, pytest_exit=0"
+        },
+        {
+          "line": 754,
+          "text": "2026-11-28T10:27:09.3543434Z Required suites complete: 1; passed=1; failed=0"
+        },
+        {
+          "line": 755,
+          "text": "2026-11-28T10:27:09.9481398Z ============================= test session starts ============================="
+        },
+        {
+          "line": 756,
+          "text": "2026-11-28T10:27:09.9515116Z platform win32 -- Python 3.11.9, pytest-9.0.2, pluggy-1.7.0 -- D:\\a\\_temp\\carr-windows-python\\Scripts\\python.exe"
+        },
+        {
+          "line": 757,
+          "text": "2026-11-28T10:27:09.9518809Z cachedir: .pytest_cache"
+        },
+        {
+          "line": 1562,
+          "text": "2026-11-28T10:30:15.1803575Z ##[error]The operation was canceled."
+        }
+      ]
+    },
+    {
+      "job_id": 140943104849,
+      "name": "Required whole source partition 3 of 4 / Required integrated source 2 / Windows x64",
+      "status": "completed",
+      "conclusion": "cancelled",
+      "log": {
+        "bytes": 223403,
+        "sha256": "55ffad575f4fddddc1c16c17dd1fda996e6c4ccd9bd44baa98215d9ae4e359f7",
+        "lines": 1912
+      },
+      "observations": {
+        "strict_ci_rows": 0,
+        "required_partition123_complete": false,
+        "bounded_failure_scan": "No FAILED / FAIL: / ERRORS / Traceback / database-is-locked signature occurs in this captured log; the cancellation is the only ##[error] match. This is a bounded log observation, not a success verdict.",
+        "intake": "Individual intake activity appears before cancellation. Interleaved output is not assigned a whole-module result or duration."
+      },
+      "evidence": [
+        {
+          "line": 739,
+          "text": "2026-11-28T10:27:23.9622415Z tests/ingest/test_large_source_intake.py::test_large_txt_all_meaningful_bytes_publish_quote_and_restore_with_measured_worker "
+        },
+        {
+          "line": 1161,
+          "text": "2026-11-28T10:28:43.9006653Z tests/ingest/test_large_source_intake.py::test_real_128_mib_pdf_uses_original_stream_and_explicit_rendered_review "
+        },
+        {
+          "line": 1391,
+          "text": "2026-11-28T10:29:20.0608264Z tests/ingest/test_large_source_intake.py::test_large_partial_checkpoint_backup_restores_exact_job_after_originals_disappear PASSED [ 68%]"
+        },
+        {
+          "line": 1781,
+          "text": "2026-11-28T10:29:59.3476842Z tests/ingest/test_large_source_intake.py::test_large_source_completed_before_real_child_cancel_is_recovered_without_republication[txt] PASSED [ 57%]"
+        },
+        {
+          "line": 1798,
+          "text": "2026-11-28T10:30:15.3777508Z ##[error]The operation was canceled."
+        }
+      ]
+    }
+  ],
+  "interpretation": {
+    "book": "The G jobs1 execution reached all29 Book cases within the unchanged600-second whole limit on this runner. A completed fast-group or fast185 verdict was not emitted.",
+    "voice": "The G shard3 isolated group established its exact30/30 result within600 before cancellation of its later pool. This does not qualify shard3 or the493 source gate.",
+    "scheduling_cause": "No contention, speedup, hardware or completion guarantee is inferred.",
+    "transfer": "No result is transferred to H or any later commit.",
+    "execution": "ACTUAL_CLOSED_G_LOGS",
+    "new_source": "NONE",
+    "ref_mutation": "NONE"
+  }
+}

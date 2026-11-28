@@ -1,0 +1,121 @@
+{
+  "schema": "carr-actual-H-native-launchers/1",
+  "created_utc": "2026-11-28 10:40:04 UTC",
+  "status": "ACTUAL_SUCCESS",
+  "source_commit": "becba92dbb68df16654112847d29ec7af0c905d0",
+  "source_tree": "cd339ad7cdfb97d2b60065b02f1fce42b9dddc92",
+  "run_id": 46135458167,
+  "run_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46135458167",
+  "workflow_path": ".github/workflows/carr-native-launcher.yml",
+  "jobs": [
+    {
+      "job_id": 140949658027,
+      "name": "pinned-zig-native-launcher",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "becba92dbb68df16654112847d29ec7af0c905d0",
+      "started_at": "2026-11-28T10:36:05Z",
+      "completed_at": "2026-11-28T10:37:27Z",
+      "log": {
+        "bytes": 30904,
+        "sha256": "ace3d61352bd1e891e6779dcd1856277a7212d600829f22eaa5a6edca3d05d09",
+        "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46135458167/job/140949658027"
+      },
+      "native_report": {
+        "schema": 1,
+        "status": "passed",
+        "checks": [
+          "unicode-spaces-fixed-argv-offline-optional-runtimes",
+          "read-only-ready-probe",
+          "fixed-installation-check",
+          "child-exit-status-propagated",
+          "extra-arguments-rejected",
+          "incomplete-state-preserved-without-reinstall",
+          "missing-runtime-does-not-search-path",
+          "fresh-package-reuses-fixed-offline-installer",
+          "research-data-sentinel-preserved"
+        ],
+        "check_count": 9,
+        "launcher_sha256": "58e3de03d9d09520833841bbc72f698f5b924631e0490f41d8b73dc73da53cf7",
+        "synthetic_child_sha256": "728ed3b035141e87a80b23436ef45fdfc8e7d47f633cdbc734cc6741ff8b4bcc",
+        "native_launcher_execution_verified": true,
+        "actual_python_installation_verified": false,
+        "nvda_verified": false,
+        "authenticode_verified": false
+      },
+      "report_occurrences": [
+        {
+          "first_line": 246,
+          "last_line": 267
+        },
+        {
+          "first_line": 326,
+          "last_line": 347
+        }
+      ],
+      "duplicate_reports_byte_value_equal": true,
+      "failed_steps": []
+    },
+    {
+      "job_id": 140949658259,
+      "name": "native-launcher",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "becba92dbb68df16654112847d29ec7af0c905d0",
+      "started_at": "2026-11-28T10:37:29Z",
+      "completed_at": "2026-11-28T10:38:01Z",
+      "log": {
+        "bytes": 34198,
+        "sha256": "86039e7de2c6ac1581f12695d0c5ed1afd2be42e111874bb8d0afb3de023a5cf",
+        "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46135458167/job/140949658259"
+      },
+      "native_report": {
+        "schema": 1,
+        "status": "passed",
+        "checks": [
+          "unicode-spaces-fixed-argv-offline-optional-runtimes",
+          "read-only-ready-probe",
+          "fixed-installation-check",
+          "child-exit-status-propagated",
+          "extra-arguments-rejected",
+          "incomplete-state-preserved-without-reinstall",
+          "missing-runtime-does-not-search-path",
+          "fresh-package-reuses-fixed-offline-installer",
+          "research-data-sentinel-preserved"
+        ],
+        "check_count": 9,
+        "launcher_sha256": "40201a9f834ed7fe10b749fe53750867ee289c246ee1b8b5349584906bd26366",
+        "synthetic_child_sha256": "c0112243896c7eee158b715c4b1f80de87d0867c1692f5f356742d0109906294",
+        "native_launcher_execution_verified": true,
+        "actual_python_installation_verified": false,
+        "nvda_verified": false,
+        "authenticode_verified": false
+      },
+      "report_occurrences": [
+        {
+          "first_line": 259,
+          "last_line": 280
+        },
+        {
+          "first_line": 349,
+          "last_line": 370
+        }
+      ],
+      "duplicate_reports_byte_value_equal": true,
+      "failed_steps": []
+    }
+  ],
+  "bounded_verification": {
+    "jobs_completed_success": 2,
+    "unique_required_checks_per_job": 9,
+    "native_launcher_execution_verified": true,
+    "actual_python_installation_verified": false,
+    "nvda_verified": false,
+    "authenticode_verified": false,
+    "workflow_artifacts_returned": 0,
+    "source_of_native_report": "Timestamp-stripped JSON objects read from each exact closed job log; initial and final echoed report objects match by value.",
+    "unit_or_complete_product_verdict": "NOT_ESTABLISHED",
+    "later_head_transfer": "NONE",
+    "new_ref_mutation": "NONE"
+  }
+}

@@ -1,0 +1,149 @@
+{
+  "schema": "carr-durable-actual-results-index/1",
+  "updated_utc": "2026-11-28 11:00 UTC",
+  "source_baseline": {
+    "commit": "6d5c07032c7a98952c04544a98f4fe087843d88e",
+    "tree": "7650b652dcc56c27d400fcee8e9edc935e5a13e6",
+    "parent": "becba92dbb68df16654112847d29ec7af0c905d0",
+    "anchor": "carr/integration-i-20261128-5a9e",
+    "files": 2091,
+    "changes": 13,
+    "live_changes": 5,
+    "evidence_records": 8,
+    "manifest": "d3f427b1d136b2ce0ea30476f9cdda959da9fa57",
+    "independent_peer": "50529f9b291f157ca59ff74b2f46ead3fc722e1f",
+    "pins": 957,
+    "gates": 63,
+    "full_tree_equal": true,
+    "commit_ref_readback": true,
+    "pr_head": "becba92dbb68df16654112847d29ec7af0c905d0",
+    "execution": "BOTH_OS_CURSOR_CAUSAL_CONTROL_PASS_DIAGNOSTIC_PENDING",
+    "pr_promoted": false,
+    "cursor_run": 46136555038,
+    "diagnostic_run": 46136559446,
+    "cursor_receipt": "bac1db26c7604c14e64bea7c5a15987ba060ed9c"
+  },
+  "pr": {
+    "number": 173,
+    "head": "becba92dbb68df16654112847d29ec7af0c905d0",
+    "base": "e5c64a5245583f8f8b404a0f042f6ca438c24d7f",
+    "merged": false,
+    "released": false
+  },
+  "purpose": "Preserve closed source-bound actual receipts without changing the tested candidate or cancelling active verification.",
+  "records": [
+    {
+      "name": "g_capacity_10k_actual",
+      "path": "resonance-status/actual-next73/g_capacity_10k_actual.json",
+      "blob": "b3fb5fab6176ee93e53fc1b4872a576bb21762c8"
+    },
+    {
+      "name": "g_main_language_actual",
+      "path": "resonance-status/actual-next73/g_main_language_actual.json",
+      "blob": "a1bc9487cbfcf3975bb591abe5ad2251fbdcf232"
+    },
+    {
+      "name": "g_configured_native_cancelled",
+      "path": "resonance-status/actual-next73/g_configured_native_cancelled.json",
+      "blob": "ceab3760e53e76eb6dda3c97bf58e753ef5a5bb9"
+    },
+    {
+      "name": "g_source_partial_cancelled",
+      "path": "resonance-status/actual-next73/g_source_partial_cancelled.json",
+      "blob": "002b357e2c4db4406b11c134f75fd0e9a4c5aa02"
+    },
+    {
+      "name": "h_linux_capacity_actual",
+      "path": "resonance-status/actual-next73/h_linux_capacity_actual.json",
+      "blob": "447338edebbf2a13f0e6679ed6716ba2439a8ce6"
+    },
+    {
+      "name": "h_native_launchers_actual",
+      "path": "resonance-status/actual-next73/h_native_launchers_actual.json",
+      "blob": "cee26e6404baa35bf66b185b70d20cf528bca28f"
+    },
+    {
+      "name": "g_diagnostic_actual",
+      "path": "resonance-status/actual-next73/g_diagnostic_actual.json",
+      "blob": "6b8dcb886ca071fd3fa3e46a1e2df588d1e6db2e"
+    },
+    {
+      "name": "h_bibliography_actual",
+      "path": "resonance-status/actual-next73/h_bibliography_actual.json",
+      "blob": "16de0a7cfbca481e4eabf1b3de8087c96bcbb8ec"
+    },
+    {
+      "name": "h_conversion_actual",
+      "path": "resonance-status/actual-next73/h_conversion_actual.json",
+      "blob": "2337f7195066933e4fbdbf3a3de6e0b5dc7cde75"
+    },
+    {
+      "name": "h_windows_capacity_actual",
+      "path": "resonance-status/actual-next73/h_windows_capacity_actual.json",
+      "blob": "593c1e9d8d57968affb014ab0d35ec5357cfbab1"
+    },
+    {
+      "name": "h_capacity_1k_actual",
+      "path": "resonance-status/actual-next73/h_capacity_1k_actual.json",
+      "blob": "92fc588a45da4ae380e1085eb7dea799fea4a212"
+    },
+    {
+      "name": "i_cursor_linux_actual",
+      "path": "resonance-status/actual-next73/i_cursor_linux_actual.json",
+      "blob": "27c6e22c9bf7ef644ef85546cd6647d93d86d0cf"
+    },
+    {
+      "name": "g_capacity_1m_actual",
+      "path": "resonance-status/actual-next73/g_capacity_1m_actual.json",
+      "blob": "f8581b4fac990a24c0d8e084535939ff516b75f9"
+    },
+    {
+      "name": "scope_audit",
+      "path": "resonance-status/actual-next73/scope_audit.json",
+      "blob": "83b5d6d53c0f5989ccfcbb16b1fa02b1acd2d07b"
+    },
+    {
+      "name": "h_capacity_10k_actual",
+      "path": "resonance-status/actual-next73/h_capacity_10k_actual.json",
+      "blob": "dfbe83ce1eaecf2e2b3ad080b60897bf6d6fa61c"
+    },
+    {
+      "name": "h_language_v3_actual",
+      "path": "resonance-status/actual-next73/h_language_v3_actual.json",
+      "blob": "e635ae981e4f700beb8bd6f9a999d24a2381148d"
+    },
+    {
+      "name": "i_cursor_windows_actual",
+      "path": "resonance-status/actual-next73/i_cursor_windows_actual.json",
+      "blob": "7e94255cdf28317371c242b3dc5572975f9d01dc"
+    },
+    {
+      "name": "i_cursor_two_os_actual",
+      "path": "resonance-status/actual-next73/i_cursor_two_os_actual.json",
+      "blob": "bac1db26c7604c14e64bea7c5a15987ba060ed9c"
+    }
+  ],
+  "current_status": {
+    "aggregate": "NO_AGGREGATE_ACCEPTANCE",
+    "i_cursor_linux": "Observed old SQLite writer.commit failure and fixed PASS; exact receipt retained.",
+    "i_cursor_windows": "Observed old SQLite writer.commit failure and fixed PASS; exact closed Windows and combined receipts retained.",
+    "current_J": "Not published. Six reviewed live paths over I: catalog UTF8 fixture with dependent pins and two documentation corrections; converter metadata diagnosis remains active.",
+    "current_J_paths": [
+      "carr-library/tests/language_qualification/test_catalog.py",
+      "carr-library/scripts/ci_language_evidence_contracts.py",
+      ".github/workflows/carr-language-evidence.yml",
+      "carr-library/docs/assistant_runtime.md",
+      "carr-library/docs/REMOTE_TRANSCRIPTION.md",
+      ".github/workflows/carr-windows.yml"
+    ],
+    "language_surface": "Initial English UI exists. Explicit Ukrainian/Slovak implementation plan is being prepared.135-language matrix is not UI translation plumbing or reviewed resources.",
+    "g_2m": "Still running; no result inferred.",
+    "full_installed_windows": "Current final candidate not qualified.",
+    "external": "Manual NVDA/physical audio, private owner engines, language/acoustic quality, signing/publisher and production services remain separately qualified boundaries."
+  },
+  "rules": [
+    "Each receipt retains its own exact source SHA/tree and actual checkout. Results are not transferred to other source trees.",
+    "Partial or cancelled runs and observed failures stay explicit.",
+    "This evidence branch neither changes a tested source nor grants merge/release approval."
+  ]
+}

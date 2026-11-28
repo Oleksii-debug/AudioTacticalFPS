@@ -1,0 +1,502 @@
+{
+  "schema": "carr-closed-selected-conversion-actual/1",
+  "created_utc": "2026-11-28 10:53:41 UTC",
+  "status": "FAIL",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "head": "becba92dbb68df16654112847d29ec7af0c905d0",
+  "tree": "cd339ad7cdfb97d2b60065b02f1fce42b9dddc92",
+  "run": {
+    "id": 46135458119,
+    "head_sha": "becba92dbb68df16654112847d29ec7af0c905d0",
+    "head_branch": "carr/resonance-final-integration-20261127-5a9e",
+    "event": "pull_request",
+    "status": "completed",
+    "conclusion": "failure"
+  },
+  "workflow": {
+    "path": ".github/workflows/carr-next15-conversion.yml",
+    "blob": "7f50a1975a00f826874b0fef3c6884ca6aaf3619"
+  },
+  "helper": {
+    "path": "carr-library/scripts/ci_selected_conversion_contracts.py",
+    "blob": "31eaef849aa2836ffd44d7a75090eb5245f1918c"
+  },
+  "native_source": {
+    "path": "carr-library/scripts/windows_document_conversion_smoke.py",
+    "blob": "a8b2cf7ce191630b50fc8ee846ada1b89559a10d"
+  },
+  "portable_contract": {
+    "whole_modules": 8,
+    "cases_per_mode": 358,
+    "default_child_seconds": 600,
+    "individual_test_case_counts": [
+      {
+        "path": "tests/conversion/test_selected_conversion.py",
+        "count": 39,
+        "blob": "16b19effb90f86ebc7b2b595de9441b69e28d767"
+      },
+      {
+        "path": "tests/conversion/test_calibre_admission.py",
+        "count": 49,
+        "blob": "bdea0804017e54a38d6036ca137feb778fea2e97"
+      },
+      {
+        "path": "tests/conversion/test_office_admission.py",
+        "count": 24,
+        "blob": "62266cf4ef3fd2acd22b3f5fa8984dcf3a6e8fa0"
+      },
+      {
+        "path": "tests/ui/test_document_conversion.py",
+        "count": 20,
+        "blob": "e1430ee06f64fd55e472c9cda884bb433e2d570d"
+      },
+      {
+        "path": "tests/extract/test_document_formats_xml.py",
+        "count": 151,
+        "blob": "879d73e197c4b77f7fed9d536e7fcd2bcd7a4b33"
+      },
+      {
+        "path": "tests/audio/test_audio_process.py",
+        "count": 23,
+        "blob": "af58a03f5e5f84d7a4014089d6213511c4e4e13c"
+      },
+      {
+        "path": "tests/audio/test_live_metadata_retry.py",
+        "count": 22,
+        "blob": "8534a05cf4e7c89a49f42fdcbb611f6f141fe969"
+      },
+      {
+        "path": "tests/ui/test_native_conversion_diagnostics.py",
+        "count": 30,
+        "blob": "f75a733ac6c1943de65198998d8055db9f17c225"
+      }
+    ]
+  },
+  "jobs": [
+    {
+      "id": 140949657964,
+      "name": "Actual portable source/installed and selected Windows converters",
+      "status": "completed",
+      "conclusion": "failure",
+      "started_at": "2026-11-28T10:33:50Z",
+      "completed_at": "2026-11-28T10:41:53Z",
+      "html_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46135458119/job/140949657964"
+    },
+    {
+      "id": 140949658187,
+      "name": "Exact portable source and isolated installed conversion contracts",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-28T10:34:54Z",
+      "completed_at": "2026-11-28T10:35:46Z",
+      "html_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46135458119/job/140949658187"
+    }
+  ],
+  "portable_results": [
+    {
+      "platform": "windows",
+      "job_id": 140949657964,
+      "checkout": {
+        "kind": "explicit direct event-head checkout",
+        "observed_sha": "becba92dbb68df16654112847d29ec7af0c905d0",
+        "evidence": {
+          "start_line": 132,
+          "end_line": 133,
+          "lines": [
+            {
+              "line": 132,
+              "text": "[command]\"C:\\Program Files\\Git\\bin\\git.exe\" log -1 --format=%H",
+              "truncated": false,
+              "original_characters": 62
+            },
+            {
+              "line": 133,
+              "text": "becba92dbb68df16654112847d29ec7af0c905d0",
+              "truncated": false,
+              "original_characters": 40
+            }
+          ]
+        }
+      },
+      "raw_log": {
+        "sha256": "008f8d9d2873c81cf7c7c756c20d1a67913c74aaddb1f95ad0f91b115f627c52",
+        "bytes": 458056,
+        "normalized_lines": 2867
+      },
+      "final_summary": {
+        "line": 1430,
+        "value": {
+          "all_children_reaped": true,
+          "inputs_unchanged": true,
+          "installed_passed": 358,
+          "source_commit": "becba92dbb68df16654112847d29ec7af0c905d0",
+          "source_passed": 358,
+          "source_tree": "cd339ad7cdfb97d2b60065b02f1fce42b9dddc92",
+          "status": "PASS"
+        }
+      },
+      "retention": {
+        "line": 2812,
+        "value": {
+          "bytes": 712858,
+          "retained_reports": 56,
+          "source_commit": "becba92dbb68df16654112847d29ec7af0c905d0",
+          "source_tree": "cd339ad7cdfb97d2b60065b02f1fce42b9dddc92"
+        }
+      }
+    },
+    {
+      "platform": "linux",
+      "job_id": 140949658187,
+      "checkout": {
+        "kind": "explicit direct event-head checkout",
+        "observed_sha": "becba92dbb68df16654112847d29ec7af0c905d0",
+        "evidence": {
+          "start_line": 145,
+          "end_line": 146,
+          "lines": [
+            {
+              "line": 145,
+              "text": "[command]/usr/bin/git log -1 --format=%H",
+              "truncated": false,
+              "original_characters": 40
+            },
+            {
+              "line": 146,
+              "text": "becba92dbb68df16654112847d29ec7af0c905d0",
+              "truncated": false,
+              "original_characters": 40
+            }
+          ]
+        }
+      },
+      "raw_log": {
+        "sha256": "afeffc1d4cec83c36f0209cdacc580202d171b886ba867e122f93b74f9027a99",
+        "bytes": 191991,
+        "normalized_lines": 1537
+      },
+      "final_summary": {
+        "line": 1400,
+        "value": {
+          "all_children_reaped": true,
+          "inputs_unchanged": true,
+          "installed_passed": 358,
+          "source_commit": "becba92dbb68df16654112847d29ec7af0c905d0",
+          "source_passed": 358,
+          "source_tree": "cd339ad7cdfb97d2b60065b02f1fce42b9dddc92",
+          "status": "PASS"
+        }
+      },
+      "retention": {
+        "line": 1480,
+        "value": {
+          "bytes": 280998,
+          "retained_reports": 32,
+          "source_commit": "becba92dbb68df16654112847d29ec7af0c905d0",
+          "source_tree": "cd339ad7cdfb97d2b60065b02f1fce42b9dddc92"
+        }
+      }
+    }
+  ],
+  "windows_native_phases": [
+    {
+      "log_line": 1762,
+      "mode": "source",
+      "native_gui": "NOT_RUN",
+      "origins": 22,
+      "phase": "formats",
+      "report_sha256": "6a8ca02b63e402391118bdfa6d5e0d809aa3f32af4cb83711a17ea4bf995dc48",
+      "required_formats": 14,
+      "required_native_controls": null,
+      "runtime_quality": "NOT_RUN",
+      "status": "PASS",
+      "whole_cases": null
+    },
+    {
+      "log_line": 1928,
+      "mode": "source",
+      "native_gui": "NOT_RUN",
+      "origins": 22,
+      "phase": "old-suite",
+      "report_sha256": "36d1e039cd76b4c151637b90d4ca67928ad6140b0af45e64e5002c2df89a6635",
+      "required_formats": null,
+      "required_native_controls": null,
+      "runtime_quality": "NOT_RUN",
+      "status": "PASS",
+      "whole_cases": 34
+    },
+    {
+      "log_line": 1943,
+      "mode": "installed",
+      "phase": "formats",
+      "status": "FAIL",
+      "origins_before": 22,
+      "origins_after": "NOT_REPORTED",
+      "actual_owned_jobs": 11,
+      "all_owned_jobs_closed": "PASS",
+      "error_type": "AudioError",
+      "error": "Local audio worker failed (exit 1): PermissionError: [WinError 5] Access is denied: 'C:\\\\Users\\\\runneradmin\\\\AppData\\\\Local\\\\Temp\\\\carr-selected-native-xr4s5crd\\\\reading-1\\\\.pending-conversion-0h9z2o43\\\\work\\\\lu2064k1cj.tmp\\\\lu2064k1dt.tmp'",
+      "required_formats": 14,
+      "completed_formats": "NOT_REPORTED: the report assigns formats only after the entire loop succeeds."
+    },
+    {
+      "log_line": 2113,
+      "mode": "installed",
+      "native_gui": "NOT_RUN",
+      "origins": 22,
+      "phase": "old-suite",
+      "report_sha256": "566834ca5d17aa9369aa2b697c2ddd3b195f352ec545ef7ae8b466e434752001",
+      "required_formats": null,
+      "required_native_controls": null,
+      "runtime_quality": "NOT_RUN",
+      "status": "PASS",
+      "whole_cases": 34
+    },
+    {
+      "log_line": 2367,
+      "mode": "source",
+      "native_gui": "PASS",
+      "origins": 30,
+      "phase": "gui",
+      "report_sha256": "f5c22e3292356e5a23c81844bb024cc68da04e3a024501d9e3c5fad0b4d52eab",
+      "required_formats": null,
+      "required_native_controls": 30,
+      "runtime_quality": "NOT_RUN",
+      "status": "PASS",
+      "whole_cases": null
+    },
+    {
+      "log_line": 2621,
+      "mode": "installed",
+      "native_gui": "PASS",
+      "origins": 30,
+      "phase": "gui",
+      "report_sha256": "4f4d546e44d9f10067a1e0681c0aa6e2e25cc6156794998bc03dc434a5937692",
+      "required_formats": null,
+      "required_native_controls": 30,
+      "runtime_quality": "NOT_RUN",
+      "status": "PASS",
+      "whole_cases": null
+    }
+  ],
+  "actual_failure": {
+    "child": "installed selected conversion worker",
+    "input_format": ".doc",
+    "input_classification": "synthetic native LibreOffice export",
+    "format_index": 1,
+    "path_component": "reading-1",
+    "actual_versions": {
+      "calibre": "ebook-convert.exe (calibre 9.19.0)\r\nCreated by: Kovid Goyal <kovid@kovidgoyal.net>",
+      "libreoffice": "LibreOffice 26.8.3.1 861effc5289d539f15c4c18d1ba8579ffd78728b",
+      "pandoc": "pandoc 3.14\r\nFeatures: +server +lua\r\nScripting engine: Lua 5.4\r\nUser data directory: C:\\Users\\runneradmin\\AppData\\Roaming\\pandoc\r\nCopyright (C) 2006-2025 John MacFarlane. Web:  https://pandoc.org\r\nThis is free software; see the source for copying conditions. There is no\r\nwarranty, not even for merchantability or fitness for a particular purpose."
+    },
+    "observed_error": "Local audio worker failed (exit 1): PermissionError: [WinError 5] Access is denied: 'C:\\\\Users\\\\runneradmin\\\\AppData\\\\Local\\\\Temp\\\\carr-selected-native-xr4s5crd\\\\reading-1\\\\.pending-conversion-0h9z2o43\\\\work\\\\lu2064k1cj.tmp\\\\lu2064k1dt.tmp'",
+    "trace": {
+      "start_line": 1929,
+      "end_line": 1942,
+      "lines": [
+        {
+          "line": 1929,
+          "text": "Traceback (most recent call last):",
+          "truncated": false,
+          "original_characters": 34
+        },
+        {
+          "line": 1930,
+          "text": "  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\selected_conversion_acceptance.py\", line 276, in main",
+          "truncated": false,
+          "original_characters": 121
+        },
+        {
+          "line": 1931,
+          "text": "    (formats if args.phase == 'formats' else old_suite)(args, fixture, report, children)",
+          "truncated": false,
+          "original_characters": 88
+        },
+        {
+          "line": 1932,
+          "text": "  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\selected_conversion_acceptance.py\", line 62, in formats",
+          "truncated": false,
+          "original_characters": 123
+        },
+        {
+          "line": 1933,
+          "text": "    result = service.extract(source, 'reading.txt')",
+          "truncated": false,
+          "original_characters": 51
+        },
+        {
+          "line": 1934,
+          "text": "             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^",
+          "truncated": false,
+          "original_characters": 51
+        },
+        {
+          "line": 1935,
+          "text": "  File \"C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\conversion\\service.py\", line 236, in extract",
+          "truncated": false,
+          "original_characters": 128
+        },
+        {
+          "line": 1936,
+          "text": "    return extract_selected(self, source, output, cancelled=cancelled)",
+          "truncated": false,
+          "original_characters": 70
+        },
+        {
+          "line": 1937,
+          "text": "           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^",
+          "truncated": false,
+          "original_characters": 70
+        },
+        {
+          "line": 1938,
+          "text": "  File \"C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\conversion\\selected.py\", line 262, in extract_selected",
+          "truncated": false,
+          "original_characters": 138
+        },
+        {
+          "line": 1939,
+          "text": "    run_process(command, cwd=work, env=environment, cancelled=admitted,",
+          "truncated": false,
+          "original_characters": 71
+        },
+        {
+          "line": 1940,
+          "text": "  File \"C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\audio\\process.py\", line 311, in run_process",
+          "truncated": false,
+          "original_characters": 127
+        },
+        {
+          "line": 1941,
+          "text": "    raise AudioError(f'Local audio worker failed (exit {process.returncode}): {message.strip()}')",
+          "truncated": false,
+          "original_characters": 97
+        },
+        {
+          "line": 1942,
+          "text": "carr_library.audio.models.AudioError: Local audio worker failed (exit 1): PermissionError: [WinError 5] Access is denied: 'C:\\\\Users\\\\runneradmin\\\\AppData\\\\Local\\\\Temp\\\\carr-selected-native-xr4s5crd\\\\reading-1\\\\.pending-conversion-0h9z2o43\\\\work\\\\lu2064k1cj.tmp\\\\lu2064k1dt.tmp'",
+          "truncated": false,
+          "original_characters": 278
+        }
+      ]
+    },
+    "strict_parent_failure": {
+      "start_line": 1944,
+      "end_line": 1947,
+      "lines": [
+        {
+          "line": 1944,
+          "text": "Traceback (most recent call last):",
+          "truncated": false,
+          "original_characters": 34
+        },
+        {
+          "line": 1945,
+          "text": "  File \"<stdin>\", line 13, in <module>",
+          "truncated": false,
+          "original_characters": 38
+        },
+        {
+          "line": 1946,
+          "text": "AssertionError: Actual selected converter phase failed.",
+          "truncated": false,
+          "original_characters": 55
+        },
+        {
+          "line": 1947,
+          "text": "REQUIRED SELECTED CONVERSION FAILED [formats-installed]: Actual formats-installed conversion proof failed.",
+          "truncated": false,
+          "original_characters": 106
+        }
+      ]
+    },
+    "format_mapping_evidence": [
+      {
+        "path": "carr-library/scripts/selected_conversion_fixture_support.py",
+        "blob": "f91ee1bae7cb6584d3f7caa1788538d8038dfbf7",
+        "lines": [
+          243,
+          261
+        ],
+        "fact": "prepare appends native synthetic .doc, .ppt, .xls in that order."
+      },
+      {
+        "path": "carr-library/scripts/selected_conversion_acceptance.py",
+        "blob": "4f3fd0b4edbce854c03b69ffd9c4bdbf45fc5679",
+        "lines": [
+          45,
+          62
+        ],
+        "fact": "enumerate(rows,1) assigns reading-1 to that first .doc and calls actual service.extract."
+      },
+      {
+        "path": "carr-library/src/carr_library/conversion/worker.py",
+        "blob": "722d3c7b61717890dc242d8113d0617714d53a67",
+        "lines": [
+          104,
+          110
+        ],
+        "fact": "Worker catches Exception and prints type plus a bounded message only; the exact inner failing metadata call is absent from the log."
+      }
+    ],
+    "source_investigation": {
+      "office_blob": "fab629a5d4d14fe847fcc6ff0ebbda0041c0ada2",
+      "live_stage_scan_lines": [
+        248,
+        286
+      ],
+      "current_guard": "Fresh regular_file for each enumerated non-directory, actual st_nlink==1, size/count/depth and root identity; all lookup errors except disappearance propagate.",
+      "attribution": "The live staging metadata path is a candidate seam. The closed log alone does not establish which inner operation raised WinError5.",
+      "proposed_fix_status": "NOT_IMPLEMENTED_OR_EXECUTED_BY_THIS_RECEIPT"
+    },
+    "ownership": {
+      "actual_owned_jobs": 11,
+      "all_owned_jobs_closed": "PASS",
+      "source": "failed child report line1943",
+      "no_claim": "This confirms observed Job closure on the failed phase; it does not convert the failed extraction into PASS."
+    }
+  },
+  "artifacts": [
+    {
+      "id": 15259882245,
+      "name": "selected-conversion-ubuntu-24.04-becba92dbb68df16654112847d29ec7af0c905d0-1",
+      "size_bytes": 53313,
+      "digest": "sha256:13c530aea65f3ecfa823963a5a6299a56ffb2a09d150f236d1be34690882c65f",
+      "head_sha": "becba92dbb68df16654112847d29ec7af0c905d0",
+      "archive_inspection": "NOT_RUN"
+    },
+    {
+      "id": 15259368086,
+      "name": "selected-conversion-windows-2022-becba92dbb68df16654112847d29ec7af0c905d0-1",
+      "size_bytes": 129265,
+      "digest": "sha256:de6c6d410e0a4636cf22febf946774fc54b3ab87f84881121d630dd079099818",
+      "head_sha": "becba92dbb68df16654112847d29ec7af0c905d0",
+      "archive_inspection": "NOT_RUN"
+    }
+  ],
+  "conclusion": {
+    "linux_source": 358,
+    "linux_installed": 358,
+    "windows_source": 358,
+    "windows_installed": 358,
+    "windows_native_successful_phases": 5,
+    "windows_native_failed_phases": 1,
+    "all_six_required": "FAIL",
+    "installed_format_14_proof": "FAIL",
+    "deadlines_and_checks": "unchanged"
+  },
+  "qualification": {
+    "scope": "Exact H portable source and isolated installed358 on both OS; five successful Windows native phases and one retained installed-format failure.",
+    "actual_format_quality": "NOT_RUN",
+    "native_catalog_fidelity": "NOT_RUN",
+    "drm_bypass": "NOT_RUN",
+    "scanned_djvu_ocr": "NOT_RUN",
+    "physical_audio_device": "NOT_RUN",
+    "nvda": "NOT_RUN",
+    "file_picker": "Explicit fixture selections; system file/folder picker not automated.",
+    "preserved_boundary": "Selected reading derivatives only; exact external originals remain unchanged and canonical import retains TXT, without native quotation or catalog authority.",
+    "other_G_workflows": "No transfer to H/I full-main/V3, ASR, diagnostic112 or corpus jobs.",
+    "current_native_all_formats": "NOT_QUALIFIED"
+  }
+}

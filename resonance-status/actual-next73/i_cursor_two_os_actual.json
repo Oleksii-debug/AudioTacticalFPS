@@ -1,0 +1,45 @@
+{
+  "schema": "carr-publication-cursor-two-platform-actual/1",
+  "recorded_utc": "2026-11-28 10:58:45 UTC",
+  "status": "PASS",
+  "source_commit": "6d5c07032c7a98952c04544a98f4fe087843d88e",
+  "source_tree": "7650b652dcc56c27d400fcee8e9edc935e5a13e6",
+  "run_id": 46136555038,
+  "workflow_blob": "99b455fac3401613d34e037162d34a88fcf12765",
+  "test_blob": "8eeda3a069d0d57769b0ded1b373deec6e978e58",
+  "product_worker": "532cd6d0e0bdbeb55675eeb813aa1e39239df022",
+  "old_worker": "8ab4334be7f7728de84839a6a35cfae5a1347830",
+  "scope": "Same one real retained-traceback source regression in independent old/new copies on each platform",
+  "platforms": [
+    {
+      "platform": "ubuntu-24.04",
+      "job_id": 140953042044,
+      "receipt": "27c6e22c9bf7ef644ef85546cd6647d93d86d0cf",
+      "old": "OBSERVED_EXPECTED_PREIMAGE_FAILURE",
+      "new": "PASS"
+    },
+    {
+      "platform": "windows-2022",
+      "job_id": 140953041858,
+      "receipt": "7e94255cdf28317371c242b3dc5572975f9d01dc",
+      "old": "OBSERVED_EXPECTED_PREIMAGE_FAILURE",
+      "new": "PASS"
+    }
+  ],
+  "causal_result": "The exact old worker reproduces sqlite3.OperationalError at the actual separate writer.commit with timeout0 and retained exception traceback; explicit cursor closure passes unchanged remaining assertions on both platforms.",
+  "controls": {
+    "old_expected_failures": 2,
+    "new_actual_passes": 2,
+    "skips": 0,
+    "source_copies_unchanged": true,
+    "checkout_unchanged": true,
+    "temporary_copies_removed": true,
+    "whole_seven": "NOT_RUN",
+    "isolated_installed": "NOT_RUN"
+  },
+  "no_source_or_ref_mutation_by_monitor": true,
+  "previous_H_wrong_setup_failures": [
+    "7c92f2e898a4413b9100efaaf0cd8f9b07b8acf3",
+    "f13e0ccdfd6cb3e755ea3742695dfc84e737e587"
+  ]
+}

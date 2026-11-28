@@ -1,0 +1,342 @@
+{
+  "schema": "resonance-H-bounded-completion-and-localization-audit/1",
+  "created_utc": "2026-11-28 10:54:10 UTC",
+  "status": "READ_ONLY_SCOPE_RECONCILIATION_NOT_GLOBAL_ACCEPTANCE",
+  "source_commit": "becba92dbb68df16654112847d29ec7af0c905d0",
+  "source_tree": "cd339ad7cdfb97d2b60065b02f1fce42b9dddc92",
+  "mandate": "Retain the complete library, reader, voice/cloning, studio/music, supplied transcription, translation, assistant, recovery, security and final135-language scope. No narrower preview is relabelled as final completion.",
+  "authorities": [
+    {
+      "path": "carr-library/docs/UNIVERSAL_SCOPE_V3_FINALIZATION.md",
+      "git_blob": "db8adbdc483a03c262885928c7ed214ca70bbaa7"
+    },
+    {
+      "path": "carr-library/docs/UNIVERSAL_SCOPE_V3_AUDIO_AGENT.md",
+      "git_blob": "d0b2761dd22b33233b311d4800230fb47f5d3d8b"
+    },
+    {
+      "path": "carr-library/docs/acceptance.md",
+      "git_blob": "45752d31899f91bbdc9c71e4b256ac42975beaac"
+    },
+    {
+      "path": "carr-library/docs/V3_RELEASE_READINESS.md",
+      "git_blob": "2301fa86b3829ca854fea5d4b5f64711528f979b"
+    },
+    {
+      "path": "carr-library/docs/REQUESTED_READER_WORKFLOWS.md",
+      "git_blob": "4f3d7cead9415259ba1ae0efcdb5efc31b047eb6"
+    }
+  ],
+  "issue1": {
+    "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/issues/1",
+    "title": "[CARR] Resonance — integration and release control",
+    "updated_at": "2026-11-27T16:44:15Z",
+    "read_current": true
+  },
+  "method": {
+    "previous_gap_audits": [
+      "30befda2d7a8704c7855597ae7f5bf62f8d0d293",
+      "6e3f260818c0acdede0d4f9989be4eeb81531c50"
+    ],
+    "current_tree_complete": true,
+    "source_basis": "Previously reviewed immutable implementations plus fresh exact H tree, authority/readiness/checklist reads and focused entrypoint/desktop/settings/catalog source reads. Owner agents supplied cached scoped findings; no new full401-module body survey is claimed.",
+    "edits": "Only the separately authorized two documentation candidates were prepared. No localization, product, workflow, state or ref mutation."
+  },
+  "implemented_scope_summary": [
+    {
+      "requirements": [
+        "V3-01",
+        "V3-02",
+        "V3-03",
+        "V3-04"
+      ],
+      "finding": "Retained import/OCR/source quotations, reading copies, local voice selection, pronunciation, reader controls/editor/tabs, book plans/batches, conversion and finite R01–R20 paths have declared implementations. Bounded format/engine controls and exact current execution remain separate.",
+      "authority": "REQUESTED_READER_WORKFLOWS.md R01–R20; V3_RELEASE_READINESS.md"
+    },
+    {
+      "requirements": [
+        "V3-05",
+        "V3-12",
+        "V3-13",
+        "V3-14"
+      ],
+      "finding": "Typed scene/role/cue rendering and optional music engines, gain/pan/width envelopes, cut/split/join/history, atomic crossfade, sample-aligned markers and explicit A–B preview are implemented. This does not establish arbitrary real-time plugin automation, physical monitoring or many-hour original neural coherence.",
+      "sources": [
+        {
+          "path": "carr-library/src/carr_library/audio/music.py",
+          "git_blob": "5b2f7982d11adf7be7dca1e481c34a215ec28ff4"
+        },
+        {
+          "path": "carr-library/src/carr_library/studio/clips.py",
+          "git_blob": "598d0c450e3697c699a03c74d806783173fc3ab5"
+        },
+        {
+          "path": "carr-library/src/carr_library/studio/clip_operations.py",
+          "git_blob": "a9b2856c445f6d9f67105b754c23deb23fe3e60d"
+        },
+        {
+          "path": "carr-library/src/carr_library/studio/project.py",
+          "git_blob": "63a20c64909db77b9958e9c16627b78f08050d95"
+        },
+        {
+          "path": "carr-library/src/carr_library/ui/studio_clips.py",
+          "git_blob": "632da6e1a8f08b4fc6f4ecebe8acaeb98203861a"
+        }
+      ],
+      "historical_exact_studio_evidence": "557b64c18b1c2c796c57f8f2efb778bc4b1579c4",
+      "later_head_transfer": false
+    },
+    {
+      "requirements": [
+        "V3-06",
+        "V3-07",
+        "V3-08"
+      ],
+      "finding": "Typed complete backup/recovery, schedules, retained-corpus measurement harness, bibliography/CSL and optional Word bridge are present. Required large-corpus completion and actual Office/real-corpus qualification remain open; this audit does not infer them from source presence.",
+      "sources": [
+        {
+          "path": "carr-library/src/carr_library/backup_producers.py",
+          "git_blob": "0fb5e91a440ded8b62b806b944bdd4722f288e65"
+        },
+        {
+          "path": "carr-library/src/carr_library/backup_sidecars.py",
+          "git_blob": "4052234a20b12d26d825463363e2126585f73211"
+        },
+        {
+          "path": "carr-library/src/carr_library/academic_integration/word_bridge.py",
+          "git_blob": "25dc2c34cc43ea42fd724235a68a33a092ffb9a8"
+        },
+        {
+          "path": "carr-library/scripts/benchmark_library_scale.py",
+          "git_blob": "7b6afc1463cb078e6aa47c37b9feeee356796844"
+        }
+      ]
+    },
+    {
+      "requirements": [
+        "V3-09",
+        "V3-11",
+        "V3-20"
+      ],
+      "finding": "The shared typed assistant/provider gateway, local planning adapter, Google/local translation and formatted derivative paths, retained supplied-worker transcription and explicit remote STT are present. The old remote-STT omission is closed by an actual adapter/job/UI integration; live provider and local model quality are not claimed.",
+      "sources": [
+        {
+          "path": "carr-library/src/carr_library/assistant/profiles.py",
+          "git_blob": "a3adbe7cc693bc8a3972144007ee15cc85b3b200"
+        },
+        {
+          "path": "carr-library/src/carr_library/assistant/providers.py",
+          "git_blob": "caf3b41d5ec7f7e7abe28d33b44cf0307d48f1be"
+        },
+        {
+          "path": "carr-library/src/carr_library/assistant/transcription_provider.py",
+          "git_blob": "122c20bb4a442abdefb652ec2e4e9c98ecd74b2f"
+        },
+        {
+          "path": "carr-library/src/carr_library/assistant/transcription_worker.py",
+          "git_blob": "1651009d71e720ddad1793b35f8fad1464af7422"
+        },
+        {
+          "path": "carr-library/src/carr_library/integrations/transcription_remote.py",
+          "git_blob": "bc0c45a8c0edc8dcf8fc7e99476647e3eb8fb8dd"
+        },
+        {
+          "path": "carr-library/src/carr_library/ui/transcription_remote_dialog.py",
+          "git_blob": "625500b8b51d4fbc37891218b5e1b0acbb9a5898"
+        }
+      ]
+    },
+    {
+      "requirements": [
+        "V3-15"
+      ],
+      "finding": "Canonical135 entries,22 capability rows per entry, passive observation import/export, exact recorded-context review/revocation, current-scope delivery and dormant restored positives are implemented. This is qualification-record management, not translated UI/help resources or automatic current-device proof.",
+      "sources": [
+        {
+          "path": "carr-library/src/carr_library/language_qualification/catalog.py",
+          "git_blob": "236a61ecb765b544ca4e0005fb94e6b462256996"
+        },
+        {
+          "path": "carr-library/src/carr_library/language_qualification/evidence.py",
+          "git_blob": "befc09f3b9ac1724baf37d1d4016bb59b27f956c"
+        },
+        {
+          "path": "carr-library/src/carr_library/language_qualification/backup.py",
+          "git_blob": "45f11351d946bd10587d2842dca80c3e4eb7a39a"
+        },
+        {
+          "path": "carr-library/src/carr_library/ui/language_matrix.py",
+          "git_blob": "3c5a50d5117f25b58a5333f4165a661db22f80b0"
+        }
+      ]
+    },
+    {
+      "requirements": [
+        "V3-16",
+        "V3-17",
+        "V3-18",
+        "V3-22"
+      ],
+      "finding": "Pinned packaging/native launcher, protected credentials and encrypted transfer, signed entitlement/renewal client, configured HTTPS/TUF review/download, explicit Apply, external maintenance handoff and checked restart are present. The earlier missing updater orchestration is closed. Production issuer/account/update hosting, trust material, signing and distribution rights remain separately supplied/reviewed.",
+      "sources": [
+        {
+          "path": "carr-library/src/carr_library/security/controller.py",
+          "git_blob": "1d550366b08a00aed8b13af4923f47a9c94c5dde"
+        },
+        {
+          "path": "carr-library/src/carr_library/security/update_transport.py",
+          "git_blob": "73d05451e7f15e4310ea1d2ed18e35355602ad87"
+        },
+        {
+          "path": "carr-library/src/carr_library/security/update_handoff.py",
+          "git_blob": "72ec774f28f195589498d95a76da788dbcc3416c"
+        },
+        {
+          "path": "carr-library/src/carr_library/security/update_host.py",
+          "git_blob": "10ef4bbcf783e6beeeccea7f1eeb5fce33f273ff"
+        },
+        {
+          "path": "carr-library/src/carr_library/security/update_runtime.py",
+          "git_blob": "b511efb6bf5ff6d38d1e6df42854501150b20065"
+        }
+      ]
+    },
+    {
+      "requirements": [
+        "V3-19",
+        "V3-20",
+        "V3-21"
+      ],
+      "finding": "Shared progress/quiet worker ownership, EPUB/DAISY/BRF profiles and managed reference/package lifecycle exist. Current owner adapter supports the reviewed Holos/OmniVoice/OpenVoice paths; the former create-to-audition adapter omission is closed. Actual inference, supported private packages and acoustic/language quality remain unqualified separately.",
+      "sources": [
+        {
+          "path": "carr-library/src/carr_library/audio/voice_reference.py",
+          "git_blob": "8d3265dcc37662046a3bebcf2abacf317c818553"
+        },
+        {
+          "path": "carr-library/src/carr_library/audio/voice_packages.py",
+          "git_blob": "824275dcace7617ce65123d469537593877d51d3"
+        },
+        {
+          "path": "carr-library/src/carr_library/integrations/_dordiai_authority.py",
+          "git_blob": "df687d0d557fbc57af8c44ab029b7dd080084721"
+        },
+        {
+          "path": "carr-library/src/carr_library/integrations/dordiai_voices.py",
+          "git_blob": "b402a6cb86ee150dc67d5654a3495289269f10aa"
+        }
+      ]
+    }
+  ],
+  "confirmed_remaining_software_surface": {
+    "id": "V3-10-V3-15-APPLICATION-LOCALIZATION",
+    "distinction": "A real missing application resource/integration surface, not a physical-device limitation. The current immediate V3-10 wording requires initial English plus a Ukrainian/Slovak localization plan; the full135 per-feature expansion remains a later required stage. Existing English UI is present; complete app-wide translated resources and selection plumbing are not established by the matrix.",
+    "exact_authority": {
+      "audio_agent": "V3-10, line56: initial English default plus Ukrainian/Slovak localization plan.",
+      "finalization": "V3-15, lines106–107: language-independent architecture and final135-language qualification after core/delivery stability; UI/menu/help rows, explicit unsupported/partial/untested status and no false DONE."
+    },
+    "observed_counts": {
+      "product_python_files": 401,
+      "ui_files": 102,
+      "canonical_languages": 135,
+      "capabilities_per_language": 22,
+      "capability_cells": 2970,
+      "po_pot_mo_qm_ftl_arb_files_in_H_tree": 0,
+      "csl_locale_xml_files": 4
+    },
+    "source_proof": [
+      {
+        "path": "carr-library/src/carr_library/ui/desktop_app.py",
+        "sha": "85c0991f744bd521ca247a0e15da93aa585ea30d",
+        "finding": "Search captions and SetName are direct English strings. _menus constructs English titles and branches on '&Research'/the English advanced-query prefix, so blind label replacement could alter command admission."
+      },
+      {
+        "path": "carr-library/src/carr_library/__main__.py",
+        "sha": "a1772425f4cd1b1d923ac06c96a71e75a2afdd72",
+        "finding": "Desktop path constructs wx.App and DesktopFrame directly. Its --language option is a search filter, not UI-language selection."
+      },
+      {
+        "path": "carr-library/src/carr_library/desktop_preferences.py",
+        "sha": "2a7d1d315a081d5ddd92718f344eed41f4f26d33",
+        "finding": "Current exact version1 schema contains only tray_icon and global_shortcuts; existing guarded CAS store and passive backup semantics are reusable."
+      },
+      {
+        "path": "carr-library/src/carr_library/runtime_settings.py",
+        "sha": "00df790d393f9d54f87d0dcf891e6506916437a1",
+        "finding": "Current settings are runtime/audio/voice preferences; voice-language defaults are not an application locale."
+      },
+      {
+        "path": "carr-library/src/carr_library/language_qualification/catalog.py",
+        "sha": "236a61ecb765b544ca4e0005fb94e6b462256996",
+        "finding": "ui_translation/menu_translation/help_translation are capability names; build_capability_matrix initializes untested rows and optionally projects recorded assessment. It does not select or load message/help translations."
+      },
+      {
+        "path": "carr-library/src/carr_library/ui/language_matrix.py",
+        "sha": "3c5a50d5117f25b58a5333f4165a661db22f80b0",
+        "finding": "Actual language/evidence view has direct English labels. Its language selection chooses evidence/voice metadata, not application presentation."
+      }
+    ],
+    "negative_search_limit": "The exact full tree has no conventional message-catalog assets or named locale/i18n/l10n loader path; focused entrypoint/UI/preferences bodies confirm the demonstrated missing central path. This is not a claim that every401 source body was searched, nor that no individual Ukrainian/Slovak text already exists. The4 locale XMLs are citation-style data, not native application translations.",
+    "smallest_safe_integration_proposal": [
+      "Define one explicit message lookup at application UI construction, with versioned packaged resources and a coverage manifest keyed to the existing canonical language identities; do not create an independent language catalog.",
+      "Keep English default behavior byte-stable. Separate stable command/menu identities from their displayed captions before translating any literal currently used in control flow. Do not translate protocol fields, paths, source quotations, user document text, saved IDs or evidence.",
+      "Extend the existing passive guarded desktop preference and its typed backup validator with an explicit interface-language choice. Apply through an ordinary new application session, respecting worker/Close ownership; do not relabel existing live controls.",
+      "Inventory native labels, accessible names, tooltips, status/error messages and help separately. Produce actual Ukrainian/Slovak resources for the declared supported surface with placeholder/mnemonic/format/coverage checks before advertising those UI languages.",
+      "Add source/installed resource-binding, malformed-pack, fallback, preference migration/restore and native keyboard/name checks. Missing translations may fall back visibly to English but cannot count as completed target-language coverage.",
+      "Complete actual135 resource/locale coverage as the required final expansion. Human linguistic/accessibility assessment follows real resources; the evidence matrix must not promote generated strings, fallback or mere pack presence to verified quality."
+    ],
+    "implementation_status": "PROPOSAL_ONLY_NO_LOCALIZATION_EDIT",
+    "sequencing": "Current installed-Windows failures remain first priority, but missing localization plumbing/resources must not be described as externally blocked or completed."
+  },
+  "concrete_current_execution_blockers": [
+    {
+      "kind": "H focused cursor regression fixture",
+      "finding": "The new tiny TXT test used an inline import API and expected request_id before reaching the intended held-cursor boundary. Root's I candidate uses the actual worker entry. The reviewed cursor-close product correction exists, but its new deterministic before/after proof remains required.",
+      "owner": "root/Canonical",
+      "scope": "Verification failure, not a newly missing import feature."
+    },
+    {
+      "kind": "H ASR admission fixture API",
+      "finding": "Four final-recovery cases call resume(timeout=30), but the real method accepts no timeout. Reviewed I successor executes the same actual continue_job then run(timeout=30).",
+      "candidate": "3768984773a1ae4bc8e1814e996e828f8647529c",
+      "peer": "8eff3468588c4224ed9e10eb1ae82cfa71c27132",
+      "scope": "40-case inventory retained; no product or whole-bound relaxation."
+    },
+    {
+      "kind": "H language installed fixture",
+      "finding": "Canonical reports source147 complete and an installed catalog31 default-codepage read failure; exact UTF-8 fixture correction is under its ownership. No current147+147/native75 gate PASS is claimed here.",
+      "scope": "Under active diagnosis at this audit; not an application UI-translation claim."
+    },
+    {
+      "kind": "Complete current source/installed/native acceptance",
+      "finding": "493 source selectors,185 fast source selectors, complete installed342 selectors/339 whole modules and required native/verdicts remain mandatory. H source scheduling/outer envelopes are not execution results. New actual conversion or installed failures remain on their owners' ledgers until exact cause and rerun.",
+      "scope": "No global product completion or hardware waiver."
+    },
+    {
+      "kind": "Required retained-corpus capacity",
+      "finding": "The harness and measured optimizations exist, but no complete required2M PASS is established by this audit. Earlier bounded failures/partial results remain explicit; running newer profiles cannot qualify that target.",
+      "scope": "Performance/acceptance work, not merely missing external hardware and not a reason to remove bounds."
+    }
+  ],
+  "distinct_external_qualification": [
+    "Actual physical playback/output advancement, microphone capture/dry-monitor latency, drivers and listening; hosted zero-output failures remain failures.",
+    "Human Windows11/NVDA, real native focus/spoken-label and accessible use on the declared support profile.",
+    "Authorized owner/private engine and model inference, similarity/intelligibility, mixed-language ASR, local LLM/music/translation quality and long-form continuity.",
+    "Real supported provider accounts/cost/retention, approved live calls, actual Office and external EPUB/DAISY/Braille readers or embossers.",
+    "Language-specific resource identity and independent quality across required135 capabilities; authored translation resources themselves remain implementation work as stated above.",
+    "Exact dependency/model/voice/assets rights, publisher signing, production entitlement/account/update authority, private trust/hosting policies and distribution approval."
+  ],
+  "same_head_closed_examples": {
+    "H_native_launchers": "cee26e6404baa35bf66b185b70d20cf528bca28f",
+    "H_bibliography": "16de0a7cfbca481e4eabf1b3de8087c96bcbb8ec",
+    "limit": "These exact H scoped successes are examples only. They do not satisfy unrelated source/installed/device/model/release gates."
+  },
+  "docs_correction": {
+    "component": "abc8b55e19fd2cfb5f92a83a3ad6a4a9a67cc41d",
+    "root_peer": "4affff3d5e0950528f1b4d514b426f631cf997b8",
+    "status": "ACCEPTED_STATIC_DOC_ONLY",
+    "changes": "Remove obsolete remote-STT absence claim and align remote guide UI whole17→18 with existing86 portable cases.",
+    "publication": "Separate coherent candidate owned by root; not assumed present in H."
+  },
+  "conclusion": "Prior documented workflow omissions have been implemented. One additional concrete application-localization surface is not complete. Known current verification/installed/performance blockers and all external qualifications remain visible. This bounded audit does not certify that every detailed V3 requirement is implemented or accepted."
+}

@@ -1,0 +1,86 @@
+{
+  "schema": "carr-actual-publication-cursor-control-evidence/1",
+  "recorded_utc": "2026-11-28 10:58:45 UTC",
+  "source_commit": "6d5c07032c7a98952c04544a98f4fe087843d88e",
+  "source_tree": "7650b652dcc56c27d400fcee8e9edc935e5a13e6",
+  "parent_commit": "becba92dbb68df16654112847d29ec7af0c905d0",
+  "run_id": 46136555038,
+  "job_id": 140953041858,
+  "job_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46136555038/job/140953041858",
+  "platform": "windows-2022",
+  "runner_image": "20261123.376.1",
+  "runner_region": "eastus3",
+  "python": "3.11.9",
+  "job_conclusion": "SUCCESS",
+  "qualification": "The actual retained-exception source regression reproduces the old SQLite writer commit lock and passes with explicit cursor closure.",
+  "workflow_blob": "99b455fac3401613d34e037162d34a88fcf12765",
+  "test_blob": "8eeda3a069d0d57769b0ded1b373deec6e978e58",
+  "test_node": "tests/ingest/test_large_source_intake.py::test_interrupted_publication_read_releases_lock_with_retained_traceback",
+  "original_G_preimage_head": "fc84f903dfe068b4eb816e5395cdbd3bf7aa7ad2",
+  "results": [
+    {
+      "mode": "preimage",
+      "status": "OBSERVED_EXPECTED_PREIMAGE_FAILURE",
+      "worker_blob": "8ab4334be7f7728de84839a6a35cfae5a1347830",
+      "pytest_exit": 1,
+      "cases": 1,
+      "failed": 1,
+      "skipped": 0,
+      "source_copy_unchanged": true,
+      "log_sha256": "70968f4e55a7a514e2639520ab04ef57062c9e8e095cb33d4060df187805021e",
+      "junit_sha256": "13c4a42b6acecea6904acd5bdb72ff4c68067d79de853310fdee3c1b2bd01232",
+      "origins_sha256": "651a919728f03bd325736138619a52f117ad119ca75f5324bc8483f8796aaaee"
+    },
+    {
+      "mode": "postimage",
+      "status": "PASS",
+      "worker_blob": "532cd6d0e0bdbeb55675eeb813aa1e39239df022",
+      "pytest_exit": 0,
+      "cases": 1,
+      "failed": 0,
+      "skipped": 0,
+      "source_copy_unchanged": true,
+      "log_sha256": "c0a0607d1d45dd30018cffb688ad1b04ceaca0fb671a861b40f85aded71cd993",
+      "junit_sha256": "aad76c752334fdd906cc5f572c6c330b64e016f0d1595de6c29ae5f68c85c8ff",
+      "origins_sha256": "874e3898ec12b58e51430c76a1b9aff99794700bb7a1c8246f6114796c077a90"
+    }
+  ],
+  "actual_control": {
+    "preimage_failure_guard": "Exact runtime check of one failed JUnit case containing sqlite3.OperationalError: database is locked and actual pytest failing line matching ^>\\s+writer\\.commit\\(\\)\\s*$.",
+    "postimage_guard": "Same test, actual durable three-page worker request and retained traceback; separate writer with timeout0 commits, fresh LibraryApp and exact page/publication receipt assertions pass.",
+    "preimage_worker": "8ab4334be7f7728de84839a6a35cfae5a1347830",
+    "postimage_worker": "532cd6d0e0bdbeb55675eeb813aa1e39239df022",
+    "case_timeout_seconds": 180,
+    "source_copy_before_after_checked": true,
+    "source_checkout_before_after_checked": true,
+    "git_diff_exit_zero": true,
+    "temporary_source_copies_removed": true
+  },
+  "whole_seven_cases": "NOT_RUN",
+  "installed": "NOT_RUN",
+  "decoded_log_utf8": {
+    "sha256": "535c24364375e69fccb8934e1be19a920861a849bbe82180424e996b5b23ed72",
+    "bytes": 216920
+  },
+  "artifact": {
+    "id": 15260590622,
+    "name": "publication-cursor-windows-2022-6d5c07032c7a98952c04544a98f4fe087843d88e-1",
+    "size_in_bytes": 6087,
+    "sha256": "b2cc6a9bd0fd3ad21a2c98808eee8efd48c2321255719d3f58a8cbb1bbea97b3",
+    "created_at": "2026-11-28T10:56:22Z",
+    "head_sha": "6d5c07032c7a98952c04544a98f4fe087843d88e"
+  },
+  "artifact_upload_log_matches_api": true,
+  "retained_report_count": 7,
+  "previous_bad_setup_actuals": [
+    "7c92f2e898a4413b9100efaaf0cd8f9b07b8acf3",
+    "f13e0ccdfd6cb3e755ea3742695dfc84e737e587"
+  ],
+  "limits": [
+    "One real source case in each independent old/new copy; no whole-seven or installed-suite claim.",
+    "Nested test logs/JUnit/origins are retained and hash-bound by the actual runtime control; their binary ZIP was not independently downloaded.",
+    "No result transfer to H's failed fixture or unrelated SQLite consumers; Linux has a separate completed receipt.",
+    "No GC,retry,product timeout or test timeout increase is used."
+  ],
+  "linux_counterpart": "27c6e22c9bf7ef644ef85546cd6647d93d86d0cf"
+}
