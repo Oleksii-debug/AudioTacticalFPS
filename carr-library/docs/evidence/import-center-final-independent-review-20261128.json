@@ -1,0 +1,150 @@
+{
+  "schema": "carr-import-center-final-independent-review/1",
+  "status": "SOURCE_GO_CURRENT_EXECUTION_PENDING",
+  "candidate": "09ac4c06ec6cfc88805ea4673a7767a934b80f9b",
+  "tree": "3f00a232a7ff2af3a4df2f681db5e92da0db9220",
+  "source_repair": {
+    "commit": "c2b0fca4133c29858d973211f30f6d6c6d708af4",
+    "root_checks": {
+      "parent": true,
+      "tree": true,
+      "delta": true,
+      "hashes": true,
+      "product_inverse": true,
+      "product_logic_prefix": true,
+      "native_assertions_retained": true,
+      "original_flow_functions": true,
+      "native_final_pass_block": true,
+      "native_deadline": true,
+      "formats_labels": true,
+      "regression_test_files": true,
+      "all49_workflows": true,
+      "reader21": true,
+      "other424_application_files": true,
+      "no_executed_claim": true,
+      "formats_exact_inverse": true
+    },
+    "peer_review": {
+      "status": "SOURCE_GO_NOT_EXECUTED",
+      "reviewer": "capacity_measurements",
+      "commit": "c2b0fca4133c29858d973211f30f6d6c6d708af4",
+      "primary_source": "wxWidgets/Phoenix wxPython-4.2.4 wx/lib/scrolledpanel.py f960ba51100ad992d0e4253eab064241bfbb060a",
+      "scope": "Product viewport/focus semantics, direct footer, action/ownership/worker/cancellation cleanup, deferred setup sequencing, all23 retained plus18 added assertions,27 format labels/event path, EPUB/streamed native consumers, four-path delta and unchanged425-minus-one application/569 regressions/49 workflows.",
+      "runtime": "NOT_RUN",
+      "blockers": []
+    }
+  },
+  "composition": {
+    "root_checks": {
+      "paths": true,
+      "modifications": true,
+      "additions": true,
+      "readiness_inverse": true,
+      "matrix_old_properties": true,
+      "matrix_single_added_key": true,
+      "all_requirements": true,
+      "source_checks": true,
+      "baseline_files": true,
+      "tree_complete": true,
+      "files1824": true,
+      "actual_changed13": true,
+      "actual_modified5": true,
+      "actual_added8": true,
+      "no_deletions": true,
+      "selected_paths": true,
+      "selected_blobs": true,
+      "all92links": true,
+      "all49workflows": true,
+      "all569regressions": true,
+      "application425": true,
+      "reader21": true,
+      "latest_tree": true,
+      "latest_selected": true,
+      "source_peer": true
+    },
+    "readback_checks": {
+      "commit_tree": true,
+      "parents": true,
+      "exact_documents": true,
+      "target_workflows_absent_on_seed": true,
+      "canonical_unchanged": true,
+      "fresh_branch_absences": true,
+      "no_candidate_runs": true
+    },
+    "peer_review": {
+      "status": "SOURCE_COMPOSITION_GO_NOT_EXECUTED",
+      "reviewer": "durable_payload_composition",
+      "commit": "09ac4c06ec6cfc88805ea4673a7767a934b80f9b",
+      "tree": "3f00a232a7ff2af3a4df2f681db5e92da0db9220",
+      "parents": 5,
+      "files": 1824,
+      "changed_paths": 13,
+      "modifications": 5,
+      "additions": 8,
+      "deletions": 0,
+      "manifest_rows": 12,
+      "unchanged_workflows": 49,
+      "unchanged_oracle_named_files": 42,
+      "unchanged_reader_pins": 21,
+      "unchanged_test_files_under_tests": 569,
+      "unchanged_test_files_elsewhere": 7,
+      "application_files": 425,
+      "application_changed": 1,
+      "test_tree_files": 628,
+      "native_probes_changed": 2,
+      "readiness_links": 92,
+      "readiness_pure_insertion": true,
+      "matrix_only_added_key": "post_2701_import_center_layout",
+      "requirements_retained": 24,
+      "all_component_blobs_exact": true,
+      "execution": "NOT_RUN",
+      "blockers": []
+    }
+  },
+  "prior_observed_2701": {
+    "result": "FAILED_NATIVE_NOT_INTEGRATABLE",
+    "failed_native": 46128793730,
+    "focused_step": 28,
+    "search_checks_passed": 21,
+    "basic_translation": "PASS_EXACT_2701_ONLY",
+    "audio_inspection": "PASS_EXACT_2701_ONLY",
+    "full_main": "NOT_LAUNCHED",
+    "review_evidence_head": "f0e15752504c6a8f0bb8f16001049a8c9dd9e597"
+  },
+  "current_execution": {
+    "observed_at_utc": "2026-11-28T09:41:28Z",
+    "focused": {
+      "native": {
+        "run": 46131541694,
+        "job": 140937577072,
+        "attempt": 1,
+        "branch": "carr/native-main-final-09ac-20261128-d3a",
+        "status": "queued",
+        "conclusion": null
+      },
+      "basic": {
+        "run": 46131541968,
+        "job": 140937577696,
+        "attempt": 1,
+        "branch": "carr/local-translation-final-09ac-20261128-d3a",
+        "status": "queued",
+        "conclusion": null
+      },
+      "inspection": {
+        "run": 46131543810,
+        "job": 140937583241,
+        "attempt": 1,
+        "branch": "carr/silence-inspection-final-09ac-20261128-d3a",
+        "status": "queued",
+        "conclusion": null
+      }
+    },
+    "main": "NOT_LAUNCHED_PENDING_FOCUSED_RESULTS",
+    "auxiliary": "NOT_LAUNCHED_PENDING_FOCUSED_RESULTS",
+    "source_refs_frozen": true,
+    "old_success_transfer": false
+  },
+  "final_main_artifact_read": "NOT_RUN",
+  "canonical_integration": "NOT_PERFORMED",
+  "full_platform_status": "NOT_QUALIFIED"
+}

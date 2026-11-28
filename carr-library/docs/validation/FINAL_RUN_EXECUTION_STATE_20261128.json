@@ -1,6 +1,6 @@
 {
   "schema": "carr-final-run-execution-state/1",
-  "updated_utc": "2026-11-28T09:26:15Z",
+  "updated_utc": "2026-11-28T09:41:28Z",
   "product": "Resonance",
   "repository": "Oleksii-debug/AudioTacticalFPS",
   "canonical_branch": "carr-library",
@@ -9,7 +9,8 @@
     "number": 210,
     "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/pull/210",
     "branch": "carr/v3-final-fixture-424cc-20261128-d3a",
-    "head": "7c991dac1581faa63cb32eaaa5e21cf548287b38"
+    "head": "7c991dac1581faa63cb32eaaa5e21cf548287b38",
+    "body_current_record": "r39_pr210:2701_failure_body"
   },
   "predecessor": {
     "commit": "424cc456992c69c1ee945bc4d5ab73bc21e4e7b8",
@@ -136,15 +137,15 @@
   },
   "evidence": {
     "branch": "carr/final-evidence-d3a-20261127",
-    "head": "bc87a52c04ac025e4daa8ee53f4f0be267f3e2ac",
-    "tree": "db1a83d1781bdce69cafac6d7ca336ab763798b8",
+    "head": "f0e15752504c6a8f0bb8f16001049a8c9dd9e597",
+    "tree": "055aca340c25ac97ee00a82cd607c923c693b985",
     "warning": "Evidence tree retains historical application source; never promote it as the application candidate.",
     "checkpoint_path": "carr-library/docs/validation/FINAL_RUN_EXECUTION_STATE_20261128.json",
     "auxiliary_proof_commit": "7520e3d5d6f118517dae3bb4fa15e1ab1386e865",
     "auxiliary_root_review_path": "carr-library/docs/evidence/pr210-7c991-auxiliary-independent-review-20261128.json",
-    "files": 1819,
-    "current_source_composition": "2701b5717360996d706199e370ce1d1cc47f3a61",
-    "current_independent_review_path": "carr-library/docs/evidence/search-native-final-independent-review-20261128.json",
+    "files": 1826,
+    "current_source_composition": "09ac4c06ec6cfc88805ea4673a7767a934b80f9b",
+    "current_independent_review_path": "carr-library/docs/evidence/import-center-final-independent-review-20261128.json",
     "focused_2701_review_path": "carr-library/docs/evidence/2701-focused-independent-review-20261128.json"
   },
   "finish_requirements": [
@@ -159,10 +160,14 @@
   "external_acceptance": "Real owner engines/models/authorized samples, language/acoustics, Windows11/NVDA and physical devices, lawful corpora, private authority/signing and distribution rights.",
   "next_repair": {
     "base": "2701b5717360996d706199e370ce1d1cc47f3a61",
-    "owner": "durable_native_composition",
-    "status": "SOURCE_REPAIR_IN_PROGRESS",
-    "scope": "Import Center scrollable body with retained geometry/native import expectations",
-    "reason": "actual early native run 46128793730 failed min-sizer-height assertion at focused step28"
+    "component": "c2b0fca4133c29858d973211f30f6d6c6d708af4",
+    "composition": "09ac4c06ec6cfc88805ea4673a7767a934b80f9b",
+    "tree": "3f00a232a7ff2af3a4df2f681db5e92da0db9220",
+    "status": "COMPOSED_AND_THREE_FOCUSED_GATES_LAUNCHED",
+    "root_source_checks": 17,
+    "root_composition_checks": 25,
+    "source_peer": "capacity_measurements SOURCE_GO_NOT_EXECUTED",
+    "execution": "PENDING"
   },
   "next_candidate": {
     "commit": "7c991dac1581faa63cb32eaaa5e21cf548287b38",
@@ -456,6 +461,43 @@
     "no_added_gate": true
   },
   "active_candidate": {
+    "commit": "09ac4c06ec6cfc88805ea4673a7767a934b80f9b",
+    "tree": "3f00a232a7ff2af3a4df2f681db5e92da0db9220",
+    "files": 1824,
+    "status": "THREE_FOCUSED_GATES_QUEUED",
+    "root_review": "SOURCE_GO_NOT_EXECUTED",
+    "peer_review": "SOURCE_COMPOSITION_GO_NOT_EXECUTED",
+    "focused": {
+      "native": {
+        "run": 46131541694,
+        "job": 140937577072,
+        "attempt": 1,
+        "branch": "carr/native-main-final-09ac-20261128-d3a",
+        "status": "queued",
+        "conclusion": null
+      },
+      "basic": {
+        "run": 46131541968,
+        "job": 140937577696,
+        "attempt": 1,
+        "branch": "carr/local-translation-final-09ac-20261128-d3a",
+        "status": "queued",
+        "conclusion": null
+      },
+      "inspection": {
+        "run": 46131543810,
+        "job": 140937583241,
+        "attempt": 1,
+        "branch": "carr/silence-inspection-final-09ac-20261128-d3a",
+        "status": "queued",
+        "conclusion": null
+      }
+    },
+    "main": "NOT_LAUNCHED_PENDING_FOCUSED_RESULTS",
+    "auxiliary": "NOT_LAUNCHED_PENDING_FOCUSED_RESULTS",
+    "no_historical_pass_transfer": true
+  },
+  "observed_2701": {
     "commit": "2701b5717360996d706199e370ce1d1cc47f3a61",
     "tree": "f7e60bc176f53e810a046640394766fc91209ad7",
     "files": 1816,
