@@ -334,6 +334,7 @@ class Ingest:
         count, settings, segments = self._plan(asset, config)
         if (asset.digest, count, settings) != (row['asset'], row['count'], row['config']):
             raise IngestError('source or configuration changed')
+        publication_returned = False
         with retained_temporary_directory(prefix='carr-ingest-', dir=None) as tmp:
             staged = Path(tmp) / ('source' + MIME_SUFFIXES[asset.mime])
             copy_snapshot(asset, staged, cancelled=cancelled)
@@ -342,6 +343,9 @@ class Ingest:
             staged_asset.verify(cancelled=cancelled)
             if isinstance(segments, TextSegments):
                 segments.rebind(staged_asset)
+                # Keep descriptor/path checks through publication. Cancellation
+                # after this invocation's commit belongs to the next input.
+                segments.cancelled = lambda: not publication_returned and cancelled()
             with (segments.reader() if segments is not None else nullcontext(None)) as read_segment:
                 for _ in range(steps):
                     try:
@@ -381,6 +385,7 @@ class Ingest:
                                         check_resources()
                                 self.storage.publish_revision(workspace, row['edition'], job, asset.digest, settings,
                                     checked_pages())
+                                publication_returned = True
                                 self.storage.check()
                                 self._set(job, 'complete')
                                 break
