@@ -145,14 +145,17 @@ def read_json_snapshot(path, *, max_bytes=None):
             raise ValueError('State must use regular local files, without links.')
         if opened.st_size > maximum:
             raise ValueError('State exceeds its configured JSON budget.')
-        raw = stream.read(maximum + 1)
+        # Bound the allocation to this opened snapshot, not the configured ceiling.
+        # One extra byte detects growth even if the final size is restored.
+        raw = stream.read(opened.st_size + 1)
         finished = os.fstat(stream.fileno())
-    if len(raw) > maximum:
+    if len(raw) > maximum or finished.st_size > maximum:
         raise ValueError('State grew beyond its JSON budget.')
     # A replacement may unlink this old snapshot while it is open. Its path,
     # link count and change time can change; its bytes and file identity cannot.
     fields = ('st_dev', 'st_ino', 'st_size', 'st_mtime_ns')
-    if any(getattr(opened, name) != getattr(finished, name) for name in fields):
+    if len(raw) != opened.st_size or any(
+            getattr(opened, name) != getattr(finished, name) for name in fields):
         raise ValueError('State changed while it was being read.')
     value = json.loads(raw.decode('utf-8'), object_pairs_hook=_unique,
                        parse_constant=lambda _: (_ for _ in ()).throw(ValueError('Non-finite state number.')))

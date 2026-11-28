@@ -394,3 +394,189 @@ def test_local_path_does_not_swallow_canonical_resolution_failure(tmp_path, monk
     with pytest.raises(PermissionError, match='canonical resolution refusal'):
         durable_state.local_path(path, exists=True)
     assert path.read_bytes() == b'{"value":1}'
+
+
+def _record_snapshot_read_sizes(monkeypatch, before_read=None):
+    original = durable_state._open_json_read
+    requests, streams = [], []
+
+    class ObservedRead(_ReadStream):
+        def read(self, count):
+            requests.append(count)
+            return super().read(count)
+
+    def opened(path):
+        result = ObservedRead(original(path), before_read)
+        streams.append(result.stream)
+        return result
+
+    monkeypatch.setattr(durable_state, '_open_json_read', opened)
+    return requests, streams
+
+
+@pytest.mark.parametrize('maximum', [None, 2, 4096], ids=['default', 'exact', 'larger'])
+def test_tiny_json_read_is_bounded_by_the_opened_file(tmp_path, monkeypatch, maximum):
+    from hashlib import sha256
+
+    path = tmp_path / 'active.json'
+    raw = b'{}'
+    path.write_bytes(raw)
+    requests, streams = _record_snapshot_read_sizes(monkeypatch)
+    value, digest = durable_state.read_json_snapshot(path, max_bytes=maximum)
+    assert value == {} and digest == sha256(raw).hexdigest()
+    assert requests == [len(raw) + 1]
+    assert requests[0] <= (maximum if maximum is not None else durable_state.MAX_JSON_BYTES) + 1
+    assert len(streams) == 1 and streams[0].closed
+    assert path.read_bytes() == raw
+
+
+def test_json_size_and_bytes_are_fresh_on_every_read(tmp_path, monkeypatch):
+    from hashlib import sha256
+
+    path = tmp_path / 'active.json'
+    first, second = b'{"action":"run"}', b'{"action":"cancel","token":"fresh"}'
+    path.write_bytes(first)
+    requests, streams = _record_snapshot_read_sizes(monkeypatch)
+    assert durable_state.read_json_snapshot(path) == ({'action': 'run'}, sha256(first).hexdigest())
+    path.write_bytes(second)
+    assert durable_state.read_json_snapshot(path) == (
+        {'action': 'cancel', 'token': 'fresh'}, sha256(second).hexdigest())
+    assert requests == [len(first) + 1, len(second) + 1]
+    assert len(streams) == 2 and all(stream.closed for stream in streams)
+    assert path.read_bytes() == second
+
+
+def test_empty_json_reads_only_one_byte_and_still_refuses(tmp_path, monkeypatch):
+    path = tmp_path / 'empty.json'
+    path.write_bytes(b'')
+    requests, streams = _record_snapshot_read_sizes(monkeypatch)
+    with pytest.raises(ValueError):
+        durable_state.read_json_snapshot(path)
+    assert requests == [1]
+    assert len(streams) == 1 and streams[0].closed
+    assert path.read_bytes() == b''
+
+
+@pytest.mark.parametrize('kind', ['grow', 'over-budget', 'shrink', 'empty'])
+def test_real_json_size_changes_refuse_before_parsing(tmp_path, monkeypatch, kind):
+    path = tmp_path / 'state.json'
+    original = b'{"value":123}'
+    replacement = {
+        'grow': b'{"value":12345}',
+        'over-budget': b'{"value":123}' + b' ' * 64,
+        'shrink': b'{"value":1}',
+        'empty': b'',
+    }[kind]
+    path.write_bytes(original)
+    requests, streams = _record_snapshot_read_sizes(
+        monkeypatch, lambda: path.write_bytes(replacement))
+    expected = 'grew beyond' if kind == 'over-budget' else 'changed while'
+    with pytest.raises(ValueError, match=expected):
+        durable_state.read_json_snapshot(path, max_bytes=32)
+    assert requests == [len(original) + 1]
+    assert len(streams) == 1 and streams[0].closed
+    assert path.read_bytes() == replacement
+
+
+def test_json_growing_before_open_is_rejected_before_any_payload_read(tmp_path, monkeypatch):
+    path = tmp_path / 'state.json'
+    path.write_bytes(b'{}')
+    original_open = durable_state._open_json_read
+    requests, streams = [], []
+
+    class ObservedRead(_ReadStream):
+        def read(self, count):
+            requests.append(count)
+            return super().read(count)
+
+    def opened(candidate):
+        path.write_bytes(b'{}' + b' ' * 64)
+        result = ObservedRead(original_open(candidate))
+        streams.append(result.stream)
+        return result
+
+    monkeypatch.setattr(durable_state, '_open_json_read', opened)
+    with pytest.raises(ValueError, match='configured JSON budget'):
+        durable_state.read_json_snapshot(path, max_bytes=32)
+    assert requests == []
+    assert len(streams) == 1 and streams[0].closed
+    assert path.stat().st_size == 66
+
+
+def test_short_valid_json_read_is_not_the_opened_snapshot(tmp_path, monkeypatch):
+    path = tmp_path / 'state.json'
+    raw = b'{"value":1} '
+    path.write_bytes(raw)
+    original_open = durable_state._open_json_read
+    requests, streams = [], []
+
+    class ShortRead(_ReadStream):
+        def read(self, count):
+            requests.append(count)
+            # Keep the real descriptor and unchanged file metadata. A short
+            # return can still be valid JSON, but is not the admitted snapshot.
+            return super().read(count)[:-1]
+
+    def opened(candidate):
+        result = ShortRead(original_open(candidate))
+        streams.append(result.stream)
+        return result
+
+    monkeypatch.setattr(durable_state, '_open_json_read', opened)
+    with pytest.raises(ValueError, match='changed while'):
+        durable_state.read_json_snapshot(path)
+    assert requests == [len(raw) + 1]
+    assert len(streams) == 1 and streams[0].closed
+    assert path.read_bytes() == raw
+
+
+def test_replacement_uses_the_old_opened_size_and_complete_snapshot(tmp_path, monkeypatch):
+    from hashlib import sha256
+
+    path, stage = tmp_path / 'state.json', tmp_path / 'replacement.tmp'
+    old, new = b'{"generation":1}', b'{"generation":2,"state":"larger replacement"}'
+    path.write_bytes(old)
+    stage.write_bytes(new)
+    with monkeypatch.context() as patch:
+        requests, streams = _record_snapshot_read_sizes(
+            patch, lambda: durable_state.replace_file(stage, path))
+        assert durable_state.read_json_snapshot(path) == (
+            {'generation': 1}, sha256(old).hexdigest())
+    assert requests == [len(old) + 1]
+    assert len(streams) == 1 and streams[0].closed
+    assert durable_state.read_json_snapshot(path) == (
+        {'generation': 2, 'state': 'larger replacement'}, sha256(new).hexdigest())
+    assert path.read_bytes() == new and not stage.exists()
+
+
+def test_growth_sentinel_refuses_even_after_real_size_and_mtime_restoration(tmp_path, monkeypatch):
+    path = tmp_path / 'state.json'
+    raw = b'{"value":1}'
+    path.write_bytes(raw)
+    before = path.stat()
+    original_open = durable_state._open_json_read
+    requests, streams = [], []
+
+    class RestoredGrowthRead(_ReadStream):
+        def read(self, count):
+            requests.append(count)
+            path.write_bytes(raw + b' ')
+            try:
+                result = super().read(count)
+            finally:
+                path.write_bytes(raw)
+                os.utime(path, ns=(before.st_atime_ns, before.st_mtime_ns))
+            return result
+
+    def opened(candidate):
+        result = RestoredGrowthRead(original_open(candidate))
+        streams.append(result.stream)
+        return result
+
+    monkeypatch.setattr(durable_state, '_open_json_read', opened)
+    with pytest.raises(ValueError, match='changed while'):
+        durable_state.read_json_snapshot(path, max_bytes=64)
+    assert requests == [len(raw) + 1]
+    assert len(streams) == 1 and streams[0].closed
+    assert path.read_bytes() == raw
+    assert (path.stat().st_size, path.stat().st_mtime_ns) == (before.st_size, before.st_mtime_ns)
