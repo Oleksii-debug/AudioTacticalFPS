@@ -1,0 +1,84 @@
+{
+  "schema": "carr-decoded-receiving-manifest/1",
+  "commit": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7",
+  "run_id": 46111573953,
+  "job_id": 140876058894,
+  "scope": "Windows terminal standard installation",
+  "files": [
+    {
+      "path": "full-decoded-log.txt",
+      "git_blob": "1d3ea109ab34a590e896ff9c676fe4abfe467b41",
+      "utf8_bytes": 319970,
+      "sha256": "bf895082bd6269788a1d607770e926ce996405ff9b16b1f8099ee5086ea5ec42"
+    },
+    {
+      "path": "job-metadata.json",
+      "git_blob": "ef707c90bd6c4ca41e69680a6ca4e18b2751ff45",
+      "utf8_bytes": 4835,
+      "sha256": "70750279fe1d863ea7d521a39afa55eb44d10b9e47fa21de34c2e7e3cd8801e9"
+    },
+    {
+      "path": "run-metadata.json",
+      "git_blob": "7e88eee9b9545a7fe434940b01359801de970e4e",
+      "utf8_bytes": 15467,
+      "sha256": "d1997f97352c0c01d43c55a4ed556aaabf8fd017fa646fd94867793a1f182015"
+    },
+    {
+      "path": "artifact-metadata.json",
+      "git_blob": "d915630fe766e3e5d3277d374b6c0effe5f8e3da",
+      "utf8_bytes": 895,
+      "sha256": "6094f3df85f7ae474af89d5825df39fd42ad3549b09a07b9d580421dff62c75c"
+    },
+    {
+      "path": "module-results.json",
+      "git_blob": "fc9f15b9ffc8bb256a7d826addf4ae55c47b7bfb",
+      "utf8_bytes": 2729,
+      "sha256": "36077b78787b6be216e578032ba70c43a928b82c005feef6432f36c39236f8a3"
+    },
+    {
+      "path": "source-installed-python-inventory.json",
+      "git_blob": "d4e175ea30d561a6d069ee5db108014b309b9b70",
+      "utf8_bytes": 67478,
+      "sha256": "6dc378e55ec3bb32c1abb053d2bcdd331bcd6b5ded59f46e8a1147afa268bd0a"
+    },
+    {
+      "path": "source-identity.json",
+      "git_blob": "7e73a26b8b64b38e9417f622140e7ea34f03e66e",
+      "utf8_bytes": 125500,
+      "sha256": "8989570ac68ec8c3ac12e5a4d80e1e8be12e608ae1311717e68f19365d3ee6fd"
+    },
+    {
+      "path": "wheel-sealed-source-log-derived.json",
+      "git_blob": "d5b76a1fe38d1270278a4286f2cfdd6d09ae893d",
+      "utf8_bytes": 1013,
+      "sha256": "a9bb347bbc9687a8242be584ceecf0cf5d776c9ce152ef5d478d0f6b492c9474"
+    },
+    {
+      "path": "setup-build-log-derived.json",
+      "git_blob": "d25e44ed8d48157c381675d2a064b02b768c79aa",
+      "utf8_bytes": 1904,
+      "sha256": "59edeb5337c5e40c238d8d4e0491dfdbbb514cd5c7d4b914cd0419b06af9a49e"
+    },
+    {
+      "path": "native-lifecycle-log-derived.json",
+      "git_blob": "36d95bba2b2db501a4ddaf774a704fc15a03e5b2",
+      "utf8_bytes": 1937,
+      "sha256": "993a6d025c322dd46f41e56a431bac01cf8123647ccc58125bb6b17e95571b45"
+    },
+    {
+      "path": "qualification.json",
+      "git_blob": "b70c0e69b4282ea6a330d7cbd17c1e3349071be2",
+      "utf8_bytes": 9536,
+      "sha256": "1cf1a99cf08df5e2678aa9599acf00cc35afd45ddd154be188cdd38e1bdc4fe9"
+    },
+    {
+      "path": "README.md",
+      "git_blob": "249920cface8e53dc0724079c57821b1f099e38c",
+      "utf8_bytes": 2280,
+      "sha256": "fe2a75bf47ac0bae00e175fc58ab3a7eac8bd828bb46fec28d52c7fc9d7c2f32"
+    }
+  ],
+  "verification": "Every listed blob was fetched and compared in full. These are hashes of retained decoded text and derived JSON, not original artifact members.",
+  "product_changes": false,
+  "refs_changed": false
+}

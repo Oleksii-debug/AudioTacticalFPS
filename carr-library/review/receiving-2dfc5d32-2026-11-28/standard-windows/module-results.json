@@ -1,0 +1,106 @@
+{
+  "expected_selectors": [
+    "tests/packaging/test_standard_installer.py",
+    "tests/packaging/test_managed_launch_boundary.py",
+    "tests/packaging/test_native_checks.py",
+    "tests/packaging/test_windows_bundle.py",
+    "tests/packaging/test_windows_launcher_bundle.py",
+    "tests/packaging/test_install_bytecode.py",
+    "tests/packaging/test_worker_bytecode.py",
+    "tests/packaging/test_source_wheel.py",
+    "tests/packaging/test_native_runtime.py",
+    "tests/audio/test_local_runtime_cli.py",
+    "tests/test_delivery_cli.py"
+  ],
+  "source_verdicts": [
+    {
+      "module": "tests/packaging/test_managed_launch_boundary.py",
+      "passed": 47,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "module": "tests/packaging/test_native_checks.py",
+      "passed": 37,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "module": "tests/packaging/test_windows_bundle.py",
+      "passed": 16,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "module": "tests/packaging/test_windows_launcher_bundle.py",
+      "passed": 24,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "module": "tests/packaging/test_standard_installer.py",
+      "passed": 149,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "module": "tests/packaging/test_worker_bytecode.py",
+      "passed": 3,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "module": "tests/packaging/test_install_bytecode.py",
+      "passed": 12,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "module": "tests/packaging/test_native_runtime.py",
+      "passed": 16,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "module": "tests/audio/test_local_runtime_cli.py",
+      "passed": 15,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "module": "tests/test_delivery_cli.py",
+      "passed": 7,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "module": "tests/packaging/test_source_wheel.py",
+      "passed": 25,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    }
+  ],
+  "installed_summary": {
+    "same_selectors": true,
+    "passed": 351,
+    "subtests_passed": 22,
+    "junit_cases": 351,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+    "seconds": 71.06,
+    "strict_policy": "Existing PYTEST_CHILD offline/XPASS policy under isolated Python, empty pytest pythonpath, and strict emitted JUnit assertion.",
+    "original_junit_member_bytes": "NOT_READ; actual successful checker and count are retained from the log."
+  }
+}

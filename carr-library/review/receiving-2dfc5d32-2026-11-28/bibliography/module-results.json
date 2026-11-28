@@ -1,0 +1,241 @@
+{
+  "expected_modules": [
+    "tests/research/test_bibtex_import.py",
+    "tests/research/test_academic_library.py",
+    "tests/research/test_csl_author_boundaries.py",
+    "tests/citations/test_csl.py",
+    "tests/citations/test_custom_csl.py",
+    "tests/citations/test_bibliography_workbench.py",
+    "tests/citations/test_custom_workbench.py",
+    "tests/ui/test_citation_styles_jobs.py",
+    "tests/ui/test_academic_library_dialog.py",
+    "tests/ui/test_academic_actions.py",
+    "tests/ui/test_academic_export_handler.py",
+    "tests/catalog/test_bibliography.py",
+    "tests/catalog/test_archive_portability.py",
+    "tests/catalog/test_intake_portability.py",
+    "tests/catalog/test_reference_exchange.py",
+    "tests/ingest/test_import_replay_identity.py",
+    "tests/ingest/test_txt_replay_registration.py",
+    "tests/reader/test_export_no_clobber.py",
+    "tests/reader/test_export_reconciliation.py",
+    "tests/reader/test_file_export.py",
+    "tests/reader/test_binary_file_export.py",
+    "tests/reader/test_academic_documents.py",
+    "tests/reader/test_bibliographic_locators.py",
+    "tests/reader/test_evidence_export.py",
+    "tests/storage/test_academic_migration.py",
+    "tests/e2e/test_academic_workflow.py",
+    "tests/e2e/test_academic_workflows.py",
+    "tests/e2e/test_academic_document_export.py",
+    "tests/e2e/test_export_destination.py"
+  ],
+  "verdicts": [
+    {
+      "module": "tests/research/test_bibtex_import.py",
+      "passed": 68,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "module": "tests/research/test_academic_library.py",
+      "passed": 94,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "module": "tests/research/test_csl_author_boundaries.py",
+      "passed": 20,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "module": "tests/citations/test_csl.py",
+      "passed": 79,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "module": "tests/citations/test_custom_csl.py",
+      "passed": 132,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "module": "tests/citations/test_bibliography_workbench.py",
+      "passed": 19,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "module": "tests/citations/test_custom_workbench.py",
+      "passed": 20,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "module": "tests/ui/test_citation_styles_jobs.py",
+      "passed": 31,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "module": "tests/ui/test_academic_library_dialog.py",
+      "passed": 63,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "module": "tests/ui/test_academic_actions.py",
+      "passed": 39,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "module": "tests/ui/test_academic_export_handler.py",
+      "passed": 39,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "module": "tests/catalog/test_bibliography.py",
+      "passed": 39,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "module": "tests/catalog/test_archive_portability.py",
+      "passed": 54,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "module": "tests/catalog/test_intake_portability.py",
+      "passed": 16,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "module": "tests/catalog/test_reference_exchange.py",
+      "passed": 64,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "module": "tests/ingest/test_import_replay_identity.py",
+      "passed": 22,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "module": "tests/ingest/test_txt_replay_registration.py",
+      "passed": 4,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "module": "tests/reader/test_export_no_clobber.py",
+      "passed": 35,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "module": "tests/reader/test_export_reconciliation.py",
+      "passed": 20,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "module": "tests/reader/test_file_export.py",
+      "passed": 54,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "module": "tests/reader/test_binary_file_export.py",
+      "passed": 35,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "module": "tests/reader/test_academic_documents.py",
+      "passed": 41,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "module": "tests/reader/test_bibliographic_locators.py",
+      "passed": 6,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "module": "tests/reader/test_evidence_export.py",
+      "passed": 40,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "module": "tests/storage/test_academic_migration.py",
+      "passed": 32,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "module": "tests/e2e/test_academic_workflow.py",
+      "passed": 6,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "module": "tests/e2e/test_academic_workflows.py",
+      "passed": 4,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "module": "tests/e2e/test_academic_document_export.py",
+      "passed": 10,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    {
+      "module": "tests/e2e/test_export_destination.py",
+      "passed": 6,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    }
+  ],
+  "passed": 1092,
+  "failed": 0,
+  "skipped": 0
+}

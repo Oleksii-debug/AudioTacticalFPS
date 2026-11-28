@@ -1,0 +1,138 @@
+{
+  "schema": "carr-exact-head-job-receipt/1",
+  "status": "PASS",
+  "recorded_at_utc": "2026-11-28 06:17:10 UTC",
+  "candidate": {
+    "head": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7",
+    "tree": "14a6dc1ce55f5c9d885fbb88b7a50701187acb80"
+  },
+  "workflow": {
+    "id": 46111572572,
+    "head_sha": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7",
+    "head_branch": "carr/component-followup-evaluation-20261127",
+    "event": "push",
+    "run_attempt": 1,
+    "html_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46111572572",
+    "path": ".github/workflows/carr-component-followup-evaluation.yml",
+    "workflow_git_blob": "40c95c79f99b1293877919759ca608e3593699e1"
+  },
+  "job": {
+    "id": 140876054321,
+    "name": "Updated components / ubuntu-24.04 / installed",
+    "status": "completed",
+    "conclusion": "success",
+    "started_at": "2026-11-28T06:07:48Z",
+    "completed_at": "2026-11-28T06:16:07Z",
+    "html_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46111572572/job/140876054321",
+    "runner_name": "GitHub Actions 1000490203",
+    "labels": [
+      "ubuntu-24.04"
+    ]
+  },
+  "mode": "installed",
+  "platform": "ubuntu-24.04",
+  "tests": {
+    "selected_modules": 89,
+    "passed": 3220,
+    "subtests_passed": 12,
+    "failed": 0,
+    "skipped": 0,
+    "summary": "3220 passed, 12 subtests passed in 420.03s (0:07:00)",
+    "contract_file": {
+      "path": "carr-library/review/component-2dfc5d32-2026-11-28/linux-installed-contracts.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "72728c912a238a59cee5e8ce11031f8a3f7fd0a2"
+    }
+  },
+  "identity": {
+    "actual_inventory": {
+      "status": "PASS",
+      "module_origin": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library",
+      "python_modules": 383,
+      "source_inventory_sha256": "02991995fd42510e0967435ef2c78f60485c4068ddfa7dad22fe743257673fa6"
+    },
+    "reference": {
+      "path": "carr-library/review/component-2dfc5d32-2026-11-28/source-reference.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "5fd6f1423359cc18ac8c652b1e09294c72c68f60"
+    },
+    "all_383_current_source_hashes_match": true
+  },
+  "artifact": {
+    "id": 15251567033,
+    "name": "carr-component-followup-ubuntu-24.04-installed-2dfc5d32558c722ba05068dfff9ebb19eeae52f7-1",
+    "size_in_bytes": 56011,
+    "digest": "sha256:6c5fdd0a852dd2df63ed8fdd93354e51ab7579448ea587410300bd559152f827",
+    "created_at": "2026-11-28T06:16:04Z",
+    "expired": false,
+    "url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15251567033",
+    "workflow_run": {
+      "id": 46111572572,
+      "repository_id": 1341777614,
+      "head_repository_id": 1341777614,
+      "head_branch": "carr/component-followup-evaluation-20261127",
+      "head_sha": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7"
+    }
+  },
+  "retained_evidence": [
+    {
+      "path": "carr-library/review/component-2dfc5d32-2026-11-28/linux-installed-job.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "13c592c033b52d6488d9e48b7e93956ffe4bdd60",
+      "sha256": "a430e3667b342574b401a9e1c513df44f4e26c85eb0019d551f10ed70df19cd3",
+      "bytes": 6254,
+      "full_readback": "EXACT"
+    },
+    {
+      "path": "carr-library/review/component-2dfc5d32-2026-11-28/linux-installed-log.txt",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b9e4bbebd4c5705724ffc714139ba6202c080384",
+      "sha256": "f0e6df6c3da9c837b5e4185901fe515048fe862a69f1c23084cfd170bc744b90",
+      "bytes": 148708,
+      "full_readback": "EXACT"
+    },
+    {
+      "path": "carr-library/review/component-2dfc5d32-2026-11-28/linux-installed-inventory.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "25c47878f7d06126e18fca293e93d2f88da6fd5e",
+      "sha256": "015870cfd9f496a59d470449d3804107b006dbc1a99f7b44e753c9fcf2400185",
+      "bytes": 249,
+      "full_readback": "EXACT"
+    },
+    {
+      "path": "carr-library/review/component-2dfc5d32-2026-11-28/linux-installed-contracts.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "72728c912a238a59cee5e8ce11031f8a3f7fd0a2",
+      "sha256": "af868e411a8607e4e4eac722c821b0b000095ecf685f79fc85d8f37fe25e4731",
+      "bytes": 4864,
+      "full_readback": "EXACT"
+    },
+    {
+      "path": "carr-library/review/component-2dfc5d32-2026-11-28/linux-installed-artifact.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "941b3c2039ce2cec6b7edbb345caba38c4f4ed0f",
+      "sha256": "13ed3aca38be94d89c3da8ec77f7e149fcf86b9dd5aa8bbbca8c1c2e0c180907",
+      "bytes": 898,
+      "full_readback": "EXACT"
+    }
+  ],
+  "log_hash_definition": "SHA-256 of exact decoded GitHub job-log text re-encoded as UTF-8 including BOM/newlines, distinct from the artifact ZIP hash.",
+  "qualification_limits": {
+    "source_tests_in_this_job": "NOT_RUN; receive the separate source job.",
+    "windows_native_studio": "NOT_RUN on Linux.",
+    "windows_real_venv": "NOT_RUN on Linux.",
+    "clip_loop_playback": "NOT_RUN",
+    "manual_nvda": "NOT_RUN",
+    "private_models_and_assets": "NOT_QUALIFIED",
+    "perceptual_quality": "NOT_CLAIMED",
+    "complete_platform_release": "NOT_CLAIMED",
+    "historical_result_transfer": false
+  }
+}

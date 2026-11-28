@@ -1,0 +1,53 @@
+{
+  "schema": "carr-evidence-manifest/1",
+  "commit": "ccb340d1202e6d6f42394bef2131437c010d5a0e",
+  "run": 46113802718,
+  "job": 140882980222,
+  "files": [
+    {
+      "path": "carr-library/review/word-preview-diagnostic-ccb340d1-2026-11-28/qualification.json",
+      "sha256": "3739b48dee2a74e878325ecd1773bb740860f29e23341316d6f87071244c107d",
+      "bytes": 7105
+    },
+    {
+      "path": "carr-library/review/word-preview-diagnostic-ccb340d1-2026-11-28/full-decoded-log.txt",
+      "sha256": "b16b89813d0652299b266127c1d2a338b77ee29780874e8dc2914ff33df83c42",
+      "bytes": 265461
+    },
+    {
+      "path": "carr-library/review/word-preview-diagnostic-ccb340d1-2026-11-28/run-metadata.json",
+      "sha256": "2a3fe71d7aaef51787c928f9d717056f369dc02f86ed7bbc1b0bc4f91b15ed01",
+      "bytes": 15424
+    },
+    {
+      "path": "carr-library/review/word-preview-diagnostic-ccb340d1-2026-11-28/job-metadata.json",
+      "sha256": "47b4624528f9d2d55944da6c6a546cd40483a36355e3c7562c9cd425fda0d596",
+      "bytes": 4030
+    },
+    {
+      "path": "carr-library/review/word-preview-diagnostic-ccb340d1-2026-11-28/inventory.json",
+      "sha256": "a156c61cfecac3c03a9bc25916d7bac9e9d606e57aab78feeedfdd67ba3affbd",
+      "bytes": 66975
+    },
+    {
+      "path": "carr-library/review/word-preview-diagnostic-ccb340d1-2026-11-28/wheel-receipt.json",
+      "sha256": "b4eed9ec45191657fd41000b9a8466aaa9f0207f2212a8a80bd716509bb9b5aa",
+      "bytes": 353
+    },
+    {
+      "path": "carr-library/review/word-preview-diagnostic-ccb340d1-2026-11-28/module-results.json",
+      "sha256": "ad6f0ea17e062c61837ce979e48e751114f0c84dce1cdcb8a0e14fe2f1f4067a",
+      "bytes": 150
+    },
+    {
+      "path": "carr-library/review/word-preview-diagnostic-ccb340d1-2026-11-28/artifact-metadata.json",
+      "sha256": "ea160fccb4cc90a96650780c319f497822104230630ef027ae71e0bc5f885c68",
+      "bytes": 827
+    },
+    {
+      "path": "carr-library/review/word-preview-diagnostic-ccb340d1-2026-11-28/README.md",
+      "sha256": "aa87f3b5bc27a43f0d3cd6ef1569f83e656a0148fd1742976529569e9f504e34",
+      "bytes": 892
+    }
+  ]
+}

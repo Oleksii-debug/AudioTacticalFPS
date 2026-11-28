@@ -1,0 +1,47 @@
+{
+  "commit": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7",
+  "tree": "14a6dc1ce55f5c9d885fbb88b7a50701187acb80",
+  "source_hash_reference_tree": "56ee081ad08dc9079f28ead3590b261adc10e95d",
+  "rows": [
+    {
+      "module": "carr_library.citations.bibliography_workbench",
+      "path": "carr-library/src/carr_library/citations/bibliography_workbench.py",
+      "git_blob": "835de13c80ff28dc1d548e5a4a9c9c18617c21b5",
+      "expected_sha256": "e883418be3a296f2c4d73def6974aef12d9b6e77e44734df059f5503cab6c19a",
+      "observed_sha256": "e883418be3a296f2c4d73def6974aef12d9b6e77e44734df059f5503cab6c19a",
+      "matches": true
+    },
+    {
+      "module": "carr_library.citations.csl",
+      "path": "carr-library/src/carr_library/citations/csl.py",
+      "git_blob": "fe77a11a0d99fba0348263198b2feb3379dfa3aa",
+      "expected_sha256": "4ce75efbb2348ad9ea4238809651c9a2549f5d4b3d9b4699784cd1c04e4c54f6",
+      "observed_sha256": "4ce75efbb2348ad9ea4238809651c9a2549f5d4b3d9b4699784cd1c04e4c54f6",
+      "matches": true
+    },
+    {
+      "module": "carr_library.research.bibtex_import",
+      "path": "carr-library/src/carr_library/research/bibtex_import.py",
+      "git_blob": "48d656d3fe5a7d2a6f56483413252e0ad8e3459f",
+      "expected_sha256": "6f34dce2e1c32dbfb877d0367fc4035b25e2686c2e271c5884301243a051999a",
+      "observed_sha256": "6f34dce2e1c32dbfb877d0367fc4035b25e2686c2e271c5884301243a051999a",
+      "matches": true
+    },
+    {
+      "module": "carr_library.ui.academic_library_dialog",
+      "path": "carr-library/src/carr_library/ui/academic_library_dialog.py",
+      "git_blob": "86dbd1f45c194abc2824f27ac4e92d44ac86e256",
+      "expected_sha256": "763a7e75b329f77e475d250c3c115992228435480b57ad386b541c8c99cca38b",
+      "observed_sha256": "763a7e75b329f77e475d250c3c115992228435480b57ad386b541c8c99cca38b",
+      "matches": true
+    },
+    {
+      "module": "carr_library.ui.citation_styles_dialog",
+      "path": "carr-library/src/carr_library/ui/citation_styles_dialog.py",
+      "git_blob": "71da214062593f566fb8a4106f948f459f18a8eb",
+      "expected_sha256": "6f79ce0ded275dfdfd0725db3c34d19bf0018c51b1859050f6768f88efc8f26c",
+      "observed_sha256": "6f79ce0ded275dfdfd0725db3c34d19bf0018c51b1859050f6768f88efc8f26c",
+      "matches": true
+    }
+  ]
+}

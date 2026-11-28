@@ -1,0 +1,48 @@
+{
+  "provenance": "Result and independent strict checker output parsed from the completed job log.",
+  "result": {
+    "schema": 1,
+    "status": "PASS",
+    "source_commit": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7",
+    "setup_sha256": "d8871d8ed53c2f66f6921b04b17f256ab64a40247d2f8c59f00e4c124485034f",
+    "bundle_manifest_sha256": "7bea5a53a54f9f14e972e3e2b05d397461d2f0f93ddc393826442738a36f85dc",
+    "actual_inno_install": true,
+    "actual_offline_runtime_bootstrap": true,
+    "per_user_start_menu": true,
+    "per_user_repair_uninstall_registration": true,
+    "fresh_shortcut_collision_refused": true,
+    "uninstaller_wrapper_removed": true,
+    "native_launcher_prelaunch_lease": true,
+    "live_job_preserved": true,
+    "repair_retains_modified_and_foreign_files": true,
+    "actual_repair": true,
+    "actual_uninstall": true,
+    "populated_library_bytes_preserved": true,
+    "authenticode_verified": false,
+    "nvda_verified": false,
+    "unprivileged_account_qualification": "NOT_RUN",
+    "native_network_trace": "NOT_RUN",
+    "release_status": "unsigned-private-candidate"
+  },
+  "strict_verdict": {
+    "bundle_manifest_sha256": "7bea5a53a54f9f14e972e3e2b05d397461d2f0f93ddc393826442738a36f85dc",
+    "native_standard_assertions": [
+      "actual_inno_install",
+      "actual_offline_runtime_bootstrap",
+      "per_user_start_menu",
+      "per_user_repair_uninstall_registration",
+      "fresh_shortcut_collision_refused",
+      "uninstaller_wrapper_removed",
+      "native_launcher_prelaunch_lease",
+      "live_job_preserved",
+      "repair_retains_modified_and_foreign_files",
+      "actual_repair",
+      "actual_uninstall",
+      "populated_library_bytes_preserved"
+    ],
+    "release_status": "unsigned-private-candidate",
+    "setup_sha256": "d8871d8ed53c2f66f6921b04b17f256ab64a40247d2f8c59f00e4c124485034f",
+    "source_commit": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7",
+    "status": "PASS"
+  }
+}

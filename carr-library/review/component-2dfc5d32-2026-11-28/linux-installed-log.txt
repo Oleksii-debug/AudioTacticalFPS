@@ -1,0 +1,1551 @@
+﻿2026-11-28T06:07:49.0963203Z Current runner version: '2.338.2'
+2026-11-28T06:07:49.0980900Z ##[group]Runner Image Provisioner
+2026-11-28T06:07:49.0981517Z Hosted Compute Agent
+2026-11-28T06:07:49.0981973Z Version: 20261111.635
+2026-11-28T06:07:49.0982765Z Commit: b8a594ea514ff44cadb5342986c68b1eac6e22ed
+2026-11-28T06:07:49.0983312Z Build Date: 2026-11-11T01:49:01Z
+2026-11-28T06:07:49.0983823Z Worker ID: {5556e867-5721-4dc9-a066-1844200b2543}
+2026-11-28T06:07:49.0984320Z Region: us-west-2
+2026-11-28T06:07:49.0984703Z Cloud: AWS
+2026-11-28T06:07:49.0985132Z ##[endgroup]
+2026-11-28T06:07:49.0986083Z ##[group]Operating System
+2026-11-28T06:07:49.0986525Z Ubuntu
+2026-11-28T06:07:49.0986892Z 24.04.5
+2026-11-28T06:07:49.0987241Z LTS
+2026-11-28T06:07:49.0987632Z ##[endgroup]
+2026-11-28T06:07:49.0988033Z ##[group]Runner Image
+2026-11-28T06:07:49.0988449Z Image: ubuntu-24.04
+2026-11-28T06:07:49.0988849Z Version: 20261122.23.1
+2026-11-28T06:07:49.0989759Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20261122.23/images/ubuntu/Ubuntu2404-Readme.md
+2026-11-28T06:07:49.0990867Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20261122.23
+2026-11-28T06:07:49.0991543Z ##[endgroup]
+2026-11-28T06:07:49.0992541Z ##[group]GITHUB_TOKEN Permissions
+2026-11-28T06:07:49.0994140Z Contents: read
+2026-11-28T06:07:49.0994597Z Metadata: read
+2026-11-28T06:07:49.0994974Z ##[endgroup]
+2026-11-28T06:07:49.0996399Z Secret source: Actions
+2026-11-28T06:07:49.0997009Z Cache mode: write
+2026-11-28T06:07:49.0997506Z Prepare workflow directory
+2026-11-28T06:07:49.1276103Z Prepare all required actions
+2026-11-28T06:07:49.1312238Z Getting action download info
+2026-11-28T06:07:49.4543604Z Download action repository 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1' (SHA:3d3c42e5aac5ba805825da76410c181273ba90b1)
+2026-11-28T06:07:50.7240032Z Download action repository 'actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0' (SHA:6d4fd22b20465ccc0f7354476588e8df7c9ca0e0)
+2026-11-28T06:07:50.8226699Z Download action repository 'actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9' (SHA:cf430e030ddbb5b0abf93d22962f4752f3646cd9)
+2026-11-28T06:07:50.9985075Z Complete job name: Updated components / ubuntu-24.04 / installed
+2026-11-28T06:07:51.0561046Z ##[group]Run git config --global core.autocrlf false
+2026-11-28T06:07:51.0561788Z [36;1mgit config --global core.autocrlf false[0m
+2026-11-28T06:07:51.0562766Z [36;1mif ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }[0m
+2026-11-28T06:07:51.7080051Z shell: /usr/bin/pwsh -command ". '{0}'"
+2026-11-28T06:07:51.7081495Z env:
+2026-11-28T06:07:51.7082190Z   PYTHONUTF8: 1
+2026-11-28T06:07:51.7083048Z   PYTHONUNBUFFERED: 1
+2026-11-28T06:07:51.7083688Z   HF_HUB_OFFLINE: 1
+2026-11-28T06:07:51.7084253Z   TRANSFORMERS_OFFLINE: 1
+2026-11-28T06:07:51.7084835Z   DO_NOT_TRACK: 1
+2026-11-28T06:07:51.7085534Z ##[endgroup]
+2026-11-28T06:07:58.2778007Z ##[group]Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+2026-11-28T06:07:58.2778745Z with:
+2026-11-28T06:07:58.2779223Z   ref: 2dfc5d32558c722ba05068dfff9ebb19eeae52f7
+2026-11-28T06:07:58.2779764Z   persist-credentials: false
+2026-11-28T06:07:58.2780271Z   repository: Oleksii-debug/AudioTacticalFPS
+2026-11-28T06:07:58.2786542Z   token: ***
+2026-11-28T06:07:58.2786858Z   ssh-strict: true
+2026-11-28T06:07:58.2787218Z   ssh-user: git
+2026-11-28T06:07:58.2787523Z   clean: true
+2026-11-28T06:07:58.2787888Z   sparse-checkout-cone-mode: true
+2026-11-28T06:07:58.2788331Z   fetch-depth: 1
+2026-11-28T06:07:58.2788668Z   fetch-tags: false
+2026-11-28T06:07:58.2789032Z   show-progress: true
+2026-11-28T06:07:58.2789370Z   lfs: false
+2026-11-28T06:07:58.2789692Z   submodules: false
+2026-11-28T06:07:58.2790067Z   set-safe-directory: true
+2026-11-28T06:07:58.2790498Z   allow-unsafe-pr-checkout: false
+2026-11-28T06:07:58.2790939Z env:
+2026-11-28T06:07:58.2791219Z   PYTHONUTF8: 1
+2026-11-28T06:07:58.2791676Z   PYTHONUNBUFFERED: 1
+2026-11-28T06:07:58.2792028Z   HF_HUB_OFFLINE: 1
+2026-11-28T06:07:58.2792506Z   TRANSFORMERS_OFFLINE: 1
+2026-11-28T06:07:58.2793093Z   DO_NOT_TRACK: 1
+2026-11-28T06:07:58.2793421Z ##[endgroup]
+2026-11-28T06:08:00.4295934Z Syncing repository: Oleksii-debug/AudioTacticalFPS
+2026-11-28T06:08:00.4297300Z ##[group]Getting Git version info
+2026-11-28T06:08:00.4297842Z Working directory is '/home/runner/work/AudioTacticalFPS/AudioTacticalFPS'
+2026-11-28T06:08:00.4298450Z [command]/usr/bin/git version
+2026-11-28T06:08:00.4303974Z git version 2.56.1
+2026-11-28T06:08:00.4317003Z ##[endgroup]
+2026-11-28T06:08:00.4321605Z Copying '/home/runner/.gitconfig' to '/home/runner/work/_temp/968e054b-a370-4a32-a674-05fb87d37872/.gitconfig'
+2026-11-28T06:08:00.4327803Z Temporarily overriding HOME='/home/runner/work/_temp/968e054b-a370-4a32-a674-05fb87d37872' before making global git config changes
+2026-11-28T06:08:00.4328606Z Adding repository directory to the temporary git global config as a safe directory
+2026-11-28T06:08:00.4332616Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/AudioTacticalFPS/AudioTacticalFPS
+2026-11-28T06:08:00.4359983Z Deleting the contents of '/home/runner/work/AudioTacticalFPS/AudioTacticalFPS'
+2026-11-28T06:08:00.4364317Z ##[group]Determining repository object format
+2026-11-28T06:08:00.4365489Z ##[endgroup]
+2026-11-28T06:08:00.4365911Z ##[group]Initializing the repository
+2026-11-28T06:08:00.4369560Z [command]/usr/bin/git init /home/runner/work/AudioTacticalFPS/AudioTacticalFPS
+2026-11-28T06:08:00.4516245Z hint: Using 'master' as the name for the initial branch. This default branch name
+2026-11-28T06:08:00.4517128Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+2026-11-28T06:08:00.4517749Z hint: to use in all of your new repositories, which will suppress this warning,
+2026-11-28T06:08:00.4518264Z hint: call:
+2026-11-28T06:08:00.4518559Z hint:
+2026-11-28T06:08:00.4518965Z hint: 	git config --global init.defaultBranch <name>
+2026-11-28T06:08:00.4519400Z hint:
+2026-11-28T06:08:00.4519840Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+2026-11-28T06:08:00.4520475Z hint: 'development'. The just-created branch can be renamed via this command:
+2026-11-28T06:08:00.4520985Z hint:
+2026-11-28T06:08:00.4521279Z hint: 	git branch -m <name>
+2026-11-28T06:08:00.4521635Z hint:
+2026-11-28T06:08:00.4522069Z hint: Disable this message with "git config set advice.defaultBranchName false"
+2026-11-28T06:08:00.4533850Z Initialized empty Git repository in /home/runner/work/AudioTacticalFPS/AudioTacticalFPS/.git/
+2026-11-28T06:08:00.4543765Z [command]/usr/bin/git remote add origin https://github.com/Oleksii-debug/AudioTacticalFPS
+2026-11-28T06:08:00.4598514Z ##[endgroup]
+2026-11-28T06:08:00.4599069Z ##[group]Disabling automatic garbage collection
+2026-11-28T06:08:00.4601810Z [command]/usr/bin/git config --local gc.auto 0
+2026-11-28T06:08:00.4640386Z ##[endgroup]
+2026-11-28T06:08:00.4641337Z ##[group]Setting up auth
+2026-11-28T06:08:00.4641735Z Removing SSH command configuration
+2026-11-28T06:08:00.4642551Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-11-28T06:08:00.4674084Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-11-28T06:08:00.6700320Z Removing HTTP extra header
+2026-11-28T06:08:00.6705440Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-11-28T06:08:00.6731460Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-11-28T06:08:00.6879324Z Removing includeIf entries pointing to credentials config files
+2026-11-28T06:08:00.6883747Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-11-28T06:08:00.6908448Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-11-28T06:08:00.7061907Z [command]/usr/bin/git config --file /home/runner/work/_temp/git-credentials-fdad2e62-ac2a-4ee1-95aa-d68da87bec65.config http.https://github.com/.extraheader AUTHORIZATION: basic ***
+2026-11-28T06:08:00.7093898Z [command]/usr/bin/git config --local includeIf.gitdir:/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/.git.path /home/runner/work/_temp/git-credentials-fdad2e62-ac2a-4ee1-95aa-d68da87bec65.config
+2026-11-28T06:08:00.7116844Z [command]/usr/bin/git config --local includeIf.gitdir:/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/.git/worktrees/*.path /home/runner/work/_temp/git-credentials-fdad2e62-ac2a-4ee1-95aa-d68da87bec65.config
+2026-11-28T06:08:00.7140517Z [command]/usr/bin/git config --local includeIf.gitdir:/github/workspace/.git.path /github/runner_temp/git-credentials-fdad2e62-ac2a-4ee1-95aa-d68da87bec65.config
+2026-11-28T06:08:00.7164435Z [command]/usr/bin/git config --local includeIf.gitdir:/github/workspace/.git/worktrees/*.path /github/runner_temp/git-credentials-fdad2e62-ac2a-4ee1-95aa-d68da87bec65.config
+2026-11-28T06:08:00.7184605Z ##[endgroup]
+2026-11-28T06:08:00.7185020Z ##[group]Fetching the repository
+2026-11-28T06:08:00.7188908Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin 2dfc5d32558c722ba05068dfff9ebb19eeae52f7
+2026-11-28T06:08:02.1845808Z From https://github.com/Oleksii-debug/AudioTacticalFPS
+2026-11-28T06:08:02.1846511Z  * branch            2dfc5d32558c722ba05068dfff9ebb19eeae52f7 -> FETCH_HEAD
+2026-11-28T06:08:02.1854325Z [command]/usr/bin/git rev-parse --verify --quiet 2dfc5d32558c722ba05068dfff9ebb19eeae52f7^{object}
+2026-11-28T06:08:02.1880415Z 2dfc5d32558c722ba05068dfff9ebb19eeae52f7
+2026-11-28T06:08:02.1882671Z ##[endgroup]
+2026-11-28T06:08:02.1883056Z ##[group]Determining the checkout info
+2026-11-28T06:08:02.1883659Z ##[endgroup]
+2026-11-28T06:08:02.1893251Z [command]/usr/bin/git sparse-checkout disable
+2026-11-28T06:08:02.1945745Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+2026-11-28T06:08:02.1969934Z ##[group]Checking out the ref
+2026-11-28T06:08:02.1972126Z [command]/usr/bin/git checkout --progress --force 2dfc5d32558c722ba05068dfff9ebb19eeae52f7
+2026-11-28T06:08:02.3146538Z Note: switching to '2dfc5d32558c722ba05068dfff9ebb19eeae52f7'.
+2026-11-28T06:08:02.3146866Z 
+2026-11-28T06:08:02.3147069Z You are in 'detached HEAD' state. You can look around, make experimental
+2026-11-28T06:08:02.3147657Z changes and commit them, and you can discard any commits you make in this
+2026-11-28T06:08:02.3148096Z state without impacting any branches by switching back to a branch.
+2026-11-28T06:08:02.3148316Z 
+2026-11-28T06:08:02.3148525Z If you want to create a new branch to retain commits you create, you may
+2026-11-28T06:08:02.3149123Z do so (now or later) by using -c with the switch command. Example:
+2026-11-28T06:08:02.3149323Z 
+2026-11-28T06:08:02.3149477Z   git switch -c <new-branch-name>
+2026-11-28T06:08:02.3149786Z 
+2026-11-28T06:08:02.3149930Z Or undo this operation with:
+2026-11-28T06:08:02.3150152Z 
+2026-11-28T06:08:02.3150264Z   git switch -
+2026-11-28T06:08:02.3150431Z 
+2026-11-28T06:08:02.3150702Z Turn off this advice by setting config variable advice.detachedHead to false
+2026-11-28T06:08:02.3151160Z 
+2026-11-28T06:08:02.3151464Z HEAD is now at 2dfc5d3 Inspect saved Studio, Book and Director masters for long silences
+2026-11-28T06:08:02.3165199Z ##[endgroup]
+2026-11-28T06:08:02.3204919Z [command]/usr/bin/git log -1 --format=%H
+2026-11-28T06:08:02.3226308Z 2dfc5d32558c722ba05068dfff9ebb19eeae52f7
+2026-11-28T06:08:02.3231684Z ##[group]Removing auth
+2026-11-28T06:08:02.3232052Z Removing SSH command configuration
+2026-11-28T06:08:02.3235025Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-11-28T06:08:02.3260571Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-11-28T06:08:02.3415352Z Removing HTTP extra header
+2026-11-28T06:08:02.3416903Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-11-28T06:08:02.3439403Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-11-28T06:08:02.3584755Z Removing includeIf entries pointing to credentials config files
+2026-11-28T06:08:02.3586656Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-11-28T06:08:02.3607350Z includeif.gitdir:/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/.git.path
+2026-11-28T06:08:02.3608312Z includeif.gitdir:/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/.git/worktrees/*.path
+2026-11-28T06:08:02.3609095Z includeif.gitdir:/github/workspace/.git.path
+2026-11-28T06:08:02.3609704Z includeif.gitdir:/github/workspace/.git/worktrees/*.path
+2026-11-28T06:08:02.3634234Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/.git.path
+2026-11-28T06:08:02.3636819Z /home/runner/work/_temp/git-credentials-fdad2e62-ac2a-4ee1-95aa-d68da87bec65.config
+2026-11-28T06:08:02.3645998Z [command]/usr/bin/git config --local --unset includeif.gitdir:/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/.git.path \/home\/runner\/work\/_temp\/git\-credentials\-fdad2e62\-ac2a\-4ee1\-95aa\-d68da87bec65\.config
+2026-11-28T06:08:02.3678579Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/.git/worktrees/*.path
+2026-11-28T06:08:02.3696273Z /home/runner/work/_temp/git-credentials-fdad2e62-ac2a-4ee1-95aa-d68da87bec65.config
+2026-11-28T06:08:02.3703385Z [command]/usr/bin/git config --local --unset includeif.gitdir:/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/.git/worktrees/*.path \/home\/runner\/work\/_temp\/git\-credentials\-fdad2e62\-ac2a\-4ee1\-95aa\-d68da87bec65\.config
+2026-11-28T06:08:02.3752068Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git.path
+2026-11-28T06:08:02.3753222Z /github/runner_temp/git-credentials-fdad2e62-ac2a-4ee1-95aa-d68da87bec65.config
+2026-11-28T06:08:02.3754921Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/.git.path \/github\/runner_temp\/git\-credentials\-fdad2e62\-ac2a\-4ee1\-95aa\-d68da87bec65\.config
+2026-11-28T06:08:02.3780306Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git/worktrees/*.path
+2026-11-28T06:08:02.3797666Z /github/runner_temp/git-credentials-fdad2e62-ac2a-4ee1-95aa-d68da87bec65.config
+2026-11-28T06:08:02.3803480Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/.git/worktrees/*.path \/github\/runner_temp\/git\-credentials\-fdad2e62\-ac2a\-4ee1\-95aa\-d68da87bec65\.config
+2026-11-28T06:08:02.3826982Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-11-28T06:08:02.3972550Z Removing credentials config '/home/runner/work/_temp/git-credentials-fdad2e62-ac2a-4ee1-95aa-d68da87bec65.config'
+2026-11-28T06:08:02.3983754Z ##[endgroup]
+2026-11-28T06:08:02.4125122Z ##[group]Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+2026-11-28T06:08:02.4125465Z with:
+2026-11-28T06:08:02.4125685Z   python-version: 3.11
+2026-11-28T06:08:02.4125925Z   check-latest: false
+2026-11-28T06:08:02.4128025Z   token: ***
+2026-11-28T06:08:02.4128341Z   mirror: https://raw.githubusercontent.com/actions/python-versions/main
+2026-11-28T06:08:02.4128698Z   update-environment: true
+2026-11-28T06:08:02.4128948Z   allow-prereleases: false
+2026-11-28T06:08:02.4129199Z   freethreaded: false
+2026-11-28T06:08:02.4129432Z env:
+2026-11-28T06:08:02.4129622Z   PYTHONUTF8: 1
+2026-11-28T06:08:02.4129864Z   PYTHONUNBUFFERED: 1
+2026-11-28T06:08:02.4130123Z   HF_HUB_OFFLINE: 1
+2026-11-28T06:08:02.4130351Z   TRANSFORMERS_OFFLINE: 1
+2026-11-28T06:08:02.4130747Z   DO_NOT_TRACK: 1
+2026-11-28T06:08:02.4130950Z ##[endgroup]
+2026-11-28T06:08:02.5006439Z ##[group]Installed versions
+2026-11-28T06:08:02.7459151Z Successfully set up CPython (3.11.18)
+2026-11-28T06:08:02.7460079Z ##[endgroup]
+2026-11-28T06:08:02.7570464Z ##[group]Run sudo apt-get update -qq
+2026-11-28T06:08:02.7570920Z [36;1msudo apt-get update -qq[0m
+2026-11-28T06:08:02.7571623Z [36;1msudo apt-get install --no-install-recommends -y ffmpeg tesseract-ocr tesseract-ocr-eng tesseract-ocr-ukr fonts-dejavu-core[0m
+2026-11-28T06:08:02.7572585Z [36;1mffmpeg -version[0m
+2026-11-28T06:08:02.7572924Z [36;1mffprobe -version[0m
+2026-11-28T06:08:02.7614245Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+2026-11-28T06:08:02.7614667Z env:
+2026-11-28T06:08:02.7614916Z   PYTHONUTF8: 1
+2026-11-28T06:08:02.7615167Z   PYTHONUNBUFFERED: 1
+2026-11-28T06:08:02.7615405Z   HF_HUB_OFFLINE: 1
+2026-11-28T06:08:02.7615641Z   TRANSFORMERS_OFFLINE: 1
+2026-11-28T06:08:02.7615921Z   DO_NOT_TRACK: 1
+2026-11-28T06:08:02.7616196Z   pythonLocation: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T06:08:02.7616580Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.11.18/x64/lib/pkgconfig
+2026-11-28T06:08:02.7617089Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T06:08:02.7617440Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T06:08:02.7617797Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T06:08:02.7618156Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.11.18/x64/lib
+2026-11-28T06:08:02.7618473Z ##[endgroup]
+2026-11-28T06:08:10.8235318Z Reading package lists...
+2026-11-28T06:08:11.0478133Z Building dependency tree...
+2026-11-28T06:08:11.0482684Z Reading state information...
+2026-11-28T06:08:11.1974025Z fonts-dejavu-core is already the newest version (2.37-8).
+2026-11-28T06:08:11.1974547Z fonts-dejavu-core set to manually installed.
+2026-11-28T06:08:11.1974890Z The following additional packages will be installed:
+2026-11-28T06:08:11.1975308Z   libass9 libasyncns0 libavc1394-0 libavcodec60 libavdevice60 libavfilter9
+2026-11-28T06:08:11.1975735Z   libavformat60 libavutil58 libblas3 libbluray2 libbs2b0 libcaca0
+2026-11-28T06:08:11.1976272Z   libcdio-cdda2t64 libcdio-paranoia2t64 libcdio19t64 libchromaprint1 libcjson1
+2026-11-28T06:08:11.1976805Z   libcodec2-1.2 libdav1d7 libdc1394-25 libdecor-0-0 libflac12t64 libflite1
+2026-11-28T06:08:11.1977244Z   libgif7 libgme0 libgsm1 libhwy1t64 libiec61883-0 libjack-jackd2-0 libjxl0.7
+2026-11-28T06:08:11.1977680Z   liblapack3 liblept5 liblilv-0-0 libmbedcrypto7t64 libmp3lame0 libmpg123-0t64
+2026-11-28T06:08:11.1978237Z   libmysofa1 libopenal-data libopenal1 libopenmpt0t64 libopus0 libplacebo338
+2026-11-28T06:08:11.1978870Z   libpocketsphinx3 libpostproc57 libpulse0 librav1e0 libraw1394-11 librist4
+2026-11-28T06:08:11.1979321Z   librsvg2-2 librubberband2 libsamplerate0 libsdl2-2.0-0 libserd-0-0 libshine3
+2026-11-28T06:08:11.1979724Z   libsndfile1 libsndio7.0 libsord-0-0 libsoxr0 libspeex1 libsphinxbase3t64
+2026-11-28T06:08:11.1980198Z   libsratom-0-0 libsrt1.5-gnutls libssh-4 libssh-gcrypt-4 libsvtav1enc1d1
+2026-11-28T06:08:11.1980635Z   libswresample4 libswscale7 libtesseract5 libtheora0 libtwolame0 libudfread0
+2026-11-28T06:08:11.1981041Z   libunibreak5 libva-drm2 libva-x11-2 libva2 libvdpau1 libvidstab1.1
+2026-11-28T06:08:11.1981429Z   libvorbisenc2 libvpl2 libvpx9 libx264-164 libx265-199 libxcb-shape0 libxv1
+2026-11-28T06:08:11.1981808Z   libxvidcore4 libzimg2 libzix-0-0 libzvbi-common libzvbi0t64
+2026-11-28T06:08:11.1982258Z   ocl-icd-libopencl1 tesseract-ocr-osd
+2026-11-28T06:08:11.1985299Z Suggested packages:
+2026-11-28T06:08:11.1985753Z   ffmpeg-doc libcuda1 libnvcuvid1 libnvidia-encode1 libbluray-bdj jackd2
+2026-11-28T06:08:11.1986321Z   libportaudio2 opus-tools pulseaudio libraw1394-doc librsvg2-bin serdi sndiod
+2026-11-28T06:08:11.1986908Z   sordi speex opencl-icd
+2026-11-28T06:08:11.1987255Z Recommended packages:
+2026-11-28T06:08:11.1987636Z   libaacs0 default-libdecor-0-plugin-1 | libdecor-0-plugin-1
+2026-11-28T06:08:11.1988493Z   pocketsphinx-en-us librsvg2-common va-driver-all | va-driver
+2026-11-28T06:08:11.1988901Z   vdpau-driver-all | vdpau-driver
+2026-11-28T06:08:11.3544693Z The following NEW packages will be installed:
+2026-11-28T06:08:11.3546071Z   ffmpeg libass9 libasyncns0 libavc1394-0 libavcodec60 libavdevice60
+2026-11-28T06:08:11.3546640Z   libavfilter9 libavformat60 libavutil58 libblas3 libbluray2 libbs2b0 libcaca0
+2026-11-28T06:08:11.3547156Z   libcdio-cdda2t64 libcdio-paranoia2t64 libcdio19t64 libchromaprint1 libcjson1
+2026-11-28T06:08:11.3547580Z   libcodec2-1.2 libdav1d7 libdc1394-25 libdecor-0-0 libflac12t64 libflite1
+2026-11-28T06:08:11.3547984Z   libgif7 libgme0 libgsm1 libhwy1t64 libiec61883-0 libjack-jackd2-0 libjxl0.7
+2026-11-28T06:08:11.3548429Z   liblapack3 liblept5 liblilv-0-0 libmbedcrypto7t64 libmp3lame0 libmpg123-0t64
+2026-11-28T06:08:11.3548930Z   libmysofa1 libopenal-data libopenal1 libopenmpt0t64 libopus0 libplacebo338
+2026-11-28T06:08:11.3549466Z   libpocketsphinx3 libpostproc57 libpulse0 librav1e0 libraw1394-11 librist4
+2026-11-28T06:08:11.3549901Z   librsvg2-2 librubberband2 libsamplerate0 libsdl2-2.0-0 libserd-0-0 libshine3
+2026-11-28T06:08:11.3550318Z   libsndfile1 libsndio7.0 libsord-0-0 libsoxr0 libspeex1 libsphinxbase3t64
+2026-11-28T06:08:11.3550763Z   libsratom-0-0 libsrt1.5-gnutls libssh-gcrypt-4 libsvtav1enc1d1
+2026-11-28T06:08:11.3553189Z   libswresample4 libswscale7 libtesseract5 libtheora0 libtwolame0 libudfread0
+2026-11-28T06:08:11.3564179Z   libunibreak5 libva-drm2 libva-x11-2 libva2 libvdpau1 libvidstab1.1
+2026-11-28T06:08:11.3564783Z   libvorbisenc2 libvpl2 libvpx9 libx264-164 libx265-199 libxcb-shape0 libxv1
+2026-11-28T06:08:11.3565189Z   libxvidcore4 libzimg2 libzix-0-0 libzvbi-common libzvbi0t64
+2026-11-28T06:08:11.3565588Z   ocl-icd-libopencl1 tesseract-ocr tesseract-ocr-eng tesseract-ocr-osd
+2026-11-28T06:08:11.3565944Z   tesseract-ocr-ukr
+2026-11-28T06:08:11.3566213Z The following packages will be upgraded:
+2026-11-28T06:08:11.3566497Z   libssh-4
+2026-11-28T06:08:11.3732102Z 1 upgraded, 94 newly installed, 0 to remove and 41 not upgraded.
+2026-11-28T06:08:11.3732727Z Need to get 72.9 MB of archives.
+2026-11-28T06:08:11.3733065Z After this operation, 198 MB of additional disk space will be used.
+2026-11-28T06:08:11.3733416Z Get:1 file:/etc/apt/apt-mirrors.txt Mirrorlist [152 B]
+2026-11-28T06:08:11.4572753Z Get:2 http://us-west-2.ec2.archive.ubuntu.com/ubuntu noble-updates/universe amd64 libva2 amd64 2.20.0-2ubuntu0.2 [66.4 kB]
+2026-11-28T06:08:11.5320834Z Get:3 http://us-west-2.ec2.archive.ubuntu.com/ubuntu noble-updates/universe amd64 libva-drm2 amd64 2.20.0-2ubuntu0.2 [7124 B]
+2026-11-28T06:08:11.6048020Z Get:4 http://us-west-2.ec2.archive.ubuntu.com/ubuntu noble-updates/universe amd64 libva-x11-2 amd64 2.20.0-2ubuntu0.2 [12.0 kB]
+2026-11-28T06:08:11.6777172Z Get:5 http://us-west-2.ec2.archive.ubuntu.com/ubuntu noble/main amd64 libvdpau1 amd64 1.5-2build1 [27.8 kB]
+2026-11-28T06:08:11.7518407Z Get:6 http://us-west-2.ec2.archive.ubuntu.com/ubuntu noble/universe amd64 libvpl2 amd64 2023.3.0-1build1 [99.8 kB]
+2026-11-28T06:08:11.8269375Z Get:7 http://us-west-2.ec2.archive.ubuntu.com/ubuntu noble/universe amd64 ocl-icd-libopencl1 amd64 2.3.2-1build1 [38.5 kB]
+2026-11-28T06:08:11.9186698Z Get:8 http://us-west-2.ec2.archive.ubuntu.com/ubuntu noble/universe amd64 libavutil58 amd64 7:6.1.1-3ubuntu5 [401 kB]
+2026-11-28T06:08:12.0815718Z Get:9 http://us-west-2.ec2.archive.ubuntu.com/ubuntu noble/universe amd64 libcodec2-1.2 amd64 1.2.0-2build1 [8998 kB]
+2026-11-28T06:08:12.7725729Z Get:10 http://us-west-2.ec2.archive.ubuntu.com/ubuntu noble/universe amd64 libdav1d7 amd64 1.4.1-1build1 [604 kB]
+2026-11-28T06:08:12.9357004Z Get:11 http://us-west-2.ec2.archive.ubuntu.com/ubuntu noble/universe amd64 libgsm1 amd64 1.0.22-1build1 [27.8 kB]
+2026-11-28T06:08:13.0090195Z Get:12 http://us-west-2.ec2.archive.ubuntu.com/ubuntu noble/universe amd64 libhwy1t64 amd64 1.0.7-8.1build1 [584 kB]
+2026-11-28T06:08:13.1660592Z Get:13 http://us-west-2.ec2.archive.ubuntu.com/ubuntu noble-updates/universe amd64 libjxl0.7 amd64 0.7.0-10.2ubuntu6.1 [1001 kB]
+2026-11-28T06:08:13.4827658Z Get:14 http://us-west-2.ec2.archive.ubuntu.com/ubuntu noble/main amd64 libmp3lame0 amd64 3.100-6build1 [142 kB]
+2026-11-28T06:08:13.5581420Z Get:15 http://us-west-2.ec2.archive.ubuntu.com/ubuntu noble/main amd64 libopus0 amd64 1.4-1build1 [208 kB]
+2026-11-28T06:08:13.6352781Z Get:16 http://us-west-2.ec2.archive.ubuntu.com/ubuntu noble/universe amd64 librav1e0 amd64 0.7.1-2 [1022 kB]
+2026-11-28T06:08:13.8614440Z Get:17 http://us-west-2.ec2.archive.ubuntu.com/ubuntu noble-updates/main amd64 librsvg2-2 amd64 2.58.0+dfsg-1ubuntu0.1 [2141 kB]
+2026-11-28T06:08:14.2583207Z Get:18 http://us-west-2.ec2.archive.ubuntu.com/ubuntu noble/universe amd64 libshine3 amd64 3.1.1-2build1 [23.2 kB]
+2026-11-28T06:08:14.3303409Z Get:19 http://us-west-2.ec2.archive.ubuntu.com/ubuntu noble-updates/main amd64 libspeex1 amd64 1.2.1-2ubuntu2.24.04.2 [59.8 kB]
+2026-11-28T06:08:14.4042804Z Get:20 http://us-west-2.ec2.archive.ubuntu.com/ubuntu noble/universe amd64 libsvtav1enc1d1 amd64 1.7.0+dfsg-2build1 [2425 kB]
+2026-11-28T06:08:14.7619314Z Get:21 http://us-west-2.ec2.archive.ubuntu.com/ubuntu noble/universe amd64 libsoxr0 amd64 0.1.3-4build3 [80.0 kB]
+2026-11-28T06:08:14.8357145Z Get:22 http://us-west-2.ec2.archive.ubuntu.com/ubuntu noble/universe amd64 libswresample4 amd64 7:6.1.1-3ubuntu5 [63.8 kB]
+2026-11-28T06:08:14.9265595Z Get:23 http://us-west-2.ec2.archive.ubuntu.com/ubuntu noble/main amd64 libtheora0 amd64 1.1.1+dfsg.1-16.1build3 [211 kB]
+2026-11-28T06:08:15.0200149Z Get:24 http://us-west-2.ec2.archive.ubuntu.com/ubuntu noble/main amd64 libtwolame0 amd64 0.4.0-2build3 [52.3 kB]
+2026-11-28T06:08:15.1110906Z Get:25 http://us-west-2.ec2.archive.ubuntu.com/ubuntu noble/main amd64 libvorbisenc2 amd64 1.3.7-1build3 [80.8 kB]
+2026-11-28T06:08:15.1847903Z Get:26 http://us-west-2.ec2.archive.ubuntu.com/ubuntu noble-updates/main amd64 libvpx9 amd64 1.14.0-1ubuntu2.3 [1143 kB]
+2026-11-28T06:08:15.4015378Z Get:27 http://us-west-2.ec2.archive.ubuntu.com/ubuntu noble/universe amd64 libx264-164 amd64 2:0.164.3108+git31e19f9-1 [604 kB]
+2026-11-28T06:08:15.5548246Z Get:28 http://us-west-2.ec2.archive.ubuntu.com/ubuntu noble/universe amd64 libx265-199 amd64 3.5-2build1 [1226 kB]
+2026-11-28T06:08:15.8162596Z Get:29 http://us-west-2.ec2.archive.ubuntu.com/ubuntu noble/universe amd64 libxvidcore4 amd64 2:1.3.7-1build1 [219 kB]
+2026-11-28T06:08:15.9686241Z Get:30 http://us-west-2.ec2.archive.ubuntu.com/ubuntu noble/universe amd64 libzvbi-common all 0.2.42-2 [42.4 kB]
+2026-11-28T06:08:16.0418262Z Get:31 http://us-west-2.ec2.archive.ubuntu.com/ubuntu noble/universe amd64 libzvbi0t64 amd64 0.2.42-2 [261 kB]
+2026-11-28T06:08:16.1279946Z Get:32 http://us-west-2.ec2.archive.ubuntu.com/ubuntu noble/universe amd64 libavcodec60 amd64 7:6.1.1-3ubuntu5 [5851 kB]
+2026-11-28T06:08:16.8482681Z Get:33 http://us-west-2.ec2.archive.ubuntu.com/ubuntu noble/main amd64 libraw1394-11 amd64 2.1.2-2build3 [26.2 kB]
+2026-11-28T06:08:16.9382600Z Get:34 http://us-west-2.ec2.archive.ubuntu.com/ubuntu noble/main amd64 libavc1394-0 amd64 0.5.4-5build3 [15.4 kB]
+2026-11-28T06:08:17.0279368Z Get:35 http://us-west-2.ec2.archive.ubuntu.com/ubuntu noble/universe amd64 libunibreak5 amd64 5.1-2build1 [25.0 kB]
+2026-11-28T06:08:17.1207947Z Get:36 http://us-west-2.ec2.archive.ubuntu.com/ubuntu noble/universe amd64 libass9 amd64 1:0.17.1-2build1 [104 kB]
+2026-11-28T06:08:17.2036379Z Get:37 http://us-west-2.ec2.archive.ubuntu.com/ubuntu noble/universe amd64 libudfread0 amd64 1.1.2-1build1 [19.0 kB]
+2026-11-28T06:08:17.2778582Z Get:38 http://us-west-2.ec2.archive.ubuntu.com/ubuntu noble/universe amd64 libbluray2 amd64 1:1.3.4-1build1 [159 kB]
+2026-11-28T06:08:17.3633952Z Get:39 http://us-west-2.ec2.archive.ubuntu.com/ubuntu noble/universe amd64 libchromaprint1 amd64 1.5.1-5 [30.5 kB]
+2026-11-28T06:08:17.4545299Z Get:40 http://us-west-2.ec2.archive.ubuntu.com/ubuntu noble/universe amd64 libgme0 amd64 0.6.3-7build1 [134 kB]
+2026-11-28T06:08:17.5462461Z Get:41 http://us-west-2.ec2.archive.ubuntu.com/ubuntu noble-updates/main amd64 libmpg123-0t64 amd64 1.32.5-1ubuntu1.1 [169 kB]
+2026-11-28T06:08:17.6339072Z Get:42 http://us-west-2.ec2.archive.ubuntu.com/ubuntu noble/universe amd64 libopenmpt0t64 amd64 0.7.3-1.1build3 [647 kB]
+2026-11-28T06:08:17.7978680Z Get:43 http://us-west-2.ec2.archive.ubuntu.com/ubuntu noble/universe amd64 libcjson1 amd64 1.7.17-1 [24.8 kB]
+2026-11-28T06:08:17.8707642Z Get:44 http://us-west-2.ec2.archive.ubuntu.com/ubuntu noble/universe amd64 libmbedcrypto7t64 amd64 2.28.8-1 [209 kB]
+2026-11-28T06:08:17.9492778Z Get:45 http://us-west-2.ec2.archive.ubuntu.com/ubuntu noble/universe amd64 librist4 amd64 0.2.10+dfsg-2 [74.9 kB]
+2026-11-28T06:08:18.0237531Z Get:46 http://us-west-2.ec2.archive.ubuntu.com/ubuntu noble/universe amd64 libsrt1.5-gnutls amd64 1.5.3-1build2 [316 kB]
+2026-11-28T06:08:18.1775537Z Get:47 http://us-west-2.ec2.archive.ubuntu.com/ubuntu noble-updates/main amd64 libssh-gcrypt-4 amd64 0.10.6-2ubuntu0.6 [227 kB]
+2026-11-28T06:08:18.4248644Z Get:48 http://us-west-2.ec2.archive.ubuntu.com/ubuntu noble/universe amd64 libavformat60 amd64 7:6.1.1-3ubuntu5 [1153 kB]
+2026-11-28T06:08:19.0267247Z Get:49 http://us-west-2.ec2.archive.ubuntu.com/ubuntu noble/universe amd64 libbs2b0 amd64 3.1.0+dfsg-7build1 [10.6 kB]
+2026-11-28T06:08:19.1017646Z Get:50 http://us-west-2.ec2.archive.ubuntu.com/ubuntu noble/universe amd64 libflite1 amd64 2.2-6build3 [13.6 MB]
+2026-11-28T06:08:20.3440224Z Get:51 http://us-west-2.ec2.archive.ubuntu.com/ubuntu noble/universe amd64 libserd-0-0 amd64 0.32.2-1 [43.6 kB]
+2026-11-28T06:08:20.4287397Z Get:52 http://us-west-2.ec2.archive.ubuntu.com/ubuntu noble/universe amd64 libzix-0-0 amd64 0.4.2-2build1 [23.6 kB]
+2026-11-28T06:08:20.5025116Z Get:53 http://us-west-2.ec2.archive.ubuntu.com/ubuntu noble/universe amd64 libsord-0-0 amd64 0.16.16-2build1 [15.8 kB]
+2026-11-28T06:08:20.5750954Z Get:54 http://us-west-2.ec2.archive.ubuntu.com/ubuntu noble/universe amd64 libsratom-0-0 amd64 0.6.16-1build1 [17.3 kB]
+2026-11-28T06:08:20.6498179Z Get:55 http://us-west-2.ec2.archive.ubuntu.com/ubuntu noble/universe amd64 liblilv-0-0 amd64 0.24.22-1build1 [41.0 kB]
+2026-11-28T06:08:20.7299379Z Get:56 http://us-west-2.ec2.archive.ubuntu.com/ubuntu noble/universe amd64 libmysofa1 amd64 1.3.2+dfsg-2ubuntu2 [1158 kB]
+2026-11-28T06:08:21.0356591Z Get:57 http://us-west-2.ec2.archive.ubuntu.com/ubuntu noble/universe amd64 libplacebo338 amd64 6.338.2-2build1 [2654 kB]
+2026-11-28T06:08:21.4757728Z Get:58 http://us-west-2.ec2.archive.ubuntu.com/ubuntu noble-updates/main amd64 libblas3 amd64 3.12.0-3build1.1 [238 kB]
+2026-11-28T06:08:21.5483944Z Get:59 http://us-west-2.ec2.archive.ubuntu.com/ubuntu noble-updates/main amd64 liblapack3 amd64 3.12.0-3build1.1 [2646 kB]
+2026-11-28T06:08:21.8718228Z Get:60 http://us-west-2.ec2.archive.ubuntu.com/ubuntu noble/main amd64 libasyncns0 amd64 0.8-6build4 [11.3 kB]
+2026-11-28T06:08:21.9570077Z Get:61 http://us-west-2.ec2.archive.ubuntu.com/ubuntu noble/main amd64 libflac12t64 amd64 1.4.3+ds-2.1ubuntu2 [197 kB]
+2026-11-28T06:08:22.0414849Z Get:62 http://us-west-2.ec2.archive.ubuntu.com/ubuntu noble-updates/main amd64 libsndfile1 amd64 1.2.2-1ubuntu5.24.04.1 [209 kB]
+2026-11-28T06:08:22.1356464Z Get:63 http://us-west-2.ec2.archive.ubuntu.com/ubuntu noble-updates/main amd64 libpulse0 amd64 1:16.1+dfsg1-2ubuntu10.1 [292 kB]
+2026-11-28T06:08:22.3213451Z Get:64 http://us-west-2.ec2.archive.ubuntu.com/ubuntu noble/universe amd64 libsphinxbase3t64 amd64 0.8+5prealpha+1-17build2 [126 kB]
+2026-11-28T06:08:22.4183742Z Get:65 http://us-west-2.ec2.archive.ubuntu.com/ubuntu noble/universe amd64 libpocketsphinx3 amd64 0.8.0+real5prealpha+1-15ubuntu5 [133 kB]
+2026-11-28T06:08:22.5178864Z Get:66 http://us-west-2.ec2.archive.ubuntu.com/ubuntu noble/universe amd64 libpostproc57 amd64 7:6.1.1-3ubuntu5 [49.9 kB]
+2026-11-28T06:08:22.6055807Z Get:67 http://us-west-2.ec2.archive.ubuntu.com/ubuntu noble/main amd64 libsamplerate0 amd64 0.2.2-4build1 [1344 kB]
+2026-11-28T06:08:22.9179553Z Get:68 http://us-west-2.ec2.archive.ubuntu.com/ubuntu noble/universe amd64 librubberband2 amd64 3.3.0+dfsg-2build1 [130 kB]
+2026-11-28T06:08:23.0091320Z Get:69 http://us-west-2.ec2.archive.ubuntu.com/ubuntu noble/universe amd64 libswscale7 amd64 7:6.1.1-3ubuntu5 [193 kB]
+2026-11-28T06:08:23.0957001Z Get:70 http://us-west-2.ec2.archive.ubuntu.com/ubuntu noble/universe amd64 libvidstab1.1 amd64 1.1.0-2build1 [38.5 kB]
+2026-11-28T06:08:23.1862172Z Get:71 http://us-west-2.ec2.archive.ubuntu.com/ubuntu noble/universe amd64 libzimg2 amd64 3.0.5+ds1-1build1 [254 kB]
+2026-11-28T06:08:23.2797834Z Get:72 http://us-west-2.ec2.archive.ubuntu.com/ubuntu noble/universe amd64 libavfilter9 amd64 7:6.1.1-3ubuntu5 [4235 kB]
+2026-11-28T06:08:23.7223357Z Get:73 http://us-west-2.ec2.archive.ubuntu.com/ubuntu noble-updates/main amd64 libcaca0 amd64 0.99.beta20-4ubuntu0.2 [209 kB]
+2026-11-28T06:08:23.8072909Z Get:74 http://us-west-2.ec2.archive.ubuntu.com/ubuntu noble-updates/main amd64 libcdio19t64 amd64 2.1.0-4.1ubuntu1.2 [62.4 kB]
+2026-11-28T06:08:23.8817941Z Get:75 http://us-west-2.ec2.archive.ubuntu.com/ubuntu noble/main amd64 libcdio-cdda2t64 amd64 10.2+2.0.1-1.1build2 [16.5 kB]
+2026-11-28T06:08:23.9727804Z Get:76 http://us-west-2.ec2.archive.ubuntu.com/ubuntu noble/main amd64 libcdio-paranoia2t64 amd64 10.2+2.0.1-1.1build2 [16.6 kB]
+2026-11-28T06:08:24.0459291Z Get:77 http://us-west-2.ec2.archive.ubuntu.com/ubuntu noble/universe amd64 libdc1394-25 amd64 2.2.6-4build1 [90.1 kB]
+2026-11-28T06:08:24.1218217Z Get:78 http://us-west-2.ec2.archive.ubuntu.com/ubuntu noble/main amd64 libiec61883-0 amd64 1.2.0-6build1 [24.5 kB]
+2026-11-28T06:08:24.1947041Z Get:79 http://us-west-2.ec2.archive.ubuntu.com/ubuntu noble/main amd64 libjack-jackd2-0 amd64 1.9.21~dfsg-3ubuntu3 [289 kB]
+2026-11-28T06:08:24.3462249Z Get:80 http://us-west-2.ec2.archive.ubuntu.com/ubuntu noble/universe amd64 libopenal-data all 1:1.23.1-4build1 [161 kB]
+2026-11-28T06:08:24.4299871Z Get:81 http://us-west-2.ec2.archive.ubuntu.com/ubuntu noble/universe amd64 libsndio7.0 amd64 1.9.0-0.3build3 [29.6 kB]
+2026-11-28T06:08:24.5143351Z Get:82 http://us-west-2.ec2.archive.ubuntu.com/ubuntu noble/universe amd64 libopenal1 amd64 1:1.23.1-4build1 [540 kB]
+2026-11-28T06:08:24.7029628Z Get:83 http://us-west-2.ec2.archive.ubuntu.com/ubuntu noble/main amd64 libdecor-0-0 amd64 0.2.2-1build2 [16.5 kB]
+2026-11-28T06:08:24.7874723Z Get:84 http://us-west-2.ec2.archive.ubuntu.com/ubuntu noble-updates/main amd64 libsdl2-2.0-0 amd64 2.30.0+dfsg-1ubuntu3.1 [686 kB]
+2026-11-28T06:08:24.9588280Z Get:85 http://us-west-2.ec2.archive.ubuntu.com/ubuntu noble/main amd64 libxcb-shape0 amd64 1.15-1ubuntu2 [6100 B]
+2026-11-28T06:08:25.0407258Z Get:86 http://us-west-2.ec2.archive.ubuntu.com/ubuntu noble/main amd64 libxv1 amd64 2:1.0.11-1.1build1 [10.7 kB]
+2026-11-28T06:08:25.1319187Z Get:87 http://us-west-2.ec2.archive.ubuntu.com/ubuntu noble/universe amd64 libavdevice60 amd64 7:6.1.1-3ubuntu5 [82.3 kB]
+2026-11-28T06:08:25.2241954Z Get:88 http://us-west-2.ec2.archive.ubuntu.com/ubuntu noble/universe amd64 ffmpeg amd64 7:6.1.1-3ubuntu5 [1879 kB]
+2026-11-28T06:08:25.5793792Z Get:89 http://us-west-2.ec2.archive.ubuntu.com/ubuntu noble-updates/main amd64 libgif7 amd64 5.2.2-1ubuntu1.2 [35.6 kB]
+2026-11-28T06:08:25.6631939Z Get:90 http://us-west-2.ec2.archive.ubuntu.com/ubuntu noble/universe amd64 liblept5 amd64 1.82.0-3build4 [1099 kB]
+2026-11-28T06:08:25.8297232Z Get:91 http://us-west-2.ec2.archive.ubuntu.com/ubuntu noble-updates/main amd64 libssh-4 amd64 0.10.6-2ubuntu0.6 [191 kB]
+2026-11-28T06:08:25.9217164Z Get:92 http://us-west-2.ec2.archive.ubuntu.com/ubuntu noble/universe amd64 libtesseract5 amd64 5.3.4-1build5 [1291 kB]
+2026-11-28T06:08:26.1737310Z Get:93 http://us-west-2.ec2.archive.ubuntu.com/ubuntu noble/universe amd64 tesseract-ocr-eng all 1:4.1.0-2 [1818 kB]
+2026-11-28T06:08:26.5446768Z Get:94 http://us-west-2.ec2.archive.ubuntu.com/ubuntu noble/universe amd64 tesseract-ocr-osd all 1:4.1.0-2 [3841 kB]
+2026-11-28T06:08:27.0518316Z Get:95 http://us-west-2.ec2.archive.ubuntu.com/ubuntu noble/universe amd64 tesseract-ocr amd64 5.3.4-1build5 [328 kB]
+2026-11-28T06:08:27.2067884Z Get:96 http://us-west-2.ec2.archive.ubuntu.com/ubuntu noble/universe amd64 tesseract-ocr-ukr all 1:4.1.0-2 [1471 kB]
+2026-11-28T06:08:28.0929722Z Fetched 72.9 MB in 16s (4554 kB/s)
+2026-11-28T06:08:28.1136569Z Selecting previously unselected package libva2:amd64.
+2026-11-28T06:08:28.3202578Z (Reading database ... 
+2026-11-28T06:08:28.3203213Z (Reading database ... 5%
+2026-11-28T06:08:28.3203479Z (Reading database ... 10%
+2026-11-28T06:08:28.3203765Z (Reading database ... 15%
+2026-11-28T06:08:28.3204010Z (Reading database ... 20%
+2026-11-28T06:08:28.3204245Z (Reading database ... 25%
+2026-11-28T06:08:28.3204492Z (Reading database ... 30%
+2026-11-28T06:08:28.3204725Z (Reading database ... 35%
+2026-11-28T06:08:28.3204961Z (Reading database ... 40%
+2026-11-28T06:08:28.3205212Z (Reading database ... 45%
+2026-11-28T06:08:28.3205467Z (Reading database ... 50%
+2026-11-28T06:08:28.3925231Z (Reading database ... 55%
+2026-11-28T06:08:28.8055040Z (Reading database ... 60%
+2026-11-28T06:08:28.8607191Z (Reading database ... 65%
+2026-11-28T06:08:28.9359043Z (Reading database ... 70%
+2026-11-28T06:08:28.9916347Z (Reading database ... 75%
+2026-11-28T06:08:29.3564071Z (Reading database ... 80%
+2026-11-28T06:08:30.1854429Z (Reading database ... 85%
+2026-11-28T06:08:31.1058423Z (Reading database ... 90%
+2026-11-28T06:08:32.1519315Z (Reading database ... 95%
+2026-11-28T06:08:32.1519883Z (Reading database ... 100%
+2026-11-28T06:08:32.1520229Z (Reading database ... 216824 files and directories currently installed.)
+2026-11-28T06:08:32.1563202Z Preparing to unpack .../00-libva2_2.20.0-2ubuntu0.2_amd64.deb ...
+2026-11-28T06:08:32.1941256Z Unpacking libva2:amd64 (2.20.0-2ubuntu0.2) ...
+2026-11-28T06:08:32.2099756Z Selecting previously unselected package libva-drm2:amd64.
+2026-11-28T06:08:32.2199484Z Preparing to unpack .../01-libva-drm2_2.20.0-2ubuntu0.2_amd64.deb ...
+2026-11-28T06:08:32.2204386Z Unpacking libva-drm2:amd64 (2.20.0-2ubuntu0.2) ...
+2026-11-28T06:08:32.2341725Z Selecting previously unselected package libva-x11-2:amd64.
+2026-11-28T06:08:32.2437079Z Preparing to unpack .../02-libva-x11-2_2.20.0-2ubuntu0.2_amd64.deb ...
+2026-11-28T06:08:32.2441923Z Unpacking libva-x11-2:amd64 (2.20.0-2ubuntu0.2) ...
+2026-11-28T06:08:32.2573557Z Selecting previously unselected package libvdpau1:amd64.
+2026-11-28T06:08:32.2667769Z Preparing to unpack .../03-libvdpau1_1.5-2build1_amd64.deb ...
+2026-11-28T06:08:32.2673302Z Unpacking libvdpau1:amd64 (1.5-2build1) ...
+2026-11-28T06:08:32.2805753Z Selecting previously unselected package libvpl2.
+2026-11-28T06:08:32.2894048Z Preparing to unpack .../04-libvpl2_2023.3.0-1build1_amd64.deb ...
+2026-11-28T06:08:32.2898503Z Unpacking libvpl2 (2023.3.0-1build1) ...
+2026-11-28T06:08:32.3037156Z Selecting previously unselected package ocl-icd-libopencl1:amd64.
+2026-11-28T06:08:32.3124156Z Preparing to unpack .../05-ocl-icd-libopencl1_2.3.2-1build1_amd64.deb ...
+2026-11-28T06:08:32.3128991Z Unpacking ocl-icd-libopencl1:amd64 (2.3.2-1build1) ...
+2026-11-28T06:08:32.3299476Z Selecting previously unselected package libavutil58:amd64.
+2026-11-28T06:08:32.3391364Z Preparing to unpack .../06-libavutil58_7%3a6.1.1-3ubuntu5_amd64.deb ...
+2026-11-28T06:08:32.3395459Z Unpacking libavutil58:amd64 (7:6.1.1-3ubuntu5) ...
+2026-11-28T06:08:32.3565751Z Selecting previously unselected package libcodec2-1.2:amd64.
+2026-11-28T06:08:32.3656409Z Preparing to unpack .../07-libcodec2-1.2_1.2.0-2build1_amd64.deb ...
+2026-11-28T06:08:32.3660585Z Unpacking libcodec2-1.2:amd64 (1.2.0-2build1) ...
+2026-11-28T06:08:32.4235955Z Selecting previously unselected package libdav1d7:amd64.
+2026-11-28T06:08:32.4328891Z Preparing to unpack .../08-libdav1d7_1.4.1-1build1_amd64.deb ...
+2026-11-28T06:08:32.4333547Z Unpacking libdav1d7:amd64 (1.4.1-1build1) ...
+2026-11-28T06:08:32.4512264Z Selecting previously unselected package libgsm1:amd64.
+2026-11-28T06:08:32.4604041Z Preparing to unpack .../09-libgsm1_1.0.22-1build1_amd64.deb ...
+2026-11-28T06:08:32.4608491Z Unpacking libgsm1:amd64 (1.0.22-1build1) ...
+2026-11-28T06:08:32.4736133Z Selecting previously unselected package libhwy1t64:amd64.
+2026-11-28T06:08:32.4823904Z Preparing to unpack .../10-libhwy1t64_1.0.7-8.1build1_amd64.deb ...
+2026-11-28T06:08:32.4828469Z Unpacking libhwy1t64:amd64 (1.0.7-8.1build1) ...
+2026-11-28T06:08:32.5046336Z Selecting previously unselected package libjxl0.7:amd64.
+2026-11-28T06:08:32.5132119Z Preparing to unpack .../11-libjxl0.7_0.7.0-10.2ubuntu6.1_amd64.deb ...
+2026-11-28T06:08:32.5136815Z Unpacking libjxl0.7:amd64 (0.7.0-10.2ubuntu6.1) ...
+2026-11-28T06:08:32.5369501Z Selecting previously unselected package libmp3lame0:amd64.
+2026-11-28T06:08:32.5455464Z Preparing to unpack .../12-libmp3lame0_3.100-6build1_amd64.deb ...
+2026-11-28T06:08:32.5459439Z Unpacking libmp3lame0:amd64 (3.100-6build1) ...
+2026-11-28T06:08:32.5596101Z Selecting previously unselected package libopus0:amd64.
+2026-11-28T06:08:32.5682502Z Preparing to unpack .../13-libopus0_1.4-1build1_amd64.deb ...
+2026-11-28T06:08:32.5687225Z Unpacking libopus0:amd64 (1.4-1build1) ...
+2026-11-28T06:08:32.5827282Z Selecting previously unselected package librav1e0:amd64.
+2026-11-28T06:08:32.5912943Z Preparing to unpack .../14-librav1e0_0.7.1-2_amd64.deb ...
+2026-11-28T06:08:32.5917339Z Unpacking librav1e0:amd64 (0.7.1-2) ...
+2026-11-28T06:08:32.6145456Z Selecting previously unselected package librsvg2-2:amd64.
+2026-11-28T06:08:32.6230410Z Preparing to unpack .../15-librsvg2-2_2.58.0+dfsg-1ubuntu0.1_amd64.deb ...
+2026-11-28T06:08:32.6235453Z Unpacking librsvg2-2:amd64 (2.58.0+dfsg-1ubuntu0.1) ...
+2026-11-28T06:08:32.6578376Z Selecting previously unselected package libshine3:amd64.
+2026-11-28T06:08:32.6667434Z Preparing to unpack .../16-libshine3_3.1.1-2build1_amd64.deb ...
+2026-11-28T06:08:32.6670802Z Unpacking libshine3:amd64 (3.1.1-2build1) ...
+2026-11-28T06:08:32.6795710Z Selecting previously unselected package libspeex1:amd64.
+2026-11-28T06:08:32.6884922Z Preparing to unpack .../17-libspeex1_1.2.1-2ubuntu2.24.04.2_amd64.deb ...
+2026-11-28T06:08:32.6888943Z Unpacking libspeex1:amd64 (1.2.1-2ubuntu2.24.04.2) ...
+2026-11-28T06:08:32.7017620Z Selecting previously unselected package libsvtav1enc1d1:amd64.
+2026-11-28T06:08:32.7105707Z Preparing to unpack .../18-libsvtav1enc1d1_1.7.0+dfsg-2build1_amd64.deb ...
+2026-11-28T06:08:32.7110422Z Unpacking libsvtav1enc1d1:amd64 (1.7.0+dfsg-2build1) ...
+2026-11-28T06:08:32.7494141Z Selecting previously unselected package libsoxr0:amd64.
+2026-11-28T06:08:32.7581802Z Preparing to unpack .../19-libsoxr0_0.1.3-4build3_amd64.deb ...
+2026-11-28T06:08:32.7585640Z Unpacking libsoxr0:amd64 (0.1.3-4build3) ...
+2026-11-28T06:08:32.7715330Z Selecting previously unselected package libswresample4:amd64.
+2026-11-28T06:08:32.7802227Z Preparing to unpack .../20-libswresample4_7%3a6.1.1-3ubuntu5_amd64.deb ...
+2026-11-28T06:08:32.7807189Z Unpacking libswresample4:amd64 (7:6.1.1-3ubuntu5) ...
+2026-11-28T06:08:32.7941103Z Selecting previously unselected package libtheora0:amd64.
+2026-11-28T06:08:32.8027245Z Preparing to unpack .../21-libtheora0_1.1.1+dfsg.1-16.1build3_amd64.deb ...
+2026-11-28T06:08:32.8032021Z Unpacking libtheora0:amd64 (1.1.1+dfsg.1-16.1build3) ...
+2026-11-28T06:08:32.8182190Z Selecting previously unselected package libtwolame0:amd64.
+2026-11-28T06:08:32.8268479Z Preparing to unpack .../22-libtwolame0_0.4.0-2build3_amd64.deb ...
+2026-11-28T06:08:32.8273604Z Unpacking libtwolame0:amd64 (0.4.0-2build3) ...
+2026-11-28T06:08:32.8403276Z Selecting previously unselected package libvorbisenc2:amd64.
+2026-11-28T06:08:32.8489409Z Preparing to unpack .../23-libvorbisenc2_1.3.7-1build3_amd64.deb ...
+2026-11-28T06:08:32.8493526Z Unpacking libvorbisenc2:amd64 (1.3.7-1build3) ...
+2026-11-28T06:08:32.8717195Z Selecting previously unselected package libvpx9:amd64.
+2026-11-28T06:08:32.8816005Z Preparing to unpack .../24-libvpx9_1.14.0-1ubuntu2.3_amd64.deb ...
+2026-11-28T06:08:32.8821937Z Unpacking libvpx9:amd64 (1.14.0-1ubuntu2.3) ...
+2026-11-28T06:08:32.9052450Z Selecting previously unselected package libx264-164:amd64.
+2026-11-28T06:08:32.9139241Z Preparing to unpack .../25-libx264-164_2%3a0.164.3108+git31e19f9-1_amd64.deb ...
+2026-11-28T06:08:32.9143308Z Unpacking libx264-164:amd64 (2:0.164.3108+git31e19f9-1) ...
+2026-11-28T06:08:32.9329121Z Selecting previously unselected package libx265-199:amd64.
+2026-11-28T06:08:32.9416340Z Preparing to unpack .../26-libx265-199_3.5-2build1_amd64.deb ...
+2026-11-28T06:08:32.9420892Z Unpacking libx265-199:amd64 (3.5-2build1) ...
+2026-11-28T06:08:32.9962203Z Selecting previously unselected package libxvidcore4:amd64.
+2026-11-28T06:08:33.0061412Z Preparing to unpack .../27-libxvidcore4_2%3a1.3.7-1build1_amd64.deb ...
+2026-11-28T06:08:33.0065533Z Unpacking libxvidcore4:amd64 (2:1.3.7-1build1) ...
+2026-11-28T06:08:33.0212998Z Selecting previously unselected package libzvbi-common.
+2026-11-28T06:08:33.0309872Z Preparing to unpack .../28-libzvbi-common_0.2.42-2_all.deb ...
+2026-11-28T06:08:33.0314015Z Unpacking libzvbi-common (0.2.42-2) ...
+2026-11-28T06:08:33.0522893Z Selecting previously unselected package libzvbi0t64:amd64.
+2026-11-28T06:08:33.0618032Z Preparing to unpack .../29-libzvbi0t64_0.2.42-2_amd64.deb ...
+2026-11-28T06:08:33.0621841Z Unpacking libzvbi0t64:amd64 (0.2.42-2) ...
+2026-11-28T06:08:33.0771598Z Selecting previously unselected package libavcodec60:amd64.
+2026-11-28T06:08:33.0861618Z Preparing to unpack .../30-libavcodec60_7%3a6.1.1-3ubuntu5_amd64.deb ...
+2026-11-28T06:08:33.0866094Z Unpacking libavcodec60:amd64 (7:6.1.1-3ubuntu5) ...
+2026-11-28T06:08:33.1569045Z Selecting previously unselected package libraw1394-11:amd64.
+2026-11-28T06:08:33.1659125Z Preparing to unpack .../31-libraw1394-11_2.1.2-2build3_amd64.deb ...
+2026-11-28T06:08:33.1664419Z Unpacking libraw1394-11:amd64 (2.1.2-2build3) ...
+2026-11-28T06:08:33.1789582Z Selecting previously unselected package libavc1394-0:amd64.
+2026-11-28T06:08:33.1878825Z Preparing to unpack .../32-libavc1394-0_0.5.4-5build3_amd64.deb ...
+2026-11-28T06:08:33.1883143Z Unpacking libavc1394-0:amd64 (0.5.4-5build3) ...
+2026-11-28T06:08:33.2008973Z Selecting previously unselected package libunibreak5:amd64.
+2026-11-28T06:08:33.2096802Z Preparing to unpack .../33-libunibreak5_5.1-2build1_amd64.deb ...
+2026-11-28T06:08:33.2101017Z Unpacking libunibreak5:amd64 (5.1-2build1) ...
+2026-11-28T06:08:33.2230274Z Selecting previously unselected package libass9:amd64.
+2026-11-28T06:08:33.2316890Z Preparing to unpack .../34-libass9_1%3a0.17.1-2build1_amd64.deb ...
+2026-11-28T06:08:33.2321250Z Unpacking libass9:amd64 (1:0.17.1-2build1) ...
+2026-11-28T06:08:33.2453779Z Selecting previously unselected package libudfread0:amd64.
+2026-11-28T06:08:33.2539914Z Preparing to unpack .../35-libudfread0_1.1.2-1build1_amd64.deb ...
+2026-11-28T06:08:33.2544133Z Unpacking libudfread0:amd64 (1.1.2-1build1) ...
+2026-11-28T06:08:33.2668436Z Selecting previously unselected package libbluray2:amd64.
+2026-11-28T06:08:33.2755111Z Preparing to unpack .../36-libbluray2_1%3a1.3.4-1build1_amd64.deb ...
+2026-11-28T06:08:33.2759248Z Unpacking libbluray2:amd64 (1:1.3.4-1build1) ...
+2026-11-28T06:08:33.2896737Z Selecting previously unselected package libchromaprint1:amd64.
+2026-11-28T06:08:33.2983026Z Preparing to unpack .../37-libchromaprint1_1.5.1-5_amd64.deb ...
+2026-11-28T06:08:33.2987814Z Unpacking libchromaprint1:amd64 (1.5.1-5) ...
+2026-11-28T06:08:33.3114062Z Selecting previously unselected package libgme0:amd64.
+2026-11-28T06:08:33.3200255Z Preparing to unpack .../38-libgme0_0.6.3-7build1_amd64.deb ...
+2026-11-28T06:08:33.3205005Z Unpacking libgme0:amd64 (0.6.3-7build1) ...
+2026-11-28T06:08:33.3341451Z Selecting previously unselected package libmpg123-0t64:amd64.
+2026-11-28T06:08:33.3428130Z Preparing to unpack .../39-libmpg123-0t64_1.32.5-1ubuntu1.1_amd64.deb ...
+2026-11-28T06:08:33.3432904Z Unpacking libmpg123-0t64:amd64 (1.32.5-1ubuntu1.1) ...
+2026-11-28T06:08:33.3573715Z Selecting previously unselected package libopenmpt0t64:amd64.
+2026-11-28T06:08:33.3661800Z Preparing to unpack .../40-libopenmpt0t64_0.7.3-1.1build3_amd64.deb ...
+2026-11-28T06:08:33.3666539Z Unpacking libopenmpt0t64:amd64 (0.7.3-1.1build3) ...
+2026-11-28T06:08:33.3851099Z Selecting previously unselected package libcjson1:amd64.
+2026-11-28T06:08:33.3938684Z Preparing to unpack .../41-libcjson1_1.7.17-1_amd64.deb ...
+2026-11-28T06:08:33.3942541Z Unpacking libcjson1:amd64 (1.7.17-1) ...
+2026-11-28T06:08:33.4069563Z Selecting previously unselected package libmbedcrypto7t64:amd64.
+2026-11-28T06:08:33.4156755Z Preparing to unpack .../42-libmbedcrypto7t64_2.28.8-1_amd64.deb ...
+2026-11-28T06:08:33.4160292Z Unpacking libmbedcrypto7t64:amd64 (2.28.8-1) ...
+2026-11-28T06:08:33.4303581Z Selecting previously unselected package librist4:amd64.
+2026-11-28T06:08:33.4390135Z Preparing to unpack .../43-librist4_0.2.10+dfsg-2_amd64.deb ...
+2026-11-28T06:08:33.4394067Z Unpacking librist4:amd64 (0.2.10+dfsg-2) ...
+2026-11-28T06:08:33.4521837Z Selecting previously unselected package libsrt1.5-gnutls:amd64.
+2026-11-28T06:08:33.4607465Z Preparing to unpack .../44-libsrt1.5-gnutls_1.5.3-1build2_amd64.deb ...
+2026-11-28T06:08:33.4612243Z Unpacking libsrt1.5-gnutls:amd64 (1.5.3-1build2) ...
+2026-11-28T06:08:33.4766406Z Selecting previously unselected package libssh-gcrypt-4:amd64.
+2026-11-28T06:08:33.4853380Z Preparing to unpack .../45-libssh-gcrypt-4_0.10.6-2ubuntu0.6_amd64.deb ...
+2026-11-28T06:08:33.4857993Z Unpacking libssh-gcrypt-4:amd64 (0.10.6-2ubuntu0.6) ...
+2026-11-28T06:08:33.5003597Z Selecting previously unselected package libavformat60:amd64.
+2026-11-28T06:08:33.5089828Z Preparing to unpack .../46-libavformat60_7%3a6.1.1-3ubuntu5_amd64.deb ...
+2026-11-28T06:08:33.5094668Z Unpacking libavformat60:amd64 (7:6.1.1-3ubuntu5) ...
+2026-11-28T06:08:33.5323124Z Selecting previously unselected package libbs2b0:amd64.
+2026-11-28T06:08:33.5409619Z Preparing to unpack .../47-libbs2b0_3.1.0+dfsg-7build1_amd64.deb ...
+2026-11-28T06:08:33.5414772Z Unpacking libbs2b0:amd64 (3.1.0+dfsg-7build1) ...
+2026-11-28T06:08:33.5556096Z Selecting previously unselected package libflite1:amd64.
+2026-11-28T06:08:33.5642070Z Preparing to unpack .../48-libflite1_2.2-6build3_amd64.deb ...
+2026-11-28T06:08:33.5647652Z Unpacking libflite1:amd64 (2.2-6build3) ...
+2026-11-28T06:08:33.6568890Z Selecting previously unselected package libserd-0-0:amd64.
+2026-11-28T06:08:33.6666021Z Preparing to unpack .../49-libserd-0-0_0.32.2-1_amd64.deb ...
+2026-11-28T06:08:33.6670819Z Unpacking libserd-0-0:amd64 (0.32.2-1) ...
+2026-11-28T06:08:33.6802653Z Selecting previously unselected package libzix-0-0:amd64.
+2026-11-28T06:08:33.6897770Z Preparing to unpack .../50-libzix-0-0_0.4.2-2build1_amd64.deb ...
+2026-11-28T06:08:33.6902104Z Unpacking libzix-0-0:amd64 (0.4.2-2build1) ...
+2026-11-28T06:08:33.7029513Z Selecting previously unselected package libsord-0-0:amd64.
+2026-11-28T06:08:33.7119402Z Preparing to unpack .../51-libsord-0-0_0.16.16-2build1_amd64.deb ...
+2026-11-28T06:08:33.7123649Z Unpacking libsord-0-0:amd64 (0.16.16-2build1) ...
+2026-11-28T06:08:33.7248513Z Selecting previously unselected package libsratom-0-0:amd64.
+2026-11-28T06:08:33.7337934Z Preparing to unpack .../52-libsratom-0-0_0.6.16-1build1_amd64.deb ...
+2026-11-28T06:08:33.7341904Z Unpacking libsratom-0-0:amd64 (0.6.16-1build1) ...
+2026-11-28T06:08:33.7471495Z Selecting previously unselected package liblilv-0-0:amd64.
+2026-11-28T06:08:33.7558745Z Preparing to unpack .../53-liblilv-0-0_0.24.22-1build1_amd64.deb ...
+2026-11-28T06:08:33.7563185Z Unpacking liblilv-0-0:amd64 (0.24.22-1build1) ...
+2026-11-28T06:08:33.7692693Z Selecting previously unselected package libmysofa1:amd64.
+2026-11-28T06:08:33.7780325Z Preparing to unpack .../54-libmysofa1_1.3.2+dfsg-2ubuntu2_amd64.deb ...
+2026-11-28T06:08:33.7785363Z Unpacking libmysofa1:amd64 (1.3.2+dfsg-2ubuntu2) ...
+2026-11-28T06:08:33.7949974Z Selecting previously unselected package libplacebo338:amd64.
+2026-11-28T06:08:33.8037983Z Preparing to unpack .../55-libplacebo338_6.338.2-2build1_amd64.deb ...
+2026-11-28T06:08:33.8042755Z Unpacking libplacebo338:amd64 (6.338.2-2build1) ...
+2026-11-28T06:08:33.8491123Z Selecting previously unselected package libblas3:amd64.
+2026-11-28T06:08:33.8586637Z Preparing to unpack .../56-libblas3_3.12.0-3build1.1_amd64.deb ...
+2026-11-28T06:08:33.8607782Z Unpacking libblas3:amd64 (3.12.0-3build1.1) ...
+2026-11-28T06:08:33.8764260Z Selecting previously unselected package liblapack3:amd64.
+2026-11-28T06:08:33.8858763Z Preparing to unpack .../57-liblapack3_3.12.0-3build1.1_amd64.deb ...
+2026-11-28T06:08:33.8880412Z Unpacking liblapack3:amd64 (3.12.0-3build1.1) ...
+2026-11-28T06:08:33.9283538Z Selecting previously unselected package libasyncns0:amd64.
+2026-11-28T06:08:33.9381710Z Preparing to unpack .../58-libasyncns0_0.8-6build4_amd64.deb ...
+2026-11-28T06:08:33.9386029Z Unpacking libasyncns0:amd64 (0.8-6build4) ...
+2026-11-28T06:08:33.9514034Z Selecting previously unselected package libflac12t64:amd64.
+2026-11-28T06:08:33.9610105Z Preparing to unpack .../59-libflac12t64_1.4.3+ds-2.1ubuntu2_amd64.deb ...
+2026-11-28T06:08:33.9615515Z Unpacking libflac12t64:amd64 (1.4.3+ds-2.1ubuntu2) ...
+2026-11-28T06:08:33.9759222Z Selecting previously unselected package libsndfile1:amd64.
+2026-11-28T06:08:33.9850178Z Preparing to unpack .../60-libsndfile1_1.2.2-1ubuntu5.24.04.1_amd64.deb ...
+2026-11-28T06:08:33.9854119Z Unpacking libsndfile1:amd64 (1.2.2-1ubuntu5.24.04.1) ...
+2026-11-28T06:08:34.0008054Z Selecting previously unselected package libpulse0:amd64.
+2026-11-28T06:08:34.0096128Z Preparing to unpack .../61-libpulse0_1%3a16.1+dfsg1-2ubuntu10.1_amd64.deb ...
+2026-11-28T06:08:34.0147337Z Unpacking libpulse0:amd64 (1:16.1+dfsg1-2ubuntu10.1) ...
+2026-11-28T06:08:34.0307669Z Selecting previously unselected package libsphinxbase3t64:amd64.
+2026-11-28T06:08:34.0395713Z Preparing to unpack .../62-libsphinxbase3t64_0.8+5prealpha+1-17build2_amd64.deb ...
+2026-11-28T06:08:34.0399921Z Unpacking libsphinxbase3t64:amd64 (0.8+5prealpha+1-17build2) ...
+2026-11-28T06:08:34.0534280Z Selecting previously unselected package libpocketsphinx3:amd64.
+2026-11-28T06:08:34.0622424Z Preparing to unpack .../63-libpocketsphinx3_0.8.0+real5prealpha+1-15ubuntu5_amd64.deb ...
+2026-11-28T06:08:34.0626112Z Unpacking libpocketsphinx3:amd64 (0.8.0+real5prealpha+1-15ubuntu5) ...
+2026-11-28T06:08:34.0764316Z Selecting previously unselected package libpostproc57:amd64.
+2026-11-28T06:08:34.0854405Z Preparing to unpack .../64-libpostproc57_7%3a6.1.1-3ubuntu5_amd64.deb ...
+2026-11-28T06:08:34.0858760Z Unpacking libpostproc57:amd64 (7:6.1.1-3ubuntu5) ...
+2026-11-28T06:08:34.0991433Z Selecting previously unselected package libsamplerate0:amd64.
+2026-11-28T06:08:34.1080289Z Preparing to unpack .../65-libsamplerate0_0.2.2-4build1_amd64.deb ...
+2026-11-28T06:08:34.1084703Z Unpacking libsamplerate0:amd64 (0.2.2-4build1) ...
+2026-11-28T06:08:34.1260996Z Selecting previously unselected package librubberband2:amd64.
+2026-11-28T06:08:34.1349330Z Preparing to unpack .../66-librubberband2_3.3.0+dfsg-2build1_amd64.deb ...
+2026-11-28T06:08:34.1354484Z Unpacking librubberband2:amd64 (3.3.0+dfsg-2build1) ...
+2026-11-28T06:08:34.1493130Z Selecting previously unselected package libswscale7:amd64.
+2026-11-28T06:08:34.1581488Z Preparing to unpack .../67-libswscale7_7%3a6.1.1-3ubuntu5_amd64.deb ...
+2026-11-28T06:08:34.1586245Z Unpacking libswscale7:amd64 (7:6.1.1-3ubuntu5) ...
+2026-11-28T06:08:34.1732571Z Selecting previously unselected package libvidstab1.1:amd64.
+2026-11-28T06:08:34.1820699Z Preparing to unpack .../68-libvidstab1.1_1.1.0-2build1_amd64.deb ...
+2026-11-28T06:08:34.1825343Z Unpacking libvidstab1.1:amd64 (1.1.0-2build1) ...
+2026-11-28T06:08:34.1955951Z Selecting previously unselected package libzimg2:amd64.
+2026-11-28T06:08:34.2043599Z Preparing to unpack .../69-libzimg2_3.0.5+ds1-1build1_amd64.deb ...
+2026-11-28T06:08:34.2048857Z Unpacking libzimg2:amd64 (3.0.5+ds1-1build1) ...
+2026-11-28T06:08:34.2207930Z Selecting previously unselected package libavfilter9:amd64.
+2026-11-28T06:08:34.2299718Z Preparing to unpack .../70-libavfilter9_7%3a6.1.1-3ubuntu5_amd64.deb ...
+2026-11-28T06:08:34.2303599Z Unpacking libavfilter9:amd64 (7:6.1.1-3ubuntu5) ...
+2026-11-28T06:08:34.2892050Z Selecting previously unselected package libcaca0:amd64.
+2026-11-28T06:08:34.2989922Z Preparing to unpack .../71-libcaca0_0.99.beta20-4ubuntu0.2_amd64.deb ...
+2026-11-28T06:08:34.2994992Z Unpacking libcaca0:amd64 (0.99.beta20-4ubuntu0.2) ...
+2026-11-28T06:08:34.3158419Z Selecting previously unselected package libcdio19t64:amd64.
+2026-11-28T06:08:34.3254629Z Preparing to unpack .../72-libcdio19t64_2.1.0-4.1ubuntu1.2_amd64.deb ...
+2026-11-28T06:08:34.3260144Z Unpacking libcdio19t64:amd64 (2.1.0-4.1ubuntu1.2) ...
+2026-11-28T06:08:34.3396485Z Selecting previously unselected package libcdio-cdda2t64:amd64.
+2026-11-28T06:08:34.3491845Z Preparing to unpack .../73-libcdio-cdda2t64_10.2+2.0.1-1.1build2_amd64.deb ...
+2026-11-28T06:08:34.3496831Z Unpacking libcdio-cdda2t64:amd64 (10.2+2.0.1-1.1build2) ...
+2026-11-28T06:08:34.3627032Z Selecting previously unselected package libcdio-paranoia2t64:amd64.
+2026-11-28T06:08:34.3718631Z Preparing to unpack .../74-libcdio-paranoia2t64_10.2+2.0.1-1.1build2_amd64.deb ...
+2026-11-28T06:08:34.3723052Z Unpacking libcdio-paranoia2t64:amd64 (10.2+2.0.1-1.1build2) ...
+2026-11-28T06:08:34.3850622Z Selecting previously unselected package libdc1394-25:amd64.
+2026-11-28T06:08:34.3941792Z Preparing to unpack .../75-libdc1394-25_2.2.6-4build1_amd64.deb ...
+2026-11-28T06:08:34.3946868Z Unpacking libdc1394-25:amd64 (2.2.6-4build1) ...
+2026-11-28T06:08:34.4082646Z Selecting previously unselected package libiec61883-0:amd64.
+2026-11-28T06:08:34.4173755Z Preparing to unpack .../76-libiec61883-0_1.2.0-6build1_amd64.deb ...
+2026-11-28T06:08:34.4177993Z Unpacking libiec61883-0:amd64 (1.2.0-6build1) ...
+2026-11-28T06:08:34.4303526Z Selecting previously unselected package libjack-jackd2-0:amd64.
+2026-11-28T06:08:34.4394218Z Preparing to unpack .../77-libjack-jackd2-0_1.9.21~dfsg-3ubuntu3_amd64.deb ...
+2026-11-28T06:08:34.4398425Z Unpacking libjack-jackd2-0:amd64 (1.9.21~dfsg-3ubuntu3) ...
+2026-11-28T06:08:34.4564039Z Selecting previously unselected package libopenal-data.
+2026-11-28T06:08:34.4659132Z Preparing to unpack .../78-libopenal-data_1%3a1.23.1-4build1_all.deb ...
+2026-11-28T06:08:34.4663944Z Unpacking libopenal-data (1:1.23.1-4build1) ...
+2026-11-28T06:08:34.4812879Z Selecting previously unselected package libsndio7.0:amd64.
+2026-11-28T06:08:34.4905594Z Preparing to unpack .../79-libsndio7.0_1.9.0-0.3build3_amd64.deb ...
+2026-11-28T06:08:34.4909499Z Unpacking libsndio7.0:amd64 (1.9.0-0.3build3) ...
+2026-11-28T06:08:34.5039270Z Selecting previously unselected package libopenal1:amd64.
+2026-11-28T06:08:34.5130337Z Preparing to unpack .../80-libopenal1_1%3a1.23.1-4build1_amd64.deb ...
+2026-11-28T06:08:34.5134902Z Unpacking libopenal1:amd64 (1:1.23.1-4build1) ...
+2026-11-28T06:08:34.5317109Z Selecting previously unselected package libdecor-0-0:amd64.
+2026-11-28T06:08:34.5409912Z Preparing to unpack .../81-libdecor-0-0_0.2.2-1build2_amd64.deb ...
+2026-11-28T06:08:34.5414337Z Unpacking libdecor-0-0:amd64 (0.2.2-1build2) ...
+2026-11-28T06:08:34.5541588Z Selecting previously unselected package libsdl2-2.0-0:amd64.
+2026-11-28T06:08:34.5631987Z Preparing to unpack .../82-libsdl2-2.0-0_2.30.0+dfsg-1ubuntu3.1_amd64.deb ...
+2026-11-28T06:08:34.5636094Z Unpacking libsdl2-2.0-0:amd64 (2.30.0+dfsg-1ubuntu3.1) ...
+2026-11-28T06:08:34.5890538Z Selecting previously unselected package libxcb-shape0:amd64.
+2026-11-28T06:08:34.5980428Z Preparing to unpack .../83-libxcb-shape0_1.15-1ubuntu2_amd64.deb ...
+2026-11-28T06:08:34.5985475Z Unpacking libxcb-shape0:amd64 (1.15-1ubuntu2) ...
+2026-11-28T06:08:34.6107770Z Selecting previously unselected package libxv1:amd64.
+2026-11-28T06:08:34.6195259Z Preparing to unpack .../84-libxv1_2%3a1.0.11-1.1build1_amd64.deb ...
+2026-11-28T06:08:34.6199362Z Unpacking libxv1:amd64 (2:1.0.11-1.1build1) ...
+2026-11-28T06:08:34.6322880Z Selecting previously unselected package libavdevice60:amd64.
+2026-11-28T06:08:34.6409105Z Preparing to unpack .../85-libavdevice60_7%3a6.1.1-3ubuntu5_amd64.deb ...
+2026-11-28T06:08:34.6414263Z Unpacking libavdevice60:amd64 (7:6.1.1-3ubuntu5) ...
+2026-11-28T06:08:34.6539061Z Selecting previously unselected package ffmpeg.
+2026-11-28T06:08:34.6625658Z Preparing to unpack .../86-ffmpeg_7%3a6.1.1-3ubuntu5_amd64.deb ...
+2026-11-28T06:08:34.6629524Z Unpacking ffmpeg (7:6.1.1-3ubuntu5) ...
+2026-11-28T06:08:34.7256427Z Selecting previously unselected package libgif7:amd64.
+2026-11-28T06:08:34.7345543Z Preparing to unpack .../87-libgif7_5.2.2-1ubuntu1.2_amd64.deb ...
+2026-11-28T06:08:34.7350528Z Unpacking libgif7:amd64 (5.2.2-1ubuntu1.2) ...
+2026-11-28T06:08:34.7472952Z Selecting previously unselected package liblept5:amd64.
+2026-11-28T06:08:34.7560610Z Preparing to unpack .../88-liblept5_1.82.0-3build4_amd64.deb ...
+2026-11-28T06:08:34.7564796Z Unpacking liblept5:amd64 (1.82.0-3build4) ...
+2026-11-28T06:08:34.7880372Z Preparing to unpack .../89-libssh-4_0.10.6-2ubuntu0.6_amd64.deb ...
+2026-11-28T06:08:34.7899679Z Unpacking libssh-4:amd64 (0.10.6-2ubuntu0.6) over (0.10.6-2ubuntu0.5) ...
+2026-11-28T06:08:34.8053544Z Selecting previously unselected package libtesseract5:amd64.
+2026-11-28T06:08:34.8143863Z Preparing to unpack .../90-libtesseract5_5.3.4-1build5_amd64.deb ...
+2026-11-28T06:08:34.8147207Z Unpacking libtesseract5:amd64 (5.3.4-1build5) ...
+2026-11-28T06:08:34.8396102Z Selecting previously unselected package tesseract-ocr-eng.
+2026-11-28T06:08:34.8485261Z Preparing to unpack .../91-tesseract-ocr-eng_1%3a4.1.0-2_all.deb ...
+2026-11-28T06:08:34.8489035Z Unpacking tesseract-ocr-eng (1:4.1.0-2) ...
+2026-11-28T06:08:34.8759662Z Selecting previously unselected package tesseract-ocr-osd.
+2026-11-28T06:08:34.8850315Z Preparing to unpack .../92-tesseract-ocr-osd_1%3a4.1.0-2_all.deb ...
+2026-11-28T06:08:34.8855203Z Unpacking tesseract-ocr-osd (1:4.1.0-2) ...
+2026-11-28T06:08:34.9325723Z Selecting previously unselected package tesseract-ocr.
+2026-11-28T06:08:34.9418009Z Preparing to unpack .../93-tesseract-ocr_5.3.4-1build5_amd64.deb ...
+2026-11-28T06:08:34.9421142Z Unpacking tesseract-ocr (5.3.4-1build5) ...
+2026-11-28T06:08:34.9626982Z Selecting previously unselected package tesseract-ocr-ukr.
+2026-11-28T06:08:34.9718351Z Preparing to unpack .../94-tesseract-ocr-ukr_1%3a4.1.0-2_all.deb ...
+2026-11-28T06:08:34.9721745Z Unpacking tesseract-ocr-ukr (1:4.1.0-2) ...
+2026-11-28T06:08:35.0101015Z Setting up libgme0:amd64 (0.6.3-7build1) ...
+2026-11-28T06:08:35.0111924Z Setting up libchromaprint1:amd64 (1.5.1-5) ...
+2026-11-28T06:08:35.0121154Z Setting up libssh-gcrypt-4:amd64 (0.10.6-2ubuntu0.6) ...
+2026-11-28T06:08:35.0130448Z Setting up libhwy1t64:amd64 (1.0.7-8.1build1) ...
+2026-11-28T06:08:35.0139997Z Setting up libudfread0:amd64 (1.1.2-1build1) ...
+2026-11-28T06:08:35.0148578Z Setting up libraw1394-11:amd64 (2.1.2-2build3) ...
+2026-11-28T06:08:35.0157468Z Setting up libspeex1:amd64 (1.2.1-2ubuntu2.24.04.2) ...
+2026-11-28T06:08:35.0165549Z Setting up libshine3:amd64 (3.1.1-2build1) ...
+2026-11-28T06:08:35.0175164Z Setting up libcaca0:amd64 (0.99.beta20-4ubuntu0.2) ...
+2026-11-28T06:08:35.0184389Z Setting up libvpl2 (2023.3.0-1build1) ...
+2026-11-28T06:08:35.0192071Z Setting up libx264-164:amd64 (2:0.164.3108+git31e19f9-1) ...
+2026-11-28T06:08:35.0201238Z Setting up libtwolame0:amd64 (0.4.0-2build3) ...
+2026-11-28T06:08:35.0209151Z Setting up libmbedcrypto7t64:amd64 (2.28.8-1) ...
+2026-11-28T06:08:35.0218142Z Setting up libgsm1:amd64 (1.0.22-1build1) ...
+2026-11-28T06:08:35.0226410Z Setting up libsoxr0:amd64 (0.1.3-4build3) ...
+2026-11-28T06:08:35.0235280Z Setting up libzix-0-0:amd64 (0.4.2-2build1) ...
+2026-11-28T06:08:35.0243992Z Setting up libcodec2-1.2:amd64 (1.2.0-2build1) ...
+2026-11-28T06:08:35.0253230Z Setting up libmysofa1:amd64 (1.3.2+dfsg-2ubuntu2) ...
+2026-11-28T06:08:35.0262117Z Setting up libxcb-shape0:amd64 (1.15-1ubuntu2) ...
+2026-11-28T06:08:35.0270377Z Setting up libcdio19t64:amd64 (2.1.0-4.1ubuntu1.2) ...
+2026-11-28T06:08:35.0278690Z Setting up tesseract-ocr-eng (1:4.1.0-2) ...
+2026-11-28T06:08:35.0288676Z Setting up libsvtav1enc1d1:amd64 (1.7.0+dfsg-2build1) ...
+2026-11-28T06:08:35.0297334Z Setting up libmpg123-0t64:amd64 (1.32.5-1ubuntu1.1) ...
+2026-11-28T06:08:35.0306984Z Setting up libcjson1:amd64 (1.7.17-1) ...
+2026-11-28T06:08:35.0316304Z Setting up libxvidcore4:amd64 (2:1.3.7-1build1) ...
+2026-11-28T06:08:35.0324761Z Setting up librav1e0:amd64 (0.7.1-2) ...
+2026-11-28T06:08:35.0333046Z Setting up libcdio-cdda2t64:amd64 (10.2+2.0.1-1.1build2) ...
+2026-11-28T06:08:35.0340283Z Setting up librist4:amd64 (0.2.10+dfsg-2) ...
+2026-11-28T06:08:35.0347751Z Setting up librsvg2-2:amd64 (2.58.0+dfsg-1ubuntu0.1) ...
+2026-11-28T06:08:35.0356824Z Setting up libblas3:amd64 (3.12.0-3build1.1) ...
+2026-11-28T06:08:35.0394431Z update-alternatives: using /usr/lib/x86_64-linux-gnu/blas/libblas.so.3 to provide /usr/lib/x86_64-linux-gnu/libblas.so.3 (libblas.so.3-x86_64-linux-gnu) in auto mode
+2026-11-28T06:08:35.0403386Z Setting up libplacebo338:amd64 (6.338.2-2build1) ...
+2026-11-28T06:08:35.0412529Z Setting up libva2:amd64 (2.20.0-2ubuntu0.2) ...
+2026-11-28T06:08:35.0421618Z Setting up libopus0:amd64 (1.4-1build1) ...
+2026-11-28T06:08:35.0430072Z Setting up libcdio-paranoia2t64:amd64 (10.2+2.0.1-1.1build2) ...
+2026-11-28T06:08:35.0439502Z Setting up tesseract-ocr-ukr (1:4.1.0-2) ...
+2026-11-28T06:08:35.0450320Z Setting up libdc1394-25:amd64 (2.2.6-4build1) ...
+2026-11-28T06:08:35.0458106Z Setting up libxv1:amd64 (2:1.0.11-1.1build1) ...
+2026-11-28T06:08:35.0466720Z Setting up libunibreak5:amd64 (5.1-2build1) ...
+2026-11-28T06:08:35.0474417Z Setting up libjxl0.7:amd64 (0.7.0-10.2ubuntu6.1) ...
+2026-11-28T06:08:35.0482487Z Setting up libssh-4:amd64 (0.10.6-2ubuntu0.6) ...
+2026-11-28T06:08:35.0491864Z Setting up libx265-199:amd64 (3.5-2build1) ...
+2026-11-28T06:08:35.0500441Z Setting up libsndio7.0:amd64 (1.9.0-0.3build3) ...
+2026-11-28T06:08:35.0509960Z Setting up libgif7:amd64 (5.2.2-1ubuntu1.2) ...
+2026-11-28T06:08:35.0518442Z Setting up libvidstab1.1:amd64 (1.1.0-2build1) ...
+2026-11-28T06:08:35.0526729Z Setting up libvpx9:amd64 (1.14.0-1ubuntu2.3) ...
+2026-11-28T06:08:35.0536034Z Setting up libsrt1.5-gnutls:amd64 (1.5.3-1build2) ...
+2026-11-28T06:08:35.0544323Z Setting up libflite1:amd64 (2.2-6build3) ...
+2026-11-28T06:08:35.0554424Z Setting up libdav1d7:amd64 (1.4.1-1build1) ...
+2026-11-28T06:08:35.0562174Z Setting up libva-drm2:amd64 (2.20.0-2ubuntu0.2) ...
+2026-11-28T06:08:35.0570000Z Setting up ocl-icd-libopencl1:amd64 (2.3.2-1build1) ...
+2026-11-28T06:08:35.0578287Z Setting up libasyncns0:amd64 (0.8-6build4) ...
+2026-11-28T06:08:35.0588547Z Setting up libvdpau1:amd64 (1.5-2build1) ...
+2026-11-28T06:08:35.0600089Z Setting up libbs2b0:amd64 (3.1.0+dfsg-7build1) ...
+2026-11-28T06:08:35.0609278Z Setting up libtheora0:amd64 (1.1.1+dfsg.1-16.1build3) ...
+2026-11-28T06:08:35.0617910Z Setting up libdecor-0-0:amd64 (0.2.2-1build2) ...
+2026-11-28T06:08:35.0627625Z Setting up libzimg2:amd64 (3.0.5+ds1-1build1) ...
+2026-11-28T06:08:35.0635150Z Setting up libopenal-data (1:1.23.1-4build1) ...
+2026-11-28T06:08:35.0647018Z Setting up libflac12t64:amd64 (1.4.3+ds-2.1ubuntu2) ...
+2026-11-28T06:08:35.0656109Z Setting up tesseract-ocr-osd (1:4.1.0-2) ...
+2026-11-28T06:08:35.0663965Z Setting up libbluray2:amd64 (1:1.3.4-1build1) ...
+2026-11-28T06:08:35.0672510Z Setting up libsamplerate0:amd64 (0.2.2-4build1) ...
+2026-11-28T06:08:35.0679777Z Setting up libva-x11-2:amd64 (2.20.0-2ubuntu0.2) ...
+2026-11-28T06:08:35.0687372Z Setting up libopenmpt0t64:amd64 (0.7.3-1.1build3) ...
+2026-11-28T06:08:35.0695925Z Setting up libzvbi-common (0.2.42-2) ...
+2026-11-28T06:08:35.0703299Z Setting up libmp3lame0:amd64 (3.100-6build1) ...
+2026-11-28T06:08:35.0710851Z Setting up libvorbisenc2:amd64 (1.3.7-1build3) ...
+2026-11-28T06:08:35.0719366Z Setting up libiec61883-0:amd64 (1.2.0-6build1) ...
+2026-11-28T06:08:35.0727037Z Setting up libserd-0-0:amd64 (0.32.2-1) ...
+2026-11-28T06:08:35.0736878Z Setting up libavc1394-0:amd64 (0.5.4-5build3) ...
+2026-11-28T06:08:35.0746941Z Setting up liblapack3:amd64 (3.12.0-3build1.1) ...
+2026-11-28T06:08:35.0783081Z update-alternatives: using /usr/lib/x86_64-linux-gnu/lapack/liblapack.so.3 to provide /usr/lib/x86_64-linux-gnu/liblapack.so.3 (liblapack.so.3-x86_64-linux-gnu) in auto mode
+2026-11-28T06:08:35.0792128Z Setting up libzvbi0t64:amd64 (0.2.42-2) ...
+2026-11-28T06:08:35.0800287Z Setting up libavutil58:amd64 (7:6.1.1-3ubuntu5) ...
+2026-11-28T06:08:35.0808141Z Setting up libopenal1:amd64 (1:1.23.1-4build1) ...
+2026-11-28T06:08:35.0816883Z Setting up liblept5:amd64 (1.82.0-3build4) ...
+2026-11-28T06:08:35.0824433Z Setting up libass9:amd64 (1:0.17.1-2build1) ...
+2026-11-28T06:08:35.0832026Z Setting up libswresample4:amd64 (7:6.1.1-3ubuntu5) ...
+2026-11-28T06:08:35.0841014Z Setting up libavcodec60:amd64 (7:6.1.1-3ubuntu5) ...
+2026-11-28T06:08:35.0848806Z Setting up librubberband2:amd64 (3.3.0+dfsg-2build1) ...
+2026-11-28T06:08:35.0856247Z Setting up libjack-jackd2-0:amd64 (1.9.21~dfsg-3ubuntu3) ...
+2026-11-28T06:08:35.0864826Z Setting up libtesseract5:amd64 (5.3.4-1build5) ...
+2026-11-28T06:08:35.0873737Z Setting up libsord-0-0:amd64 (0.16.16-2build1) ...
+2026-11-28T06:08:35.0882759Z Setting up libpostproc57:amd64 (7:6.1.1-3ubuntu5) ...
+2026-11-28T06:08:35.0891941Z Setting up libsratom-0-0:amd64 (0.6.16-1build1) ...
+2026-11-28T06:08:35.0954328Z Setting up libsndfile1:amd64 (1.2.2-1ubuntu5.24.04.1) ...
+2026-11-28T06:08:35.0961634Z Setting up liblilv-0-0:amd64 (0.24.22-1build1) ...
+2026-11-28T06:08:35.0970295Z Setting up libswscale7:amd64 (7:6.1.1-3ubuntu5) ...
+2026-11-28T06:08:35.0979876Z Setting up libpulse0:amd64 (1:16.1+dfsg1-2ubuntu10.1) ...
+2026-11-28T06:08:35.1025565Z Setting up libavformat60:amd64 (7:6.1.1-3ubuntu5) ...
+2026-11-28T06:08:35.1034335Z Setting up libsphinxbase3t64:amd64 (0.8+5prealpha+1-17build2) ...
+2026-11-28T06:08:35.1042893Z Setting up tesseract-ocr (5.3.4-1build5) ...
+2026-11-28T06:08:35.1051658Z Setting up libsdl2-2.0-0:amd64 (2.30.0+dfsg-1ubuntu3.1) ...
+2026-11-28T06:08:35.1058797Z Setting up libpocketsphinx3:amd64 (0.8.0+real5prealpha+1-15ubuntu5) ...
+2026-11-28T06:08:35.1066187Z Setting up libavfilter9:amd64 (7:6.1.1-3ubuntu5) ...
+2026-11-28T06:08:35.1074792Z Setting up libavdevice60:amd64 (7:6.1.1-3ubuntu5) ...
+2026-11-28T06:08:35.1083655Z Setting up ffmpeg (7:6.1.1-3ubuntu5) ...
+2026-11-28T06:08:35.1096790Z Processing triggers for man-db (2.12.0-4build2) ...
+2026-11-28T06:08:35.1117742Z Not building database; man-db/auto-update is not 'true'.
+2026-11-28T06:08:35.1124125Z Processing triggers for libc-bin (2.39-0ubuntu8.12) ...
+2026-11-28T06:08:40.0413179Z 
+2026-11-28T06:08:40.0414314Z Running kernel seems to be up-to-date.
+2026-11-28T06:08:40.0414657Z 
+2026-11-28T06:08:40.0414919Z Restarting services...
+2026-11-28T06:08:40.0543171Z  systemctl restart packagekit.service php8.3-fpm.service
+2026-11-28T06:08:40.1247211Z 
+2026-11-28T06:08:40.1248655Z No containers need to be restarted.
+2026-11-28T06:08:40.1249132Z 
+2026-11-28T06:08:40.1249334Z No user sessions are running outdated binaries.
+2026-11-28T06:08:40.1263228Z 
+2026-11-28T06:08:40.1263772Z No VM guests are running outdated hypervisor (qemu) binaries on this host.
+2026-11-28T06:08:41.0444251Z ffmpeg version 6.1.1-3ubuntu5 Copyright (c) 2000-2023 the FFmpeg developers
+2026-11-28T06:08:41.0444911Z built with gcc 13 (Ubuntu 13.2.0-23ubuntu3)
+2026-11-28T06:08:41.0448636Z configuration: --prefix=/usr --extra-version=3ubuntu5 --toolchain=hardened --libdir=/usr/lib/x86_64-linux-gnu --incdir=/usr/include/x86_64-linux-gnu --arch=amd64 --enable-gpl --disable-stripping --disable-omx --enable-gnutls --enable-libaom --enable-libass --enable-libbs2b --enable-libcaca --enable-libcdio --enable-libcodec2 --enable-libdav1d --enable-libflite --enable-libfontconfig --enable-libfreetype --enable-libfribidi --enable-libglslang --enable-libgme --enable-libgsm --enable-libharfbuzz --enable-libmp3lame --enable-libmysofa --enable-libopenjpeg --enable-libopenmpt --enable-libopus --enable-librubberband --enable-libshine --enable-libsnappy --enable-libsoxr --enable-libspeex --enable-libtheora --enable-libtwolame --enable-libvidstab --enable-libvorbis --enable-libvpx --enable-libwebp --enable-libx265 --enable-libxml2 --enable-libxvid --enable-libzimg --enable-openal --enable-opencl --enable-opengl --disable-sndio --enable-libvpl --disable-libmfx --enable-libdc1394 --enable-libdrm --enable-libiec61883 --enable-chromaprint --enable-frei0r --enable-ladspa --enable-libbluray --enable-libjack --enable-libpulse --enable-librabbitmq --enable-librist --enable-libsrt --enable-libssh --enable-libsvtav1 --enable-libx264 --enable-libzmq --enable-libzvbi --enable-lv2 --enable-sdl2 --enable-libplacebo --enable-librav1e --enable-pocketsphinx --enable-librsvg --enable-libjxl --enable-shared
+2026-11-28T06:08:41.0452682Z libavutil      58. 29.100 / 58. 29.100
+2026-11-28T06:08:41.0453005Z libavcodec     60. 31.102 / 60. 31.102
+2026-11-28T06:08:41.0453289Z libavformat    60. 16.100 / 60. 16.100
+2026-11-28T06:08:41.0453551Z libavdevice    60.  3.100 / 60.  3.100
+2026-11-28T06:08:41.0453797Z libavfilter     9. 12.100 /  9. 12.100
+2026-11-28T06:08:41.0454031Z libswscale      7.  5.100 /  7.  5.100
+2026-11-28T06:08:41.0454314Z libswresample   4. 12.100 /  4. 12.100
+2026-11-28T06:08:41.0454562Z libpostproc    57.  3.100 / 57.  3.100
+2026-11-28T06:08:41.0785987Z ffprobe version 6.1.1-3ubuntu5 Copyright (c) 2007-2023 the FFmpeg developers
+2026-11-28T06:08:41.0786363Z built with gcc 13 (Ubuntu 13.2.0-23ubuntu3)
+2026-11-28T06:08:41.0789730Z configuration: --prefix=/usr --extra-version=3ubuntu5 --toolchain=hardened --libdir=/usr/lib/x86_64-linux-gnu --incdir=/usr/include/x86_64-linux-gnu --arch=amd64 --enable-gpl --disable-stripping --disable-omx --enable-gnutls --enable-libaom --enable-libass --enable-libbs2b --enable-libcaca --enable-libcdio --enable-libcodec2 --enable-libdav1d --enable-libflite --enable-libfontconfig --enable-libfreetype --enable-libfribidi --enable-libglslang --enable-libgme --enable-libgsm --enable-libharfbuzz --enable-libmp3lame --enable-libmysofa --enable-libopenjpeg --enable-libopenmpt --enable-libopus --enable-librubberband --enable-libshine --enable-libsnappy --enable-libsoxr --enable-libspeex --enable-libtheora --enable-libtwolame --enable-libvidstab --enable-libvorbis --enable-libvpx --enable-libwebp --enable-libx265 --enable-libxml2 --enable-libxvid --enable-libzimg --enable-openal --enable-opencl --enable-opengl --disable-sndio --enable-libvpl --disable-libmfx --enable-libdc1394 --enable-libdrm --enable-libiec61883 --enable-chromaprint --enable-frei0r --enable-ladspa --enable-libbluray --enable-libjack --enable-libpulse --enable-librabbitmq --enable-librist --enable-libsrt --enable-libssh --enable-libsvtav1 --enable-libx264 --enable-libzmq --enable-libzvbi --enable-lv2 --enable-sdl2 --enable-libplacebo --enable-librav1e --enable-pocketsphinx --enable-librsvg --enable-libjxl --enable-shared
+2026-11-28T06:08:41.0793459Z libavutil      58. 29.100 / 58. 29.100
+2026-11-28T06:08:41.0793730Z libavcodec     60. 31.102 / 60. 31.102
+2026-11-28T06:08:41.0793974Z libavformat    60. 16.100 / 60. 16.100
+2026-11-28T06:08:41.0794211Z libavdevice    60.  3.100 / 60.  3.100
+2026-11-28T06:08:41.0794498Z libavfilter     9. 12.100 /  9. 12.100
+2026-11-28T06:08:41.0794744Z libswscale      7.  5.100 /  7.  5.100
+2026-11-28T06:08:41.0794991Z libswresample   4. 12.100 /  4. 12.100
+2026-11-28T06:08:41.0795276Z libpostproc    57.  3.100 / 57.  3.100
+2026-11-28T06:08:41.0846979Z ##[group]Run New-Item -ItemType Directory -Force ci-component-results | Out-Null
+2026-11-28T06:08:41.0847516Z [36;1mNew-Item -ItemType Directory -Force ci-component-results | Out-Null[0m
+2026-11-28T06:08:41.0847925Z [36;1m$sourceCommit = (git rev-parse HEAD).Trim()[0m
+2026-11-28T06:08:41.0848252Z [36;1mif ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }[0m
+2026-11-28T06:08:41.0848799Z [36;1mif ($sourceCommit -cne '2dfc5d32558c722ba05068dfff9ebb19eeae52f7') { throw 'Checkout differs from the exact event head.' }[0m
+2026-11-28T06:08:41.0849355Z [36;1m$sourceCommit | Set-Content ci-component-results/tested-commit.txt[0m
+2026-11-28T06:08:41.0849781Z [36;1m$extras = if ($IsWindows) { '.[test,desktop,sync]' } else { '.[test,sync]' }[0m
+2026-11-28T06:08:41.0850312Z [36;1mpython -m pip install --only-binary=cryptography,cffi $extras 'lxml==6.1.3' 'cffi==2.1.1' 'pycparser==3.12'[0m
+2026-11-28T06:08:41.0850759Z [36;1mif ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }[0m
+2026-11-28T06:08:41.0851158Z [36;1mpython -m pip check[0m
+2026-11-28T06:08:41.0851434Z [36;1mif ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }[0m
+2026-11-28T06:08:41.0878080Z shell: /usr/bin/pwsh -command ". '{0}'"
+2026-11-28T06:08:41.0878365Z env:
+2026-11-28T06:08:41.0878654Z   PYTHONUTF8: 1
+2026-11-28T06:08:41.0878882Z   PYTHONUNBUFFERED: 1
+2026-11-28T06:08:41.0879120Z   HF_HUB_OFFLINE: 1
+2026-11-28T06:08:41.0879372Z   TRANSFORMERS_OFFLINE: 1
+2026-11-28T06:08:41.0879604Z   DO_NOT_TRACK: 1
+2026-11-28T06:08:41.0879880Z   pythonLocation: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T06:08:41.0880257Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.11.18/x64/lib/pkgconfig
+2026-11-28T06:08:41.0880658Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T06:08:41.0881018Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T06:08:41.0881357Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T06:08:41.0881721Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.11.18/x64/lib
+2026-11-28T06:08:41.0882019Z ##[endgroup]
+2026-11-28T06:08:45.5402526Z Processing ./.
+2026-11-28T06:08:45.5415465Z   Installing build dependencies: started
+2026-11-28T06:08:47.0910357Z   Installing build dependencies: finished with status 'done'
+2026-11-28T06:08:47.0915082Z   Getting requirements to build wheel: started
+2026-11-28T06:08:47.6521571Z   Getting requirements to build wheel: finished with status 'done'
+2026-11-28T06:08:47.6528434Z   Preparing metadata (pyproject.toml): started
+2026-11-28T06:08:47.8085798Z   Preparing metadata (pyproject.toml): finished with status 'done'
+2026-11-28T06:08:48.0473157Z Collecting lxml==6.1.3
+2026-11-28T06:08:48.1113478Z   Downloading lxml-6.1.3-cp311-cp311-manylinux_2_26_x86_64.manylinux_2_28_x86_64.whl.metadata (3.3 kB)
+2026-11-28T06:08:48.1841048Z Collecting cffi==2.1.1
+2026-11-28T06:08:48.1967693Z   Downloading cffi-2.1.1-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.whl.metadata (2.5 kB)
+2026-11-28T06:08:48.2099568Z Collecting pycparser==3.12
+2026-11-28T06:08:48.2223786Z   Downloading pycparser-3.12-py3-none-any.whl.metadata (9.7 kB)
+2026-11-28T06:08:48.2418618Z Collecting pypdf==7.1.1 (from universal-research-library==0.2.0.dev2)
+2026-11-28T06:08:48.2539246Z   Downloading pypdf-7.1.1-py3-none-any.whl.metadata (7.6 kB)
+2026-11-28T06:08:48.3158760Z Collecting pypdfium2==5.13.0 (from universal-research-library==0.2.0.dev2)
+2026-11-28T06:08:48.3292475Z   Downloading pypdfium2-5.13.0-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (66 kB)
+2026-11-28T06:08:48.3571158Z Collecting python-docx==1.2.0 (from universal-research-library==0.2.0.dev2)
+2026-11-28T06:08:48.3693950Z   Downloading python_docx-1.2.0-py3-none-any.whl.metadata (2.0 kB)
+2026-11-28T06:08:48.3872176Z Collecting platformdirs==4.10.0 (from universal-research-library==0.2.0.dev2)
+2026-11-28T06:08:48.3994764Z   Downloading platformdirs-4.10.0-py3-none-any.whl.metadata (5.5 kB)
+2026-11-28T06:08:48.4319368Z Collecting filelock==3.29.0 (from universal-research-library==0.2.0.dev2)
+2026-11-28T06:08:48.4465006Z   Downloading filelock-3.29.0-py3-none-any.whl.metadata (2.0 kB)
+2026-11-28T06:08:48.5554867Z Collecting Pillow==13.0.0 (from universal-research-library==0.2.0.dev2)
+2026-11-28T06:08:48.5678802Z   Downloading pillow-13.0.0-cp311-cp311-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl.metadata (9.1 kB)
+2026-11-28T06:08:48.5860951Z Collecting py3langid==0.4.0 (from universal-research-library==0.2.0.dev2)
+2026-11-28T06:08:48.6024668Z   Downloading py3langid-0.4.0-py3-none-any.whl.metadata (7.1 kB)
+2026-11-28T06:08:48.6155556Z Collecting defusedxml==0.7.1 (from universal-research-library==0.2.0.dev2)
+2026-11-28T06:08:48.6279337Z   Downloading defusedxml-0.7.1-py2.py3-none-any.whl.metadata (32 kB)
+2026-11-28T06:08:48.6444747Z Collecting bibtexparser==2.1.0 (from universal-research-library==0.2.0.dev2)
+2026-11-28T06:08:48.6578724Z   Downloading bibtexparser-2.1.0-py3-none-any.whl.metadata (6.3 kB)
+2026-11-28T06:08:48.6744503Z Collecting pylatexenc==2.11 (from universal-research-library==0.2.0.dev2)
+2026-11-28T06:08:48.6896873Z   Downloading pylatexenc-2.11-py2.py3-none-any.whl.metadata (3.9 kB)
+2026-11-28T06:08:48.7102616Z Collecting quickjs-ng==0.18.0.2 (from universal-research-library==0.2.0.dev2)
+2026-11-28T06:08:48.7233171Z   Downloading quickjs_ng-0.18.0.2-cp310-abi3-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (8.1 kB)
+2026-11-28T06:08:48.8356340Z Collecting cryptography==50.0.2 (from universal-research-library==0.2.0.dev2)
+2026-11-28T06:08:48.8487366Z   Downloading cryptography-50.0.2-cp311-abi3-manylinux_2_34_x86_64.whl.metadata (4.4 kB)
+2026-11-28T06:08:48.8705055Z Collecting pytest==9.0.2 (from universal-research-library==0.2.0.dev2)
+2026-11-28T06:08:48.8827026Z   Downloading pytest-9.0.2-py3-none-any.whl.metadata (7.6 kB)
+2026-11-28T06:08:48.8993398Z Collecting beautifulsoup4<5,>=4.12 (from universal-research-library==0.2.0.dev2)
+2026-11-28T06:08:48.9114428Z   Downloading beautifulsoup4-4.15.0-py3-none-any.whl.metadata (3.8 kB)
+2026-11-28T06:08:48.9262735Z Collecting openpyxl<4,>=3.1 (from universal-research-library==0.2.0.dev2)
+2026-11-28T06:08:48.9383242Z   Downloading openpyxl-3.1.5-py2.py3-none-any.whl.metadata (2.5 kB)
+2026-11-28T06:08:48.9446838Z Collecting packaging<27,>=25 (from universal-research-library==0.2.0.dev2)
+2026-11-28T06:08:48.9456898Z   Using cached packaging-26.4-py3-none-any.whl.metadata (3.5 kB)
+2026-11-28T06:08:48.9920290Z Collecting huggingface-hub==1.16.1 (from universal-research-library==0.2.0.dev2)
+2026-11-28T06:08:49.0041798Z   Downloading huggingface_hub-1.16.1-py3-none-any.whl.metadata (14 kB)
+2026-11-28T06:08:49.0776828Z Collecting reportlab==4.4.9 (from universal-research-library==0.2.0.dev2)
+2026-11-28T06:08:49.0914732Z   Downloading reportlab-4.4.9-py3-none-any.whl.metadata (1.7 kB)
+2026-11-28T06:08:49.1073081Z Collecting pytesseract==0.3.13 (from universal-research-library==0.2.0.dev2)
+2026-11-28T06:08:49.1196710Z   Downloading pytesseract-0.3.13-py3-none-any.whl.metadata (11 kB)
+2026-11-28T06:08:49.4226456Z Collecting rapidfuzz==3.14.6 (from universal-research-library==0.2.0.dev2)
+2026-11-28T06:08:49.4351963Z   Downloading rapidfuzz-3.14.6-cp311-cp311-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl.metadata (12 kB)
+2026-11-28T06:08:49.4507155Z Collecting nltk==3.9.2 (from universal-research-library==0.2.0.dev2)
+2026-11-28T06:08:49.4628157Z   Downloading nltk-3.9.2-py3-none-any.whl.metadata (3.2 kB)
+2026-11-28T06:08:49.5056100Z Collecting zstandard==0.25.0 (from universal-research-library==0.2.0.dev2)
+2026-11-28T06:08:49.5179432Z   Downloading zstandard-0.25.0-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.whl.metadata (3.3 kB)
+2026-11-28T06:08:49.5392719Z Collecting fsspec>=2023.5.0 (from huggingface-hub==1.16.1->universal-research-library==0.2.0.dev2)
+2026-11-28T06:08:49.5513686Z   Downloading fsspec-2026.9.0-py3-none-any.whl.metadata (10 kB)
+2026-11-28T06:08:49.5878101Z Collecting hf-xet<2.0.0,>=1.4.3 (from huggingface-hub==1.16.1->universal-research-library==0.2.0.dev2)
+2026-11-28T06:08:49.5999843Z   Downloading hf_xet-1.8.0-cp38-abi3-manylinux2014_x86_64.manylinux_2_17_x86_64.whl.metadata (4.9 kB)
+2026-11-28T06:08:49.6155374Z Collecting httpx<1,>=0.23.0 (from huggingface-hub==1.16.1->universal-research-library==0.2.0.dev2)
+2026-11-28T06:08:49.6279503Z   Downloading httpx-0.29.0-py3-none-any.whl.metadata (7.1 kB)
+2026-11-28T06:08:49.6573902Z Collecting pyyaml>=5.1 (from huggingface-hub==1.16.1->universal-research-library==0.2.0.dev2)
+2026-11-28T06:08:49.6694468Z   Downloading pyyaml-6.0.4-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (2.3 kB)
+2026-11-28T06:08:49.6906254Z Collecting tqdm>=4.42.1 (from huggingface-hub==1.16.1->universal-research-library==0.2.0.dev2)
+2026-11-28T06:08:49.7026873Z   Downloading tqdm-4.70.1-py3-none-any.whl.metadata (57 kB)
+2026-11-28T06:08:49.7242685Z Collecting typer>=0.20.0 (from huggingface-hub==1.16.1->universal-research-library==0.2.0.dev2)
+2026-11-28T06:08:49.7364990Z   Downloading typer-0.29.3-py3-none-any.whl.metadata (16 kB)
+2026-11-28T06:08:49.7533603Z Collecting typing-extensions>=4.1.0 (from huggingface-hub==1.16.1->universal-research-library==0.2.0.dev2)
+2026-11-28T06:08:49.7663524Z   Downloading typing_extensions-4.16.0-py3-none-any.whl.metadata (3.3 kB)
+2026-11-28T06:08:49.7840939Z Collecting click (from nltk==3.9.2->universal-research-library==0.2.0.dev2)
+2026-11-28T06:08:49.7964313Z   Downloading click-8.5.1-py3-none-any.whl.metadata (2.6 kB)
+2026-11-28T06:08:49.8134024Z Collecting joblib (from nltk==3.9.2->universal-research-library==0.2.0.dev2)
+2026-11-28T06:08:49.8253020Z   Downloading joblib-1.6.0-py3-none-any.whl.metadata (6.5 kB)
+2026-11-28T06:08:50.1311849Z Collecting regex>=2021.8.3 (from nltk==3.9.2->universal-research-library==0.2.0.dev2)
+2026-11-28T06:08:50.1439682Z   Downloading regex-2026.11.25-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (40 kB)
+2026-11-28T06:08:50.2637941Z Collecting numpy>=2.0.0 (from py3langid==0.4.0->universal-research-library==0.2.0.dev2)
+2026-11-28T06:08:50.2761922Z   Downloading numpy-2.4.6-cp311-cp311-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl.metadata (6.6 kB)
+2026-11-28T06:08:50.2923109Z Collecting iniconfig>=1.0.1 (from pytest==9.0.2->universal-research-library==0.2.0.dev2)
+2026-11-28T06:08:50.3048188Z   Downloading iniconfig-2.3.1-py3-none-any.whl.metadata (2.8 kB)
+2026-11-28T06:08:50.3200754Z Collecting pluggy<2,>=1.5 (from pytest==9.0.2->universal-research-library==0.2.0.dev2)
+2026-11-28T06:08:50.3324130Z   Downloading pluggy-1.7.0-py3-none-any.whl.metadata (5.0 kB)
+2026-11-28T06:08:50.3496677Z Collecting pygments>=2.7.2 (from pytest==9.0.2->universal-research-library==0.2.0.dev2)
+2026-11-28T06:08:50.3617889Z   Downloading pygments-2.21.0-py3-none-any.whl.metadata (2.5 kB)
+2026-11-28T06:08:50.4471844Z Collecting charset-normalizer (from reportlab==4.4.9->universal-research-library==0.2.0.dev2)
+2026-11-28T06:08:50.4598529Z   Downloading charset_normalizer-3.5.3-cp311-cp311-manylinux1_x86_64.manylinux_2_28_x86_64.manylinux_2_5_x86_64.whl.metadata (43 kB)
+2026-11-28T06:08:50.4799825Z Collecting soupsieve>=1.6.1 (from beautifulsoup4<5,>=4.12->universal-research-library==0.2.0.dev2)
+2026-11-28T06:08:50.4921528Z   Downloading soupsieve-4.1.3-py3-none-any.whl.metadata (4.4 kB)
+2026-11-28T06:08:50.5103120Z Collecting anyio (from httpx<1,>=0.23.0->huggingface-hub==1.16.1->universal-research-library==0.2.0.dev2)
+2026-11-28T06:08:50.5228451Z   Downloading anyio-4.16.0-py3-none-any.whl.metadata (4.7 kB)
+2026-11-28T06:08:50.5401432Z Collecting certifi (from httpx<1,>=0.23.0->huggingface-hub==1.16.1->universal-research-library==0.2.0.dev2)
+2026-11-28T06:08:50.5523119Z   Downloading certifi-2026.11.20-py3-none-any.whl.metadata (2.5 kB)
+2026-11-28T06:08:50.5683344Z Collecting httpcore==1.* (from httpx<1,>=0.23.0->huggingface-hub==1.16.1->universal-research-library==0.2.0.dev2)
+2026-11-28T06:08:50.5803654Z   Downloading httpcore-1.0.9-py3-none-any.whl.metadata (21 kB)
+2026-11-28T06:08:50.5979727Z Collecting idna (from httpx<1,>=0.23.0->huggingface-hub==1.16.1->universal-research-library==0.2.0.dev2)
+2026-11-28T06:08:50.6102040Z   Downloading idna-3.20-py3-none-any.whl.metadata (7.2 kB)
+2026-11-28T06:08:50.6259373Z Collecting h11>=0.16 (from httpcore==1.*->httpx<1,>=0.23.0->huggingface-hub==1.16.1->universal-research-library==0.2.0.dev2)
+2026-11-28T06:08:50.6388973Z   Downloading h11-0.16.0-py3-none-any.whl.metadata (8.3 kB)
+2026-11-28T06:08:50.6523008Z Collecting et-xmlfile (from openpyxl<4,>=3.1->universal-research-library==0.2.0.dev2)
+2026-11-28T06:08:50.6644258Z   Downloading et_xmlfile-2.0.0-py3-none-any.whl.metadata (2.7 kB)
+2026-11-28T06:08:50.7649653Z Collecting pydantic>=2.5.3 (from typer>=0.20.0->huggingface-hub==1.16.1->universal-research-library==0.2.0.dev2)
+2026-11-28T06:08:50.7777259Z   Downloading pydantic-2.14.4-py3-none-any.whl.metadata (143 kB)
+2026-11-28T06:08:50.8055338Z Collecting shellingham>=1.3.0 (from typer>=0.20.0->huggingface-hub==1.16.1->universal-research-library==0.2.0.dev2)
+2026-11-28T06:08:50.8179904Z   Downloading shellingham-1.5.4-py2.py3-none-any.whl.metadata (3.5 kB)
+2026-11-28T06:08:50.8406774Z Collecting rich>=13.8.0 (from typer>=0.20.0->huggingface-hub==1.16.1->universal-research-library==0.2.0.dev2)
+2026-11-28T06:08:50.8529022Z   Downloading rich-15.0.0-py3-none-any.whl.metadata (18 kB)
+2026-11-28T06:08:50.8667896Z Collecting annotated-doc>=0.0.2 (from typer>=0.20.0->huggingface-hub==1.16.1->universal-research-library==0.2.0.dev2)
+2026-11-28T06:08:50.8791868Z   Downloading annotated_doc-0.0.7-py3-none-any.whl.metadata (6.4 kB)
+2026-11-28T06:08:50.8926752Z Collecting annotated-types>=0.6.0 (from pydantic>=2.5.3->typer>=0.20.0->huggingface-hub==1.16.1->universal-research-library==0.2.0.dev2)
+2026-11-28T06:08:50.9048584Z   Downloading annotated_types-0.8.0-py3-none-any.whl.metadata (15 kB)
+2026-11-28T06:08:51.3334445Z Collecting pydantic-core==2.50.5 (from pydantic>=2.5.3->typer>=0.20.0->huggingface-hub==1.16.1->universal-research-library==0.2.0.dev2)
+2026-11-28T06:08:51.3462130Z   Downloading pydantic_core-2.50.5-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.whl.metadata (6.6 kB)
+2026-11-28T06:08:51.3604222Z Collecting typing-inspection>=0.4.4 (from pydantic>=2.5.3->typer>=0.20.0->huggingface-hub==1.16.1->universal-research-library==0.2.0.dev2)
+2026-11-28T06:08:51.3727154Z   Downloading typing_inspection-0.4.5-py3-none-any.whl.metadata (2.6 kB)
+2026-11-28T06:08:51.3883473Z Collecting markdown-it-py>=2.2.0 (from rich>=13.8.0->typer>=0.20.0->huggingface-hub==1.16.1->universal-research-library==0.2.0.dev2)
+2026-11-28T06:08:51.4007888Z   Downloading markdown_it_py-4.3.0-py3-none-any.whl.metadata (7.9 kB)
+2026-11-28T06:08:51.4160803Z Collecting mdurl~=0.1 (from markdown-it-py>=2.2.0->rich>=13.8.0->typer>=0.20.0->huggingface-hub==1.16.1->universal-research-library==0.2.0.dev2)
+2026-11-28T06:08:51.4283693Z   Downloading mdurl-0.1.2-py3-none-any.whl.metadata (1.6 kB)
+2026-11-28T06:08:51.4467373Z Collecting cloudpickle>=3.0 (from joblib->nltk==3.9.2->universal-research-library==0.2.0.dev2)
+2026-11-28T06:08:51.4589352Z   Downloading cloudpickle-3.1.3-py3-none-any.whl.metadata (7.1 kB)
+2026-11-28T06:08:51.4751531Z Downloading pillow-13.0.0-cp311-cp311-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl (7.1 MB)
+2026-11-28T06:08:51.5305717Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 7.1/7.1 MB 137.8 MB/s  0:00:00
+2026-11-28T06:08:51.5454330Z Downloading lxml-6.1.3-cp311-cp311-manylinux_2_26_x86_64.manylinux_2_28_x86_64.whl (5.2 MB)
+2026-11-28T06:08:51.5699326Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 5.2/5.2 MB 218.1 MB/s  0:00:00
+2026-11-28T06:08:51.5821671Z Downloading cffi-2.1.1-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.whl (217 kB)
+2026-11-28T06:08:51.5963499Z Downloading pycparser-3.12-py3-none-any.whl (62 kB)
+2026-11-28T06:08:51.6106330Z Downloading bibtexparser-2.1.0-py3-none-any.whl (50 kB)
+2026-11-28T06:08:51.6244023Z Downloading pylatexenc-2.11-py2.py3-none-any.whl (137 kB)
+2026-11-28T06:08:51.6383232Z Downloading cryptography-50.0.2-cp311-abi3-manylinux_2_34_x86_64.whl (4.8 MB)
+2026-11-28T06:08:51.6618561Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 4.8/4.8 MB 206.4 MB/s  0:00:00
+2026-11-28T06:08:51.6739039Z Downloading defusedxml-0.7.1-py2.py3-none-any.whl (25 kB)
+2026-11-28T06:08:51.6874878Z Downloading filelock-3.29.0-py3-none-any.whl (39 kB)
+2026-11-28T06:08:51.7012987Z Downloading huggingface_hub-1.16.1-py3-none-any.whl (668 kB)
+2026-11-28T06:08:51.7072657Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 668.2/668.2 kB 120.1 MB/s  0:00:00
+2026-11-28T06:08:51.7271526Z Downloading nltk-3.9.2-py3-none-any.whl (1.5 MB)
+2026-11-28T06:08:51.7339115Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.5/1.5 MB 240.5 MB/s  0:00:00
+2026-11-28T06:08:51.7459150Z Downloading platformdirs-4.10.0-py3-none-any.whl (22 kB)
+2026-11-28T06:08:51.7622050Z Downloading py3langid-0.4.0-py3-none-any.whl (4.6 MB)
+2026-11-28T06:08:51.7792620Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 4.6/4.6 MB 275.2 MB/s  0:00:00
+2026-11-28T06:08:51.7917107Z Downloading pypdf-7.1.1-py3-none-any.whl (421 kB)
+2026-11-28T06:08:51.8071667Z Downloading pypdfium2-5.13.0-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (3.7 MB)
+2026-11-28T06:08:51.8291141Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 3.7/3.7 MB 176.9 MB/s  0:00:00
+2026-11-28T06:08:51.8414348Z Downloading pytesseract-0.3.13-py3-none-any.whl (14 kB)
+2026-11-28T06:08:51.8548612Z Downloading pytest-9.0.2-py3-none-any.whl (374 kB)
+2026-11-28T06:08:51.8699191Z Downloading python_docx-1.2.0-py3-none-any.whl (252 kB)
+2026-11-28T06:08:51.8856842Z Downloading quickjs_ng-0.18.0.2-cp310-abi3-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (2.5 MB)
+2026-11-28T06:08:51.9057820Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 2.5/2.5 MB 123.9 MB/s  0:00:00
+2026-11-28T06:08:51.9224385Z Downloading rapidfuzz-3.14.6-cp311-cp311-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl (3.2 MB)
+2026-11-28T06:08:51.9356615Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 3.2/3.2 MB 254.7 MB/s  0:00:00
+2026-11-28T06:08:51.9502928Z Downloading reportlab-4.4.9-py3-none-any.whl (2.0 MB)
+2026-11-28T06:08:51.9687759Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 2.0/2.0 MB 102.0 MB/s  0:00:00
+2026-11-28T06:08:51.9808923Z Downloading zstandard-0.25.0-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.whl (5.6 MB)
+2026-11-28T06:08:52.0134387Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 5.6/5.6 MB 175.6 MB/s  0:00:00
+2026-11-28T06:08:52.0259387Z Downloading beautifulsoup4-4.15.0-py3-none-any.whl (109 kB)
+2026-11-28T06:08:52.0396951Z Downloading hf_xet-1.8.0-cp38-abi3-manylinux2014_x86_64.manylinux_2_17_x86_64.whl (4.3 MB)
+2026-11-28T06:08:52.0513810Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 4.3/4.3 MB 405.4 MB/s  0:00:00
+2026-11-28T06:08:52.0632936Z Downloading httpx-0.29.0-py3-none-any.whl (73 kB)
+2026-11-28T06:08:52.0768957Z Downloading httpcore-1.0.9-py3-none-any.whl (78 kB)
+2026-11-28T06:08:52.0900734Z Downloading openpyxl-3.1.5-py2.py3-none-any.whl (250 kB)
+2026-11-28T06:08:52.0925734Z Using cached packaging-26.4-py3-none-any.whl (140 kB)
+2026-11-28T06:08:52.1050131Z Downloading pluggy-1.7.0-py3-none-any.whl (27 kB)
+2026-11-28T06:08:52.1187616Z Downloading fsspec-2026.9.0-py3-none-any.whl (221 kB)
+2026-11-28T06:08:52.1324537Z Downloading h11-0.16.0-py3-none-any.whl (37 kB)
+2026-11-28T06:08:52.1453178Z Downloading iniconfig-2.3.1-py3-none-any.whl (7.6 kB)
+2026-11-28T06:08:52.1595416Z Downloading numpy-2.4.6-cp311-cp311-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl (16.9 MB)
+2026-11-28T06:08:52.2054164Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 16.9/16.9 MB 378.1 MB/s  0:00:00
+2026-11-28T06:08:52.2175426Z Downloading pygments-2.21.0-py3-none-any.whl (1.3 MB)
+2026-11-28T06:08:52.2224640Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.3/1.3 MB 303.0 MB/s  0:00:00
+2026-11-28T06:08:52.2343498Z Downloading pyyaml-6.0.4-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (828 kB)
+2026-11-28T06:08:52.2379995Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 828.0/828.0 kB 255.8 MB/s  0:00:00
+2026-11-28T06:08:52.2499036Z Downloading regex-2026.11.25-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (812 kB)
+2026-11-28T06:08:52.2548400Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 813.0/813.0 kB 194.5 MB/s  0:00:00
+2026-11-28T06:08:52.2669446Z Downloading soupsieve-4.1.3-py3-none-any.whl (59 kB)
+2026-11-28T06:08:52.2807686Z Downloading tqdm-4.70.1-py3-none-any.whl (80 kB)
+2026-11-28T06:08:52.2944181Z Downloading typer-0.29.3-py3-none-any.whl (121 kB)
+2026-11-28T06:08:52.3081266Z Downloading annotated_doc-0.0.7-py3-none-any.whl (5.3 kB)
+2026-11-28T06:08:52.3218584Z Downloading pydantic-2.14.4-py3-none-any.whl (494 kB)
+2026-11-28T06:08:52.3360430Z Downloading pydantic_core-2.50.5-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.whl (2.3 MB)
+2026-11-28T06:08:52.3430003Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 2.3/2.3 MB 370.2 MB/s  0:00:00
+2026-11-28T06:08:52.3552499Z Downloading annotated_types-0.8.0-py3-none-any.whl (13 kB)
+2026-11-28T06:08:52.3687601Z Downloading rich-15.0.0-py3-none-any.whl (310 kB)
+2026-11-28T06:08:52.3827543Z Downloading markdown_it_py-4.3.0-py3-none-any.whl (96 kB)
+2026-11-28T06:08:52.3960785Z Downloading mdurl-0.1.2-py3-none-any.whl (10.0 kB)
+2026-11-28T06:08:52.4090771Z Downloading shellingham-1.5.4-py2.py3-none-any.whl (9.8 kB)
+2026-11-28T06:08:52.4224809Z Downloading typing_extensions-4.16.0-py3-none-any.whl (45 kB)
+2026-11-28T06:08:52.4356913Z Downloading typing_inspection-0.4.5-py3-none-any.whl (14 kB)
+2026-11-28T06:08:52.4491833Z Downloading anyio-4.16.0-py3-none-any.whl (134 kB)
+2026-11-28T06:08:52.4627897Z Downloading idna-3.20-py3-none-any.whl (69 kB)
+2026-11-28T06:08:52.4764669Z Downloading certifi-2026.11.20-py3-none-any.whl (127 kB)
+2026-11-28T06:08:52.4897335Z Downloading charset_normalizer-3.5.3-cp311-cp311-manylinux1_x86_64.manylinux_2_28_x86_64.manylinux_2_5_x86_64.whl (263 kB)
+2026-11-28T06:08:52.5037818Z Downloading click-8.5.1-py3-none-any.whl (126 kB)
+2026-11-28T06:08:52.5173485Z Downloading et_xmlfile-2.0.0-py3-none-any.whl (18 kB)
+2026-11-28T06:08:52.5304225Z Downloading joblib-1.6.0-py3-none-any.whl (306 kB)
+2026-11-28T06:08:52.5442883Z Downloading cloudpickle-3.1.3-py3-none-any.whl (22 kB)
+2026-11-28T06:08:52.6855046Z Building wheels for collected packages: universal-research-library
+2026-11-28T06:08:52.6859941Z   Building wheel for universal-research-library (pyproject.toml): started
+2026-11-28T06:08:53.1580026Z   Building wheel for universal-research-library (pyproject.toml): finished with status 'done'
+2026-11-28T06:08:53.1588156Z   /tmp/pip-build-env-wkwv20eh/overlay/lib/python3.11/site-packages/setuptools/command/build_py.py:215: BuildBackendWarning: Package 'carr_library.academic_integration.locales' is absent from the `packages` configuration.
+2026-11-28T06:08:53.1589198Z   !!
+2026-11-28T06:08:53.1589462Z   
+2026-11-28T06:08:53.1589852Z           ********************************************************************************
+2026-11-28T06:08:53.1590258Z           ############################
+2026-11-28T06:08:53.1590598Z           # Package would be ignored #
+2026-11-28T06:08:53.1590913Z           ############################
+2026-11-28T06:08:53.1591667Z           Python recognizes 'carr_library.academic_integration.locales' as an importable package[^1],
+2026-11-28T06:08:53.1592567Z           but it is absent from setuptools' `packages` configuration.
+2026-11-28T06:08:53.1592866Z   
+2026-11-28T06:08:53.1593202Z           This leads to an ambiguous overall configuration. If you want to distribute this
+2026-11-28T06:08:53.1593682Z           package, please make sure that 'carr_library.academic_integration.locales' is explicitly added
+2026-11-28T06:08:53.1594082Z           to the `packages` configuration field.
+2026-11-28T06:08:53.1594369Z   
+2026-11-28T06:08:53.1594707Z           Alternatively, you can also rely on setuptools' discovery methods
+2026-11-28T06:08:53.1595143Z           (for example by using `find_namespace_packages(...)`/`find_namespace:`
+2026-11-28T06:08:53.1595511Z           instead of `find_packages(...)`/`find:`).
+2026-11-28T06:08:53.1595799Z   
+2026-11-28T06:08:53.1596085Z           You can read more about "package discovery" on setuptools documentation page:
+2026-11-28T06:08:53.1596398Z   
+2026-11-28T06:08:53.1596722Z           - https://setuptools.pypa.io/en/latest/userguide/package_discovery.html
+2026-11-28T06:08:53.1597140Z   
+2026-11-28T06:08:53.1597464Z           If you don't want 'carr_library.academic_integration.locales' to be distributed and are
+2026-11-28T06:08:53.1597923Z           already explicitly excluding 'carr_library.academic_integration.locales' via
+2026-11-28T06:08:53.1598496Z           `find_namespace_packages(...)/find_namespace` or `find_packages(...)/find`,
+2026-11-28T06:08:53.1598955Z           you can try to use `exclude_package_data`, or `include-package-data=False` in
+2026-11-28T06:08:53.1599363Z           combination with a more fine grained `package-data` configuration.
+2026-11-28T06:08:53.1599699Z   
+2026-11-28T06:08:53.1599981Z           You can read more about "package data files" on setuptools documentation page:
+2026-11-28T06:08:53.1600393Z   
+2026-11-28T06:08:53.1600699Z           - https://setuptools.pypa.io/en/latest/userguide/datafiles.html
+2026-11-28T06:08:53.1601008Z   
+2026-11-28T06:08:53.1601251Z   
+2026-11-28T06:08:53.1601516Z           [^1]: For Python, any directory (with suitable naming) can be imported,
+2026-11-28T06:08:53.1601950Z                 even if it does not contain any `.py` files.
+2026-11-28T06:08:53.1602476Z                 On the other hand, currently there is no concept of package data
+2026-11-28T06:08:53.1602848Z                 directory, all directories are treated like packages.
+2026-11-28T06:08:53.1603211Z           ********************************************************************************
+2026-11-28T06:08:53.1603491Z   
+2026-11-28T06:08:53.1603675Z   !!
+2026-11-28T06:08:53.1603941Z     check.warn(importable)
+2026-11-28T06:08:53.1604638Z   /tmp/pip-build-env-wkwv20eh/overlay/lib/python3.11/site-packages/setuptools/command/build_py.py:215: BuildBackendWarning: Package 'carr_library.academic_integration.styles' is absent from the `packages` configuration.
+2026-11-28T06:08:53.1605361Z   !!
+2026-11-28T06:08:53.1605623Z   
+2026-11-28T06:08:53.1605865Z           ********************************************************************************
+2026-11-28T06:08:53.1606154Z           ############################
+2026-11-28T06:08:53.1606394Z           # Package would be ignored #
+2026-11-28T06:08:53.1606783Z           ############################
+2026-11-28T06:08:53.1607162Z           Python recognizes 'carr_library.academic_integration.styles' as an importable package[^1],
+2026-11-28T06:08:53.1607612Z           but it is absent from setuptools' `packages` configuration.
+2026-11-28T06:08:53.1607919Z   
+2026-11-28T06:08:53.1608233Z           This leads to an ambiguous overall configuration. If you want to distribute this
+2026-11-28T06:08:53.1608741Z           package, please make sure that 'carr_library.academic_integration.styles' is explicitly added
+2026-11-28T06:08:53.1609196Z           to the `packages` configuration field.
+2026-11-28T06:08:53.1609457Z   
+2026-11-28T06:08:53.1609820Z           Alternatively, you can also rely on setuptools' discovery methods
+2026-11-28T06:08:53.1610242Z           (for example by using `find_namespace_packages(...)`/`find_namespace:`
+2026-11-28T06:08:53.1610585Z           instead of `find_packages(...)`/`find:`).
+2026-11-28T06:08:53.1610839Z   
+2026-11-28T06:08:53.1611147Z           You can read more about "package discovery" on setuptools documentation page:
+2026-11-28T06:08:53.1611473Z   
+2026-11-28T06:08:53.1611776Z           - https://setuptools.pypa.io/en/latest/userguide/package_discovery.html
+2026-11-28T06:08:53.1612111Z   
+2026-11-28T06:08:53.1612603Z           If you don't want 'carr_library.academic_integration.styles' to be distributed and are
+2026-11-28T06:08:53.1613044Z           already explicitly excluding 'carr_library.academic_integration.styles' via
+2026-11-28T06:08:53.1613486Z           `find_namespace_packages(...)/find_namespace` or `find_packages(...)/find`,
+2026-11-28T06:08:53.1613913Z           you can try to use `exclude_package_data`, or `include-package-data=False` in
+2026-11-28T06:08:53.1614355Z           combination with a more fine grained `package-data` configuration.
+2026-11-28T06:08:53.1614722Z   
+2026-11-28T06:08:53.1614988Z           You can read more about "package data files" on setuptools documentation page:
+2026-11-28T06:08:53.1615336Z   
+2026-11-28T06:08:53.1615623Z           - https://setuptools.pypa.io/en/latest/userguide/datafiles.html
+2026-11-28T06:08:53.1615935Z   
+2026-11-28T06:08:53.1616124Z   
+2026-11-28T06:08:53.1616385Z           [^1]: For Python, any directory (with suitable naming) can be imported,
+2026-11-28T06:08:53.1616773Z                 even if it does not contain any `.py` files.
+2026-11-28T06:08:53.1617135Z                 On the other hand, currently there is no concept of package data
+2026-11-28T06:08:53.1617487Z                 directory, all directories are treated like packages.
+2026-11-28T06:08:53.1617821Z           ********************************************************************************
+2026-11-28T06:08:53.1618090Z   
+2026-11-28T06:08:53.1618283Z   !!
+2026-11-28T06:08:53.1618505Z     check.warn(importable)
+2026-11-28T06:08:53.1619138Z   /tmp/pip-build-env-wkwv20eh/overlay/lib/python3.11/site-packages/setuptools/command/build_py.py:215: BuildBackendWarning: Package 'carr_library.academic_integration.vendor' is absent from the `packages` configuration.
+2026-11-28T06:08:53.1619871Z   !!
+2026-11-28T06:08:53.1620057Z   
+2026-11-28T06:08:53.1620297Z           ********************************************************************************
+2026-11-28T06:08:53.1620603Z           ############################
+2026-11-28T06:08:53.1620844Z           # Package would be ignored #
+2026-11-28T06:08:53.1621113Z           ############################
+2026-11-28T06:08:53.1621477Z           Python recognizes 'carr_library.academic_integration.vendor' as an importable package[^1],
+2026-11-28T06:08:53.1621901Z           but it is absent from setuptools' `packages` configuration.
+2026-11-28T06:08:53.1622239Z   
+2026-11-28T06:08:53.1622685Z           This leads to an ambiguous overall configuration. If you want to distribute this
+2026-11-28T06:08:53.1623190Z           package, please make sure that 'carr_library.academic_integration.vendor' is explicitly added
+2026-11-28T06:08:53.1623582Z           to the `packages` configuration field.
+2026-11-28T06:08:53.1623848Z   
+2026-11-28T06:08:53.1624133Z           Alternatively, you can also rely on setuptools' discovery methods
+2026-11-28T06:08:53.1624515Z           (for example by using `find_namespace_packages(...)`/`find_namespace:`
+2026-11-28T06:08:53.1624858Z           instead of `find_packages(...)`/`find:`).
+2026-11-28T06:08:53.1625135Z   
+2026-11-28T06:08:53.1625420Z           You can read more about "package discovery" on setuptools documentation page:
+2026-11-28T06:08:53.1625762Z   
+2026-11-28T06:08:53.1626046Z           - https://setuptools.pypa.io/en/latest/userguide/package_discovery.html
+2026-11-28T06:08:53.1626381Z   
+2026-11-28T06:08:53.1626746Z           If you don't want 'carr_library.academic_integration.vendor' to be distributed and are
+2026-11-28T06:08:53.1627191Z           already explicitly excluding 'carr_library.academic_integration.vendor' via
+2026-11-28T06:08:53.1627634Z           `find_namespace_packages(...)/find_namespace` or `find_packages(...)/find`,
+2026-11-28T06:08:53.1628075Z           you can try to use `exclude_package_data`, or `include-package-data=False` in
+2026-11-28T06:08:53.1628493Z           combination with a more fine grained `package-data` configuration.
+2026-11-28T06:08:53.1628802Z   
+2026-11-28T06:08:53.1629096Z           You can read more about "package data files" on setuptools documentation page:
+2026-11-28T06:08:53.1629448Z   
+2026-11-28T06:08:53.1629710Z           - https://setuptools.pypa.io/en/latest/userguide/datafiles.html
+2026-11-28T06:08:53.1630070Z   
+2026-11-28T06:08:53.1630261Z   
+2026-11-28T06:08:53.1630568Z           [^1]: For Python, any directory (with suitable naming) can be imported,
+2026-11-28T06:08:53.1631009Z                 even if it does not contain any `.py` files.
+2026-11-28T06:08:53.1631344Z                 On the other hand, currently there is no concept of package data
+2026-11-28T06:08:53.1631808Z                 directory, all directories are treated like packages.
+2026-11-28T06:08:53.1632138Z           ********************************************************************************
+2026-11-28T06:08:53.1632579Z   
+2026-11-28T06:08:53.1632789Z   !!
+2026-11-28T06:08:53.1632994Z     check.warn(importable)
+2026-11-28T06:08:53.1633654Z   /tmp/pip-build-env-wkwv20eh/overlay/lib/python3.11/site-packages/setuptools/command/build_py.py:215: BuildBackendWarning: Package 'carr_library.citations._vendor_citeproc' is absent from the `packages` configuration.
+2026-11-28T06:08:53.1634304Z   !!
+2026-11-28T06:08:53.1634508Z   
+2026-11-28T06:08:53.1634749Z           ********************************************************************************
+2026-11-28T06:08:53.1635035Z           ############################
+2026-11-28T06:08:53.1635350Z           # Package would be ignored #
+2026-11-28T06:08:53.1635621Z           ############################
+2026-11-28T06:08:53.1635982Z           Python recognizes 'carr_library.citations._vendor_citeproc' as an importable package[^1],
+2026-11-28T06:08:53.1636415Z           but it is absent from setuptools' `packages` configuration.
+2026-11-28T06:08:53.1636696Z   
+2026-11-28T06:08:53.1636967Z           This leads to an ambiguous overall configuration. If you want to distribute this
+2026-11-28T06:08:53.1637451Z           package, please make sure that 'carr_library.citations._vendor_citeproc' is explicitly added
+2026-11-28T06:08:53.1637878Z           to the `packages` configuration field.
+2026-11-28T06:08:53.1638141Z   
+2026-11-28T06:08:53.1638399Z           Alternatively, you can also rely on setuptools' discovery methods
+2026-11-28T06:08:53.1638770Z           (for example by using `find_namespace_packages(...)`/`find_namespace:`
+2026-11-28T06:08:53.1639145Z           instead of `find_packages(...)`/`find:`).
+2026-11-28T06:08:53.1639400Z   
+2026-11-28T06:08:53.1639679Z           You can read more about "package discovery" on setuptools documentation page:
+2026-11-28T06:08:53.1640007Z   
+2026-11-28T06:08:53.1640351Z           - https://setuptools.pypa.io/en/latest/userguide/package_discovery.html
+2026-11-28T06:08:53.1640709Z   
+2026-11-28T06:08:53.1641005Z           If you don't want 'carr_library.citations._vendor_citeproc' to be distributed and are
+2026-11-28T06:08:53.1641454Z           already explicitly excluding 'carr_library.citations._vendor_citeproc' via
+2026-11-28T06:08:53.1641884Z           `find_namespace_packages(...)/find_namespace` or `find_packages(...)/find`,
+2026-11-28T06:08:53.1642439Z           you can try to use `exclude_package_data`, or `include-package-data=False` in
+2026-11-28T06:08:53.1642890Z           combination with a more fine grained `package-data` configuration.
+2026-11-28T06:08:53.1643228Z   
+2026-11-28T06:08:53.1643589Z           You can read more about "package data files" on setuptools documentation page:
+2026-11-28T06:08:53.1643920Z   
+2026-11-28T06:08:53.1644188Z           - https://setuptools.pypa.io/en/latest/userguide/datafiles.html
+2026-11-28T06:08:53.1644523Z   
+2026-11-28T06:08:53.1644711Z   
+2026-11-28T06:08:53.1644960Z           [^1]: For Python, any directory (with suitable naming) can be imported,
+2026-11-28T06:08:53.1645333Z                 even if it does not contain any `.py` files.
+2026-11-28T06:08:53.1645672Z                 On the other hand, currently there is no concept of package data
+2026-11-28T06:08:53.1646085Z                 directory, all directories are treated like packages.
+2026-11-28T06:08:53.1646409Z           ********************************************************************************
+2026-11-28T06:08:53.1646764Z   
+2026-11-28T06:08:53.1646984Z   !!
+2026-11-28T06:08:53.1647199Z     check.warn(importable)
+2026-11-28T06:08:53.1647851Z   /tmp/pip-build-env-wkwv20eh/overlay/lib/python3.11/site-packages/setuptools/command/build_py.py:215: BuildBackendWarning: Package 'carr_library.citations.styles' is absent from the `packages` configuration.
+2026-11-28T06:08:53.1648530Z   !!
+2026-11-28T06:08:53.1648727Z   
+2026-11-28T06:08:53.1648996Z           ********************************************************************************
+2026-11-28T06:08:53.1649303Z           ############################
+2026-11-28T06:08:53.1649563Z           # Package would be ignored #
+2026-11-28T06:08:53.1649826Z           ############################
+2026-11-28T06:08:53.1650176Z           Python recognizes 'carr_library.citations.styles' as an importable package[^1],
+2026-11-28T06:08:53.1650594Z           but it is absent from setuptools' `packages` configuration.
+2026-11-28T06:08:53.1650936Z   
+2026-11-28T06:08:53.1651231Z           This leads to an ambiguous overall configuration. If you want to distribute this
+2026-11-28T06:08:53.1651728Z           package, please make sure that 'carr_library.citations.styles' is explicitly added
+2026-11-28T06:08:53.1652110Z           to the `packages` configuration field.
+2026-11-28T06:08:53.1652680Z   
+2026-11-28T06:08:53.1653001Z           Alternatively, you can also rely on setuptools' discovery methods
+2026-11-28T06:08:53.1653395Z           (for example by using `find_namespace_packages(...)`/`find_namespace:`
+2026-11-28T06:08:53.1653770Z           instead of `find_packages(...)`/`find:`).
+2026-11-28T06:08:53.1654023Z   
+2026-11-28T06:08:53.1654299Z           You can read more about "package discovery" on setuptools documentation page:
+2026-11-28T06:08:53.1654672Z   
+2026-11-28T06:08:53.1654945Z           - https://setuptools.pypa.io/en/latest/userguide/package_discovery.html
+2026-11-28T06:08:53.1655290Z   
+2026-11-28T06:08:53.1655562Z           If you don't want 'carr_library.citations.styles' to be distributed and are
+2026-11-28T06:08:53.1655961Z           already explicitly excluding 'carr_library.citations.styles' via
+2026-11-28T06:08:53.1656390Z           `find_namespace_packages(...)/find_namespace` or `find_packages(...)/find`,
+2026-11-28T06:08:53.1656797Z           you can try to use `exclude_package_data`, or `include-package-data=False` in
+2026-11-28T06:08:53.1657206Z           combination with a more fine grained `package-data` configuration.
+2026-11-28T06:08:53.1657537Z   
+2026-11-28T06:08:53.1657891Z           You can read more about "package data files" on setuptools documentation page:
+2026-11-28T06:08:53.1658238Z   
+2026-11-28T06:08:53.1658569Z           - https://setuptools.pypa.io/en/latest/userguide/datafiles.html
+2026-11-28T06:08:53.1658883Z   
+2026-11-28T06:08:53.1659062Z   
+2026-11-28T06:08:53.1659311Z           [^1]: For Python, any directory (with suitable naming) can be imported,
+2026-11-28T06:08:53.1659694Z                 even if it does not contain any `.py` files.
+2026-11-28T06:08:53.1660056Z                 On the other hand, currently there is no concept of package data
+2026-11-28T06:08:53.1660467Z                 directory, all directories are treated like packages.
+2026-11-28T06:08:53.1660856Z           ********************************************************************************
+2026-11-28T06:08:53.1661170Z   
+2026-11-28T06:08:53.1661397Z   !!
+2026-11-28T06:08:53.1661761Z     check.warn(importable)
+2026-11-28T06:08:53.1662712Z   /tmp/pip-build-env-wkwv20eh/overlay/lib/python3.11/site-packages/setuptools/command/build_py.py:215: BuildBackendWarning: Package 'carr_library.language_qualification.data' is absent from the `packages` configuration.
+2026-11-28T06:08:53.1663407Z   !!
+2026-11-28T06:08:53.1663632Z   
+2026-11-28T06:08:53.1663903Z           ********************************************************************************
+2026-11-28T06:08:53.1664194Z           ############################
+2026-11-28T06:08:53.1664444Z           # Package would be ignored #
+2026-11-28T06:08:53.1664699Z           ############################
+2026-11-28T06:08:53.1665064Z           Python recognizes 'carr_library.language_qualification.data' as an importable package[^1],
+2026-11-28T06:08:53.1665551Z           but it is absent from setuptools' `packages` configuration.
+2026-11-28T06:08:53.1665842Z   
+2026-11-28T06:08:53.1666189Z           This leads to an ambiguous overall configuration. If you want to distribute this
+2026-11-28T06:08:53.1666662Z           package, please make sure that 'carr_library.language_qualification.data' is explicitly added
+2026-11-28T06:08:53.1667073Z           to the `packages` configuration field.
+2026-11-28T06:08:53.1667336Z   
+2026-11-28T06:08:53.1667602Z           Alternatively, you can also rely on setuptools' discovery methods
+2026-11-28T06:08:53.1667968Z           (for example by using `find_namespace_packages(...)`/`find_namespace:`
+2026-11-28T06:08:53.1668356Z           instead of `find_packages(...)`/`find:`).
+2026-11-28T06:08:53.1668625Z   
+2026-11-28T06:08:53.1668911Z           You can read more about "package discovery" on setuptools documentation page:
+2026-11-28T06:08:53.1669372Z   
+2026-11-28T06:08:53.1669646Z           - https://setuptools.pypa.io/en/latest/userguide/package_discovery.html
+2026-11-28T06:08:53.1669992Z   
+2026-11-28T06:08:53.1670315Z           If you don't want 'carr_library.language_qualification.data' to be distributed and are
+2026-11-28T06:08:53.1670766Z           already explicitly excluding 'carr_library.language_qualification.data' via
+2026-11-28T06:08:53.1671220Z           `find_namespace_packages(...)/find_namespace` or `find_packages(...)/find`,
+2026-11-28T06:08:53.1671615Z           you can try to use `exclude_package_data`, or `include-package-data=False` in
+2026-11-28T06:08:53.1672091Z           combination with a more fine grained `package-data` configuration.
+2026-11-28T06:08:53.1672599Z   
+2026-11-28T06:08:53.1672971Z           You can read more about "package data files" on setuptools documentation page:
+2026-11-28T06:08:53.1673386Z   
+2026-11-28T06:08:53.1673716Z           - https://setuptools.pypa.io/en/latest/userguide/datafiles.html
+2026-11-28T06:08:53.1674034Z   
+2026-11-28T06:08:53.1674234Z   
+2026-11-28T06:08:53.1674532Z           [^1]: For Python, any directory (with suitable naming) can be imported,
+2026-11-28T06:08:53.1674891Z                 even if it does not contain any `.py` files.
+2026-11-28T06:08:53.1675229Z                 On the other hand, currently there is no concept of package data
+2026-11-28T06:08:53.1675592Z                 directory, all directories are treated like packages.
+2026-11-28T06:08:53.1675927Z           ********************************************************************************
+2026-11-28T06:08:53.1676182Z   
+2026-11-28T06:08:53.1676387Z   !!
+2026-11-28T06:08:53.1676594Z     check.warn(importable)
+2026-11-28T06:08:53.1677243Z   Created wheel for universal-research-library: filename=universal_research_library-0.2.0.dev2-py3-none-any.whl size=2614335 sha256=de4abd551bd8eb1750da2bcefc7707c421c08db7ff8f47ef52c72055c2772ca0
+2026-11-28T06:08:53.1678068Z   Stored in directory: /tmp/pip-ephem-wheel-cache-oc82aw1e/wheels/8c/4a/13/69c77a7a70caad6cbb87efa216817814a8429d6f623984ab19
+2026-11-28T06:08:53.1678613Z Successfully built universal-research-library
+2026-11-28T06:08:53.2405157Z Installing collected packages: pylatexenc, zstandard, typing-extensions, tqdm, soupsieve, shellingham, regex, rapidfuzz, quickjs-ng, pyyaml, pypdfium2, pypdf, pygments, pycparser, pluggy, platformdirs, Pillow, packaging, numpy, mdurl, lxml, iniconfig, idna, hf-xet, h11, fsspec, filelock, et-xmlfile, defusedxml, cloudpickle, click, charset-normalizer, certifi, bibtexparser, annotated-types, annotated-doc, typing-inspection, reportlab, python-docx, pytest, pytesseract, pydantic-core, py3langid, openpyxl, markdown-it-py, joblib, httpcore, cffi, beautifulsoup4, anyio, universal-research-library, rich, pydantic, nltk, httpx, cryptography, typer, huggingface-hub
+2026-11-28T06:08:59.3981819Z 
+2026-11-28T06:08:59.4000425Z Successfully installed Pillow-13.0.0 annotated-doc-0.0.7 annotated-types-0.8.0 anyio-4.16.0 beautifulsoup4-4.15.0 bibtexparser-2.1.0 certifi-2026.11.20 cffi-2.1.1 charset-normalizer-3.5.3 click-8.5.1 cloudpickle-3.1.3 cryptography-50.0.2 defusedxml-0.7.1 et-xmlfile-2.0.0 filelock-3.29.0 fsspec-2026.9.0 h11-0.16.0 hf-xet-1.8.0 httpcore-1.0.9 httpx-0.29.0 huggingface-hub-1.16.1 idna-3.20 iniconfig-2.3.1 joblib-1.6.0 lxml-6.1.3 markdown-it-py-4.3.0 mdurl-0.1.2 nltk-3.9.2 numpy-2.4.6 openpyxl-3.1.5 packaging-26.4 platformdirs-4.10.0 pluggy-1.7.0 py3langid-0.4.0 pycparser-3.12 pydantic-2.14.4 pydantic-core-2.50.5 pygments-2.21.0 pylatexenc-2.11 pypdf-7.1.1 pypdfium2-5.13.0 pytesseract-0.3.13 pytest-9.0.2 python-docx-1.2.0 pyyaml-6.0.4 quickjs-ng-0.18.0.2 rapidfuzz-3.14.6 regex-2026.11.25 reportlab-4.4.9 rich-15.0.0 shellingham-1.5.4 soupsieve-4.1.3 tqdm-4.70.1 typer-0.29.3 typing-extensions-4.16.0 typing-inspection-0.4.5 universal-research-library-0.2.0.dev2 zstandard-0.25.0
+2026-11-28T06:08:59.7167085Z No broken requirements found.
+2026-11-28T06:08:59.7735733Z ##[group]Run python -I -B ../.github/scripts/carr_prepare_test_font.py --report ci-component-results/test-font.json
+2026-11-28T06:08:59.7736355Z [36;1mpython -I -B ../.github/scripts/carr_prepare_test_font.py --report ci-component-results/test-font.json[0m
+2026-11-28T06:08:59.7736839Z [36;1mif ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }[0m
+2026-11-28T06:08:59.7762732Z shell: /usr/bin/pwsh -command ". '{0}'"
+2026-11-28T06:08:59.7763022Z env:
+2026-11-28T06:08:59.7763243Z   PYTHONUTF8: 1
+2026-11-28T06:08:59.7763503Z   PYTHONUNBUFFERED: 1
+2026-11-28T06:08:59.7763736Z   HF_HUB_OFFLINE: 1
+2026-11-28T06:08:59.7763972Z   TRANSFORMERS_OFFLINE: 1
+2026-11-28T06:08:59.7764206Z   DO_NOT_TRACK: 1
+2026-11-28T06:08:59.7764459Z   pythonLocation: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T06:08:59.7764897Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.11.18/x64/lib/pkgconfig
+2026-11-28T06:08:59.7765264Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T06:08:59.7765949Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T06:08:59.7766281Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T06:08:59.7766783Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.11.18/x64/lib
+2026-11-28T06:08:59.7767108Z ##[endgroup]
+2026-11-28T06:09:00.2489753Z {"archive_sha256": "5c6e497a2f36552cb5ffb112c413a6af39c0f3c47653662b90b4fa6499822fd7", "font_sha256": "7da195a74c55bef988d0d48f9508bd5d849425c1770dba5d7bfc6ce9ed848954", "scope": "public synthetic OCR test prerequisite only", "selected_member": "dejavu-sans-ttf-2.37/ttf/DejaVuSans.ttf", "size_bytes": 757076, "source": "https://github.com/dejavu-fonts/dejavu-fonts/releases/download/version_2_37/dejavu-sans-ttf-2.37.zip", "status": "PASS"}
+2026-11-28T06:09:00.3259949Z ##[group]Run $proof = @'
+2026-11-28T06:09:00.3260266Z [36;1m$proof = @'[0m
+2026-11-28T06:09:00.3260517Z [36;1mimport hashlib, json[0m
+2026-11-28T06:09:00.3260814Z [36;1mfrom pathlib import Path[0m
+2026-11-28T06:09:00.3261101Z [36;1mimport carr_library[0m
+2026-11-28T06:09:00.3261379Z [36;1msource = Path('src/carr_library').resolve()[0m
+2026-11-28T06:09:00.3261720Z [36;1minstalled = Path(carr_library.__file__).resolve().parent[0m
+2026-11-28T06:09:00.3262101Z [36;1massert not installed.is_relative_to(source), installed[0m
+2026-11-28T06:09:00.3262683Z [36;1mdef inventory(root):[0m
+2026-11-28T06:09:00.3263080Z [36;1m    return {path.relative_to(root).as_posix(): hashlib.sha256(path.read_bytes()).hexdigest()[0m
+2026-11-28T06:09:00.3263620Z [36;1m            for path in root.rglob('*.py') if '__pycache__' not in path.parts}[0m
+2026-11-28T06:09:00.3264021Z [36;1mexpected, actual = inventory(source), inventory(installed)[0m
+2026-11-28T06:09:00.3264547Z [36;1massert expected and expected == actual, ('Installed application inventory mismatch',[0m
+2026-11-28T06:09:00.3265028Z [36;1m    sorted(set(expected) ^ set(actual)), [key for key in expected.keys() & actual.keys()[0m
+2026-11-28T06:09:00.3265424Z [36;1m    if expected[key] != actual[key]])[0m
+2026-11-28T06:09:00.3265858Z [36;1mdigest = hashlib.sha256(json.dumps(expected, sort_keys=True, separators=(',', ':')).encode()).hexdigest()[0m
+2026-11-28T06:09:00.3266363Z [36;1mprint(json.dumps(dict(status='PASS', module_origin=str(installed),[0m
+2026-11-28T06:09:00.3266792Z [36;1m    python_modules=len(expected), source_inventory_sha256=digest)))[0m
+2026-11-28T06:09:00.3267233Z [36;1m'@[0m
+2026-11-28T06:09:00.3267595Z [36;1m$proof | python -I -B -X utf8 - | Tee-Object ci-component-results/application-source.json[0m
+2026-11-28T06:09:00.3268032Z [36;1mif ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }[0m
+2026-11-28T06:09:00.3292442Z shell: /usr/bin/pwsh -command ". '{0}'"
+2026-11-28T06:09:00.3292882Z env:
+2026-11-28T06:09:00.3293177Z   PYTHONUTF8: 1
+2026-11-28T06:09:00.3293414Z   PYTHONUNBUFFERED: 1
+2026-11-28T06:09:00.3293714Z   HF_HUB_OFFLINE: 1
+2026-11-28T06:09:00.3293947Z   TRANSFORMERS_OFFLINE: 1
+2026-11-28T06:09:00.3294187Z   DO_NOT_TRACK: 1
+2026-11-28T06:09:00.3294475Z   pythonLocation: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T06:09:00.3294858Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.11.18/x64/lib/pkgconfig
+2026-11-28T06:09:00.3295265Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T06:09:00.3295610Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T06:09:00.3295953Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T06:09:00.3296356Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.11.18/x64/lib
+2026-11-28T06:09:00.3296656Z ##[endgroup]
+2026-11-28T06:09:00.8182569Z {"status": "PASS", "module_origin": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library", "python_modules": 383, "source_inventory_sha256": "02991995fd42510e0967435ef2c78f60485c4068ddfa7dad22fe743257673fa6"}
+2026-11-28T06:09:00.8775848Z ##[group]Run python -I -B -c "from pathlib import Path; import carr_library; path=Path(carr_library.__file__).resolve(); assert not path.is_relative_to(Path('src').resolve()), path; print(path)"
+2026-11-28T06:09:00.8776759Z [36;1mpython -I -B -c "from pathlib import Path; import carr_library; path=Path(carr_library.__file__).resolve(); assert not path.is_relative_to(Path('src').resolve()), path; print(path)"[0m
+2026-11-28T06:09:00.8777292Z [36;1mif ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }[0m
+2026-11-28T06:09:00.8777533Z [36;1m$suites = @([0m
+2026-11-28T06:09:00.8777739Z [36;1m  'tests/academic_integration/test_formatting.py',[0m
+2026-11-28T06:09:00.8777986Z [36;1m  'tests/citations/test_csl.py',[0m
+2026-11-28T06:09:00.8778216Z [36;1m  'tests/assistant/test_local_planning.py',[0m
+2026-11-28T06:09:00.8778442Z [36;1m  'tests/assistant/test_state_io.py',[0m
+2026-11-28T06:09:00.8778683Z [36;1m  'tests/catalog/test_archive_portability.py',[0m
+2026-11-28T06:09:00.8778969Z [36;1m  'tests/catalog/test_intake_portability.py',[0m
+2026-11-28T06:09:00.8779209Z [36;1m  'tests/catalog/test_epub_metadata.py',[0m
+2026-11-28T06:09:00.8779438Z [36;1m  'tests/catalog/test_registration.py',[0m
+2026-11-28T06:09:00.8779659Z [36;1m  'tests/extract/test_page_ocr.py',[0m
+2026-11-28T06:09:00.8779894Z [36;1m  'tests/extract/test_ocr_language_regions.py',[0m
+2026-11-28T06:09:00.8780153Z [36;1m  'tests/extract/test_ocr_evidence_fidelity.py',[0m
+2026-11-28T06:09:00.8780407Z [36;1m  'tests/extract/test_automatic_ocr_native.py',[0m
+2026-11-28T06:09:00.8780691Z [36;1m  'tests/studio/test_production_cancellation_outcomes.py',[0m
+2026-11-28T06:09:00.8780957Z [36;1m  'tests/studio/test_production.py',[0m
+2026-11-28T06:09:00.8781193Z [36;1m  'tests/studio/test_production_hardening.py',[0m
+2026-11-28T06:09:00.8781434Z [36;1m  'tests/studio/test_clip_dialog.py',[0m
+2026-11-28T06:09:00.8781652Z [36;1m  'tests/studio/test_book_audio.py',[0m
+2026-11-28T06:09:00.8781906Z [36;1m  'tests/storage/test_production_operation_backup.py',[0m
+2026-11-28T06:09:00.8782167Z [36;1m  'tests/ui/test_studio_output_settings.py',[0m
+2026-11-28T06:09:00.8782743Z [36;1m  'tests/storage/test_studio_draft_backup.py',[0m
+2026-11-28T06:09:00.8783003Z [36;1m  'tests/storage/test_backup_scan_bounds.py',[0m
+2026-11-28T06:09:00.8783260Z [36;1m  'tests/storage/test_state_backup_portability.py',[0m
+2026-11-28T06:09:00.8783514Z [36;1m  'tests/storage/test_v3_state_backup.py',[0m
+2026-11-28T06:09:00.8783923Z [36;1m  'tests/storage/test_backup_sidecars.py',[0m
+2026-11-28T06:09:00.8784174Z [36;1m  'tests/storage/test_canonical_backup_compat.py',[0m
+2026-11-28T06:09:00.8784436Z [36;1m  'tests/transcription/test_runtime_inventory.py',[0m
+2026-11-28T06:09:00.8784694Z [36;1m  'tests/transcription/test_runtime_admission.py',[0m
+2026-11-28T06:09:00.8784967Z [36;1m  'tests/transcription/test_admission_boundaries.py',[0m
+2026-11-28T06:09:00.8785229Z [36;1m  'tests/transcription/test_service.py',[0m
+2026-11-28T06:09:00.8785477Z [36;1m  'tests/storage/test_asr_additional_profile.py',[0m
+2026-11-28T06:09:00.8785732Z [36;1m  'tests/storage/test_transcription_backup.py',[0m
+2026-11-28T06:09:00.8785979Z [36;1m  'tests/packaging/test_windows_bundle.py',[0m
+2026-11-28T06:09:00.8786224Z [36;1m  'tests/packaging/test_standard_installer.py',[0m
+2026-11-28T06:09:00.8786484Z [36;1m  'tests/packaging/test_managed_launch_boundary.py',[0m
+2026-11-28T06:09:00.8786739Z [36;1m  'tests/operations/test_resources.py',[0m
+2026-11-28T06:09:00.8786969Z [36;1m  'tests/operations/test_facade.py',[0m
+2026-11-28T06:09:00.8787223Z [36;1m  'tests/operations/test_production_admission.py',[0m
+2026-11-28T06:09:00.8787461Z [36;1m  'tests/e2e/test_operations_cli.py',[0m
+2026-11-28T06:09:00.8787697Z [36;1m  'tests/e2e/test_import_worker_publication.py',[0m
+2026-11-28T06:09:00.8787932Z [36;1m  'tests/ui/test_operations_policy.py',[0m
+2026-11-28T06:09:00.8788165Z [36;1m  'tests/speech/test_synthesis_admission.py',[0m
+2026-11-28T06:09:00.8788487Z [36;1m  'tests/ui/test_reader_playback.py',[0m
+2026-11-28T06:09:00.8788712Z [36;1m  'tests/speech/test_progress_speech.py',[0m
+2026-11-28T06:09:00.8788932Z [36;1m  'tests/ui/test_operation_progress.py',[0m
+2026-11-28T06:09:00.8789157Z [36;1m  'tests/ui/test_progress_media_quiet.py',[0m
+2026-11-28T06:09:00.8789387Z [36;1m  'tests/ui/test_studio_progress_isolation.py',[0m
+2026-11-28T06:09:00.8789627Z [36;1m  'tests/speech/test_registered_studio_voices.py',[0m
+2026-11-28T06:09:00.8789856Z [36;1m  'tests/audio/test_model_voices.py',[0m
+2026-11-28T06:09:00.8790091Z [36;1m  'tests/storage/test_backup_book_plan_bindings.py',[0m
+2026-11-28T06:09:00.8790335Z [36;1m  'tests/ui/test_book_audio_dialog.py',[0m
+2026-11-28T06:09:00.8790567Z [36;1m  'tests/studio/test_publishing_handlers.py',[0m
+2026-11-28T06:09:00.8790792Z [36;1m  'tests/speech/test_python_helper.py',[0m
+2026-11-28T06:09:00.8791017Z [36;1m  'tests/storage/test_python_helper_backup.py',[0m
+2026-11-28T06:09:00.8791259Z [36;1m  'tests/speech/test_runtime_settings_restore.py',[0m
+2026-11-28T06:09:00.8791498Z [36;1m  'tests/ui/test_engine_settings_review.py',[0m
+2026-11-28T06:09:00.8791725Z [36;1m  'tests/audio/test_cleanup_contexts.py',[0m
+2026-11-28T06:09:00.8791946Z [36;1m  'tests/audio/test_audio_process.py',[0m
+2026-11-28T06:09:00.8792170Z [36;1m  'tests/audio/test_silence_inspection.py',[0m
+2026-11-28T06:09:00.8792609Z [36;1m  'tests/studio/test_silence_inspection.py',[0m
+2026-11-28T06:09:00.8792836Z [36;1m  'tests/studio/test_book_silence.py',[0m
+2026-11-28T06:09:00.8793048Z [36;1m  'tests/studio/test_director_silence.py',[0m
+2026-11-28T06:09:00.8793279Z [36;1m  'tests/ui/test_studio_silence_inspection.py',[0m
+2026-11-28T06:09:00.8793506Z [36;1m  'tests/audio/test_local_runtime_cli.py',[0m
+2026-11-28T06:09:00.8793725Z [36;1m  'tests/audio/test_process_deadline.py',[0m
+2026-11-28T06:09:00.8793953Z [36;1m  'tests/audio/test_capture_access_diagnostic.py',[0m
+2026-11-28T06:09:00.8794197Z [36;1m  'tests/audio/test_recording_windows_process.py',[0m
+2026-11-28T06:09:00.8794443Z [36;1m  'tests/ui/test_ebook_audio_initialization.py',[0m
+2026-11-28T06:09:00.8794669Z [36;1m  'tests/ui/test_ebook_dialog.py',[0m
+2026-11-28T06:09:00.8794874Z [36;1m  'tests/reader/test_ebook_audio.py',[0m
+2026-11-28T06:09:00.8795102Z [36;1m  'tests/reader/test_ebook_audio_lifecycle.py',[0m
+2026-11-28T06:09:00.8795343Z [36;1m  'tests/speech/test_wave_output.py',[0m
+2026-11-28T06:09:00.8795566Z [36;1m  'tests/speech/test_player_controls.py',[0m
+2026-11-28T06:09:00.8795864Z [36;1m  'tests/speech/test_player_transport.py',[0m
+2026-11-28T06:09:00.8796095Z [36;1m  'tests/speech/test_output_devices.py',[0m
+2026-11-28T06:09:00.8796321Z [36;1m  'tests/speech/test_listening.py',[0m
+2026-11-28T06:09:00.8796536Z [36;1m  'tests/speech/test_playlist.py',[0m
+2026-11-28T06:09:00.8796770Z [36;1m  'tests/search/test_source_page_benchmark.py',[0m
+2026-11-28T06:09:00.8797032Z [36;1m  'tests/packaging/test_windows_launcher_bundle.py',[0m
+2026-11-28T06:09:00.8797286Z [36;1m  'tests/ui/test_federated_labels.py',[0m
+2026-11-28T06:09:00.8797505Z [36;1m  'tests/ui/test_reader_synthesis.py',[0m
+2026-11-28T06:09:00.8797731Z [36;1m  'tests/ui/test_progress_voice_actions.py',[0m
+2026-11-28T06:09:00.8797960Z [36;1m  'tests/ui/test_progress_job_review.py',[0m
+2026-11-28T06:09:00.8798201Z [36;1m  'tests/storage/test_reader_synthesis_backup.py',[0m
+2026-11-28T06:09:00.8798442Z [36;1m  'tests/storage/test_state_json_reader.py',[0m
+2026-11-28T06:09:00.8798680Z [36;1m  'tests/transcription/test_control_reads.py',[0m
+2026-11-28T06:09:00.8798909Z [36;1m  'tests/studio/test_publishing.py',[0m
+2026-11-28T06:09:00.8799133Z [36;1m  'tests/studio/test_daisy_publishing.py',[0m
+2026-11-28T06:09:00.8799366Z [36;1m  'tests/studio/test_measured_audio.py'[0m
+2026-11-28T06:09:00.8799565Z [36;1m)[0m
+2026-11-28T06:09:00.8799815Z [36;1mif (-not $IsWindows) { $suites += 'tests/storage_posix/test_state_backup_names.py' }[0m
+2026-11-28T06:09:00.8800552Z [36;1mpython -I -B -m pytest -q -o addopts= -o pythonpath= -o xfail_strict=true --import-mode=importlib --junitxml=ci-component-results/installed.xml @suites 2>&1 | Tee-Object ci-component-results/installed.txt[0m
+2026-11-28T06:09:00.8801119Z [36;1m$testExit = $LASTEXITCODE[0m
+2026-11-28T06:09:00.8801867Z [36;1mpython -I -B -c "import xml.etree.ElementTree as E; cases=list(E.parse('ci-component-results/installed.xml').getroot().iter('testcase')); assert cases and all(c.find('failure') is None and c.find('error') is None and c.find('skipped') is None for c in cases); print('INSTALLED_CASES_PASS',len(cases))"[0m
+2026-11-28T06:09:00.8802834Z [36;1mif ($testExit -ne 0 -or $LASTEXITCODE -ne 0) { exit 1 }[0m
+2026-11-28T06:09:00.8828627Z shell: /usr/bin/pwsh -command ". '{0}'"
+2026-11-28T06:09:00.8828853Z env:
+2026-11-28T06:09:00.8829005Z   PYTHONUTF8: 1
+2026-11-28T06:09:00.8829165Z   PYTHONUNBUFFERED: 1
+2026-11-28T06:09:00.8829326Z   HF_HUB_OFFLINE: 1
+2026-11-28T06:09:00.8829497Z   TRANSFORMERS_OFFLINE: 1
+2026-11-28T06:09:00.8829662Z   DO_NOT_TRACK: 1
+2026-11-28T06:09:00.8829877Z   pythonLocation: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T06:09:00.8830184Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.11.18/x64/lib/pkgconfig
+2026-11-28T06:09:00.8830485Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T06:09:00.8830759Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T06:09:00.8831027Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T06:09:00.8831303Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.11.18/x64/lib
+2026-11-28T06:09:00.8831528Z ##[endgroup]
+2026-11-28T06:09:01.0299077Z /opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/__init__.py
+2026-11-28T06:10:36.6651521Z ........................................................................ [  2%]
+2026-11-28T06:10:37.9249820Z ........................................................................ [  4%]
+2026-11-28T06:10:38.0099403Z ........................................................................ [  6%]
+2026-11-28T06:10:38.2571983Z ........................................................................ [  8%]
+2026-11-28T06:10:45.1995893Z ........................................................................ [ 11%]
+2026-11-28T06:11:18.3834481Z ........................................................................ [ 13%]
+2026-11-28T06:11:25.1803491Z ........................................................................ [ 15%]
+2026-11-28T06:11:44.6742210Z ........................................................................ [ 17%]
+2026-11-28T06:11:45.9428594Z ........................................................................ [ 20%]
+2026-11-28T06:11:49.0106160Z ........................................................................ [ 22%]
+2026-11-28T06:11:52.9453595Z ........................................................................ [ 24%]
+2026-11-28T06:11:55.0253938Z ........................................................................ [ 26%]
+2026-11-28T06:11:56.2312222Z ........................................................................ [ 29%]
+2026-11-28T06:12:20.5493633Z ........................................................................ [ 31%]
+2026-11-28T06:12:26.6620586Z ........................................................................ [ 33%]
+2026-11-28T06:12:26.7438536Z ........................................................................ [ 35%]
+2026-11-28T06:12:27.7738919Z ............................................................ [ 37%]
+2026-11-28T06:12:29.1003081Z ........................................................................ [ 39%]
+2026-11-28T06:12:32.6502014Z ........................................................................ [ 42%]
+2026-11-28T06:12:34.4423793Z ........................................................................ [ 44%]
+2026-11-28T06:13:08.3978390Z ........................................................................ [ 46%]
+2026-11-28T06:13:10.1860542Z ........................................................................ [ 48%]
+2026-11-28T06:13:10.9811166Z ........................................................................ [ 51%]
+2026-11-28T06:13:13.0426090Z ........................................................................ [ 53%]
+2026-11-28T06:13:13.3016605Z ........................................................................ [ 55%]
+2026-11-28T06:13:15.9507377Z ........................................................................ [ 57%]
+2026-11-28T06:13:20.4909730Z ........................................................................ [ 60%]
+2026-11-28T06:13:25.7879023Z ........................................................................ [ 62%]
+2026-11-28T06:13:26.9877141Z ........................................................................ [ 64%]
+2026-11-28T06:13:29.2127052Z ........................................................................ [ 66%]
+2026-11-28T06:14:17.3683060Z ........................................................................ [ 68%]
+2026-11-28T06:14:20.0104831Z ........................................................................ [ 71%]
+2026-11-28T06:14:29.5634280Z ........................................................................ [ 73%]
+2026-11-28T06:14:31.6876613Z ........................................................................ [ 75%]
+2026-11-28T06:14:35.6181326Z ........................................................................ [ 77%]
+2026-11-28T06:14:52.2180062Z ........................................................................ [ 80%]
+2026-11-28T06:14:52.4001988Z ........................................................................ [ 82%]
+2026-11-28T06:14:52.5115893Z ........................................................................ [ 84%]
+2026-11-28T06:15:00.8365140Z ........................................................................ [ 86%]
+2026-11-28T06:15:02.0224326Z ........................................................................ [ 89%]
+2026-11-28T06:15:03.9238612Z ........................................................................ [ 91%]
+2026-11-28T06:15:05.9812890Z ........................................................................ [ 93%]
+2026-11-28T06:15:06.2923989Z ........................................................................ [ 95%]
+2026-11-28T06:15:17.7008153Z ........................................................................ [ 98%]
+2026-11-28T06:16:02.2218316Z ................................................................         [100%]
+2026-11-28T06:16:02.2219072Z 3220 passed, 12 subtests passed in 420.03s (0:07:00)
+2026-11-28T06:16:02.5311520Z INSTALLED_CASES_PASS 3220
+2026-11-28T06:16:02.5887632Z ##[group]Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+2026-11-28T06:16:02.5887985Z with:
+2026-11-28T06:16:02.5888335Z   name: carr-component-followup-ubuntu-24.04-installed-2dfc5d32558c722ba05068dfff9ebb19eeae52f7-1
+2026-11-28T06:16:02.5888760Z   path: carr-library/ci-component-results/
+2026-11-28T06:16:02.5888998Z   if-no-files-found: error
+2026-11-28T06:16:02.5889188Z   retention-days: 7
+2026-11-28T06:16:02.5889364Z   compression-level: 6
+2026-11-28T06:16:02.5889541Z   overwrite: false
+2026-11-28T06:16:02.5889726Z   include-hidden-files: false
+2026-11-28T06:16:02.5889912Z   archive: true
+2026-11-28T06:16:02.5890061Z env:
+2026-11-28T06:16:02.5890205Z   PYTHONUTF8: 1
+2026-11-28T06:16:02.5890361Z   PYTHONUNBUFFERED: 1
+2026-11-28T06:16:02.5890525Z   HF_HUB_OFFLINE: 1
+2026-11-28T06:16:02.5890703Z   TRANSFORMERS_OFFLINE: 1
+2026-11-28T06:16:02.5890874Z   DO_NOT_TRACK: 1
+2026-11-28T06:16:02.5891073Z   pythonLocation: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T06:16:02.5891421Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.11.18/x64/lib/pkgconfig
+2026-11-28T06:16:02.5891727Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T06:16:02.5892005Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T06:16:02.5892485Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T06:16:02.5892859Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.11.18/x64/lib
+2026-11-28T06:16:02.5893196Z ##[endgroup]
+2026-11-28T06:16:02.7029439Z With the provided path, there will be 5 files uploaded
+2026-11-28T06:16:02.7029859Z Artifact name is valid!
+2026-11-28T06:16:02.7030042Z Root directory input is valid!
+2026-11-28T06:16:03.3019540Z Uploading artifact: carr-component-followup-ubuntu-24.04-installed-2dfc5d32558c722ba05068dfff9ebb19eeae52f7-1.zip
+2026-11-28T06:16:03.3048299Z Beginning upload of artifact content to blob storage
+2026-11-28T06:16:03.9417657Z Uploaded bytes 56011
+2026-11-28T06:16:04.0324540Z Finished uploading artifact content to blob storage!
+2026-11-28T06:16:04.0325594Z SHA256 digest of uploaded artifact is 6c5fdd0a852dd2df63ed8fdd93354e51ab7579448ea587410300bd559152f827
+2026-11-28T06:16:04.0326095Z Finalizing artifact upload
+2026-11-28T06:16:04.5193470Z Artifact carr-component-followup-ubuntu-24.04-installed-2dfc5d32558c722ba05068dfff9ebb19eeae52f7-1 successfully finalized. Artifact ID 15251567033
+2026-11-28T06:16:04.5194347Z Artifact carr-component-followup-ubuntu-24.04-installed-2dfc5d32558c722ba05068dfff9ebb19eeae52f7-1 has been successfully uploaded! Final size is 56011 bytes. Artifact ID is 15251567033
+2026-11-28T06:16:04.5196707Z Artifact download URL: https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46111572572/artifacts/15251567033
+2026-11-28T06:16:04.5337793Z Post job cleanup.
+2026-11-28T06:16:04.6332609Z Post job cleanup.
+2026-11-28T06:16:04.7016502Z [command]/usr/bin/git version
+2026-11-28T06:16:04.7049797Z git version 2.56.1
+2026-11-28T06:16:04.7070220Z Copying '/home/runner/.gitconfig' to '/home/runner/work/_temp/646f8924-1dec-4eed-980c-6f93c0450d87/.gitconfig'
+2026-11-28T06:16:04.7078182Z Temporarily overriding HOME='/home/runner/work/_temp/646f8924-1dec-4eed-980c-6f93c0450d87' before making global git config changes
+2026-11-28T06:16:04.7079229Z Adding repository directory to the temporary git global config as a safe directory
+2026-11-28T06:16:04.7081433Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/AudioTacticalFPS/AudioTacticalFPS
+2026-11-28T06:16:04.7106120Z Removing SSH command configuration
+2026-11-28T06:16:04.7110959Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-11-28T06:16:04.7136697Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-11-28T06:16:04.7311333Z Removing HTTP extra header
+2026-11-28T06:16:04.7317358Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-11-28T06:16:04.7364176Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-11-28T06:16:04.7579746Z Removing includeIf entries pointing to credentials config files
+2026-11-28T06:16:04.7586157Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-11-28T06:16:04.7619826Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-11-28T06:16:04.7941722Z Cleaning up orphan processes

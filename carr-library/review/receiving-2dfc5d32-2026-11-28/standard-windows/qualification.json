@@ -1,0 +1,219 @@
+{
+  "schema": "carr-terminal-receiving/1",
+  "scope": "Exact-source Windows standard installation: source and installed contracts plus actual native lifecycle",
+  "status": "PASS",
+  "commit": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7",
+  "tree": "14a6dc1ce55f5c9d885fbb88b7a50701187acb80",
+  "run_id": 46111573953,
+  "run_attempt": 1,
+  "event": "push",
+  "branch": "carr/standard-installation-evaluation-20261128",
+  "job_id": 140876058894,
+  "job_conclusion": "success",
+  "started_at": "2026-11-28T05:57:24Z",
+  "completed_at": "2026-11-28T06:06:38Z",
+  "job_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46111573953/job/140876058894",
+  "workflow": {
+    "path": ".github/workflows/carr-standard-installation-evaluation.yml",
+    "git_blob": "bf91d0b1afd318d7a733fa528b4c334c596becc1"
+  },
+  "tests": {
+    "expected_selectors": [
+      "tests/packaging/test_standard_installer.py",
+      "tests/packaging/test_managed_launch_boundary.py",
+      "tests/packaging/test_native_checks.py",
+      "tests/packaging/test_windows_bundle.py",
+      "tests/packaging/test_windows_launcher_bundle.py",
+      "tests/packaging/test_install_bytecode.py",
+      "tests/packaging/test_worker_bytecode.py",
+      "tests/packaging/test_source_wheel.py",
+      "tests/packaging/test_native_runtime.py",
+      "tests/audio/test_local_runtime_cli.py",
+      "tests/test_delivery_cli.py"
+    ],
+    "source": {
+      "completed_modules": 11,
+      "passed": 351,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit_codes": [
+        0
+      ],
+      "module_verdicts": "module-results.json"
+    },
+    "installed": {
+      "same_selectors": true,
+      "passed": 351,
+      "subtests_passed": 22,
+      "junit_cases": 351,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "seconds": 71.06,
+      "strict_policy": "Existing PYTEST_CHILD offline/XPASS policy under isolated Python, empty pytest pythonpath, and strict emitted JUnit assertion.",
+      "original_junit_member_bytes": "NOT_READ; actual successful checker and count are retained from the log."
+    }
+  },
+  "identity": {
+    "source_commit": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7",
+    "source_tree": "14a6dc1ce55f5c9d885fbb88b7a50701187acb80",
+    "source_wheel_installed_namespace_bytes_equal": true,
+    "python_modules": 383,
+    "inventory_rows_digest": "88caab4fabbe9961a65ee4edd5fcc44362d5c033ca3202a66941b633ebc7f869",
+    "inventory_digest_rule": "SHA-256 of JSON.stringify(python_files) without final newline",
+    "independent_source_comparison": {
+      "unchanged_git_blobs": 371,
+      "freshly_hashed_changed_new_blobs": 12,
+      "mismatches": 0,
+      "details": "source-identity.json"
+    },
+    "wheel": {
+      "payload_files": 493,
+      "project_name": "universal-research-library",
+      "project_version": "0.2.0.dev2",
+      "required_runtime_files": 398,
+      "source_commit": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7",
+      "source_tree": "14a6dc1ce55f5c9d885fbb88b7a50701187acb80",
+      "wheel_sha256": "70fb41fec50766ba2dc8724a372e27a5a9f19d4934e338d761fd737ace8cb3c9"
+    },
+    "installed_prefix": "D:\\a\\_temp\\carr-standard-installation-python",
+    "installed_package": "D:\\a\\_temp\\carr-standard-installation-python\\Lib\\site-packages\\carr_library",
+    "python": "3.11.9 (tags/v3.11.9:de54cf5, Apr  2 2024, 10:12:12) [MSC v.1938 64 bit (AMD64)]",
+    "dependency_selection": {
+      "build_support": {
+        "setuptools": "84.2.1",
+        "wheel": "0.48.0",
+        "zstandard": "0.25.0"
+      },
+      "effective_requirements_sha256": "c1c725f7ba5c0352dc48e6e9a4092d6e4c6878102dad7abe416b69f859edf798",
+      "excluded": [],
+      "pins": {
+        "bibtexparser": "2.1.0",
+        "cffi": "2.1.1",
+        "comtypes": "1.5.0",
+        "cryptography": "50.0.2",
+        "defusedxml": "0.7.1",
+        "filelock": "3.29.0",
+        "lxml": "6.1.3",
+        "numpy": "2.4.6",
+        "pillow": "13.0.0",
+        "platformdirs": "4.10.0",
+        "py3langid": "0.4.0",
+        "pycparser": "3.12",
+        "pylatexenc": "2.11",
+        "pypdf": "7.1.1",
+        "pypdfium2": "5.13.0",
+        "python-docx": "1.2.0",
+        "quickjs-ng": "0.18.0.2",
+        "typing-extensions": "4.16.0",
+        "wxpython": "4.2.4"
+      },
+      "platform": "win32",
+      "pytest": "9.0.2",
+      "repository_lock_sha256": "c1c725f7ba5c0352dc48e6e9a4092d6e4c6878102dad7abe416b69f859edf798",
+      "verification_support": "packaging==26.4",
+      "windows_dependency_hashes_required": true
+    }
+  },
+  "private_setup": {
+    "setup_sha256": "d8871d8ed53c2f66f6921b04b17f256ab64a40247d2f8c59f00e4c124485034f",
+    "size_bytes": 82432896,
+    "bundle_manifest_sha256": "7bea5a53a54f9f14e972e3e2b05d397461d2f0f93ddc393826442738a36f85dc",
+    "application_wheel_sha256": "70fb41fec50766ba2dc8724a372e27a5a9f19d4934e338d761fd737ace8cb3c9",
+    "core_profile": "current-core-19-windows-pins",
+    "release_status": "unsigned-private-candidate",
+    "bundled_audio": false,
+    "bundled_ocr": false,
+    "bundled_model": false,
+    "qualifier": "The successful sealed-source verifier explicitly checked this core bundle profile. Full audio/runtime delivery is a separate scope.",
+    "build_receipt_file": "setup-build-log-derived.json"
+  },
+  "native": {
+    "required_checks": [
+      "actual_inno_install",
+      "actual_offline_runtime_bootstrap",
+      "per_user_start_menu",
+      "per_user_repair_uninstall_registration",
+      "fresh_shortcut_collision_refused",
+      "uninstaller_wrapper_removed",
+      "native_launcher_prelaunch_lease",
+      "live_job_preserved",
+      "repair_retains_modified_and_foreign_files",
+      "actual_repair",
+      "actual_uninstall",
+      "populated_library_bytes_preserved"
+    ],
+    "passed_checks": 12,
+    "result_file": "native-lifecycle-log-derived.json",
+    "result": {
+      "schema": 1,
+      "status": "PASS",
+      "source_commit": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7",
+      "setup_sha256": "d8871d8ed53c2f66f6921b04b17f256ab64a40247d2f8c59f00e4c124485034f",
+      "bundle_manifest_sha256": "7bea5a53a54f9f14e972e3e2b05d397461d2f0f93ddc393826442738a36f85dc",
+      "actual_inno_install": true,
+      "actual_offline_runtime_bootstrap": true,
+      "per_user_start_menu": true,
+      "per_user_repair_uninstall_registration": true,
+      "fresh_shortcut_collision_refused": true,
+      "uninstaller_wrapper_removed": true,
+      "native_launcher_prelaunch_lease": true,
+      "live_job_preserved": true,
+      "repair_retains_modified_and_foreign_files": true,
+      "actual_repair": true,
+      "actual_uninstall": true,
+      "populated_library_bytes_preserved": true,
+      "authenticode_verified": false,
+      "nvda_verified": false,
+      "unprivileged_account_qualification": "NOT_RUN",
+      "native_network_trace": "NOT_RUN",
+      "release_status": "unsigned-private-candidate"
+    },
+    "strict_verdict": {
+      "bundle_manifest_sha256": "7bea5a53a54f9f14e972e3e2b05d397461d2f0f93ddc393826442738a36f85dc",
+      "native_standard_assertions": [
+        "actual_inno_install",
+        "actual_offline_runtime_bootstrap",
+        "per_user_start_menu",
+        "per_user_repair_uninstall_registration",
+        "fresh_shortcut_collision_refused",
+        "uninstaller_wrapper_removed",
+        "native_launcher_prelaunch_lease",
+        "live_job_preserved",
+        "repair_retains_modified_and_foreign_files",
+        "actual_repair",
+        "actual_uninstall",
+        "populated_library_bytes_preserved"
+      ],
+      "release_status": "unsigned-private-candidate",
+      "setup_sha256": "d8871d8ed53c2f66f6921b04b17f256ab64a40247d2f8c59f00e4c124485034f",
+      "source_commit": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7",
+      "status": "PASS"
+    }
+  },
+  "artifact": {
+    "id": 15251222059,
+    "name": "carr-standard-installation-windows-2022-2dfc5d32558c722ba05068dfff9ebb19eeae52f7-1",
+    "size_bytes": 141138,
+    "sha256": "f2aa5f2cbec4d832f41b2f12c58082a0187d7c7ed3d8aed7aee38c0c2441a7fc",
+    "api_upload_match": true,
+    "uploaded_files_reported": 47,
+    "downloaded": false,
+    "original_member_bytes": "NOT_READ",
+    "content_scope": "Workflow uploads only JSON/TXT/LOG/XML public evidence; no setup executable, wheel or runtime archive is uploaded."
+  },
+  "provenance": {
+    "log_file": "full-decoded-log.txt",
+    "log_type": "Complete connector-decoded terminal text; original timestamps and line endings preserved.",
+    "decoded_utf8_bytes": 319970,
+    "decoded_utf8_sha256": "bf895082bd6269788a1d607770e926ce996405ff9b16b1f8099ee5086ea5ec42",
+    "derived_json": "Receipt JSON values are parsed from the actual terminal log. Setup JSON begins immediately after the compiler's Preprocessing text; parsing starts at that opening brace without altering the stored log.",
+    "execution": "The reviewer ran no local application/tests; all execution evidence comes from this completed hosted job."
+  },
+  "limits": [
+    "All 12 native lifecycle fields are actual at this exact commit, including offline bootstrap, repair, uninstall, live-job protection and populated-library byte preservation.",
+    "Authenticode and manual NVDA remain unverified. Unprivileged-account qualification and native network tracing are explicitly NOT_RUN.",
+    "The Inno compiler's upstream valid signature does not sign the resulting setup; the setup remains an unsigned private candidate.",
+    "Linux, other source heads, final full-runtime delivery and private-model/acoustic qualification are separate evidence scopes."
+  ]
+}

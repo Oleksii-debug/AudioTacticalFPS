@@ -147,6 +147,38 @@
       "job": 140876054132,
       "kind": "Terminal Windows installed components: 88 modules, 3,217 passed plus 12 subtests; separate real-venv 21 passed; native clip 120 checks; actual Studio inspection five checks and five installed module hashes. Inclusive whole-file positive control with original master unchanged; loop listening and NVDA not qualified.",
       "qualification": "carr-library/review/component-2dfc5d32-2026-11-28/windows-installed-receipt.json"
+    },
+    {
+      "tested_source": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7",
+      "sparse_tree": "12437ce701abb716d28834ea10957fe72433a022",
+      "run": 46111573953,
+      "job": 140876058894,
+      "kind": "Terminal Windows standard installation: 351 source and 351 installed passed plus 22 subtests; all 12 actual native Install/Repair/Uninstall checks. Full 383 source/wheel/installed rows match; library preserved. Unsigned private core setup, separate from full audio/runtime delivery.",
+      "qualification": "carr-library/review/receiving-2dfc5d32-2026-11-28/standard-windows/qualification.json"
+    },
+    {
+      "tested_source": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7",
+      "sparse_tree": "e8b0e8df4259da7925afce8d1ee62f11b878d52e",
+      "run": 46111569574,
+      "job": 140876043899,
+      "kind": "Terminal endpoint bibliography: 29 source modules / 1,092 passed, zero failures/skips; 69 native assertions and five matching module hashes. Separate from the successful PR trial.",
+      "qualification": "carr-library/review/receiving-2dfc5d32-2026-11-28/bibliography/qualification.json"
+    },
+    {
+      "tested_source": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7",
+      "sparse_tree": "7a2a58154f3baaabdccb8d3b011182aa5e839cc8",
+      "run": 46111572572,
+      "job": 140876054321,
+      "kind": "Terminal Linux installed components: 89 modules / 3,220 passed plus 12 subtests, zero failures/skips; exact 383-module byte-map identity. Native Windows scopes remain separate.",
+      "qualification": "carr-library/review/component-2dfc5d32-2026-11-28/linux-installed-receipt.json"
+    },
+    {
+      "tested_source": "ccb340d1202e6d6f42394bef2131437c010d5a0e",
+      "sparse_tree": "d879dba7e583c1d4ff91a0cc1fd31f3271f639bc",
+      "run": 46113802718,
+      "job": 140882980222,
+      "kind": "Isolated Word completion-fixture diagnostic: 22 source and 22 installed Windows cases passed, zero failures/skips. All 383 application bytes match parent. Root and independent peer verified exact log, installed strict gate and complete inventory; earlier five failure causes remain unproven.",
+      "qualification": "carr-library/review/word-preview-diagnostic-ccb340d1-2026-11-28/qualification.json"
     }
   ],
   "candidate_runs": {
@@ -166,7 +198,7 @@
     "pr_bridge": 46111581953,
     "push_integration_bridge": 46111575068
   },
-  "execution": "Only exact terminal scopes in evidence_sets have a result. Other modes and full current Windows runs continue. Current selected-capture step is failed metadata, with cause not yet received; no aggregate release or final wheel is qualified.",
+  "execution": "Only the exact terminal scopes in evidence_sets have results. All four ordinary native/bibliography/bridge/canonical runs and both standard-installation jobs succeeded; remaining Reader/component modes and full current Windows jobs continue. The current selected-capture step is failed metadata; no aggregate release or final wheel is qualified.",
   "ci_trigger_review": "Evidence branch name is outside every current workflow push branch filter. Workflow files and all application blobs are unchanged.",
   "private_artifacts": "Only public source review, metadata, decoded logs and synthetic test evidence; no private model, recordings, runtime binaries or credentials.",
   "diagnostic_runs": [
@@ -179,8 +211,10 @@
       "job_id": 140882980222,
       "scope": "Corrected test completion contract, all19 prior Word UI cases plus3 new real-executor controls; unchanged10-second fixture readiness and30-second formatter.",
       "application_python_bytes_identical_to_candidate": true,
-      "execution_receipt": "PENDING",
-      "qualification_transfer": false
+      "execution_receipt": "PASS: 22 source / 22 installed, zero failures/skips; modeled UI with real executor/formatter only.",
+      "qualification_transfer": false,
+      "qualification": "carr-library/review/word-preview-diagnostic-ccb340d1-2026-11-28/qualification.json",
+      "peer_review": "Root and independent Voice reviewer verified exact source delta, actual command, 383 inventory rows and terminal log. No real Word/NVDA or historical failure-cause claim."
     }
   ],
   "latest_source_verification": {

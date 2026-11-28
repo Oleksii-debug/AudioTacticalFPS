@@ -1,0 +1,10 @@
+[
+  {
+    "status": "PASS",
+    "module": "tests/ui/test_word_citations.py",
+    "passed": 22,
+    "failed": 0,
+    "skipped": 0,
+    "exit": 0
+  }
+]

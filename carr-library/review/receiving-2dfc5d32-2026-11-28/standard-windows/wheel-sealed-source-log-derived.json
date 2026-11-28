@@ -1,0 +1,23 @@
+{
+  "provenance": "Values parsed from completed job log; not downloaded artifact members.",
+  "wheel": {
+    "payload_files": 493,
+    "project_name": "universal-research-library",
+    "project_version": "0.2.0.dev2",
+    "required_runtime_files": 398,
+    "source_commit": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7",
+    "source_tree": "14a6dc1ce55f5c9d885fbb88b7a50701187acb80",
+    "wheel_sha256": "70fb41fec50766ba2dc8724a372e27a5a9f19d4934e338d761fd737ace8cb3c9"
+  },
+  "sealed_core_bundle": {
+    "bundle_manifest_sha256": "7bea5a53a54f9f14e972e3e2b05d397461d2f0f93ddc393826442738a36f85dc",
+    "payload_files": 493,
+    "profile": "current-core-19-windows-pins",
+    "project_name": "universal-research-library",
+    "project_version": "0.2.0.dev2",
+    "required_runtime_files": 398,
+    "source_commit": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7",
+    "source_tree": "14a6dc1ce55f5c9d885fbb88b7a50701187acb80",
+    "wheel_sha256": "70fb41fec50766ba2dc8724a372e27a5a9f19d4934e338d761fd737ace8cb3c9"
+  }
+}

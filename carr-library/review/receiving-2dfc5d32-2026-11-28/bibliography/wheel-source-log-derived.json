@@ -1,0 +1,12 @@
+{
+  "provenance": "Actual completed-job log values, not original artifact bytes.",
+  "result": {
+    "payload_files": 493,
+    "project_name": "universal-research-library",
+    "project_version": "0.2.0.dev2",
+    "required_runtime_files": 398,
+    "source_commit": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7",
+    "source_tree": "14a6dc1ce55f5c9d885fbb88b7a50701187acb80",
+    "wheel_sha256": "baf11e685f79fc57c2a84f0efbb943695358c83be3fa815d57decea2fa858df9"
+  }
+}

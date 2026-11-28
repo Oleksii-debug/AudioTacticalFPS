@@ -1,0 +1,72 @@
+{
+  "schema": "carr-decoded-receiving-manifest/1",
+  "commit": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7",
+  "run_id": 46111569574,
+  "job_id": 140876043899,
+  "scope": "Endpoint bibliography terminal trial",
+  "files": [
+    {
+      "path": "full-decoded-log.txt",
+      "git_blob": "2aeb986956c9ffbe246596bd18dc737929292c9c",
+      "utf8_bytes": 139840,
+      "sha256": "15b43e2de5b475fb5201f4f271f2f599043661e71c399e40e6e614d07b4db703"
+    },
+    {
+      "path": "job-metadata.json",
+      "git_blob": "82841fb6dbee76e2ed634180c264d4b1710da07e",
+      "utf8_bytes": 3711,
+      "sha256": "79137621e34161d64f590e8084148ed5a6fa909072f841aba74a65bf5e5cab7d"
+    },
+    {
+      "path": "run-metadata.json",
+      "git_blob": "b4b33d05832f0933f8d5d9eda311dda1d8dcd4a5",
+      "utf8_bytes": 15434,
+      "sha256": "7820a3d23bb16663bcc0a17334a729f15e5553e8406d277946494b9af99fa422"
+    },
+    {
+      "path": "artifact-metadata.json",
+      "git_blob": "cc538760b30aa857eb1034320a4ad1571d42ccd3",
+      "utf8_bytes": 862,
+      "sha256": "c210f764a33fb6adbad84ef8a6b39776bbae57d9cf240bae28f20ef60a5d4f98"
+    },
+    {
+      "path": "module-results.json",
+      "git_blob": "570baaa5f363f00e77f068f84dcd8f852625dae2",
+      "utf8_bytes": 5895,
+      "sha256": "dad153cadf18e5e3517e7fdcd640f9e9e7d5e210378d542c108a037c8839b6e8"
+    },
+    {
+      "path": "wheel-source-log-derived.json",
+      "git_blob": "28cb9e7b7be534c5598e1d265b33063ab7f1da10",
+      "utf8_bytes": 466,
+      "sha256": "89e655f76fb01a638ed9c878c7f744d505a985e4ff994c9022183ba653a02d23"
+    },
+    {
+      "path": "native-report-log-derived.json",
+      "git_blob": "97965c47c1cbf21f434231ff8eb9bbd9c2c839c1",
+      "utf8_bytes": 1240,
+      "sha256": "9a7133a5a43453d844c5dbed604b9ea0448c4fab5505bbda9aa1370fe5e30d66"
+    },
+    {
+      "path": "native-module-identity.json",
+      "git_blob": "30801a2f3b78bee6f9a3301744d0642800f1d85a",
+      "utf8_bytes": 2276,
+      "sha256": "fa1462b635004cf6451993e5c811e0d4346be57735aab114ebc4d53a81f9eb84"
+    },
+    {
+      "path": "qualification.json",
+      "git_blob": "436c8ca94fd3241812d269525a147f7dd1732467",
+      "utf8_bytes": 5766,
+      "sha256": "e433b262a767a608dfe41be4a2a0e858dc5fe77a1479e74623fc12b5020867f1"
+    },
+    {
+      "path": "README.md",
+      "git_blob": "e9e4d1da475a5be5e270faa2da7ff3a3ebdd5cf1",
+      "utf8_bytes": 1509,
+      "sha256": "b9f68370040c6aea3acb63124771ce8136851d1f2aa5cd22bb3bf824678df318"
+    }
+  ],
+  "verification": "Every listed blob fetched back and compared in full. Hashes identify these decoded-log-derived UTF-8 files, not original artifact members.",
+  "product_changes": false,
+  "refs_changed": false
+}

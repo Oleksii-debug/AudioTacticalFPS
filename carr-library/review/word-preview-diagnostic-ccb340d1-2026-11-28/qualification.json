@@ -1,0 +1,157 @@
+{
+  "schema": "carr-exact-head-diagnostic-receipt/1",
+  "status": "PASS",
+  "scope": "Windows modeled Word UI callback contracts with actual single executor and real formatter, source and installed",
+  "commit": "ccb340d1202e6d6f42394bef2131437c010d5a0e",
+  "tree": "8b9227ed7ed9b7c9d54fdc3d228e9075f07e24a3",
+  "parent_application_commit": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7",
+  "run_id": 46113802718,
+  "job_id": 140882980222,
+  "run_attempt": 1,
+  "branch": "carr/word-preview-evaluation-20261128",
+  "event": "push",
+  "job_conclusion": "success",
+  "started_at": "2026-11-28T06:08:27Z",
+  "completed_at": "2026-11-28T06:12:33Z",
+  "job_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46113802718/job/140882980222",
+  "workflow": {
+    "path": ".github/workflows/carr-word-preview-evaluation.yml",
+    "git_blob": "9a017150e77c935deaeaa391e8d591985e591e2a"
+  },
+  "fixture": {
+    "path": "carr-library/tests/ui/test_word_citations.py",
+    "before": "fc46e14535806decdb977e98fcd91948d8c3da52",
+    "after": "047bc60d692f3b976be2e86eada9af4bd08b1387",
+    "original_cases": 19,
+    "added_real_executor_cases": 3,
+    "original_assertion_or_raises_lines": 61,
+    "original_assertions_preserved": true,
+    "readiness_timeout_seconds": 10,
+    "formatter_timeout_seconds": 30,
+    "review_blob": "5a98b9b58bbfec2ecc6ee629fe8e8d545c039754",
+    "inverse_blob": "f6df64bcee78f0b87ade108f3ad8001bb8a13e45"
+  },
+  "tests": {
+    "expected_modules": [
+      "tests/ui/test_word_citations.py"
+    ],
+    "source": {
+      "passed": 22,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0,
+      "seconds": 93.35
+    },
+    "installed": {
+      "passed": 22,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0,
+      "seconds": 94.87,
+      "junit_case_count": 22
+    }
+  },
+  "identity": {
+    "application_modules": 383,
+    "all_application_python_git_blobs_identical_to_parent": true,
+    "all_source_wheel_installed_python_rows_match": true,
+    "runtime_rows_sha256": "88caab4fabbe9961a65ee4edd5fcc44362d5c033ca3202a66941b633ebc7f869",
+    "rows_encoding": "JSON compact array of {bytes,path,sha256}, in emitted path order, UTF-8 without trailing newline",
+    "reference_candidate": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7",
+    "reference_scope": "Identity comparison only; no execution result is transferred to another head.",
+    "inventory_file": "inventory.json"
+  },
+  "environment": {
+    "platform": "windows-2022",
+    "python": "3.11.9 (tags/v3.11.9:de54cf5, Apr  2 2024, 10:12:12) [MSC v.1938 64 bit (AMD64)]",
+    "executable": "D:\\a\\_temp\\carr-word-preview-python\\Scripts\\python.exe",
+    "prefix": "D:\\a\\_temp\\carr-word-preview-python",
+    "installed_package": "D:\\a\\_temp\\carr-word-preview-python\\Lib\\site-packages\\carr_library",
+    "required_suites": [
+      "tests/ui/test_word_citations.py"
+    ],
+    "dependency_selection": {
+      "build_support": {
+        "setuptools": "84.2.1",
+        "wheel": "0.48.0",
+        "zstandard": "0.25.0"
+      },
+      "effective_requirements_sha256": "c1c725f7ba5c0352dc48e6e9a4092d6e4c6878102dad7abe416b69f859edf798",
+      "excluded": [],
+      "pins": {
+        "bibtexparser": "2.1.0",
+        "cffi": "2.1.1",
+        "comtypes": "1.5.0",
+        "cryptography": "50.0.2",
+        "defusedxml": "0.7.1",
+        "filelock": "3.29.0",
+        "lxml": "6.1.3",
+        "numpy": "2.4.6",
+        "pillow": "13.0.0",
+        "platformdirs": "4.10.0",
+        "py3langid": "0.4.0",
+        "pycparser": "3.12",
+        "pylatexenc": "2.11",
+        "pypdf": "7.1.1",
+        "pypdfium2": "5.13.0",
+        "python-docx": "1.2.0",
+        "quickjs-ng": "0.18.0.2",
+        "typing-extensions": "4.16.0",
+        "wxpython": "4.2.4"
+      },
+      "platform": "win32",
+      "pytest": "9.0.2",
+      "repository_lock_sha256": "c1c725f7ba5c0352dc48e6e9a4092d6e4c6878102dad7abe416b69f859edf798",
+      "verification_support": "packaging==26.4",
+      "windows_dependency_hashes_required": true
+    },
+    "installed_command": "& $env:CARR_PYTHON -I -B -X utf8 -c $installedGate -q -o addopts= -o pythonpath= -o xfail_strict=true --import-mode=importlib --junitxml=ci-word-preview-results/installed.xml @suites",
+    "network": "Disabled in source and installed test workers by the retained strict test configuration.",
+    "native_ms_word": "NOT_RUN",
+    "installed_gate": "Verifies carr_library originates outside the checkout and under the fresh venv prefix, then executes the exact existing scripts/ci_check.py PYTEST_CHILD policy."
+  },
+  "wheel": {
+    "payload_files": 493,
+    "project_name": "universal-research-library",
+    "project_version": "0.2.0.dev2",
+    "required_runtime_files": 398,
+    "source_commit": "ccb340d1202e6d6f42394bef2131437c010d5a0e",
+    "source_tree": "8b9227ed7ed9b7c9d54fdc3d228e9075f07e24a3",
+    "wheel_sha256": "1ee9fdfb128554792a160dc084ba1de6c08c10d0b62747dd94aab3fff25afb38"
+  },
+  "artifact": {
+    "id": 15251755413,
+    "name": "carr-word-preview-windows-2022-ccb340d1202e6d6f42394bef2131437c010d5a0e-1",
+    "size_in_bytes": 23329,
+    "url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15251755413",
+    "archive_download_url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15251755413/zip",
+    "expired": false,
+    "created_at": "2026-11-28T06:12:28Z",
+    "expires_at": "2026-12-05T06:12:27Z",
+    "updated_at": "2026-11-28T06:12:28Z",
+    "digest": "sha256:e557655bf7d1cabf81e882300a552317dcba1f168f1f5343aa78af7e2aa1ab66",
+    "workflow_run": {
+      "id": 46113802718,
+      "repository_id": 1341777614,
+      "head_repository_id": 1341777614,
+      "head_branch": "carr/word-preview-evaluation-20261128",
+      "head_sha": "ccb340d1202e6d6f42394bef2131437c010d5a0e"
+    }
+  },
+  "provenance": {
+    "log_file": "full-decoded-log.txt",
+    "decoded_utf8_bytes": 265461,
+    "decoded_utf8_sha256": "b16b89813d0652299b266127c1d2a338b77ee29780874e8dc2914ff33df83c42",
+    "log_type": "Complete terminal GitHub connector-decoded text; timestamps, BOM and line endings preserved.",
+    "artifact_zip_downloaded": false,
+    "original_xml_bytes_claimed": false,
+    "counts": "Source strict ci_check verdict and installed pytest/JUnit-verifier output. Artifact metadata is a separate identity; member bytes have not been downloaded."
+  },
+  "interpretation": "The corrected fixture and its three executor controls passed in both modes. The earlier five parent MAIN failures have an unobserved exception type; this trial does not establish their historical cause or retroactively turn them into passes.",
+  "limits": [
+    "A modeled Word UI owner is used with real formatter/executor; actual Microsoft Word COM interaction and human NVDA remain NOT_RUN.",
+    "The isolated diagnostic is a descendant with unchanged application bytes, not a complete platform or release qualification.",
+    "No product timeout, original assertion or required receiving workflow was loosened.",
+    "No private asset, model, executable, document or recording is published."
+  ]
+}
