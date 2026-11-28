@@ -1,0 +1,152 @@
+{
+  "schema": "carr-federated-native-pagination-fixture-repair/1",
+  "date_utc": "2026-11-28",
+  "status": "SOURCE_REPAIR_NOT_EXECUTED",
+  "source_parent": {
+    "commit": "87d1ec6a05963531c5c1907f74884faddac2093e",
+    "tree": "f28841240a6d5163e6d8e1bdea4e8117b30650e2"
+  },
+  "observed_failure": {
+    "run_id": 46135188389,
+    "job_id": 140948783918,
+    "run_attempt": 1,
+    "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46135188389",
+    "job_started_at": "2026-11-28T10:30:23Z",
+    "job_completed_at": "2026-11-28T10:37:13Z",
+    "failed_focused_step": 32,
+    "copied_main_step": 34,
+    "failure_file": "carr-library/tests/ui/federated_native_smoke.py",
+    "failure_line": 125,
+    "assertion": "{hit.workspace for hit in controller.rows} == {active[0], workspace}",
+    "exception": "AssertionError",
+    "observed_workspace_values": null,
+    "observation_limit": "The completed raw log records the failed equality and traceback. It does not record the actual current-page workspace set or page cursor.",
+    "raw_decoded_log": {
+      "chars": 612261,
+      "utf8_bytes": 612271,
+      "sha256": "f00ff0aa48a39c01d9c20f5cbf87467b1f8b3d1728b163bccfd75413470eea64"
+    },
+    "artifact": {
+      "id": 15259607296,
+      "bytes": 253437,
+      "sha256": "89c93eb124dea2c699509d26f17058cf2e56abcf817b1d7147ab95ce5059a6a0",
+      "zip_read": false
+    },
+    "previous_current_head_steps": "Import Center, reading (26 emitted check occurrences), document formats and OCR model manager completed successfully at this exact source. This is not an aggregate native-focus PASS; steps33–47 were skipped."
+  },
+  "source_derived_cause": {
+    "native_dispatch": "NativeSearchCenter._search constructs SearchOptions(..., paged=True).",
+    "service_contract": "FederatedSearch.search_page returns one current nonempty library page, breaks after that page, and exposes remaining selected libraries via next_cursor.",
+    "mismatch": "The old fixture compared a single current page to the union of both selected libraries. The current service deliberately keeps only the current page's quotation capabilities.",
+    "locations": [
+      {
+        "path": "carr-library/src/carr_library/ui/federated_search.py",
+        "lines": [
+          566,
+          580
+        ]
+      },
+      {
+        "path": "carr-library/src/carr_library/search/federated.py",
+        "lines": [
+          295,
+          305,
+          414,
+          429
+        ]
+      }
+    ],
+    "runtime_cause_limit": "This is a source-established expectation mismatch consistent with the observed failed equality. No unlogged workspace value, cursor or worker timing is asserted."
+  },
+  "repair": {
+    "path": "carr-library/tests/ui/federated_native_smoke.py",
+    "before_git_blob": "4240ebe61fa763de0fbbdd1648643833e3054bf6",
+    "before_sha256": "5c3c9be12668ffc614339ead23c52213a054e9caf1fc5d2edbcbe9269e9a620e",
+    "after_sha256": "c0c826724c9f48cf90182b192b81dd7d11c570c0c946bbc1e101060fa49d52d9",
+    "exact_hunks": [
+      {
+        "before": "    state = {'context_closed': False, 'topic_chosen': False, 'note_entered': False,\n             'completed': False, 'hit': None}\n",
+        "after": "    state = {'context_closed': False, 'topic_chosen': False, 'note_entered': False,\n             'completed': False, 'hit': None, 'selected_libraries': (), 'page_libraries': []}\n"
+      },
+      {
+        "before": "        for index, row in enumerate(native.libraries):\n            native.libraries_control.Check(index, row.id in (active[0], workspace))\n        event = wx.CommandEvent(wx.EVT_CHECKLISTBOX.typeId, native.libraries_control.GetId())\n",
+        "after": "        for index, row in enumerate(native.libraries):\n            native.libraries_control.Check(index, row.id in (active[0], workspace))\n        state['selected_libraries'] = tuple(row.id for index, row in enumerate(native.libraries)\n            if native.libraries_control.IsChecked(index))\n        assert len(state['selected_libraries']) == 2\n        assert set(state['selected_libraries']) == {active[0], workspace}\n        event = wx.CommandEvent(wx.EVT_CHECKLISTBOX.typeId, native.libraries_control.GetId())\n"
+      },
+      {
+        "before": "    def search_ready():\n        if frame.working:\n            later(search_ready)\n            return\n        assert not controller.running and controller.rows, native.status.GetValue()\n        assert {hit.workspace for hit in controller.rows} == {active[0], workspace}\n        index = next(index for index, hit in enumerate(controller.rows) if hit.workspace == workspace)\n",
+        "after": "    def search_ready():\n        if frame.working:\n            later(search_ready)\n            return\n        assert not controller.running and controller.rows, native.status.GetValue()\n        # The current service admits one nonempty library page at a time.\n        # Traverse the real native continuation controls without retaining hits.\n        page_libraries = {hit.workspace for hit in controller.rows}\n        assert len(page_libraries) == 1 and page_libraries <= {active[0], workspace}, page_libraries\n        position = len(state['page_libraries'])\n        assert position < len(state['selected_libraries'])\n        assert controller.paging.page_number == position + 1\n        current_library, = page_libraries\n        assert current_library == state['selected_libraries'][position]\n        state['page_libraries'].append(current_library)\n        assert_scope()\n        if controller.paging.can_next:\n            assert len(state['page_libraries']) < 2, 'Unexpected extra page for the bounded fixture.'\n            later(search_ready)\n            click(native.next_button)\n            assert_busy()\n            return\n        assert set(state['page_libraries']) == {active[0], workspace}\n        assert tuple(state['page_libraries']) == state['selected_libraries']\n        if current_library != workspace:\n            assert state['page_libraries'][0] == workspace and controller.paging.can_previous\n            later(select_current_target)\n            click(native.previous_button)\n            assert_busy()\n            return\n        select_current_target()\n\n    def select_current_target():\n        if frame.working:\n            later(select_current_target)\n            return\n        assert not controller.running and controller.rows, native.status.GetValue()\n        assert {hit.workspace for hit in controller.rows} == {workspace}\n        assert controller.paging.page_number == state['selected_libraries'].index(workspace) + 1\n        index = next(index for index, hit in enumerate(controller.rows) if hit.workspace == workspace)\n"
+      }
+    ],
+    "behavior": [
+      "Read back exactly the two explicitly selected native libraries, retaining their actual control order.",
+      "After each actual worker completion, require one authorized current-page library, strict page-number progress and selection-order agreement.",
+      "Use the existing visible/enabled native Next button; bound this fixture to exactly two populated library pages.",
+      "Require the exact union of visited current pages to equal {active[0], workspace}; no selected library may be omitted or replaced.",
+      "If the target library is on the earlier page, use the existing native Previous button and wait for completion.",
+      "Select the target hit from the current controller.rows only after traversal; retain no prior-page hit for context/copy/save.",
+      "Run the entire existing context, clipboard, save, cancellation, close-veto and host-scope checks unchanged."
+    ],
+    "application_source_changed": false,
+    "workflows_changed": false,
+    "oracles_changed": false,
+    "declared_native_labels_changed": false,
+    "helper_timeout_seconds": 15,
+    "outer_probe_timeout_seconds": 45,
+    "source_bindings": [
+      {
+        "path": "carr-library/tests/ui/federated_native_smoke.py",
+        "git_blob": "4240ebe61fa763de0fbbdd1648643833e3054bf6",
+        "sha256": "5c3c9be12668ffc614339ead23c52213a054e9caf1fc5d2edbcbe9269e9a620e"
+      },
+      {
+        "path": "carr-library/src/carr_library/ui/federated_search.py",
+        "git_blob": "81b8b88bba516cfbe3629ecd2bb7a6e0f2a14664",
+        "sha256": "b61ffd724d7bd7ecebe9e8017a3db2d49d1a48ab9cf1011f594452616f86bbf8"
+      },
+      {
+        "path": "carr-library/src/carr_library/search/federated.py",
+        "git_blob": "301e096f4405070d63966b37ccf7e45f9e7a6fe4",
+        "sha256": "df6e3ad3bfc5ba61dbc8ae0eb01b71da9b4533c1ac978c6121f2fb1551fff75e"
+      },
+      {
+        "path": "carr-library/src/carr_library/ui/search_paging.py",
+        "git_blob": "f16b026c0ec71405e4f20e56a311bfd05a65df0d",
+        "sha256": "c822aab930b9073c2828992f7cde690706b946abf3a9b4256ff7335f3039e88d"
+      },
+      {
+        "path": "carr-library/tests/ui/probe_source_open_native.py",
+        "git_blob": "1035939697c06967cbc0de6fce58c10bb369192f",
+        "sha256": "2f615c3bde959e2edf85ba90f95f407c0df6b83488db64b213aaaabf793df115"
+      }
+    ],
+    "preserved_expected_label_counter": {
+      "current-library-only default": 1,
+      "explicit multi-library native search event": 1,
+      "library and verification labels": 1,
+      "worker controls disabled and restored": 1,
+      "fresh original context and result focus restoration": 1,
+      "fresh verified native clipboard copy": 1,
+      "native topic chooser saves only in result library": 1,
+      "option changes invalidate previous results": 1,
+      "cancelled search exposes no rows": 1,
+      "close veto while worker active": 1,
+      "desktop scope and selection cache preserved": 1
+    },
+    "original_success_tail": {
+      "sha256": "f5230277b10f4d8780332bd452f810674fd8b4eac1c25855922462be4fe5f85a",
+      "characters": 5788,
+      "byte_identical": true
+    },
+    "original_label_append_code_byte_identical": true,
+    "inverse_hunks_reconstruct_complete_parent_file": true
+  },
+  "verification": {
+    "authoring_checks": "Exact immutable-source reads, source-contract comparison, three-hunk inverse reconstruction, unchanged label append blocks and unchanged entire target-selection/action/cleanup/receipt tail.",
+    "regression_execution": "NOT_RUN",
+    "native_execution": "NOT_RUN",
+    "independent_peer_review": "PENDING",
+    "physical_audio": "NOT_RUN",
+    "manual_keyboard_and_nvda": "NOT_RUN",
+    "scope": "No application source, process owner, selected source authority, timeout, gate population, or active ref was changed. Whole observed-failure proof is maintained separately by the root team."
+  }
+}

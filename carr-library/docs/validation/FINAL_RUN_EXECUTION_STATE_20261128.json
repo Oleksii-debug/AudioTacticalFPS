@@ -1,16 +1,16 @@
 {
   "schema": "carr-final-run-execution-state/1",
-  "updated_utc": "2026-11-28T10:26:57Z",
+  "updated_utc": "2026-11-28T11:12:00Z",
   "product": "Resonance",
   "repository": "Oleksii-debug/AudioTacticalFPS",
   "canonical_branch": "carr-library",
-  "canonical_observed": "e5c64a5245583f8f8b404a0f042f6ca438c24d7f",
+  "canonical_observed": "7e8f9d2ef6922bbd7a3fcf02996860ebc57e273f",
   "pr": {
     "number": 210,
     "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/pull/210",
     "branch": "carr/v3-final-fixture-424cc-20261128-d3a",
     "head": "7c991dac1581faa63cb32eaaa5e21cf548287b38",
-    "body_current_record": "r41_pr210:prepared_body"
+    "body_current_record": "r42_pr210:87d1_failure_body"
   },
   "predecessor": {
     "commit": "424cc456992c69c1ee945bc4d5ab73bc21e4e7b8",
@@ -137,8 +137,8 @@
   },
   "evidence": {
     "branch": "carr/final-evidence-d3a-20261127",
-    "head": "695c3b6838781e4eb59d92a33629999952a8aab1",
-    "tree": "8be8572cfc42770d62ab04ce7bec4090bce3e461",
+    "head": "066b41a622a77cba8fd19222dda975e66bd39aef",
+    "tree": "b8a559cc9a845c22c5998948bc23cf8c72f1aa7b",
     "warning": "Evidence tree retains historical application source; never promote it as the application candidate.",
     "checkpoint_path": "carr-library/docs/validation/FINAL_RUN_EXECUTION_STATE_20261128.json",
     "auxiliary_proof_commit": "7520e3d5d6f118517dae3bb4fa15e1ab1386e865",
@@ -147,7 +147,9 @@
     "current_source_composition": "87d1ec6a05963531c5c1907f74884faddac2093e",
     "current_independent_review_path": "carr-library/docs/evidence/reading-native-final-independent-review-20261128.json",
     "focused_2701_review_path": "carr-library/docs/evidence/2701-focused-independent-review-20261128.json",
-    "checkpoint_head_semantics": "head identifies the observed parent evidence ref; the containing commit anchors this updated checkpoint"
+    "checkpoint_head_semantics": "head identifies the observed parent evidence ref; the containing commit anchors this updated checkpoint",
+    "focused_87d1_review_path": "carr-library/docs/evidence/87d1-focused-independent-review-20261128.json",
+    "incoming_census_commit": "694da05cf2363f8f4ac95e45ec2e4b6174274c0c"
   },
   "finish_requirements": [
     "Review final composed source and additive focused gate independently.",
@@ -160,275 +162,26 @@
   "full_platform_status": "NOT_QUALIFIED",
   "external_acceptance": "Real owner engines/models/authorized samples, language/acoustics, Windows11/NVDA and physical devices, lawful corpora, private authority/signing and distribution rights.",
   "next_repair": {
-    "base": "09ac4c06ec6cfc88805ea4673a7767a934b80f9b",
-    "component": "58370c0b7d10c01b5e249baee77a1fd9f7b48c9e",
-    "status": "COMPOSED_SOURCE_GO_THREE_FOCUSED_PUSHES_COMPLETE",
-    "root_source_checks": 16,
+    "base": "87d1ec6a05963531c5c1907f74884faddac2093e",
+    "status": "SOURCE_GO_AWAIT_INCOMING_CANONICAL_RECONCILIATION",
+    "diagnosis": "Current federated UI requests paged=True; the service intentionally publishes the first nonempty selected-library page and exposes other libraries through a cursor. The older helper requires two workspaces on that single page.",
+    "actual_failed_page_values": "NOT_RECORDED",
+    "component": "3149f07451c54460fd04f1ac76fb38589226ec76",
+    "execution": "NOT_RUN",
+    "tree": "93a291ba2390227df85bfa2022629672c88ec88d",
+    "root_source_checks": 21,
+    "peer_source_checks": 21,
     "application_files_changed": 0,
-    "execution": "THREE_FOCUSED_RUNS_REGISTERED_QUEUED",
-    "composition": "87d1ec6a05963531c5c1907f74884faddac2093e",
-    "tree": "f28841240a6d5163e6d8e1bdea4e8117b30650e2",
-    "root_composition_checks": 25,
-    "remaining_consumer_audit": "SOURCE_ONLY_NO_CONCRETE_ADDITIONAL_API_MISMATCH"
+    "native_helper_files_changed": 1
   },
   "next_candidate": {
-    "commit": "7c991dac1581faa63cb32eaaa5e21cf548287b38",
-    "tree": "4929a01d460a1184d0552fdcda0fe392f1e7e21b",
-    "files": 1810,
-    "status": "MAIN_FAILED_SEARCH_CONTINUATION_NATIVE_COPY",
-    "component": "d12884890335518721e109459819c2352e2ab38f",
-    "root_review": "COMPOSED_SOURCE_GO_AND_ACTUAL_FOCUSED_PASS",
-    "peer_review": "COMPOSED_SOURCE_GO_AND_ACTUAL_FOCUSED_PASS",
-    "planned_focused_branches": {
-      "basic": "carr/local-translation-final-7c991-20261128-d3a",
-      "inspection": "carr/silence-inspection-final-7c991-20261128-d3a"
-    },
-    "basic_focus": {
-      "run": 46119546281,
-      "job": 140900801416,
-      "attempt": 1,
-      "status": "completed",
-      "conclusion": "success",
-      "basic_step": {
-        "number": 8,
-        "conclusion": "success",
-        "started_at": "2026-11-28T07:20:04Z",
-        "completed_at": "2026-11-28T07:20:05Z",
-        "raw_receipt_review": "ROOT_AND_CAPACITY_PASS_13_FIELDS_32_DIAGNOSTICS_AND_ORDERED_CLEANUP"
-      },
-      "existing_translation_cohort": {
-        "source": 324,
-        "installed": 324,
-        "native": 8,
-        "status": "PASS"
-      },
-      "independent_review": "ROOT_AND_CAPACITY_OBSERVED_FOCUSED_PASS_PROOF_GO",
-      "raw_log": {
-        "chars": 64675,
-        "bytes": 64677,
-        "sha256": "a6fc7d4db9053549d839a349bad6fe5e18baf21ff2e43ff44a0ead3f3896ace2"
-      },
-      "artifact": {
-        "id": 15253412010,
-        "bytes": 6457019,
-        "sha256": "5c5cafa5f5d72d4afdffbdb4c05cb3571a1e5e4612710f93588a9e6653522922"
-      },
-      "proof": "62309e968851e24f8ddad8e938ca1ad41f5fd88e"
-    },
-    "inspection_focus": {
-      "run": 46119552088,
-      "job": 140900816853,
-      "attempt": 1,
-      "status": "completed",
-      "conclusion": "success",
-      "source": 274,
-      "installed": 274,
-      "native": 29,
-      "independent_review": "ROOT_AND_NATIVE_PASS",
-      "raw_log": {
-        "chars": 166649,
-        "bytes": 166651,
-        "sha256": "d2635d279e4780a9c99fed308eab1baececdcdc37eea99bc284863ead2f32832"
-      },
-      "artifact": {
-        "id": 15252799779,
-        "bytes": 474412,
-        "sha256": "9deab7a801b8c532fcdb03af999e356a00bbb8ca1df3c160610dbee0192f40ba"
-      },
-      "proof": "8019fd0d4f7de4071f98ffaf15ae6a96ada4c2ba"
-    },
-    "main": {
-      "run": 46121064501,
-      "job": 140905458267,
-      "attempt": 1,
-      "status": "completed",
-      "conclusion": "failure",
-      "started_at": "2026-11-28T07:37:58Z",
-      "last_observed_step": {
-        "name": "Exercise installed search continuation with actual native keys and retained sources",
-        "status": "in_progress",
-        "conclusion": null,
-        "number": 26,
-        "started_at": "2026-11-28T08:34:47Z",
-        "completed_at": null
-      },
-      "source_step": {
-        "name": "Run required integrated source workflows",
-        "status": "completed",
-        "conclusion": "success",
-        "number": 21,
-        "started_at": "2026-11-28T07:43:29Z",
-        "completed_at": "2026-11-28T08:34:36Z"
-      },
-      "last_observed_at": "2026-11-28T08:34:52Z",
-      "protected_source_step": {
-        "name": "Require exact protected source regression inventory",
-        "status": "completed",
-        "conclusion": "success",
-        "number": 22,
-        "started_at": "2026-11-28T08:34:36Z",
-        "completed_at": "2026-11-28T08:34:37Z"
-      },
-      "raw_log_reconciliation": "ROOT_AND_CAPACITY_SOURCE_PASS_NATIVE26_FAILURE_VERIFIED_FULL_PROOF_PENDING",
-      "native_steps_observed_pass": [
-        {
-          "name": "Exercise actual native citations and destination confirmation",
-          "status": "completed",
-          "conclusion": "success",
-          "number": 23,
-          "started_at": "2026-11-28T08:34:37Z",
-          "completed_at": "2026-11-28T08:34:44Z"
-        },
-        {
-          "name": "Exercise installed native translation approval and immutable derivatives",
-          "status": "completed",
-          "conclusion": "success",
-          "number": 24,
-          "started_at": "2026-11-28T08:34:44Z",
-          "completed_at": "2026-11-28T08:34:46Z"
-        },
-        {
-          "name": "Exercise installed Advanced translation with real native controls and synthetic provider",
-          "status": "completed",
-          "conclusion": "success",
-          "number": 25,
-          "started_at": "2026-11-28T08:34:46Z",
-          "completed_at": "2026-11-28T08:34:47Z"
-        }
-      ],
-      "source_elapsed_seconds": 3067,
-      "completed_at": "2026-11-28T08:35:03Z",
-      "failure_step": {
-        "name": "Exercise installed search continuation with actual native keys and retained sources",
-        "status": "completed",
-        "conclusion": "failure",
-        "number": 26,
-        "started_at": "2026-11-28T08:34:47Z",
-        "completed_at": "2026-11-28T08:34:55Z"
-      },
-      "source_result": {
-        "suites": 451,
-        "passed": 11589,
-        "failed": 0,
-        "skipped": 0,
-        "functions": 5270,
-        "counter_sha256": "f7a5f4cceff7fde13ddb4276b3747e2fa40528452c024d57cef9541fd4f7a574",
-        "root_and_capacity_verified": true
-      },
-      "failure": {
-        "actual": "Clipboard GetData returned false after8native checks; emitted FAIL andexit1.",
-        "trace": "probe_search_continuation_native.py:214 desktop_copied ->129 clipboard -> wx.TheClipboard.GetData(value)",
-        "not_a_timeout": true,
-        "worker_state_at_failure": "NOT_RECORDED",
-        "source_defect": "Missing asynchronous copy-completion wait after native key action; fixed40ms callback does not await verified-copy worker."
-      },
-      "artifact": {
-        "id": 15255044546,
-        "bytes": 312985,
-        "sha256": "b334b774494c82ea59dc7f8bf3097fb76bbcbd17384d1e6526067672eb403786",
-        "qualification": "FAILED_MAIN_HISTORY_ONLY"
-      },
-      "raw_log": {
-        "chars": 4957939,
-        "bytes": 4957945,
-        "sha256": "837355a4ab0da5067ebc51884b747990209feb5f2638d4e5327b2c9855ca1d79"
-      },
-      "proof": "01b57abe7be28ebda30c100e9cad43465f388c8d",
-      "independent_review": "ROOT_CAPACITY_AND_NATIVE_OBSERVED_FAILURE_GO"
-    },
-    "auxiliary": {
-      "keyboard": {
-        "run": 46121064501,
-        "job": 140905458033,
-        "attempt": 1,
-        "status": "completed",
-        "conclusion": "success",
-        "independent_review": "ROOT_AND_NATIVE_RUNTIME_PLUS_PAYLOAD_SOURCE_PASS",
-        "raw_log": {
-          "chars": 161871,
-          "bytes": 161873,
-          "sha256": "6e0cddcf681d782e76e2d606982bfa7beaec80a31fbc5f99afea75080d4d0cb5"
-        },
-        "artifact": {
-          "id": 15253569001,
-          "bytes": 11393,
-          "sha256": "2ce3d37d336e9ee7106a4d012d3d679963a90f7eff78a5bb0c4a52815a391d3f"
-        }
-      },
-      "audio": {
-        "run": 46121064509,
-        "job": 140905457444,
-        "attempt": 1,
-        "status": "completed",
-        "conclusion": "success",
-        "completed_at": "2026-11-28T08:00:17Z",
-        "independent_review": "ROOT_AND_NATIVE_RUNTIME_PLUS_PAYLOAD_SOURCE_PASS",
-        "raw_log": {
-          "chars": 1487926,
-          "bytes": 1487930,
-          "sha256": "c9fe8c91c507b3e04ae30ae9a685a5b9c8b7a787ecca70df41abecf249378ef9"
-        },
-        "artifact": {
-          "id": 15255415308,
-          "bytes": 56998,
-          "sha256": "3224b996d6951123b966e205bd939719601ea686776fb1ded3b7be366546bc7d"
-        }
-      },
-      "bibliography": {
-        "run": 46121064503,
-        "job": 140905457270,
-        "attempt": 1,
-        "status": "completed",
-        "conclusion": "success",
-        "independent_review": "ROOT_AND_NATIVE_RUNTIME_PLUS_PAYLOAD_SOURCE_PASS",
-        "raw_log": {
-          "chars": 506355,
-          "bytes": 506357,
-          "sha256": "d2ade822a96bb230556b89c27f759897a594075458131eff9b0a0497ac671ff9"
-        },
-        "artifact": {
-          "id": 15253898202,
-          "bytes": 22949,
-          "sha256": "ea9644b02b7d570ea9d33a669daba9e6aeb1e0a9009dac5d64e6b9b722a1f0d4"
-        }
-      },
-      "snapshots": {
-        "run": 46121064493,
-        "job": 140905458089,
-        "attempt": 1,
-        "status": "completed",
-        "conclusion": "success",
-        "independent_review": "ROOT_AND_NATIVE_RUNTIME_PLUS_PAYLOAD_SOURCE_PASS",
-        "raw_log": {
-          "chars": 73673,
-          "bytes": 73695,
-          "sha256": "12fca145acd029f0751dacbc948c0283f3984d39e5599266c3c74d17525ca6cd"
-        },
-        "artifact": {
-          "id": 15253784349,
-          "bytes": 10108,
-          "sha256": "1811cf33a3082607cda511867440312582a6b614a6a80b96c0eacda93ca39474"
-        }
-      },
-      "launcher": {
-        "run": 46121064498,
-        "job": 140905457311,
-        "attempt": 1,
-        "status": "completed",
-        "conclusion": "success",
-        "independent_review": "ROOT_AND_NATIVE_RUNTIME_PLUS_PAYLOAD_SOURCE_PASS",
-        "raw_log": {
-          "chars": 46604,
-          "bytes": 46606,
-          "sha256": "5b6bf44003011e4f73c1c85d0a4cb770ee835d569cd597b973e61bfe6a8f3f56"
-        },
-        "artifact": {
-          "count": 0
-        }
-      },
-      "proof": "7520e3d5d6f118517dae3bb4fa15e1ab1386e865",
-      "independent_review": "ROOT_RUNTIME_AND_PAYLOAD_SOURCE_GO"
-    }
+    "status": "NOT_COMPOSED_INCOMING_CANONICAL_MUST_BE_RECONCILED",
+    "current_base": "87d1ec6a05963531c5c1907f74884faddac2093e",
+    "incoming": "7e8f9d2ef6922bbd7a3fcf02996860ebc57e273f",
+    "merge_base": "e5c64a5245583f8f8b404a0f042f6ca438c24d7f",
+    "census_commit": "694da05cf2363f8f4ac95e45ec2e4b6174274c0c",
+    "assessment_run": 46138513771,
+    "assessment_job": 140959072151
   },
   "optional_native_source_audit": {
     "commit": "ed9fc0cf9500dd454b2ee45d221ae5f20c7afd2b",
@@ -442,7 +195,7 @@
     "new_release_gate": false,
     "root_review": "22 source hashes,20 workflow mappings/bounds,19 skipped actual steps and all baseline blobs verified"
   },
-  "canonical_observed_at": "2026-11-28 10:19:11 UTC",
+  "canonical_observed_at": "2026-11-28T10:59:17Z",
   "delivery_template": {
     "path": "carr-library/docs/validation/FINAL_RUN_DELIVERY_TEMPLATE_20261128_UK.md",
     "status": "DRAFT_PLACEHOLDERS_REQUIRE_ACTUAL_FINAL_OUTCOME",
@@ -466,7 +219,7 @@
     "commit": "87d1ec6a05963531c5c1907f74884faddac2093e",
     "tree": "f28841240a6d5163e6d8e1bdea4e8117b30650e2",
     "files": 1833,
-    "status": "FOCUSED_EXECUTION_QUEUED",
+    "status": "FAILED_NATIVE_FOCUS_FEDERATED_PAGED_EXPECTATION",
     "root_review": "SOURCE_GO_NOT_EXECUTED",
     "root_composition_checks": 25,
     "peer_review": "SOURCE_COMPOSITION_GO_NOT_EXECUTED",
@@ -477,34 +230,59 @@
         "job": 140948783918,
         "attempt": 1,
         "branch": "carr/native-main-final-87d1-20261128-d3a",
-        "status": "queued",
-        "conclusion": null,
+        "status": "completed",
+        "conclusion": "failure",
         "kind": "native",
-        "created_at": "2026-11-28T10:26:22Z"
+        "created_at": "2026-11-28T10:26:22Z",
+        "started_at": "2026-11-28T10:30:23Z",
+        "completed_at": "2026-11-28T10:37:13Z",
+        "failed_step": 32,
+        "failure": "Single current page asserted to contain two selected workspaces; actual row values not recorded.",
+        "reading_step29": "PASS_26_OCCURRENCES_25_LABELS_24_LITERAL_CHECKS",
+        "formats_step30": "PASS_27_CHECKS",
+        "ocr_step31": "PASS_81_OCCURRENCES_9_INSTALLED_HASHES",
+        "root_checks": 24,
+        "root_review": "OBSERVED_NATIVE_FAILURE_FULL_LOG_SOURCE_AND_RECEIPT_RECONCILED",
+        "proof_commit": "21661a24becc11aaa097299ee94c13347ee58e59"
       },
       "basic": {
         "run": 46135188425,
         "job": 140948783886,
         "attempt": 1,
         "branch": "carr/local-translation-final-87d1-20261128-d3a",
-        "status": "queued",
-        "conclusion": null,
+        "status": "completed",
+        "conclusion": "success",
         "kind": "basic",
-        "created_at": "2026-11-28T10:26:22Z"
+        "created_at": "2026-11-28T10:26:22Z",
+        "started_at": "2026-11-28T10:30:19Z",
+        "completed_at": "2026-11-28T10:32:34Z",
+        "root_review": "OBSERVED_FOCUSED_PASS",
+        "counts": {
+          "source": 324,
+          "installed": 324,
+          "native": 8
+        },
+        "proof_commit": "73964f1a2f8a55980b5f9138748e5c8c0db75ada",
+        "root_checks": 21
       },
       "inspection": {
         "run": 46135189185,
         "job": 140948785978,
         "attempt": 1,
         "branch": "carr/silence-inspection-final-87d1-20261128-d3a",
-        "status": "queued",
-        "conclusion": null,
+        "status": "completed",
+        "conclusion": "success",
         "kind": "inspection",
-        "created_at": "2026-11-28T10:26:23Z"
+        "created_at": "2026-11-28T10:26:23Z",
+        "started_at": "2026-11-28T10:30:20Z",
+        "completed_at": "2026-11-28T10:33:55Z",
+        "root_review": "OBSERVED_FOCUSED_PASS",
+        "proof_commit": "ff36305c32daa331a1b5595d1be53c4bc396fc69",
+        "root_checks": 25
       }
     },
-    "main": "NOT_LAUNCHED_PENDING_FOCUSED_RESULTS",
-    "auxiliary": "NOT_LAUNCHED_PENDING_FOCUSED_RESULTS",
+    "main": "NOT_LAUNCHED_NATIVE_FOCUS_FAILED",
+    "auxiliary": "NOT_LAUNCHED_NATIVE_FOCUS_FAILED",
     "no_historical_pass_transfer": true
   },
   "observed_2701": {
@@ -626,5 +404,123 @@
     "main": "NOT_LAUNCHED_NATIVE_FOCUS_FAILED",
     "auxiliary": "NOT_LAUNCHED_NATIVE_FOCUS_FAILED",
     "no_historical_pass_transfer": true
+  },
+  "observed_87d1": {
+    "commit": "87d1ec6a05963531c5c1907f74884faddac2093e",
+    "tree": "f28841240a6d5163e6d8e1bdea4e8117b30650e2",
+    "files": 1833,
+    "status": "FAILED_NATIVE_FOCUS_FEDERATED_PAGED_EXPECTATION",
+    "root_review": "SOURCE_GO_NOT_EXECUTED",
+    "root_composition_checks": 25,
+    "peer_review": "SOURCE_COMPOSITION_GO_NOT_EXECUTED",
+    "peer_checks": 22,
+    "focused": {
+      "native": {
+        "run": 46135188389,
+        "job": 140948783918,
+        "attempt": 1,
+        "branch": "carr/native-main-final-87d1-20261128-d3a",
+        "status": "completed",
+        "conclusion": "failure",
+        "kind": "native",
+        "created_at": "2026-11-28T10:26:22Z",
+        "started_at": "2026-11-28T10:30:23Z",
+        "completed_at": "2026-11-28T10:37:13Z",
+        "failed_step": 32,
+        "failure": "Single current page asserted to contain two selected workspaces; actual row values not recorded.",
+        "reading_step29": "PASS_26_OCCURRENCES_25_LABELS_24_LITERAL_CHECKS",
+        "formats_step30": "PASS_27_CHECKS",
+        "ocr_step31": "PASS_81_OCCURRENCES_9_INSTALLED_HASHES",
+        "root_checks": 24,
+        "root_review": "OBSERVED_NATIVE_FAILURE_FULL_LOG_SOURCE_AND_RECEIPT_RECONCILED",
+        "proof_commit": "21661a24becc11aaa097299ee94c13347ee58e59"
+      },
+      "basic": {
+        "run": 46135188425,
+        "job": 140948783886,
+        "attempt": 1,
+        "branch": "carr/local-translation-final-87d1-20261128-d3a",
+        "status": "completed",
+        "conclusion": "success",
+        "kind": "basic",
+        "created_at": "2026-11-28T10:26:22Z",
+        "started_at": "2026-11-28T10:30:19Z",
+        "completed_at": "2026-11-28T10:32:34Z",
+        "root_review": "OBSERVED_FOCUSED_PASS",
+        "counts": {
+          "source": 324,
+          "installed": 324,
+          "native": 8
+        },
+        "proof_commit": "73964f1a2f8a55980b5f9138748e5c8c0db75ada",
+        "root_checks": 21
+      },
+      "inspection": {
+        "run": 46135189185,
+        "job": 140948785978,
+        "attempt": 1,
+        "branch": "carr/silence-inspection-final-87d1-20261128-d3a",
+        "status": "completed",
+        "conclusion": "success",
+        "kind": "inspection",
+        "created_at": "2026-11-28T10:26:23Z",
+        "started_at": "2026-11-28T10:30:20Z",
+        "completed_at": "2026-11-28T10:33:55Z",
+        "root_review": "OBSERVED_FOCUSED_PASS",
+        "proof_commit": "ff36305c32daa331a1b5595d1be53c4bc396fc69",
+        "root_checks": 25
+      }
+    },
+    "main": "NOT_LAUNCHED_NATIVE_FOCUS_FAILED",
+    "auxiliary": "NOT_LAUNCHED_NATIVE_FOCUS_FAILED",
+    "no_historical_pass_transfer": true,
+    "native_proof": "21661a24becc11aaa097299ee94c13347ee58e59",
+    "native_root_checks": {
+      "raw_chars": true,
+      "raw_bytes": true,
+      "raw_digest": true,
+      "exact_source": true,
+      "run_fields": true,
+      "job_fields": true,
+      "failure_step32": true,
+      "later_skipped": true,
+      "all_receipts": true,
+      "sources_54": true,
+      "emitted_26_25": true,
+      "reading_counter": true,
+      "reading_26_25_24": true,
+      "reading_source_order": true,
+      "formats_27": true,
+      "ocr_manager_81": true,
+      "unknown_rows_preserved": true,
+      "source_inference_separate": true,
+      "artifact_metadata": true,
+      "zip_not_claimed": true,
+      "baseline_unchanged": true,
+      "two_docs_only": true,
+      "exact_parent": true,
+      "scope_not_qualified": true
+    }
+  },
+  "incoming_canonical": {
+    "sha": "7e8f9d2ef6922bbd7a3fcf02996860ebc57e273f",
+    "tree": "7db1dac1a3a04872faafe6934b195dd46d45f9aa",
+    "merge_base": "e5c64a5245583f8f8b404a0f042f6ca438c24d7f",
+    "incoming_changes": 1002,
+    "three_tree_conflict_rows": 358,
+    "status": "RECONCILIATION_REQUIRED_BEFORE_NEXT_CANDIDATE",
+    "assessment_tooling": "908f3dcc72657fa4d821db6d76f27aaba3a64bfd",
+    "assessment_launch": {
+      "head": "908f3dcc72657fa4d821db6d76f27aaba3a64bfd",
+      "branch": "carr/merge-audit-7e8-87d1-20261128-d3a",
+      "runs": [
+        {
+          "id": 46138513771,
+          "head_sha": "908f3dcc72657fa4d821db6d76f27aaba3a64bfd",
+          "status": "queued",
+          "conclusion": null
+        }
+      ]
+    }
   }
 }

@@ -1,0 +1,1426 @@
+{
+  "schema": "carr-basic-and-local-translation-focused-observation/1",
+  "status": "PASS",
+  "observed_date_utc": "2026-11-28",
+  "scope": "Fresh observed Basic native translation plus complete local/selected/scoped translation qualification on exact 87d1. This focused result does not establish full-main or whole-product qualification.",
+  "tested": {
+    "repository": "Oleksii-debug/AudioTacticalFPS",
+    "source_commit": "87d1ec6a05963531c5c1907f74884faddac2093e",
+    "source_tree": "f28841240a6d5163e6d8e1bdea4e8117b30650e2",
+    "frozen_branch": "carr/local-translation-final-87d1-20261128-d3a",
+    "workflow_path": ".github/workflows/carr-local-translation.yml",
+    "application_source_files": 425,
+    "application_comparison_baseline": "09ac4c06ec6cfc88805ea4673a7767a934b80f9b",
+    "unchanged_application_files": 425,
+    "changed_application_files": [],
+    "focused_source_bindings_unchanged_from09ac": true,
+    "runtime_bearing_change_outside_application_package": "scripts/windows_v3_reading_smoke.py is the separately reviewed current keyboard-owner fixture; it is not invoked by this translation workflow."
+  },
+  "execution": {
+    "run_id": 46135188425,
+    "job_id": 140948783886,
+    "run_attempt": 1,
+    "event": "push",
+    "run_created_at": "2026-11-28T10:26:22Z",
+    "job_started_at": "2026-11-28T10:30:19Z",
+    "job_completed_at": "2026-11-28T10:32:34Z",
+    "job_duration_seconds": 135,
+    "run_status": "completed",
+    "run_conclusion": "success",
+    "job_status": "completed",
+    "job_conclusion": "success",
+    "runner_labels": [
+      "windows-2022"
+    ],
+    "run_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46135188425",
+    "job_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46135188425/job/140948783886"
+  },
+  "basic": {
+    "status": "PASS",
+    "actual_step": 8,
+    "step_started_at": "2026-11-28T10:30:54Z",
+    "step_completed_at": "2026-11-28T10:30:55Z",
+    "workflow_time_bound_seconds": 240,
+    "retained_native_wait_seconds": 45,
+    "receipt": {
+      "raw_log_line": 517,
+      "timestamp": "2026-11-28T10:30:55.1718578Z",
+      "exact_json": "{\"schema\": \"carr-native-translation-smoke/1\", \"status\": \"PASS\", \"installed_module\": \"D:\\\\a\\\\_temp\\\\carr-local-translation-46135188425-1\\\\installed\\\\Lib\\\\site-packages\\\\carr_library\\\\providers.py\", \"native_controls\": true, \"synthetic_provider_requests\": 2, \"exact_reviewed_pair\": \"en->uk\", \"source_immutable\": true, \"quotation_authority\": false, \"derivative_hashes\": {\"bilingual.txt\": \"f32a6b7353b79cfe49703cf5631478e903d09b7216672ed1f7afdd7bf2522cd9\", \"original.txt\": \"12a7bc3776e8e41b194c9140aa53191ae4b1152d8763c0e44ef25b9834e1e5de\", \"translated.txt\": \"b690c8de087fca9f41854e6d67fecb7232624dcdad4aec8c0552b5bed2b63066\", \"translation.narration.json\": \"c9dabdc211968ef9106680e06123ac9961f549726366c541e490326287428da0\"}, \"approval_and_folder_picker\": \"injected explicit synthetic decisions\", \"actual_google_api\": \"NOT_RUN\", \"actual_credential_vault\": \"NOT_RUN\", \"nvda\": \"NOT_RUN\"}",
+      "value": {
+        "schema": "carr-native-translation-smoke/1",
+        "status": "PASS",
+        "installed_module": "D:\\a\\_temp\\carr-local-translation-46135188425-1\\installed\\Lib\\site-packages\\carr_library\\providers.py",
+        "native_controls": true,
+        "synthetic_provider_requests": 2,
+        "exact_reviewed_pair": "en->uk",
+        "source_immutable": true,
+        "quotation_authority": false,
+        "derivative_hashes": {
+          "bilingual.txt": "f32a6b7353b79cfe49703cf5631478e903d09b7216672ed1f7afdd7bf2522cd9",
+          "original.txt": "12a7bc3776e8e41b194c9140aa53191ae4b1152d8763c0e44ef25b9834e1e5de",
+          "translated.txt": "b690c8de087fca9f41854e6d67fecb7232624dcdad4aec8c0552b5bed2b63066",
+          "translation.narration.json": "c9dabdc211968ef9106680e06123ac9961f549726366c541e490326287428da0"
+        },
+        "approval_and_folder_picker": "injected explicit synthetic decisions",
+        "actual_google_api": "NOT_RUN",
+        "actual_credential_vault": "NOT_RUN",
+        "nvda": "NOT_RUN"
+      }
+    },
+    "independent_validation": {
+      "top_level_field_count": 13,
+      "exact_keys_and_types": true,
+      "raw_json_duplicate_keys": false,
+      "exact_four_derivative_names_and_lowercase_sha256": true,
+      "installed_provider_path_matches_actual_run_environment": true,
+      "original_derivative_digest_matches_exact_probe_synthetic_text": true,
+      "strict_workflow_verifier_pass_lines": 1,
+      "verifier_raw_log_line": 518
+    },
+    "assertions": {
+      "source_git_blob": "781a38e2f02d2209db5333e6421b7873bf6e35e1",
+      "retained_assert_statement_count": 14,
+      "statements": [
+        {
+          "line": 186,
+          "text": "assert not requests"
+        },
+        {
+          "line": 187,
+          "text": "assert child(dialog, 'Selected text; originals remain unchanged').GetValue() == original"
+        },
+        {
+          "line": 191,
+          "text": "assert [row[0] for row in requests] == ['languages']"
+        },
+        {
+          "line": 198,
+          "text": "assert [row[0] for row in requests] == ['languages']"
+        },
+        {
+          "line": 205,
+          "text": "assert len(rows) == 1 and rows[0]['status'] == 'complete'"
+        },
+        {
+          "line": 206,
+          "text": "assert child(dialog, 'Accepted translation derivative; not a source quotation').GetValue().startswith('Синтетичний')"
+        },
+        {
+          "line": 207,
+          "text": "assert not child(dialog, 'Selected text; originals remain unchanged').IsEnabled()"
+        },
+        {
+          "line": 212,
+          "text": "assert len(outputs) == 1"
+        },
+        {
+          "line": 215,
+          "text": "assert report['quotation_authority'] is False"
+        },
+        {
+          "line": 216,
+          "text": "assert (output / 'original.txt').read_bytes() == original.encode()"
+        },
+        {
+          "line": 219,
+          "text": "assert draft.source_range(0, len(draft.text))[2] is False"
+        },
+        {
+          "line": 221,
+          "text": "assert sha256((output / name).read_bytes()).hexdigest() == digest"
+        },
+        {
+          "line": 222,
+          "text": "assert len(approvals) == 2"
+        },
+        {
+          "line": 223,
+          "text": "assert [row[0] for row in requests] == ['languages', 'text']"
+        }
+      ],
+      "flow_completed_after_all_final_assertions": true,
+      "assertion_level_runtime_label_counter": null,
+      "limit": "These are fourteen retained Python assert statements, not fourteen separately emitted runtime labels. The exact phase-5 success and strict receipt establish completion of the unchanged assertion-bearing flow."
+    },
+    "diagnostics": {
+      "schema": "carr-native-translation-diagnostic/1",
+      "rows": 30,
+      "producer_row_limit": 64,
+      "events_are_exact_contiguous": true,
+      "first_event": 1,
+      "last_event": 30,
+      "elapsed_seconds_nonnegative_and_nondecreasing": true,
+      "terminal_elapsed_seconds": 0.75,
+      "cleanup_stage_order": [
+        "native-controls-complete",
+        "owned-modal-returned",
+        "application-loop-returned",
+        "settling-native-worker",
+        "native-worker-settled",
+        "native-frame-cleaned",
+        "temporary-workspace-cleaned",
+        "receipt-written"
+      ],
+      "all_cleanup_diagnostics_precede_terminal_receipt": true,
+      "worker_operations": [
+        "Fetching supported translation languages",
+        "Translating explicitly approved text",
+        "Exporting translation derivative"
+      ],
+      "each_operation_has_start_callback_and_ready": true,
+      "failed_stages": [],
+      "faulthandler_timeout_dump_observed": false,
+      "variable_polling_rows": "This run emitted 30 rows. The probe emits bounded polling observations, so the number of drive-phase rows is not a fixed test population. Earlier 09ac emitted 33 rows and remains separately recorded.",
+      "records": [
+        {
+          "raw_log_line": 487,
+          "timestamp": "2026-11-28T10:30:54.4247347Z",
+          "receipt": {
+            "elapsed_seconds": 0,
+            "event": 1,
+            "isolated": true,
+            "schema": "carr-native-translation-diagnostic/1",
+            "stage": "starting",
+            "windows": true
+          }
+        },
+        {
+          "raw_log_line": 488,
+          "timestamp": "2026-11-28T10:30:54.6337789Z",
+          "receipt": {
+            "elapsed_seconds": 0.219,
+            "event": 2,
+            "schema": "carr-native-translation-diagnostic/1",
+            "stage": "installed-modules-imported"
+          }
+        },
+        {
+          "raw_log_line": 489,
+          "timestamp": "2026-11-28T10:30:54.6360155Z",
+          "receipt": {
+            "elapsed_seconds": 0.219,
+            "event": 3,
+            "schema": "carr-native-translation-diagnostic/1",
+            "stage": "native-application-created"
+          }
+        },
+        {
+          "raw_log_line": 490,
+          "timestamp": "2026-11-28T10:30:54.7134620Z",
+          "receipt": {
+            "elapsed_seconds": 0.297,
+            "event": 4,
+            "schema": "carr-native-translation-diagnostic/1",
+            "stage": "service-created"
+          }
+        },
+        {
+          "raw_log_line": 491,
+          "timestamp": "2026-11-28T10:30:54.7305576Z",
+          "receipt": {
+            "elapsed_seconds": 0.312,
+            "event": 5,
+            "schema": "carr-native-translation-diagnostic/1",
+            "stage": "entering-application-loop"
+          }
+        },
+        {
+          "raw_log_line": 492,
+          "timestamp": "2026-11-28T10:30:54.7306543Z",
+          "receipt": {
+            "elapsed_seconds": 0.312,
+            "event": 6,
+            "schema": "carr-native-translation-diagnostic/1",
+            "stage": "opening-owned-modal"
+          }
+        },
+        {
+          "raw_log_line": 493,
+          "timestamp": "2026-11-28T10:30:54.7930355Z",
+          "receipt": {
+            "dialog_present": true,
+            "elapsed_seconds": 0.375,
+            "event": 7,
+            "schema": "carr-native-translation-diagnostic/1",
+            "stage": "drive-0",
+            "synthetic_requests": 0,
+            "working": false
+          }
+        },
+        {
+          "raw_log_line": 494,
+          "timestamp": "2026-11-28T10:30:54.8017649Z",
+          "receipt": {
+            "elapsed_seconds": 0.375,
+            "event": 8,
+            "operation": "Fetching supported translation languages",
+            "schema": "carr-native-translation-diagnostic/1",
+            "stage": "worker-starting"
+          }
+        },
+        {
+          "raw_log_line": 495,
+          "timestamp": "2026-11-28T10:30:54.8532315Z",
+          "receipt": {
+            "dialog_present": true,
+            "elapsed_seconds": 0.437,
+            "event": 9,
+            "schema": "carr-native-translation-diagnostic/1",
+            "stage": "drive-1",
+            "synthetic_requests": 1,
+            "working": true
+          }
+        },
+        {
+          "raw_log_line": 496,
+          "timestamp": "2026-11-28T10:30:54.8567109Z",
+          "receipt": {
+            "closing": false,
+            "elapsed_seconds": 0.437,
+            "event": 10,
+            "operation": "Fetching supported translation languages",
+            "schema": "carr-native-translation-diagnostic/1",
+            "stage": "worker-callback"
+          }
+        },
+        {
+          "raw_log_line": 497,
+          "timestamp": "2026-11-28T10:30:54.8568810Z",
+          "receipt": {
+            "elapsed_seconds": 0.437,
+            "event": 11,
+            "operation": "Fetching supported translation languages",
+            "schema": "carr-native-translation-diagnostic/1",
+            "stage": "worker-result-ready"
+          }
+        },
+        {
+          "raw_log_line": 498,
+          "timestamp": "2026-11-28T10:30:54.9135128Z",
+          "receipt": {
+            "dialog_present": true,
+            "elapsed_seconds": 0.5,
+            "event": 12,
+            "schema": "carr-native-translation-diagnostic/1",
+            "stage": "drive-1",
+            "synthetic_requests": 1,
+            "working": false
+          }
+        },
+        {
+          "raw_log_line": 499,
+          "timestamp": "2026-11-28T10:30:54.9765280Z",
+          "receipt": {
+            "dialog_present": true,
+            "elapsed_seconds": 0.562,
+            "event": 13,
+            "schema": "carr-native-translation-diagnostic/1",
+            "stage": "drive-2",
+            "synthetic_requests": 1,
+            "working": false
+          }
+        },
+        {
+          "raw_log_line": 500,
+          "timestamp": "2026-11-28T10:30:54.9921161Z",
+          "receipt": {
+            "elapsed_seconds": 0.578,
+            "event": 14,
+            "operation": "Translating explicitly approved text",
+            "schema": "carr-native-translation-diagnostic/1",
+            "stage": "worker-starting"
+          }
+        },
+        {
+          "raw_log_line": 501,
+          "timestamp": "2026-11-28T10:30:55.0389379Z",
+          "receipt": {
+            "dialog_present": true,
+            "elapsed_seconds": 0.625,
+            "event": 15,
+            "schema": "carr-native-translation-diagnostic/1",
+            "stage": "drive-3",
+            "synthetic_requests": 1,
+            "working": true
+          }
+        },
+        {
+          "raw_log_line": 502,
+          "timestamp": "2026-11-28T10:30:55.0896708Z",
+          "receipt": {
+            "closing": false,
+            "elapsed_seconds": 0.672,
+            "event": 16,
+            "operation": "Translating explicitly approved text",
+            "schema": "carr-native-translation-diagnostic/1",
+            "stage": "worker-callback"
+          }
+        },
+        {
+          "raw_log_line": 503,
+          "timestamp": "2026-11-28T10:30:55.0898010Z",
+          "receipt": {
+            "elapsed_seconds": 0.672,
+            "event": 17,
+            "operation": "Translating explicitly approved text",
+            "schema": "carr-native-translation-diagnostic/1",
+            "stage": "worker-result-ready"
+          }
+        },
+        {
+          "raw_log_line": 504,
+          "timestamp": "2026-11-28T10:30:55.1039355Z",
+          "receipt": {
+            "dialog_present": true,
+            "elapsed_seconds": 0.687,
+            "event": 18,
+            "schema": "carr-native-translation-diagnostic/1",
+            "stage": "drive-3",
+            "synthetic_requests": 2,
+            "working": false
+          }
+        },
+        {
+          "raw_log_line": 505,
+          "timestamp": "2026-11-28T10:30:55.1176434Z",
+          "receipt": {
+            "elapsed_seconds": 0.703,
+            "event": 19,
+            "operation": "Exporting translation derivative",
+            "schema": "carr-native-translation-diagnostic/1",
+            "stage": "worker-starting"
+          }
+        },
+        {
+          "raw_log_line": 506,
+          "timestamp": "2026-11-28T10:30:55.1592706Z",
+          "receipt": {
+            "closing": false,
+            "elapsed_seconds": 0.734,
+            "event": 20,
+            "operation": "Exporting translation derivative",
+            "schema": "carr-native-translation-diagnostic/1",
+            "stage": "worker-callback"
+          }
+        },
+        {
+          "raw_log_line": 507,
+          "timestamp": "2026-11-28T10:30:55.1593584Z",
+          "receipt": {
+            "elapsed_seconds": 0.734,
+            "event": 21,
+            "operation": "Exporting translation derivative",
+            "schema": "carr-native-translation-diagnostic/1",
+            "stage": "worker-result-ready"
+          }
+        },
+        {
+          "raw_log_line": 508,
+          "timestamp": "2026-11-28T10:30:55.1635386Z",
+          "receipt": {
+            "dialog_present": true,
+            "elapsed_seconds": 0.75,
+            "event": 22,
+            "schema": "carr-native-translation-diagnostic/1",
+            "stage": "drive-4",
+            "synthetic_requests": 2,
+            "working": false
+          }
+        },
+        {
+          "raw_log_line": 509,
+          "timestamp": "2026-11-28T10:30:55.1662958Z",
+          "receipt": {
+            "elapsed_seconds": 0.75,
+            "event": 23,
+            "schema": "carr-native-translation-diagnostic/1",
+            "stage": "native-controls-complete",
+            "synthetic_requests": 2
+          }
+        },
+        {
+          "raw_log_line": 510,
+          "timestamp": "2026-11-28T10:30:55.1664218Z",
+          "receipt": {
+            "elapsed_seconds": 0.75,
+            "event": 24,
+            "schema": "carr-native-translation-diagnostic/1",
+            "stage": "owned-modal-returned"
+          }
+        },
+        {
+          "raw_log_line": 511,
+          "timestamp": "2026-11-28T10:30:55.1692239Z",
+          "receipt": {
+            "elapsed_seconds": 0.75,
+            "event": 25,
+            "schema": "carr-native-translation-diagnostic/1",
+            "stage": "application-loop-returned"
+          }
+        },
+        {
+          "raw_log_line": 512,
+          "timestamp": "2026-11-28T10:30:55.1693041Z",
+          "receipt": {
+            "elapsed_seconds": 0.75,
+            "event": 26,
+            "schema": "carr-native-translation-diagnostic/1",
+            "stage": "settling-native-worker"
+          }
+        },
+        {
+          "raw_log_line": 513,
+          "timestamp": "2026-11-28T10:30:55.1694097Z",
+          "receipt": {
+            "elapsed_seconds": 0.75,
+            "event": 27,
+            "schema": "carr-native-translation-diagnostic/1",
+            "stage": "native-worker-settled"
+          }
+        },
+        {
+          "raw_log_line": 514,
+          "timestamp": "2026-11-28T10:30:55.1694972Z",
+          "receipt": {
+            "elapsed_seconds": 0.75,
+            "event": 28,
+            "schema": "carr-native-translation-diagnostic/1",
+            "stage": "native-frame-cleaned"
+          }
+        },
+        {
+          "raw_log_line": 515,
+          "timestamp": "2026-11-28T10:30:55.1707930Z",
+          "receipt": {
+            "elapsed_seconds": 0.75,
+            "event": 29,
+            "schema": "carr-native-translation-diagnostic/1",
+            "stage": "temporary-workspace-cleaned"
+          }
+        },
+        {
+          "raw_log_line": 516,
+          "timestamp": "2026-11-28T10:30:55.1713190Z",
+          "receipt": {
+            "elapsed_seconds": 0.75,
+            "event": 30,
+            "schema": "carr-native-translation-diagnostic/1",
+            "stage": "receipt-written"
+          }
+        }
+      ]
+    },
+    "derivative_content_limit": "The producer checked the four output files while its owned workspace existed. This independent read checks the retained receipt and compares the original digest to exact synthetic source text; it does not reread deleted derivative files.",
+    "qualification_limits": {
+      "actual_google_api": "NOT_RUN",
+      "actual_credential_vault": "NOT_RUN",
+      "nvda": "NOT_RUN"
+    }
+  },
+  "translation_population": {
+    "status": "PASS",
+    "actual_step": 9,
+    "step_started_at": "2026-11-28T10:30:55Z",
+    "step_completed_at": "2026-11-28T10:32:26Z",
+    "duration_seconds": 91,
+    "observed_phase_receipts": [
+      {
+        "raw_log_line": 555,
+        "timestamp": "2026-11-28T10:31:27.1561423Z",
+        "receipt": {
+          "phase": "existing-source",
+          "status": "PASS"
+        }
+      },
+      {
+        "raw_log_line": 556,
+        "timestamp": "2026-11-28T10:31:50.6808700Z",
+        "receipt": {
+          "phase": "existing-installed",
+          "status": "PASS"
+        }
+      },
+      {
+        "raw_log_line": 557,
+        "timestamp": "2026-11-28T10:31:59.9139052Z",
+        "receipt": {
+          "phase": "local-source",
+          "status": "PASS"
+        }
+      },
+      {
+        "raw_log_line": 558,
+        "timestamp": "2026-11-28T10:32:09.2049961Z",
+        "receipt": {
+          "phase": "local-installed",
+          "status": "PASS"
+        }
+      },
+      {
+        "raw_log_line": 559,
+        "timestamp": "2026-11-28T10:32:09.9590507Z",
+        "receipt": {
+          "phase": "existing-selected-advanced",
+          "status": "PASS"
+        }
+      },
+      {
+        "raw_log_line": 560,
+        "timestamp": "2026-11-28T10:32:12.3843077Z",
+        "receipt": {
+          "phase": "existing-document",
+          "status": "PASS"
+        }
+      },
+      {
+        "raw_log_line": 561,
+        "timestamp": "2026-11-28T10:32:14.6826085Z",
+        "receipt": {
+          "phase": "existing-chapter",
+          "status": "PASS"
+        }
+      },
+      {
+        "raw_log_line": 562,
+        "timestamp": "2026-11-28T10:32:17.5828452Z",
+        "receipt": {
+          "phase": "existing-batch",
+          "status": "PASS"
+        }
+      },
+      {
+        "raw_log_line": 563,
+        "timestamp": "2026-11-28T10:32:18.3432377Z",
+        "receipt": {
+          "phase": "local-selected",
+          "status": "PASS"
+        }
+      },
+      {
+        "raw_log_line": 564,
+        "timestamp": "2026-11-28T10:32:20.8125319Z",
+        "receipt": {
+          "phase": "local-document",
+          "status": "PASS"
+        }
+      },
+      {
+        "raw_log_line": 565,
+        "timestamp": "2026-11-28T10:32:23.0468229Z",
+        "receipt": {
+          "phase": "local-chapter",
+          "status": "PASS"
+        }
+      },
+      {
+        "raw_log_line": 566,
+        "timestamp": "2026-11-28T10:32:26.0687395Z",
+        "receipt": {
+          "phase": "local-batch",
+          "status": "PASS"
+        }
+      }
+    ],
+    "exact_phase_names_and_multiplicities": true,
+    "summary": {
+      "raw_log_line": 567,
+      "timestamp": "2026-11-28T10:32:26.2589985Z",
+      "receipt": {
+        "installed_cases": 324,
+        "native_flows": 8,
+        "source_cases": 324,
+        "source_commit": "87d1ec6a05963531c5c1907f74884faddac2093e",
+        "source_tree": "f28841240a6d5163e6d8e1bdea4e8117b30650e2",
+        "status": "PASS"
+      }
+    },
+    "basic_counted_separately": true,
+    "expected_population": {
+      "existing_cases_per_mode": 286,
+      "local_cases_per_mode": 38,
+      "total_cases_per_mode": 324,
+      "module_count": 9,
+      "function_identity_count": 130,
+      "existing_functions": {
+        "tests.assistant.test_translation": {
+          "test_opening_preview_and_submit_never_send_selected_text": 1,
+          "test_typed_translation_never_writes_generic_assistant_checkpoint": 1,
+          "test_supported_pair_is_required_before_job_creation": 3,
+          "test_preview_requires_exact_profile_language_inventory": 1,
+          "test_submit_cannot_expand_reviewed_authority": 7,
+          "test_accepted_chunks_survive_restart_and_never_rebill": 1,
+          "test_whitespace_chunks_are_preserved_without_billable_requests": 1,
+          "test_known_unsent_pause_can_resume_exact_call": 1,
+          "test_uncertain_charge_survives_restart_without_automatic_retry": 1,
+          "test_lost_paid_output_checkpoint_blocks_rebilling": 1,
+          "test_failed_intent_publication_sends_no_request": 1,
+          "test_live_binding_changes_revoke_saved_remote_permission": 4,
+          "test_unknown_pending_intent_without_ledger_never_restarts_silently": 1,
+          "test_export_is_new_source_pinned_narration_derivative": 1,
+          "test_complete_restored_derivative_exports_offline_without_rebinding": 1,
+          "test_pure_snapshot_validation_and_same_owner_lock_reuse": 1,
+          "test_snapshot_cannot_borrow_another_threads_live_job_guard": 1,
+          "test_forged_state_is_rejected_before_resume_or_backup": 8,
+          "test_snapshot_rejects_unknown_files_and_traversal": 1,
+          "test_chunking_and_integer_allocations_preserve_all_unicode": 1,
+          "test_completed_translation_requires_independent_decoded_ledger_evidence": 5,
+          "test_historical_wire_only_job_remains_exportable_without_invented_decoded_proof": 1,
+          "test_resumed_legacy_job_preserves_old_receipts_and_binds_only_new_calls": 1,
+          "test_export_restores_source_chunk_separators_without_rewriting_receipts": 4,
+          "test_single_chunk_preserves_provider_outer_whitespace_and_offline_profile_history": 1,
+          "test_typed_translation_rejects_invalid_decoded_receipt_before_backup": 2,
+          "test_translation_connection_paths_use_the_same_safe_canonical_library": 2,
+          "test_translation_safe_path_binding_refuses_foreign_and_linked_connections": 8,
+          "test_windows_native_short_path_connections_bind_the_same_real_library": 1,
+          "test_encoded_credential_refusal_preserves_existing_language_cache_and_job_receipts": 4
+        },
+        "tests.assistant.test_translation_advanced": {
+          "test_new_schema_preserves_immutable_source_and_old_namespace": 1,
+          "test_directional_inventory_is_not_expanded_by_preview": 3,
+          "test_cache_cannot_keep_old_fingerprint_but_change_project": 1,
+          "test_paused_accepted_chunks_survive_exact_token_renewal_without_rebilling": 1,
+          "test_replacing_account_cannot_reuse_a_queued_remote_approval": 1,
+          "test_uncertain_request_is_attention_and_never_resubmitted": 1,
+          "test_whitespace_has_no_false_model_or_glossary_receipt": 1,
+          "test_job_versions_cannot_smuggle_or_rebind_accepted_advanced_results": 6,
+          "test_complete_backup_restore_exports_offline_and_pending_permission_stays_old": 1,
+          "test_basic_and_advanced_cache_names_keep_the_existing_shared_namespace": 1,
+          "test_advanced_decoded_result_cannot_diverge_from_live_ledger": 4
+        },
+        "tests.ui.test_translation_dialog": {
+          "test_preview_and_approval_are_distinct_and_bind_exact_data": 1,
+          "test_changed_ui_selection_requires_new_preview": 7,
+          "test_estimated_cost_over_budget_revokes_prior_preview": 1,
+          "test_controller_rejects_service_for_another_library": 1,
+          "test_close_is_idempotent_and_late_worker_callbacks_do_not_touch_widgets": 1,
+          "test_translation_cannot_start_beside_another_shared_operation": 2,
+          "test_failed_worker_submission_releases_dialog_controls": 1,
+          "test_translation_installer_registers_one_semantic_command_and_keeps_overrides": 2
+        },
+        "tests.ui.test_translation_advanced": {
+          "test_controller_binds_glossary_to_preview_approval_and_submission": 1,
+          "test_native_profile_form_keeps_token_only_in_vault_and_renewal_explicit": 5,
+          "test_native_approval_does_not_launch_after_modal_selection_changes": 4
+        },
+        "tests.e2e.test_google_translation_gateway": {
+          "test_profile_pins_official_v2_authority": 10,
+          "test_default_local_only_rejects_before_vault_or_transport": 1,
+          "test_language_query_sends_no_selected_text_and_key_is_header_only": 1,
+          "test_translation_uses_exact_plaintext_pair_and_model": 1,
+          "test_changed_request_cannot_borrow_prior_approval": 3,
+          "test_request_rejects_unbounded_or_ambiguous_inputs": 7,
+          "test_reflected_credentials_never_become_results_or_receipts": 10,
+          "test_malformed_responses_are_uncertain_and_not_displayed": 6,
+          "test_known_unsent_cancellation_reuses_only_exact_original_reservation": 1,
+          "test_existing_provider_request_hash_is_backward_compatible": 1,
+          "test_direct_language_transport_keeps_tls_and_exact_get_authority": 1,
+          "test_direct_get_route_is_not_general_url_capability": 3,
+          "test_gateway_binds_decoded_translation_and_language_in_live_ledger": 2,
+          "test_existing_wire_only_ledger_migration_is_concurrent_and_never_backfills_proof": 1,
+          "test_known_unsent_reservation_rejects_every_changed_original_binding": 6,
+          "test_sent_or_unresolved_translation_reservation_never_replays": 3,
+          "test_each_failed_http_translation_remains_uncertain_without_automatic_retry": 5
+        },
+        "tests.e2e.test_google_translation_v3": {
+          "test_profile_pins_explicit_google_project_location_and_nmt": 12,
+          "test_credentials_are_explicit_bounded_and_unexpired": 10,
+          "test_expiry_offset_and_exact_endpoint_record": 1,
+          "test_v3_store_rejects_raw_key_without_mutating_profiles": 1,
+          "test_basic_v2_request_and_profile_hash_contract_stays_exact": 1,
+          "test_same_account_token_renewal_preserves_exact_approval_reference": 1,
+          "test_changed_account_or_profile_requires_new_authority": 1,
+          "test_language_query_has_no_source_text_and_preserves_directional_support": 1,
+          "test_text_uses_exact_model_glossary_and_literal_entities": 1,
+          "test_changed_or_wrong_version_requests_stop_before_credentials_and_ledger": 4,
+          "test_glossary_cannot_borrow_a_different_scope": 5,
+          "test_unverified_result_is_uncertain_and_never_retried": 8,
+          "test_reflected_oauth_material_is_never_accepted": 4,
+          "test_expired_before_send_is_unsent_and_exact_renewal_can_resume": 1,
+          "test_expiry_after_vault_read_is_rechecked_before_transport": 1,
+          "test_direct_transport_cannot_be_a_general_url_route": 3,
+          "test_native_transport_boundary_keeps_tls_and_accepts_already_sent_response": 2
+        },
+        "tests.assistant.test_translation_scopes": {
+          "test_document_selection_retains_empty_sections_unicode_locators_and_source_order": 1,
+          "test_actual_epub_chapter_keeps_declared_headings_and_excludes_unselected_chapter": 1,
+          "test_scope_reuses_both_existing_google_job_versions": 2,
+          "test_batch_preview_has_exact_per_document_and_block_prices_without_network": 1,
+          "test_no_inferred_chapter_from_an_unstructured_text_page": 3,
+          "test_overlapping_batch_documents_are_rejected_before_any_approval": 1,
+          "test_foreign_workspace_is_refused_before_original_access": 1,
+          "test_cancelled_capture_never_opens_an_original": 1,
+          "test_character_preflight_refuses_before_materializing_source_pages": 1,
+          "test_typed_selection_rejects_source_or_structure_forgery": 8,
+          "test_reviewed_manifest_cannot_expand_transfer_or_price_authority": 5,
+          "test_preview_cost_above_an_item_reservation_blocks_approval": 1,
+          "test_saved_scope_pause_restart_and_complete_resume_never_rebill_accepted_children": 1,
+          "test_uncertain_paid_child_blocks_every_later_item_and_never_retries": 1,
+          "test_partial_child_preparation_is_durable_but_cannot_recreate_missing_jobs": 1,
+          "test_removed_approved_child_is_not_recreated_or_rebilled": 1,
+          "test_child_rebinding_is_rejected_by_typed_backup_and_resume": 4,
+          "test_archived_scope_revokes_saved_remote_transfer_before_send": 1,
+          "test_original_drift_invalidates_review_before_any_provider_request": 1,
+          "test_complete_derivative_preserves_bilingual_blocks_headings_and_safe_html": 1,
+          "test_destination_is_rejected_before_reading_derived_source": 1,
+          "test_incomplete_or_cancelled_export_has_no_complete_marker": 1,
+          "test_typed_backup_restores_passive_structure_without_rebinding_remote_permission": 1,
+          "test_scope_and_child_native_locks_share_existing_snapshot_protocol": 1
+        },
+        "tests.ui.test_translation_scopes": {
+          "test_scope_ui_requires_separate_exact_approval_and_never_sends_on_preview": 1,
+          "test_scope_ui_change_revokes_review_before_child_creation": 8,
+          "test_failed_preview_revokes_prior_scope_review": 1,
+          "test_scope_menu_is_additive_idempotent_and_preserves_existing_shortcuts": 2
+        }
+      },
+      "local_functions": {
+        "tests.loopback.test_translation_local_adapter": {
+          "test_local_profile_refuses_remote_destinations_and_credentials": 9,
+          "test_explicit_loopback_discovery_is_separate_and_local_jobs_keep_zero_remote_reservation": 1,
+          "test_pair_direction_glossary_price_and_credentials_are_refused_before_local_execution": 1,
+          "test_local_typed_request_cannot_be_sent_with_a_google_request_or_remote_permission": 1,
+          "test_resumed_local_job_checks_exact_direction_inventory_before_another_request": 6,
+          "test_accepted_local_response_keeps_pre_request_inventory_even_if_cache_disappears": 1,
+          "test_actual_loopback_errors_never_redirect_fall_back_or_repeat_an_uncertain_attempt": 3,
+          "test_local_detection_requires_one_finite_bounded_receipt": 6,
+          "test_local_structured_job_cannot_drop_its_immutable_source_context": 1,
+          "test_complete_local_translation_backup_restores_derivatives_without_endpoint_authority": 1,
+          "test_actual_cli_local_review_queue_run_and_offline_export": 1,
+          "test_live_decoded_local_receipt_tampering_blocks_export_without_recontact": 1,
+          "test_local_scopes_use_existing_children_and_passive_complete_backup": 2,
+          "test_local_current_ui_controllers_require_exact_review_and_zero_cost": 2,
+          "test_cli_stale_saved_review_does_not_send_a_local_request": 1,
+          "test_cli_scoped_local_preview_queue_run_export_uses_current_catalog": 1
+        }
+      },
+      "basis": "Current exact source oracles, whose immutable Git blobs and content hashes were reverified against 87d1. This is the declared Counter, not an independently decoded runtime Counter."
+    },
+    "producer_validation": {
+      "raw_junit_exact_counter": true,
+      "failure_error_skipped_elements_refused": true,
+      "source_root_and_installed_isolation_checked": true,
+      "current_wheel_source_and_installed_bytes_checked": true,
+      "eight_native_receipts_checked": true,
+      "harness_and_installed_bytes_rechecked_after_execution": true,
+      "basis": "Successful phase receipts and final PASS from the independently bound unchanged acceptance implementation. Its strict_junit compares every raw testcase to the exact declared Counter and rejects failure/error/skipped elements."
+    },
+    "independent_read_limits": {
+      "full_raw_junit_read": false,
+      "actual_raw_junit_counter": null,
+      "eight_full_native_json_bodies_read": false,
+      "installed_source_inventory_member_read": false,
+      "archive_members_decoded": false,
+      "scope": "The completed job log exposes twelve phase PASS objects and the exact 324/324/8 summary. Successful per-test XML and the eight complete native JSON receipts remain inside the uploaded artifact and were not independently decoded here."
+    },
+    "external_qualification": {
+      "actual_google_api": "NOT_RUN",
+      "actual_local_engine": "NOT_RUN",
+      "production_models": "NOT_RUN",
+      "translation_quality": "NOT_QUALIFIED",
+      "nvda": "NOT_RUN"
+    }
+  },
+  "preparation": {
+    "python": {
+      "implementation": "CPython",
+      "version": "3.11.9",
+      "evidence": {
+        "raw_line": 211,
+        "timestamp": "2026-11-28T10:30:28.2405687Z",
+        "text": "Successfully set up CPython (3.11.9)"
+      }
+    },
+    "runtime": {
+      "reported_core_pin_count": 18,
+      "exact_names_and_versions_match_candidate_lock": true,
+      "lock_path": "carr-library/packaging/windows-cp311.lock",
+      "lock_git_blob": "9e29ea98f8d280f86de78948de002e5593c4850c",
+      "receipt": {
+        "bibtexparser": "2.1.0",
+        "cffi": "2.1.1",
+        "cryptography": "50.0.2",
+        "defusedxml": "0.7.1",
+        "filelock": "3.29.0",
+        "lxml": "6.1.3",
+        "numpy": "2.4.6",
+        "pillow": "13.0.0",
+        "platformdirs": "4.10.0",
+        "pycparser": "3.12",
+        "pylatexenc": "2.11",
+        "pypdf": "7.1.1",
+        "pypdfium2": "5.13.0",
+        "python-docx": "1.2.0",
+        "pywin32": "312",
+        "quickjs-ng": "0.18.0.2",
+        "typing-extensions": "4.16.0",
+        "wxpython": "4.2.4"
+      },
+      "raw_log_line": 389
+    },
+    "wheel_build": {
+      "name": "universal_research_library-0.2.0.dev2-py3-none-any.whl",
+      "bytes": 2170737,
+      "sha256": "6f67e939d5941746e534bf4b708d72068b65d29ec294963f05010729338fc3e6",
+      "raw_log_line": 308,
+      "timestamp": "2026-11-28T10:30:36.8454799Z",
+      "evidence": "Exact pip wheel-builder record followed by successful install and source-bound acceptance.",
+      "wheel_bytes_independently_read": false
+    }
+  },
+  "cleanup": {
+    "owned_firewall_removal_step": "SUCCESS",
+    "basic_owned_modal_returned": true,
+    "basic_application_loop_returned": true,
+    "basic_worker_settled": true,
+    "basic_native_frame_cleanup_reported": true,
+    "basic_temporary_workspace_cleanup_reported": true,
+    "artifact_upload_step": "SUCCESS",
+    "all_job_steps_success": true,
+    "limit": "Basic cleanup is supported by its ordered diagnostics before the terminal receipt. Broader native cleanup is accepted by the unchanged producer; no separate raw artifact cleanup receipt was decoded here."
+  },
+  "steps": [
+    {
+      "number": 1,
+      "name": "Set up job",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-28T10:30:20Z",
+      "completed_at": "2026-11-28T10:30:21Z",
+      "duration_seconds": 1
+    },
+    {
+      "number": 2,
+      "name": "Check out exact candidate",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-28T10:30:21Z",
+      "completed_at": "2026-11-28T10:30:27Z",
+      "duration_seconds": 6
+    },
+    {
+      "number": 3,
+      "name": "Record exact candidate before qualification",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-28T10:30:27Z",
+      "completed_at": "2026-11-28T10:30:28Z",
+      "duration_seconds": 1
+    },
+    {
+      "number": 4,
+      "name": "Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-28T10:30:28Z",
+      "completed_at": "2026-11-28T10:30:28Z",
+      "duration_seconds": 0
+    },
+    {
+      "number": 5,
+      "name": "Compile all current product and qualification sources",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-28T10:30:28Z",
+      "completed_at": "2026-11-28T10:30:30Z",
+      "duration_seconds": 2
+    },
+    {
+      "number": 6,
+      "name": "Build and install an exact source-bound wheel",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-28T10:30:30Z",
+      "completed_at": "2026-11-28T10:30:53Z",
+      "duration_seconds": 23
+    },
+    {
+      "number": 7,
+      "name": "Block external egress during finite local and synthetic translation qualification",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-28T10:30:53Z",
+      "completed_at": "2026-11-28T10:30:54Z",
+      "duration_seconds": 1
+    },
+    {
+      "number": 8,
+      "name": "Require installed Basic translation before the complete translation population",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-28T10:30:54Z",
+      "completed_at": "2026-11-28T10:30:55Z",
+      "duration_seconds": 1
+    },
+    {
+      "number": 9,
+      "name": "Require exact source and installed cases plus eight actual native flows",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-28T10:30:55Z",
+      "completed_at": "2026-11-28T10:32:26Z",
+      "duration_seconds": 91
+    },
+    {
+      "number": 10,
+      "name": "Remove only the owned qualification firewall rule",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-28T10:32:26Z",
+      "completed_at": "2026-11-28T10:32:27Z",
+      "duration_seconds": 1
+    },
+    {
+      "number": 11,
+      "name": "Upload all raw scoped and selected translation evidence",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-28T10:32:27Z",
+      "completed_at": "2026-11-28T10:32:31Z",
+      "duration_seconds": 4
+    },
+    {
+      "number": 21,
+      "name": "Post Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-28T10:32:31Z",
+      "completed_at": "2026-11-28T10:32:31Z",
+      "duration_seconds": 0
+    },
+    {
+      "number": 22,
+      "name": "Post Check out exact candidate",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-28T10:32:31Z",
+      "completed_at": "2026-11-28T10:32:33Z",
+      "duration_seconds": 2
+    },
+    {
+      "number": 23,
+      "name": "Complete job",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-28T10:32:33Z",
+      "completed_at": "2026-11-28T10:32:33Z",
+      "duration_seconds": 0
+    }
+  ],
+  "decoded_raw_job_log": {
+    "characters": 64228,
+    "utf8_bytes": 64230,
+    "sha256": "70c598229f72b963368d679fb7254c5c3df1471ad05cee600420ca7126505697",
+    "method": "Complete returned decoded job log; SHA256 over its exact UTF-8 encoding, retaining ANSI bytes and line endings.",
+    "github_annotation_warnings": 0,
+    "command_echo_excluded_from_pass_evidence": true
+  },
+  "uploaded_artifact": {
+    "id": 15259228866,
+    "name": "carr-local-translation-87d1ec6a05963531c5c1907f74884faddac2093e",
+    "size_in_bytes": 6456640,
+    "sha256": "0bb02df3ebcb7e19c11dc8394e9a2de1e20795932856a1ff02a3c1ffe9cdf100",
+    "created_at": "2026-11-28T10:32:31Z",
+    "expires_at": "2026-12-12T10:32:28Z",
+    "expired": false,
+    "workflow_run": {
+      "id": 46135188425,
+      "repository_id": 1341777614,
+      "head_repository_id": 1341777614,
+      "head_branch": "carr/local-translation-final-87d1-20261128-d3a",
+      "head_sha": "87d1ec6a05963531c5c1907f74884faddac2093e"
+    },
+    "uploader_reported_files": 4094,
+    "uploader_and_api_id_size_digest_match": true,
+    "archive_downloaded": false,
+    "archive_decoded": false,
+    "independent_member_inventory": null,
+    "limit": "The uploader's file count is retained as a producer statement. It is not an independently inspected ZIP inventory."
+  },
+  "expected_source_bindings": [
+    {
+      "path": ".github/workflows/carr-local-translation.yml",
+      "git_blob": "e4dafee258246fc14f039d72908136434a20465c",
+      "sha256": "83c1f2ff166671f3ee4e0f81af8b88cd0950344b4eb46cb9437ad0cdc14c6d2c",
+      "utf8_bytes": 11326,
+      "immutable_content_read_at": "09ac4c06ec6cfc88805ea4673a7767a934b80f9b",
+      "current_tree_git_blob_verified_at": "87d1ec6a05963531c5c1907f74884faddac2093e",
+      "body_git_blob_and_sha256_recomputed": true
+    },
+    {
+      "path": "carr-library/scripts/windows_translation_smoke.py",
+      "git_blob": "781a38e2f02d2209db5333e6421b7873bf6e35e1",
+      "sha256": "ec8afc47fc1d293871d1255491aafdedc80635d33d036349dc1b5921202af2fb",
+      "utf8_bytes": 14852,
+      "immutable_content_read_at": "09ac4c06ec6cfc88805ea4673a7767a934b80f9b",
+      "current_tree_git_blob_verified_at": "87d1ec6a05963531c5c1907f74884faddac2093e",
+      "body_git_blob_and_sha256_recomputed": true
+    },
+    {
+      "path": "carr-library/scripts/local_translation_acceptance.py",
+      "git_blob": "8ab561e746748d5f36fdb30d3f053b7daf8621f9",
+      "sha256": "e68a36a9b635c21ab45f5721f47ab76ebd7bd65d52a6ed2361822454b148f5a8",
+      "utf8_bytes": 11739,
+      "immutable_content_read_at": "09ac4c06ec6cfc88805ea4673a7767a934b80f9b",
+      "current_tree_git_blob_verified_at": "87d1ec6a05963531c5c1907f74884faddac2093e",
+      "body_git_blob_and_sha256_recomputed": true
+    },
+    {
+      "path": "carr-library/scripts/translation_scope_acceptance.py",
+      "git_blob": "60d841da5b74fde0ee8491899c12aa516b461851",
+      "sha256": "a27bcea6d5570cab5764828c861c033e75e8906d397b3daed1794add82aa3f82",
+      "utf8_bytes": 16375,
+      "immutable_content_read_at": "09ac4c06ec6cfc88805ea4673a7767a934b80f9b",
+      "current_tree_git_blob_verified_at": "87d1ec6a05963531c5c1907f74884faddac2093e",
+      "body_git_blob_and_sha256_recomputed": true
+    },
+    {
+      "path": "carr-library/scripts/local_translation_oracles.json",
+      "git_blob": "a954839a9e373b60f13f35b16c57d7160e43750c",
+      "sha256": "2f6dd44568ea2e85e661bcc08f01fbd00a7b1aed446002fd593a7656a77dd9b6",
+      "utf8_bytes": 1926,
+      "immutable_content_read_at": "09ac4c06ec6cfc88805ea4673a7767a934b80f9b",
+      "current_tree_git_blob_verified_at": "87d1ec6a05963531c5c1907f74884faddac2093e",
+      "body_git_blob_and_sha256_recomputed": true
+    },
+    {
+      "path": "carr-library/scripts/translation_scope_oracles.json",
+      "git_blob": "2f2f032e4e3b8d3263e1a7bec1e5fe731bfab9d2",
+      "sha256": "d3a99994e83ccf97eb0dd7228fbfd189a8b98b2be29bafda915acb0abb10b046",
+      "utf8_bytes": 9227,
+      "immutable_content_read_at": "09ac4c06ec6cfc88805ea4673a7767a934b80f9b",
+      "current_tree_git_blob_verified_at": "87d1ec6a05963531c5c1907f74884faddac2093e",
+      "body_git_blob_and_sha256_recomputed": true
+    },
+    {
+      "path": "carr-library/scripts/windows_translation_v3_smoke.py",
+      "git_blob": "59d7b4361d2704c657d6e3d7f45e521b3d9b36dd",
+      "sha256": "b4322ba881f67e6938f89177386a018e093c447776ab7b20c44cd8805321fd1a",
+      "utf8_bytes": 18845,
+      "immutable_content_read_at": "09ac4c06ec6cfc88805ea4673a7767a934b80f9b",
+      "current_tree_git_blob_verified_at": "87d1ec6a05963531c5c1907f74884faddac2093e",
+      "body_git_blob_and_sha256_recomputed": true
+    },
+    {
+      "path": "carr-library/scripts/windows_translation_local_smoke.py",
+      "git_blob": "dcb1fb940f078ecd7ff779eb9768056af63d8946",
+      "sha256": "7aa919464804f7acac897379c072a3ad8207eabf7ecc346d908ae399925def2e",
+      "utf8_bytes": 18733,
+      "immutable_content_read_at": "09ac4c06ec6cfc88805ea4673a7767a934b80f9b",
+      "current_tree_git_blob_verified_at": "87d1ec6a05963531c5c1907f74884faddac2093e",
+      "body_git_blob_and_sha256_recomputed": true
+    },
+    {
+      "path": "carr-library/scripts/windows_translation_scope_smoke.py",
+      "git_blob": "d3b0aa6ad304431863826fda71909fcbf088b651",
+      "sha256": "055f3fccdc166cc0d990a1bd5e5235b978db5985fcd54f5ef1811111223a03fc",
+      "utf8_bytes": 26168,
+      "immutable_content_read_at": "09ac4c06ec6cfc88805ea4673a7767a934b80f9b",
+      "current_tree_git_blob_verified_at": "87d1ec6a05963531c5c1907f74884faddac2093e",
+      "body_git_blob_and_sha256_recomputed": true
+    },
+    {
+      "path": "carr-library/packaging/windows-cp311.lock",
+      "git_blob": "9e29ea98f8d280f86de78948de002e5593c4850c",
+      "sha256": "4e49bacae7e7b805d5f9219ca4baeb14b413786c3db787d5aba4ab72a48397c5",
+      "utf8_bytes": 34471,
+      "immutable_content_read_at": "09ac4c06ec6cfc88805ea4673a7767a934b80f9b",
+      "current_tree_git_blob_verified_at": "87d1ec6a05963531c5c1907f74884faddac2093e",
+      "body_git_blob_and_sha256_recomputed": true
+    },
+    {
+      "path": "carr-library/src/carr_library/providers.py",
+      "git_blob": "5f2df7784f9d7f235695ac7f0b27695c071fe36e",
+      "sha256": "aa4933b4c85ff2d58436d447f0765a852492b27281bb4872d9c35b5f66c47bc5",
+      "utf8_bytes": 67576,
+      "immutable_content_read_at": "09ac4c06ec6cfc88805ea4673a7767a934b80f9b",
+      "current_tree_git_blob_verified_at": "87d1ec6a05963531c5c1907f74884faddac2093e",
+      "body_git_blob_and_sha256_recomputed": true
+    },
+    {
+      "path": "carr-library/tests/assistant/test_translation.py",
+      "git_blob": "1bc4d65f2e49753ec2da982c3ac400b91002ceed",
+      "sha256": "a0fb178e1028271c22ac12e7baccef083ec2c13d454da61f75ef8487037413e1",
+      "utf8_bytes": 35317,
+      "immutable_content_read_at": "09ac4c06ec6cfc88805ea4673a7767a934b80f9b",
+      "current_tree_git_blob_verified_at": "87d1ec6a05963531c5c1907f74884faddac2093e",
+      "body_git_blob_and_sha256_recomputed": true
+    },
+    {
+      "path": "carr-library/tests/assistant/test_translation_advanced.py",
+      "git_blob": "2865908807b09a531f657c68bad90629256a047f",
+      "sha256": "b4d91de42abe609a0d68a8e86a092c7e224e02f045989ff40a96f79391deeb3b",
+      "utf8_bytes": 17148,
+      "immutable_content_read_at": "09ac4c06ec6cfc88805ea4673a7767a934b80f9b",
+      "current_tree_git_blob_verified_at": "87d1ec6a05963531c5c1907f74884faddac2093e",
+      "body_git_blob_and_sha256_recomputed": true
+    },
+    {
+      "path": "carr-library/tests/ui/test_translation_dialog.py",
+      "git_blob": "b500a8891738435b08beb5e0cb1b1d71f4f92ed0",
+      "sha256": "2b48e0049ac480cb3d4810210f5809e8b6c681e57789be858ff32e85a21cb1be",
+      "utf8_bytes": 9379,
+      "immutable_content_read_at": "09ac4c06ec6cfc88805ea4673a7767a934b80f9b",
+      "current_tree_git_blob_verified_at": "87d1ec6a05963531c5c1907f74884faddac2093e",
+      "body_git_blob_and_sha256_recomputed": true
+    },
+    {
+      "path": "carr-library/tests/ui/test_translation_advanced.py",
+      "git_blob": "c00833c2081fad99289201e2e1f3fa9b1e176c12",
+      "sha256": "8ebfb2e33e5cd492076c77ec79ab854b2d0f17f2a0faba5a0ce3eb9fdc766ba4",
+      "utf8_bytes": 8637,
+      "immutable_content_read_at": "09ac4c06ec6cfc88805ea4673a7767a934b80f9b",
+      "current_tree_git_blob_verified_at": "87d1ec6a05963531c5c1907f74884faddac2093e",
+      "body_git_blob_and_sha256_recomputed": true
+    },
+    {
+      "path": "carr-library/tests/e2e/test_google_translation_gateway.py",
+      "git_blob": "5f2d1a494bcc22cbecf3f490b1c70205d263340c",
+      "sha256": "fc2c95db69e720c7b8405841a9166690dcb482cb521780a70a03c5cd9c77b6dd",
+      "utf8_bytes": 22579,
+      "immutable_content_read_at": "09ac4c06ec6cfc88805ea4673a7767a934b80f9b",
+      "current_tree_git_blob_verified_at": "87d1ec6a05963531c5c1907f74884faddac2093e",
+      "body_git_blob_and_sha256_recomputed": true
+    },
+    {
+      "path": "carr-library/tests/e2e/test_google_translation_v3.py",
+      "git_blob": "41a491f7ec6a096c9347a6ea80e198d6a6cc69b6",
+      "sha256": "474c372b0749617079ae2945e171c0f8f4f0bddb44138b66664b1b3df6c65e3c",
+      "utf8_bytes": 21079,
+      "immutable_content_read_at": "09ac4c06ec6cfc88805ea4673a7767a934b80f9b",
+      "current_tree_git_blob_verified_at": "87d1ec6a05963531c5c1907f74884faddac2093e",
+      "body_git_blob_and_sha256_recomputed": true
+    },
+    {
+      "path": "carr-library/tests/assistant/test_translation_scopes.py",
+      "git_blob": "8f539dd55f732d4762dbc7b8c2de6e03febe6f10",
+      "sha256": "545fd8c4c19029a05b6d754c2aae6cd59bb0f73222705069fa833297bb009f92",
+      "utf8_bytes": 22729,
+      "immutable_content_read_at": "09ac4c06ec6cfc88805ea4673a7767a934b80f9b",
+      "current_tree_git_blob_verified_at": "87d1ec6a05963531c5c1907f74884faddac2093e",
+      "body_git_blob_and_sha256_recomputed": true
+    },
+    {
+      "path": "carr-library/tests/ui/test_translation_scopes.py",
+      "git_blob": "dd0289bae13dafcc22ae9ac204b735dbe445013a",
+      "sha256": "bae455efa3e340582860be8f7cf93a9b6fb1e07ecb6b0aa1237152b9b3e73ad4",
+      "utf8_bytes": 4890,
+      "immutable_content_read_at": "09ac4c06ec6cfc88805ea4673a7767a934b80f9b",
+      "current_tree_git_blob_verified_at": "87d1ec6a05963531c5c1907f74884faddac2093e",
+      "body_git_blob_and_sha256_recomputed": true
+    },
+    {
+      "path": "carr-library/tests/loopback/test_translation_local_adapter.py",
+      "git_blob": "ca81a9116171340822d01817ae7da19140c2b243",
+      "sha256": "2e913e3d138e82a66eaa41354272485a169ff8fc966817a09d1bd947cddcd1cc",
+      "utf8_bytes": 22480,
+      "immutable_content_read_at": "09ac4c06ec6cfc88805ea4673a7767a934b80f9b",
+      "current_tree_git_blob_verified_at": "87d1ec6a05963531c5c1907f74884faddac2093e",
+      "body_git_blob_and_sha256_recomputed": true
+    },
+    {
+      "path": "carr-library/tests/reader/test_ebook_reader.py",
+      "git_blob": "1f9e8be4bd03dfc15b55e4d76858d0e29f8f4e84",
+      "sha256": "33ea4426a840d0f6536a33efdb406a8930d5b412a183254b539436d5cc97e59a",
+      "utf8_bytes": 16412,
+      "immutable_content_read_at": "09ac4c06ec6cfc88805ea4673a7767a934b80f9b",
+      "current_tree_git_blob_verified_at": "87d1ec6a05963531c5c1907f74884faddac2093e",
+      "body_git_blob_and_sha256_recomputed": true
+    },
+    {
+      "path": "carr-library/scripts/ci_check.py",
+      "git_blob": "2d04b9b269ae85c24349ae8d4ad9b295737866fb",
+      "sha256": "f337e72d4ee043d6ff01ad3e9124557d7a24823628584bfbcc4bd597e6e170b7",
+      "utf8_bytes": 16851,
+      "immutable_content_read_at": "09ac4c06ec6cfc88805ea4673a7767a934b80f9b",
+      "current_tree_git_blob_verified_at": "87d1ec6a05963531c5c1907f74884faddac2093e",
+      "body_git_blob_and_sha256_recomputed": true
+    },
+    {
+      "path": "carr-library/scripts/ci_watchdog.py",
+      "git_blob": "10482b73dca31ab90796f4c2c2dcc105c20c9969",
+      "sha256": "e02be6a6c3406bdf1d9d4c24673363894d03a1ee7948b3b77d6b20fcc2bfc057",
+      "utf8_bytes": 6303,
+      "immutable_content_read_at": "09ac4c06ec6cfc88805ea4673a7767a934b80f9b",
+      "current_tree_git_blob_verified_at": "87d1ec6a05963531c5c1907f74884faddac2093e",
+      "body_git_blob_and_sha256_recomputed": true
+    },
+    {
+      "path": "carr-library/packaging/source_wheel.py",
+      "git_blob": "bba3d0cda29b475d51347434d832af9187840547",
+      "sha256": "fbac5259cba4dc89269d114482f2f0af8ae464ecac84e2505860263f64375d85",
+      "utf8_bytes": 15068,
+      "immutable_content_read_at": "09ac4c06ec6cfc88805ea4673a7767a934b80f9b",
+      "current_tree_git_blob_verified_at": "87d1ec6a05963531c5c1907f74884faddac2093e",
+      "body_git_blob_and_sha256_recomputed": true
+    }
+  ],
+  "independent_reconciliation_checks": [
+    {
+      "name": "completed exact source-bound push run and job",
+      "passed": true
+    },
+    {
+      "name": "fourteen job steps all succeeded",
+      "passed": true
+    },
+    {
+      "name": "one strict Basic receipt",
+      "passed": true
+    },
+    {
+      "name": "exact thirteen Basic keys and scalar types",
+      "passed": true
+    },
+    {
+      "name": "four exact derivative names and lowercase digests",
+      "passed": true
+    },
+    {
+      "name": "no duplicate or extra receipt keys",
+      "passed": true
+    },
+    {
+      "name": "installed provider belongs to current isolated run",
+      "passed": true
+    },
+    {
+      "name": "original derivative hash matches the exact literal in the pinned probe",
+      "passed": true
+    },
+    {
+      "name": "one actual strict Basic verifier PASS after receipt",
+      "passed": true
+    },
+    {
+      "name": "bounded contiguous diagnostic sequence",
+      "passed": true
+    },
+    {
+      "name": "owned worker/modal/frame/workspace cleanup precedes final receipt",
+      "passed": true
+    },
+    {
+      "name": "each real worker operation has start callback and result",
+      "passed": true
+    },
+    {
+      "name": "no failure diagnostic or faulthandler timeout",
+      "passed": true
+    },
+    {
+      "name": "twelve exact successful phase receipts",
+      "passed": true
+    },
+    {
+      "name": "exact current source/installed/native summary",
+      "passed": true
+    },
+    {
+      "name": "eighteen exact installed runtime pins",
+      "passed": true
+    },
+    {
+      "name": "pinned CPython 3.11.9",
+      "passed": true
+    },
+    {
+      "name": "one completed current public wheel build",
+      "passed": true
+    },
+    {
+      "name": "artifact API and uploader head size ID SHA match",
+      "passed": true
+    },
+    {
+      "name": "twenty-four immutable source bodies rehashed and bound to current tree",
+      "passed": true
+    }
+  ],
+  "retained_history": [
+    {
+      "source_commit": "424cc456992c69c1ee945bc4d5ab73bc21e4e7b8",
+      "run_id": 46109011419,
+      "job_id": 140868122250,
+      "status": "FAIL",
+      "observation": "Basic selected-root mismatch followed by its native timeout; no source namespace spelling inferred."
+    },
+    {
+      "source_commit": "d4ea02c32d88d803311c7ae0f454c17dee185c4c",
+      "run_id": 46117284580,
+      "job_id": 140893828731,
+      "status": "FAIL",
+      "observation": "Four-minute Basic workflow timeout without intervening runtime output; 324/324+8 skipped.",
+      "evidence_commit": "a0fd6348833f2661e7f6dee39a39d26dc24b49a2",
+      "path": "carr-library/docs/evidence/basic-translation-focused-timeout-d4ea-20261128.json"
+    },
+    {
+      "source_component": "d12884890335518721e109459819c2352e2ab38f",
+      "observation": "The Basic source correction reused the already reviewed owned-modal return/finally exit. Successful sequences were subsequently observed on 7c991 and 2701; neither reveals the exact blocked phase of the earlier silent timeout."
+    },
+    {
+      "source_commit": "7c991dac1581faa63cb32eaaa5e21cf548287b38",
+      "run_id": 46119546281,
+      "job_id": 140900801416,
+      "status": "PASS",
+      "evidence_commit": "62309e968851e24f8ddad8e938ca1ad41f5fd88e",
+      "path": "carr-library/docs/evidence/basic-and-local-translation-focused-observed-7c991-20261128.json",
+      "observation": "Earlier exact 7c focused Basic and 324/324/8 success remains separate from this fresh 09ac run."
+    },
+    {
+      "source_commit": "7c991dac1581faa63cb32eaaa5e21cf548287b38",
+      "run_id": 46121064501,
+      "job_id": 140905458267,
+      "status": "FAIL",
+      "evidence_commit": "01b57abe7be28ebda30c100e9cad43465f388c8d",
+      "path": "carr-library/docs/evidence/7c991-main-observed-failure-20261128.json",
+      "observation": "Earlier full main passed source and early translation, then failed the separate native search clipboard fixture. Its later gates remained skipped."
+    },
+    {
+      "source_commit": "2701b5717360996d706199e370ce1d1cc47f3a61",
+      "run_id": 46128793566,
+      "job_id": 140929198153,
+      "status": "PASS",
+      "evidence_commit": "479c036feb6e8ab3c4fc7c45a5b1c6105e932799",
+      "path": "carr-library/docs/evidence/basic-and-local-translation-focused-observed-2701-20261128.json",
+      "observation": "The earlier 2701 Basic and 324/324/8 result remains bound to that exact source. The present 09ac result was independently reconciled from its own completed log."
+    },
+    {
+      "source_commit": "2701b5717360996d706199e370ce1d1cc47f3a61",
+      "source_component": "c2b0fca4133c29858d973211f30f6d6c6d708af4",
+      "path": "carr-library/docs/evidence/import-center-scroll-layout-repair-20261128.json",
+      "observation": "The separately recorded 2701 Import Center minimum-height failure led to the one application-file change included in 09ac. Translation source contracts are unchanged, while the installed wheel is freshly built from 09ac."
+    },
+    {
+      "source_commit": "09ac4c06ec6cfc88805ea4673a7767a934b80f9b",
+      "run_id": 46131541968,
+      "job_id": 140937577696,
+      "status": "PASS",
+      "evidence_commit": "8091e4455645587ef037d285fc3b84ef36448eea",
+      "path": "carr-library/docs/evidence/basic-and-local-translation-focused-observed-09ac-20261128.json",
+      "observation": "Earlier Basic and 324/324/8 success is preserved with its own 33-row diagnostic sequence. This 87d1 proof uses a fresh completed run, not that runtime outcome."
+    },
+    {
+      "source_commit": "09ac4c06ec6cfc88805ea4673a7767a934b80f9b",
+      "run_id": 46131541694,
+      "job_id": 140937577072,
+      "status": "FAIL",
+      "evidence_commit": "75a8c30549b50af7d2a3d4ca5ade8e768da559e6",
+      "path": "carr-library/docs/evidence/09ac-native-main-observed-failure-20261128.json",
+      "observation": "The broader native focus passed Import Center and then failed on the reading probe's obsolete keyboard_actions lookup. The reviewed fixture migration 58370 is included in 87d1; that separate native flow is not exercised or qualified by this translation result."
+    }
+  ],
+  "integrated_main": {
+    "qualification": "NOT_ESTABLISHED_BY_THIS_FOCUSED_PROOF",
+    "limit": "Full main, the broader native focus and the auxiliary cohort remain separate source-bound gates. This completed translation result is bound only to 87d1 and cannot qualify a later successor."
+  },
+  "mutation_scope": "Two evidence files only, sole parent 87d1. No application, fixture, workflow, oracle, runtime, ref or PR mutation; no archive download or execution.",
+  "immutable_source_identity_reuse": {
+    "content_read_commit": "09ac4c06ec6cfc88805ea4673a7767a934b80f9b",
+    "current_commit": "87d1ec6a05963531c5c1907f74884faddac2093e",
+    "source_files": 24,
+    "method": "For every previously read immutable body, recompute its Git blob identity from the actual UTF-8 bytes and recompute SHA256. Require both to match the prior body metadata and the current 87d1 recursive tree. Every one of the 24 current producer/fixture/lock/helper inputs is byte-identical.",
+    "previous_evidence_commit": "8091e4455645587ef037d285fc3b84ef36448eea",
+    "execution_reused": false,
+    "actual_log_source": "Only current run 46135188425 / job 140948783886 supplies execution evidence."
+  }
+}
