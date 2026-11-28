@@ -84,7 +84,7 @@ jobs:
           New-Item -ItemType Directory -Force 'ci-managed-admission' | Out-Null
           git rev-parse HEAD | Set-Content 'ci-managed-admission/tested-commit.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & $python -m pip install '.[test]'
+          & $python -m pip install '.[test,trust]'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $python -m pip check
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
