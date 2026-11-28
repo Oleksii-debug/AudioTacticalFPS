@@ -1,0 +1,107 @@
+{
+  "schema": 1,
+  "status": "QUALIFIED_BOTH_OS_SOURCE_AND_INSTALLED",
+  "baseline": {
+    "head": "71ca92be691455d0ff51ed163b1d91749e5ae62e",
+    "tree": "73c43b7486974a7b301aa8c210c891b4d94ddb0d"
+  },
+  "component": {
+    "head": "5b87b13974d57d1aeb59f92c78c0f64366fd8a8c",
+    "tree": "ed9916eec86957687ccd265b1cfd044a9bb84f59",
+    "files": 1568,
+    "run": 46130074946,
+    "manifest": "d55bc2056f0da09296cd460691ebce4725fde717"
+  },
+  "changes": [
+    {
+      "path": "carr-library/src/carr_library/ingest/worker.py",
+      "base": "4b78e411e37c3b5e68fd6496cb72448e8fcb0b4f",
+      "sha": "63f5d2ef09c584d94f0be761b6c264b31f568802"
+    },
+    {
+      "path": "carr-library/src/carr_library/ingest/pipeline.py",
+      "base": "8d27e0e3d52e323325f139f870a2fc6e6b58152e",
+      "sha": "cf6ffa2cece1bfaa47a76d230934f93d69dea17e"
+    },
+    {
+      "path": "carr-library/tests/e2e/test_import_files_cancellation.py",
+      "base": "423143a9a994d35839ac6342e57f525f11ff3984",
+      "sha": "6e1b58a0fcecc2b83c7b941dc07a80a973a52c2d"
+    },
+    {
+      "path": "carr-library/tests/operations/test_ocr_admission.py",
+      "base": "8ca4090c270fe337d26283a66f409c96a5763d79",
+      "sha": "0eb4b0f9d144c002700a5708ebc188f1b018d4e8"
+    }
+  ],
+  "production_findings": [
+    {
+      "path": "carr-library/src/carr_library/ingest/worker.py",
+      "reason": "A newly created isolated import could return cancellation or timeout before native admission while leaving its saved request pending.",
+      "boundary": "Under the existing exact request lock, reauthorize scope and compare the entire original record, then persist only this invocation's fresh returned outcome. No attempt or receipt is created. Prepared/resumed/previous-owner paths remain unchanged."
+    },
+    {
+      "path": "carr-library/src/carr_library/ingest/pipeline.py",
+      "reason": "The held TXT parsing reader polled cancellation after a successful canonical commit, replacing a completed file result with cancellation.",
+      "boundary": "Keep the actual descriptor/path/ancestor checks through publication. Only this fresh TextSegments cancellation callback stops polling after this invocation's successful publisher return. Full source/resource/precommit callbacks are unchanged; recovered revisions never set the local latch."
+    }
+  ],
+  "original_failure": {
+    "raw": "bbd28bc06948618aacb230db496cddf367d4be58",
+    "all_suite_summary": "10898 passed, 5 failed, 42 subtests passed",
+    "owned_failures": 3
+  },
+  "predecessor": {
+    "head": "6d288d2afea3bbb41eb164b6ec8db6311a6a214e",
+    "run": 46128803021,
+    "evidence": "0e0ded4a4475cfde139b59817ac46a0b0250f8b3",
+    "summary": "140 passed + 1 new incomplete-registration fixture failure in each OS/context; all original three assertions and all four actual TXT controls passed."
+  },
+  "source_reviews": "Independent product and test reviews closed; strict workflow independently approved.",
+  "qualification_limits": [
+    "No final PR ref mutation.",
+    "No actual OCR-model, large-corpus, physical-device or NVDA claim.",
+    "A future composed final head must satisfy the maintained full gates independently."
+  ],
+  "evidence": "59db4383dde5426f77650b3996bc2da3d984b005",
+  "counts": {
+    "contexts": 4,
+    "cases_each": 141,
+    "executed_cases": 564,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "xfail": 0,
+    "suites_each": 15,
+    "origins_each": 22,
+    "python_files": 426,
+    "additional_assets": 20,
+    "inventory_files": 446
+  },
+  "contexts": [
+    {
+      "os": "ubuntu-24.04",
+      "job": 140933062291,
+      "raw_log": "06b13a40b9be0e357783029c3761abeb2e7fee50",
+      "source": 141,
+      "installed": 141,
+      "seconds": {
+        "source": 44.16,
+        "installed": 32.45
+      }
+    },
+    {
+      "os": "windows-2022",
+      "job": 140933062453,
+      "raw_log": "341bf2aec74880af874f2b56c47d75d968cd100a",
+      "source": 141,
+      "installed": 141,
+      "seconds": {
+        "source": 195.91,
+        "installed": 170.08
+      }
+    }
+  ],
+  "inventory_sha256": "cd527d71040249d924dd50cdaad524eaab7c6bf5580a41808716872b0685e75a",
+  "final_ref_mutated": false
+}

@@ -1,0 +1,281 @@
+{
+  "schema": "carr-final-scale-job-receipt/1",
+  "status": "ACTUAL_JOB_SUCCESS_METRICS_ARTIFACT_NOT_YET_DECODED",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "commit": "71ca92be691455d0ff51ed163b1d91749e5ae62e",
+  "run": 46124999025,
+  "job_id": 140917529730,
+  "name": "books-10000 / windows-2022",
+  "job_started": "2026-11-28T08:56:37Z",
+  "job_completed": "2026-11-28T10:01:20Z",
+  "workflow_conclusion": "success",
+  "actual_marker": {
+    "status": "MEASURED_SYNTHETIC_CORPUS",
+    "tier": "books-10000",
+    "actual_books": 10000,
+    "actual_original_segments": 400000,
+    "manifest_sha256": "cbf6cb77eb8da6cc39b77e83d658a2a42afbd1f1f0c12e6b8f83d142a782660d"
+  },
+  "phase_outcomes": {
+    "backup_preflight": "success",
+    "generate": "success",
+    "initialize": "success",
+    "interruption": "success",
+    "resume": "success",
+    "catalog": "success",
+    "search": "success",
+    "backup": "skipped",
+    "collect": "success"
+  },
+  "capacity_observation": {
+    "fixture": "D:\\a\\_temp\\carr-scale-books-10000-cmfwesp6\\fixture",
+    "observed_roots": [
+      {
+        "canonical_path": "D:\\a\\_temp",
+        "free_bytes": 236044353536,
+        "identity": [
+          1356536314,
+          281474976710694,
+          16895,
+          16
+        ],
+        "name": "RUNNER_TEMP",
+        "supplied_path": "D:\\a\\_temp",
+        "total_bytes": 236205371392
+      },
+      {
+        "canonical_path": "C:\\Users\\runneradmin\\AppData\\Local\\Temp",
+        "free_bytes": 82587783168,
+        "identity": [
+          2695480082,
+          1407374883585200,
+          16895,
+          16
+        ],
+        "name": "python_tempfile",
+        "supplied_path": "C:\\Users\\RUNNER~1\\AppData\\Local\\Temp",
+        "total_bytes": 274284392448
+      }
+    ],
+    "private_parent": "D:\\a\\_temp\\carr-scale-books-10000-cmfwesp6",
+    "private_parent_identity": [
+      1356536314,
+      281474976712777,
+      16895,
+      16
+    ],
+    "resource_admission": "NOT_YET_RUN; generator, import and backup keep their own preflight",
+    "selected_root": {
+      "canonical_path": "D:\\a\\_temp",
+      "free_bytes": 236044353536,
+      "identity": [
+        1356536314,
+        281474976710694,
+        16895,
+        16
+      ],
+      "name": "RUNNER_TEMP",
+      "supplied_path": "D:\\a\\_temp",
+      "total_bytes": 236205371392
+    },
+    "selection": "larger measured free space among two known runner temporary roots"
+  },
+  "raw_log_blob": "68c6f0f0563afa962e6bf9af67b1dd6f2d700aab",
+  "artifact": {
+    "id": 15258103267,
+    "name": "actual-library-windows-2022-books-10000-71ca92be691455d0ff51ed163b1d91749e5ae62e",
+    "size_in_bytes": 17003987,
+    "url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15258103267",
+    "archive_download_url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15258103267/zip",
+    "expired": false,
+    "created_at": "2026-11-28T10:01:15Z",
+    "expires_at": "2026-12-12T10:01:12Z",
+    "updated_at": "2026-11-28T10:01:15Z",
+    "digest": "sha256:ff9bd0d1924b436ccfb374746b487c6090261efad680c1c8ef2a8914c93ad140",
+    "workflow_run": {
+      "id": 46124999025,
+      "repository_id": 1341777614,
+      "head_repository_id": 1341777614,
+      "head_branch": "carr/canonical-integrity-finish-20261127",
+      "head_sha": "71ca92be691455d0ff51ed163b1d91749e5ae62e"
+    }
+  },
+  "job_steps": [
+    {
+      "name": "Set up job",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 1,
+      "started_at": "2026-11-28T08:56:38Z",
+      "completed_at": "2026-11-28T08:56:39Z"
+    },
+    {
+      "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 2,
+      "started_at": "2026-11-28T08:56:39Z",
+      "completed_at": "2026-11-28T08:56:47Z"
+    },
+    {
+      "name": "Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 3,
+      "started_at": "2026-11-28T08:56:47Z",
+      "completed_at": "2026-11-28T08:56:47Z"
+    },
+    {
+      "name": "Select this runner's fresh measured profile path",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 4,
+      "started_at": "2026-11-28T08:56:47Z",
+      "completed_at": "2026-11-28T08:56:49Z"
+    },
+    {
+      "name": "Install the exact composed application",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 5,
+      "started_at": "2026-11-28T08:56:49Z",
+      "completed_at": "2026-11-28T08:57:36Z"
+    },
+    {
+      "name": "Bind all installed package bytes and the actual measurement scripts",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 6,
+      "started_at": "2026-11-28T08:57:36Z",
+      "completed_at": "2026-11-28T08:57:37Z"
+    },
+    {
+      "name": "Admit largest-tier import and full backup capacity before writing the corpus",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 7,
+      "started_at": "2026-11-28T08:57:37Z",
+      "completed_at": "2026-11-28T08:57:37Z"
+    },
+    {
+      "name": "Generate and independently hash the actual original corpus",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 8,
+      "started_at": "2026-11-28T08:57:37Z",
+      "completed_at": "2026-11-28T08:57:53Z"
+    },
+    {
+      "name": "Admit the measured profile through the actual public queue",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 9,
+      "started_at": "2026-11-28T08:57:53Z",
+      "completed_at": "2026-11-28T08:58:08Z"
+    },
+    {
+      "name": "Interrupt the actual coordinator after one committed and quiescent publication",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 10,
+      "started_at": "2026-11-28T08:58:08Z",
+      "completed_at": "2026-11-28T08:58:11Z"
+    },
+    {
+      "name": "Resume the same durable queue in a new actual process",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 11,
+      "started_at": "2026-11-28T08:58:11Z",
+      "completed_at": "2026-11-28T09:46:57Z"
+    },
+    {
+      "name": "Reopen and verify every original catalog segment and retained source",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 12,
+      "started_at": "2026-11-28T09:46:57Z",
+      "completed_at": "2026-11-28T09:48:10Z"
+    },
+    {
+      "name": "Measure actual complete traversal, exact quotations and scoped ranking",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 13,
+      "started_at": "2026-11-28T09:48:10Z",
+      "completed_at": "2026-11-28T10:01:10Z"
+    },
+    {
+      "name": "Require actual complete backup verification and fresh restore on the largest tiers",
+      "status": "completed",
+      "conclusion": "skipped",
+      "number": 14,
+      "started_at": "2026-11-28T10:01:10Z",
+      "completed_at": "2026-11-28T10:01:11Z"
+    },
+    {
+      "name": "Preserve actual measured phase records and independent original manifest",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 15,
+      "started_at": "2026-11-28T10:01:11Z",
+      "completed_at": "2026-11-28T10:01:11Z"
+    },
+    {
+      "name": "Require complete exact counts and unchanged installed bytes",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 16,
+      "started_at": "2026-11-28T10:01:11Z",
+      "completed_at": "2026-11-28T10:01:11Z"
+    },
+    {
+      "name": "Preserve selected dependency identity",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 17,
+      "started_at": "2026-11-28T10:01:11Z",
+      "completed_at": "2026-11-28T10:01:12Z"
+    },
+    {
+      "name": "Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 18,
+      "started_at": "2026-11-28T10:01:12Z",
+      "completed_at": "2026-11-28T10:01:15Z"
+    },
+    {
+      "name": "Post Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 35,
+      "started_at": "2026-11-28T10:01:15Z",
+      "completed_at": "2026-11-28T10:01:15Z"
+    },
+    {
+      "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 36,
+      "started_at": "2026-11-28T10:01:15Z",
+      "completed_at": "2026-11-28T10:01:17Z"
+    },
+    {
+      "name": "Complete job",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 37,
+      "started_at": "2026-11-28T10:01:17Z",
+      "completed_at": "2026-11-28T10:01:17Z"
+    }
+  ],
+  "phase_metric_scope": "Step start/end timestamps are second-resolution orchestration walls, not the saved measured API/query metrics.",
+  "saved_reports_scope": "The actual strict finish step passed source/installed before-after inventories, exact selected HEAD and three script identities. Its saved JSON values remain in the size/SHA-bound artifact and have not yet been decoded in this agent.",
+  "quantitative_api_metrics": null,
+  "memory_metrics": null,
+  "complete_disk_metrics": null,
+  "largest_backup_roundtrip": "NOT_REQUIRED_ON_THIS_TIER",
+  "final_overall_acceptance": "PENDING_OTHER4TIERS_AND_FOUR_REQUIRED_LARGEST_BACKUPS; final main/V3 also have separate actual failures; no final merge PASS.",
+  "no_component_pass_transfer": true
+}

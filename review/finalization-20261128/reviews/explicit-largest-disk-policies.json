@@ -1,0 +1,117 @@
+{
+  "schema": "carr-large-tier-declared-disk-policy-correction/1",
+  "status": "SOURCE_AND_EVIDENCE_APPROVED",
+  "paths": [
+    {
+      "path": ".github/workflows/carr-library-scale.yml",
+      "before": "75994a6df89d8b1d38ce96a82e36f159eae32283",
+      "after": "a15383d04d22e6c4085cb5672dab74556fea372a"
+    },
+    {
+      "path": "carr-library/docs/LARGE_LIBRARY_SCALE.md",
+      "before": "730547027a66e471181bc7e4f93c9d650f821e3f",
+      "after": "ad9b0eddd196ffccddea31dfb8185395e04b3289"
+    }
+  ],
+  "workflow_delta": [
+    [
+      "{name: books-50000, books: 50000, bytes: 0, segments: 40, spool_mib: 4096}",
+      "{name: books-50000, books: 50000, bytes: 0, segments: 40, spool_mib: 8192}"
+    ],
+    [
+      "{name: text-2g, books: 0, bytes: 2147483648, segments: 1000, spool_mib: 8192}",
+      "{name: text-2g, books: 0, bytes: 2147483648, segments: 1000, spool_mib: 16384}"
+    ]
+  ],
+  "byte_preservation": "Reversing two scalar changes yields exact old workflow. Removing the one new guide section and restoring its single policy paragraph yields exact prior guide.",
+  "source_boundaries": {
+    "ranked_scope": "d79b0f3c7ab68132629093d7fc0f01cab0475221",
+    "paging": "9ba9732ad5597bfed4b37bd98cb1aebeafe5dfc3",
+    "catalog_adapter": "5c674cac4b02237c8cf65122fbc58dca397ed3d9",
+    "foundation": "81e569b33a6acc4a64f3ee04176598487f9efc07",
+    "backup_adapter": "17d8ae5ae97ab57fe5ede1ea46a6f22b385e2b56",
+    "optional_cache_fraction": "disk_bytes//4",
+    "maximum_private_index_without_retained_orders": "(disk_bytes*3//4)//2",
+    "adapter_allowed_disk_bytes": [
+      4194304,
+      68719476736
+    ],
+    "public_SearchResources_allowed_disk_bytes": [
+      16777216,
+      1099511627776
+    ]
+  },
+  "preflight": [
+    {
+      "tier": "books-50000",
+      "old": {
+        "source_bytes": 513950003,
+        "books": 50000,
+        "segments": 2000000,
+        "search_disk_bytes": 4294967296,
+        "required_initial_fixture_free_bytes": 32930581704,
+        "required_separate_temporary_free_bytes": 13434457086
+      },
+      "next": {
+        "source_bytes": 513950003,
+        "books": 50000,
+        "segments": 2000000,
+        "search_disk_bytes": 8589934592,
+        "required_initial_fixture_free_bytes": 37225549000,
+        "required_separate_temporary_free_bytes": 13434457086
+      },
+      "backup_memory_headroom_bytes": 4362076160
+    },
+    {
+      "tier": "text-2g",
+      "old": {
+        "source_bytes": 2147483648,
+        "books": 1,
+        "segments": 1000,
+        "search_disk_bytes": 8589934592,
+        "required_initial_fixture_free_bytes": 62482567680,
+        "required_separate_temporary_free_bytes": 23422595072
+      },
+      "next": {
+        "source_bytes": 2147483648,
+        "books": 1,
+        "segments": 1000,
+        "search_disk_bytes": 17179869184,
+        "required_initial_fixture_free_bytes": 71072502272,
+        "required_separate_temporary_free_bytes": 23422595072
+      },
+      "backup_memory_headroom_bytes": 2214592512
+    }
+  ],
+  "actual_failure_receipt": "0a45062daebc3b76ed1c097a9cc2be427228839c",
+  "actual_failure_raw": "fe555695ae076fb5eaa270ea46de126a5153a806",
+  "actual_10k_evidence": "114e9d7422a00e1426b18e9295b9f050b6775abc",
+  "causal_boundary": "Source-supported policy explanation; actual failed index bytes and exact update count not reported. The50k size risk is a projection from actual10k, not measured50k data.",
+  "preserved": [
+    "All12tiers/exactinputs",
+    "actualfree-spaceadmission",
+    "memoryandreservepolicy",
+    "scratch/worker/query/aggregatebounds",
+    "fullscopeandall50queries",
+    "allquotationandforeignscopechecks",
+    "warmupdatedrowszero",
+    "fourrequiredbackup/verify/fresh-restorerounds",
+    "productdefaultsandallsourceauthority"
+  ],
+  "product_changes": false,
+  "active_jobs_changed": false,
+  "final_refs_changed": false,
+  "runtime": "New declared profiles NOT_RUN; exact future selected head requires all actual tiers.",
+  "independent_review": {
+    "reviewer": "reader_review",
+    "workflow": "SOURCE_APPROVE",
+    "guide": "SOURCE_EVIDENCE_APPROVE",
+    "mechanical_inverse": "Exact old workflow and guide recovered",
+    "evidence_checked": [
+      "0a45062daebc3b76ed1c097a9cc2be427228839c",
+      "114e9d7422a00e1426b18e9295b9f050b6775abc"
+    ],
+    "preflight_independent_recomputation": "Both exact revised initial free-space estimates confirmed; spool counted once, separate temp unchanged.",
+    "runtime_claim": "NONE; revised largest-tier execution still required."
+  }
+}

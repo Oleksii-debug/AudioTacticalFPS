@@ -1,0 +1,309 @@
+{
+  "schema": "carr-composed-native-artifact-diagnosis/1",
+  "status": "ACTUAL_READ_ONLY_CAPTURE_SUCCESS_ORIGINAL_NATIVE_FAILURE",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "original": {
+    "head": "bdc3c6f1383f39e9c0b8e6f60c694a11a5fbb515",
+    "run": 46130308277,
+    "job": 140935317017,
+    "conclusion": "failure"
+  },
+  "harvester": {
+    "head": "c632954bef79ee8ccf997d590ed844ccf037eeb6",
+    "tree": "059e765446225bda0391d1f64bc02a00d777259e",
+    "run": 46132889609,
+    "job": 140941753361,
+    "conclusion": "success",
+    "script": "9123d2ee8f8bf936ee3889c3fe90f10fe3ee5e55",
+    "workflow": "d268879a73049028ccac995f4ef54ad7c8bbabd9",
+    "checkpoint": "28f2e682f7402c16077a925c6b0b7e5e3e30418b"
+  },
+  "artifact": {
+    "artifact_id": 15258462236,
+    "sha256": "3eb7a144b7b0e7fd7a77d58ff360f42af7e3844b663c3218153c9431635b68d2",
+    "size_in_bytes": 136227
+  },
+  "raw_log": "661657b1dbd2924162973acfea141baaba2ae730",
+  "archive_expanded_bytes": 348144,
+  "selected_bytes": 188408,
+  "members": [
+    {
+      "bytes": 369,
+      "compressed_bytes": 255,
+      "directory": false,
+      "name": "audio-provisioning.json"
+    },
+    {
+      "bytes": 470,
+      "compressed_bytes": 259,
+      "directory": false,
+      "name": "external-test-audio-binding.json"
+    },
+    {
+      "bytes": 42,
+      "compressed_bytes": 44,
+      "directory": false,
+      "name": "head.txt"
+    },
+    {
+      "bytes": 0,
+      "compressed_bytes": 2,
+      "directory": false,
+      "name": "native/about.stderr.txt"
+    },
+    {
+      "bytes": 2863,
+      "compressed_bytes": 939,
+      "directory": false,
+      "name": "native/about.stdout.txt"
+    },
+    {
+      "bytes": 157733,
+      "compressed_bytes": 63443,
+      "directory": false,
+      "name": "native/before.json"
+    },
+    {
+      "bytes": 0,
+      "compressed_bytes": 2,
+      "directory": false,
+      "name": "native/diagnostics.stderr.txt"
+    },
+    {
+      "bytes": 9829,
+      "compressed_bytes": 2096,
+      "directory": false,
+      "name": "native/diagnostics.stdout.txt"
+    },
+    {
+      "bytes": 165556,
+      "compressed_bytes": 65335,
+      "directory": false,
+      "name": "native/result.json"
+    },
+    {
+      "bytes": 1626,
+      "compressed_bytes": 513,
+      "directory": false,
+      "name": "native/speech-preparation.stderr.txt"
+    },
+    {
+      "bytes": 8534,
+      "compressed_bytes": 655,
+      "directory": false,
+      "name": "native/speech-preparation.stdout.txt"
+    },
+    {
+      "bytes": 647,
+      "compressed_bytes": 258,
+      "directory": false,
+      "name": "native.txt"
+    },
+    {
+      "bytes": 385,
+      "compressed_bytes": 260,
+      "directory": false,
+      "name": "packages.txt"
+    },
+    {
+      "bytes": 48,
+      "compressed_bytes": 50,
+      "directory": false,
+      "name": "preparation-notice-closure.txt"
+    },
+    {
+      "bytes": 42,
+      "compressed_bytes": 44,
+      "directory": false,
+      "name": "tree.txt"
+    }
+  ],
+  "selected": {
+    "native/about.stdout.txt": {
+      "bytes": 2863,
+      "sha256": "db5ee9e8019df14d86887be14ae0adf7b32e3dae0035442a9589c8d4bca417be",
+      "text": "PASS: installed-about-module-origins\nPASS: one-native-help-about-command\nPASS: native-help-event-opens-real-modal\nPASS: named-read-only-about-and-status-controls\nPASS: named-focusable-component-and-action-controls\nPASS: real-installed-component-version-in-catalogue\nPASS: real-product-version-and-component-specific-terms\nPASS: catalogue-read-runs-on-owned-background-worker\nPASS: native-choice-keys-select-installed-component\nPASS: native-read-key-opens-notice-inventory\nPASS: native-picker-lists-actual-installed-notices\nPASS: native-picker-key-opens-upstream-text\nPASS: upstream-text-matches-verified-installed-notice\nPASS: upstream-reader-is-named-readonly-and-focused\nPASS: native-escape-keeps-parent-about-open\nPASS: native-refresh-rereads-installed-catalogue\nPASS: all-product-notice-reads-use-background-workers\nPASS: native-close-destroys-only-about\nPASS: parent-library-and-notice-bytes-preserved\n{\"status\": \"PASS\", \"checks\": [\"installed-about-module-origins\", \"one-native-help-about-command\", \"native-help-event-opens-real-modal\", \"named-read-only-about-and-status-controls\", \"named-focusable-component-and-action-controls\", \"real-installed-component-version-in-catalogue\", \"real-product-version-and-component-specific-terms\", \"catalogue-read-runs-on-owned-background-worker\", \"native-choice-keys-select-installed-component\", \"native-read-key-opens-notice-inventory\", \"native-picker-lists-actual-installed-notices\", \"native-picker-key-opens-upstream-text\", \"upstream-text-matches-verified-installed-notice\", \"upstream-reader-is-named-readonly-and-focused\", \"native-escape-keeps-parent-about-open\", \"native-refresh-rereads-installed-catalogue\", \"all-product-notice-reads-use-background-workers\", \"native-close-destroys-only-about\", \"parent-library-and-notice-bytes-preserved\"], \"check_count\": 19, \"actual_native_keys\": true, \"actual_installed_metadata\": true, \"actual_background_workers\": true, \"actual_window_destroyed\": true, \"component\": \"pypdf\", \"component_version\": \"7.1.1\", \"notice_sha256\": \"adb53e8e9c8b50731c12ce58b408c6ad2bc27fbe79f2208663a1e7ca7d6e5fa3\", \"module_origins\": {\"carr_library.component_notices\": {\"path\": \"C:\\\\hostedtoolcache\\\\windows\\\\Python\\\\3.11.9\\\\x64\\\\Lib\\\\site-packages\\\\carr_library\\\\component_notices.py\", \"sha256\": \"28927c7ba8cbecdf37657c382ddbf938489988cfe35e671f69878a1eeb31b3fd\"}, \"carr_library.ui.about_dialog\": {\"path\": \"C:\\\\hostedtoolcache\\\\windows\\\\Python\\\\3.11.9\\\\x64\\\\Lib\\\\site-packages\\\\carr_library\\\\ui\\\\about_dialog.py\", \"sha256\": \"fff398d380c3be5db041ac919893e0c2e2be892106127a2a1adf2b945607e715\"}, \"carr_library.ui.desktop_app\": {\"path\": \"C:\\\\hostedtoolcache\\\\windows\\\\Python\\\\3.11.9\\\\x64\\\\Lib\\\\site-packages\\\\carr_library\\\\ui\\\\desktop_app.py\", \"sha256\": \"f99047acadb2a8b32da4ab5d721c8201c3398e55d16a11e57766e85d861a962c\"}}, \"nvda\": \"NOT_RUN\", \"redistribution_clearance\": \"NOT_ASSESSED\"}"
+    },
+    "native/diagnostics.stdout.txt": {
+      "bytes": 9829,
+      "sha256": "ba7da17554774904bfdbea155c5813534d3f09a2e6edfe6d94d00b15cd76523a",
+      "text": "PASS: native key down\n\nPASS: native key released\n\nPASS: native key down\n\nPASS: native key released\n\nPASS: native key down\n\nPASS: native key released\n\nPASS: native control remains shown and enabled\n\nPASS: the complete focused control is inside its parent viewport\n\nPASS: native key down\n\nPASS: native key released\n\nPASS: withdrawal cancels the current diagnostic owner: parent_close\n\nPASS: replayed genuine late result cannot recreate the preview: parent_close\n\nPASS: all authored file choices were consumed explicitly\n\nPASS: each actual dialog received exactly one native destruction\n\nPASS: every operation used the one existing desktop executor\n\nPASS: the original synthetic source bytes were never changed\n\nPASS: no diagnostic staging file remains\n\nPASS: selected installed bytes remain exact after native export and teardown\n\nPASS: probe and binding helper remain byte exact\n\n{\"result\": \"PASS\", \"checks\": 141, \"native_keyboard\": \"PASS\", \"exact_redacted_preview_export\": \"PASS\", \"actual_create_only_refusal\": \"PASS\", \"same_desktop_executor\": \"PASS\", \"actual_cancel_and_three_owner_withdrawals\": \"PASS\", \"source_identity\": {\"carr_library.application\": {\"path\": \"C:\\\\hostedtoolcache\\\\windows\\\\Python\\\\3.11.9\\\\x64\\\\Lib\\\\site-packages\\\\carr_library\\\\application.py\", \"sha256\": \"9239ea355b5c5a38d24097720e2489bde7ba15ad7381aba6082eb187c7fe131a\"}, \"carr_library.support_diagnostics\": {\"path\": \"C:\\\\hostedtoolcache\\\\windows\\\\Python\\\\3.11.9\\\\x64\\\\Lib\\\\site-packages\\\\carr_library\\\\support_diagnostics.py\", \"sha256\": \"4955d8befb70aa8794bd02600c9138373836d532b5bc6f78ab3ed10b659d8250\"}, \"carr_library.durable_state\": {\"path\": \"C:\\\\hostedtoolcache\\\\windows\\\\Python\\\\3.11.9\\\\x64\\\\Lib\\\\site-packages\\\\carr_library\\\\durable_state.py\", \"sha256\": \"9b173d6cde27dd4362a920b01283cec0cbaaa42e4569f96e5b9bd24f6bd156b8\"}, \"carr_library.operations.broker\": {\"path\": \"C:\\\\hostedtoolcache\\\\windows\\\\Python\\\\3.11.9\\\\x64\\\\Lib\\\\site-packages\\\\carr_library\\\\operations\\\\broker.py\", \"sha256\": \"24940baa024716fb6e23bd052e427cbed17e2434098de3594e8cae47d307195b\"}, \"carr_library.operations.models\": {\"path\": \"C:\\\\hostedtoolcache\\\\windows\\\\Python\\\\3.11.9\\\\x64\\\\Lib\\\\site-packages\\\\carr_library\\\\operations\\\\models.py\", \"sha256\": \"cb711ae7bde38c77fe039678afe1b57b56bd85d653fb982284fbef43f62b2545\"}, \"carr_library.research.export_file\": {\"path\": \"C:\\\\hostedtoolcache\\\\windows\\\\Python\\\\3.11.9\\\\x64\\\\Lib\\\\site-packages\\\\carr_library\\\\research\\\\export_file.py\", \"sha256\": \"472f9275b4920453be7f10216d692a9bcf2af1f164d4f3324999d35110104df1\"}, \"carr_library.ui.desktop_app\": {\"path\": \"C:\\\\hostedtoolcache\\\\windows\\\\Python\\\\3.11.9\\\\x64\\\\Lib\\\\site-packages\\\\carr_library\\\\ui\\\\desktop_app.py\", \"sha256\": \"f99047acadb2a8b32da4ab5d721c8201c3398e55d16a11e57766e85d861a962c\"}, \"carr_library.ui.diagnostics_dialog\": {\"path\": \"C:\\\\hostedtoolcache\\\\windows\\\\Python\\\\3.11.9\\\\x64\\\\Lib\\\\site-packages\\\\carr_library\\\\ui\\\\diagnostics_dialog.py\", \"sha256\": \"02e1100f1a63b2595706fa4d2d234e9e895cc66fa4e1d6d939089896b6699927\"}, \"carr_library.ui.command_registry\": {\"path\": \"C:\\\\hostedtoolcache\\\\windows\\\\Python\\\\3.11.9\\\\x64\\\\Lib\\\\site-packages\\\\carr_library\\\\ui\\\\command_registry.py\", \"sha256\": \"13c02672349d8e9f194f8ad231781032da73a65f937af5eef4db7195a396414f\"}, \"carr_library.ui.keyboard_settings\": {\"path\": \"C:\\\\hostedtoolcache\\\\windows\\\\Python\\\\3.11.9\\\\x64\\\\Lib\\\\site-packages\\\\carr_library\\\\ui\\\\keyboard_settings.py\", \"sha256\": \"0f138be351ed01e241a8c1aab0e0ce65e8b3924974e7c8c1d941db28bc69c42c\"}, \"carr_library.audio.cleanup\": {\"path\": \"C:\\\\hostedtoolcache\\\\windows\\\\Python\\\\3.11.9\\\\x64\\\\Lib\\\\site-packages\\\\carr_library\\\\audio\\\\cleanup.py\", \"sha256\": \"35af682e01736cee2b91b8ad2e10110aa7fb708b0584f60733f8fe2dd2600103\"}, \"carr_library.audio.process\": {\"path\": \"C:\\\\hostedtoolcache\\\\windows\\\\Python\\\\3.11.9\\\\x64\\\\Lib\\\\site-packages\\\\carr_library\\\\audio\\\\process.py\", \"sha256\": \"70c485f69ffc5e5c26d29a3e56bccbf2cd231a45cb16668f42accc3c81a57bfb\"}}, \"probe_and_binding\": {\"D:\\\\a\\\\AudioTacticalFPS\\\\AudioTacticalFPS\\\\carr-library\\\\scripts\\\\windows_diagnostics_smoke.py\": \"fde005c0ac7bec1d504e93da7ce7ce1ba06d25efbef3de8f7962e17d65e3d27b\", \"D:\\\\a\\\\AudioTacticalFPS\\\\AudioTacticalFPS\\\\carr-library\\\\scripts\\\\windows_publishing_smoke.py\": \"5b6f4177de8ca0b0c6c8142c69010b0272341633017c93877a5072c90c9a2916\"}, \"native_file_picker\": \"NOT_RUN\", \"NVDA\": \"NOT_RUN\", \"physical_keyboard\": \"NOT_RUN\", \"controlled_seams\": [\"explicit authored file-picker answers\", \"hold after a real completed diagnostic snapshot\"]}\n"
+    },
+    "native/result.json": {
+      "bytes": 165556,
+      "sha256": "9f93f61390601d55c435cb508c309e7f727dbc024a689efd30697d16faf59077",
+      "summary": {
+        "schema": "carr-final-scope-native-result/1",
+        "source_commit": "bdc3c6f1383f39e9c0b8e6f60c694a11a5fbb515",
+        "status": "FAIL",
+        "failure_type": "AssertionError",
+        "source_files": 1343,
+        "package_data_files": 22,
+        "package_python_files": 426,
+        "package_inventory_sha256": "9a491ba4726e79a1d514c0af02480ea92575b4ab77618f234a57d42ab618e680",
+        "probes": [
+          {
+            "exact_identity_after": "PASS",
+            "id": "about",
+            "owned_deadline_seconds": 120,
+            "result": {
+              "actual_background_workers": true,
+              "actual_installed_metadata": true,
+              "actual_native_keys": true,
+              "actual_window_destroyed": true,
+              "check_count": 19,
+              "checks": [
+                "installed-about-module-origins",
+                "one-native-help-about-command",
+                "native-help-event-opens-real-modal",
+                "named-read-only-about-and-status-controls",
+                "named-focusable-component-and-action-controls",
+                "real-installed-component-version-in-catalogue",
+                "real-product-version-and-component-specific-terms",
+                "catalogue-read-runs-on-owned-background-worker",
+                "native-choice-keys-select-installed-component",
+                "native-read-key-opens-notice-inventory",
+                "native-picker-lists-actual-installed-notices",
+                "native-picker-key-opens-upstream-text",
+                "upstream-text-matches-verified-installed-notice",
+                "upstream-reader-is-named-readonly-and-focused",
+                "native-escape-keeps-parent-about-open",
+                "native-refresh-rereads-installed-catalogue",
+                "all-product-notice-reads-use-background-workers",
+                "native-close-destroys-only-about",
+                "parent-library-and-notice-bytes-preserved"
+              ],
+              "component": "pypdf",
+              "component_version": "7.1.1",
+              "module_origins": {
+                "carr_library.component_notices": {
+                  "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\component_notices.py",
+                  "sha256": "28927c7ba8cbecdf37657c382ddbf938489988cfe35e671f69878a1eeb31b3fd"
+                },
+                "carr_library.ui.about_dialog": {
+                  "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ui\\about_dialog.py",
+                  "sha256": "fff398d380c3be5db041ac919893e0c2e2be892106127a2a1adf2b945607e715"
+                },
+                "carr_library.ui.desktop_app": {
+                  "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ui\\desktop_app.py",
+                  "sha256": "f99047acadb2a8b32da4ab5d721c8201c3398e55d16a11e57766e85d861a962c"
+                }
+              },
+              "notice_sha256": "adb53e8e9c8b50731c12ce58b408c6ad2bc27fbe79f2208663a1e7ca7d6e5fa3",
+              "nvda": "NOT_RUN",
+              "redistribution_clearance": "NOT_ASSESSED",
+              "status": "PASS"
+            },
+            "returncode": 0,
+            "source_sha256": "965871eac2e502b6a635c83695f05cadce4f18905b3b449b57683bd14ba4d4cc",
+            "timeout_seconds": 240
+          },
+          {
+            "exact_identity_after": "PASS",
+            "id": "diagnostics",
+            "owned_deadline_seconds": 270,
+            "result": {
+              "NVDA": "NOT_RUN",
+              "actual_cancel_and_three_owner_withdrawals": "PASS",
+              "actual_create_only_refusal": "PASS",
+              "checks": 141,
+              "controlled_seams": [
+                "explicit authored file-picker answers",
+                "hold after a real completed diagnostic snapshot"
+              ],
+              "exact_redacted_preview_export": "PASS",
+              "native_file_picker": "NOT_RUN",
+              "native_keyboard": "PASS",
+              "physical_keyboard": "NOT_RUN",
+              "probe_and_binding": {
+                "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_diagnostics_smoke.py": "fde005c0ac7bec1d504e93da7ce7ce1ba06d25efbef3de8f7962e17d65e3d27b",
+                "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_publishing_smoke.py": "5b6f4177de8ca0b0c6c8142c69010b0272341633017c93877a5072c90c9a2916"
+              },
+              "result": "PASS",
+              "same_desktop_executor": "PASS",
+              "source_identity": {
+                "carr_library.application": {
+                  "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\application.py",
+                  "sha256": "9239ea355b5c5a38d24097720e2489bde7ba15ad7381aba6082eb187c7fe131a"
+                },
+                "carr_library.audio.cleanup": {
+                  "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\audio\\cleanup.py",
+                  "sha256": "35af682e01736cee2b91b8ad2e10110aa7fb708b0584f60733f8fe2dd2600103"
+                },
+                "carr_library.audio.process": {
+                  "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\audio\\process.py",
+                  "sha256": "70c485f69ffc5e5c26d29a3e56bccbf2cd231a45cb16668f42accc3c81a57bfb"
+                },
+                "carr_library.durable_state": {
+                  "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\durable_state.py",
+                  "sha256": "9b173d6cde27dd4362a920b01283cec0cbaaa42e4569f96e5b9bd24f6bd156b8"
+                },
+                "carr_library.operations.broker": {
+                  "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\operations\\broker.py",
+                  "sha256": "24940baa024716fb6e23bd052e427cbed17e2434098de3594e8cae47d307195b"
+                },
+                "carr_library.operations.models": {
+                  "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\operations\\models.py",
+                  "sha256": "cb711ae7bde38c77fe039678afe1b57b56bd85d653fb982284fbef43f62b2545"
+                },
+                "carr_library.research.export_file": {
+                  "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\research\\export_file.py",
+                  "sha256": "472f9275b4920453be7f10216d692a9bcf2af1f164d4f3324999d35110104df1"
+                },
+                "carr_library.support_diagnostics": {
+                  "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\support_diagnostics.py",
+                  "sha256": "4955d8befb70aa8794bd02600c9138373836d532b5bc6f78ab3ed10b659d8250"
+                },
+                "carr_library.ui.command_registry": {
+                  "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ui\\command_registry.py",
+                  "sha256": "13c02672349d8e9f194f8ad231781032da73a65f937af5eef4db7195a396414f"
+                },
+                "carr_library.ui.desktop_app": {
+                  "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ui\\desktop_app.py",
+                  "sha256": "f99047acadb2a8b32da4ab5d721c8201c3398e55d16a11e57766e85d861a962c"
+                },
+                "carr_library.ui.diagnostics_dialog": {
+                  "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ui\\diagnostics_dialog.py",
+                  "sha256": "02e1100f1a63b2595706fa4d2d234e9e895cc66fa4e1d6d939089896b6699927"
+                },
+                "carr_library.ui.keyboard_settings": {
+                  "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ui\\keyboard_settings.py",
+                  "sha256": "0f138be351ed01e241a8c1aab0e0ce65e8b3924974e7c8c1d941db28bc69c42c"
+                }
+              }
+            },
+            "returncode": 0,
+            "source_sha256": "fde005c0ac7bec1d504e93da7ce7ce1ba06d25efbef3de8f7962e17d65e3d27b",
+            "timeout_seconds": 390
+          },
+          {
+            "exact_identity_after": "PASS",
+            "failure_message": "Native probe failed: speech-preparation; see retained stdout/stderr.",
+            "failure_type": "AssertionError",
+            "id": "speech-preparation",
+            "owned_deadline_seconds": 360,
+            "returncode": 1,
+            "source_sha256": "55c8a34229e40424b9e929f7eaa43a407276186e50e93f98dd5f6112b7c32343",
+            "timeout_seconds": 480
+          }
+        ],
+        "NVDA": "NOT_RUN"
+      }
+    },
+    "native/speech-preparation.stderr.txt": {
+      "bytes": 1626,
+      "sha256": "8ae31469f8b02a427b134799d2276c5f4580cb1a66301692ab65baae0b7ce48a",
+      "text": "FAIL: speech preparation\r\n\r\nTraceback (most recent call last):\r\n\r\n  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_speech_preparation_smoke.py\", line 680, in drive\r\n\r\n    state.waiting = next(sequence)\r\n\r\n                    ^^^^^^^^^^^^^^\r\n\r\n  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_speech_preparation_smoke.py\", line 596, in scenario\r\n\r\n    check('direct destruction withdraws the genuine worker result',\r\n\r\n  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_speech_preparation_smoke.py\", line 230, in check\r\n\r\n    raise AssertionError(label)\r\n\r\nAssertionError: direct destruction withdraws the genuine worker result\r\n\r\n\r\n\r\nWaiting: The same reader worker did not deliver its genuine completion\r\n\r\nRETAINED_FAILED_NATIVE_FIXTURE C:\\Users\\runneradmin\\AppData\\Local\\Temp\\resonance-native-preparation-408ptb_x\r\n\r\nTraceback (most recent call last):\r\n\r\n  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_speech_preparation_smoke.py\", line 744, in <module>\r\n\r\n    raise SystemExit(main())\r\n\r\n                     ^^^^^^\r\n\r\n  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_speech_preparation_smoke.py\", line 184, in main\r\n\r\n    return _run_native()\r\n\r\n           ^^^^^^^^^^^^^\r\n\r\n  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_speech_preparation_smoke.py\", line 700, in _run_native\r\n\r\n    raise RuntimeError('Native speech preparation failed; see bounded diagnostic records.')\r\n\r\nRuntimeError: Native speech preparation failed; see bounded diagnostic records.\r\n\r\n"
+    },
+    "native/speech-preparation.stdout.txt": {
+      "bytes": 8534,
+      "sha256": "5af3492f2af169a6dd05c1a8d6db6a946b14b688c56709ef9a8f67222938e921",
+      "text": "PASS: named control is alive, visible and enabled\n\nPASS: native key down\n\nPASS: native key released\n\nPASS: native key down\n\nPASS: native key released\n\nPASS: native key down\n\nPASS: native key released\n\nPASS: native key down\n\nPASS: native key released\n\nPASS: speech rule is initially unchecked\n\nPASS: named control is alive, visible and enabled\n\nPASS: native key down\n\nPASS: native key released\n\nPASS: speech rule is initially unchecked\n\nPASS: named control is alive, visible and enabled\n\nPASS: native key down\n\nPASS: native key released\n\nPASS: named control is alive, visible and enabled\n\nPASS: native key down\n\nPASS: native key released\n"
+    }
+  },
+  "concrete_observation": "The genuine preparation probe failed its line596 assertion 'direct destruction withdraws the genuine worker result'. The wrapper recorded returncode1 and unchanged source/installed identity. About and diagnostics completed first. Underlying fixture/product cause remains unassigned.",
+  "product_replayed": false,
+  "application_imported": false,
+  "extracted_members": false,
+  "qualification": "Read-only fixed evidence capture only. Original bdc3 composed native gate remains FAILURE; later five probes were not reached."
+}

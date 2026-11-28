@@ -1,0 +1,372 @@
+{
+  "schema": 1,
+  "status": "SOURCE_COMPOSITION_APPROVED_RUNTIME_NOT_REQUALIFIED",
+  "candidate": {
+    "head": "11589b7a19911d0c20c526fbf8186e9adfb41859",
+    "tree": "02498e5525522a78fed306925f07c040082e480a",
+    "files": 1567,
+    "parent": "71ca92be691455d0ff51ed163b1d91749e5ae62e"
+  },
+  "canonical": {
+    "branch": "carr-library",
+    "head": "e5c64a5245583f8f8b404a0f042f6ca438c24d7f",
+    "tree": "344567db5c0d99f5d6d7ad24c105645ea75b65e8",
+    "files": 910,
+    "ref_same_before_after": true,
+    "all_paths_retained": true,
+    "all_non_tree_entry_types_and_modes_retained": true
+  },
+  "baseline": {
+    "head": "71ca92be691455d0ff51ed163b1d91749e5ae62e",
+    "tree": "73c43b7486974a7b301aa8c210c891b4d94ddb0d",
+    "files": 1567,
+    "exact_same_path_set": true
+  },
+  "delta_count": 16,
+  "deltas": [
+    {
+      "path": ".github/workflows/carr-v3.yml",
+      "before": {
+        "sha": "f659d18ab272b45cbab4eabdff2d2ac6f5acc951",
+        "mode": "100644"
+      },
+      "after": {
+        "sha": "58756c7778f90484df7dbf563dfdf9f0b40f982b",
+        "mode": "100644"
+      }
+    },
+    {
+      "path": ".github/workflows/carr-windows.yml",
+      "before": {
+        "sha": "0bf4159e7d70ee031ef3b2e873a84f87ddc006c2",
+        "mode": "100644"
+      },
+      "after": {
+        "sha": "ffd99edb913e37f76c0cd7a8ad338b84538cd8a9",
+        "mode": "100644"
+      }
+    },
+    {
+      "path": "carr-library/docs/AUDIO_SILENCE_INSPECTION.md",
+      "before": {
+        "sha": "049bdf6be0ff765e7f167daa266c389fe8aec8a1",
+        "mode": "100644"
+      },
+      "after": {
+        "sha": "affe57cd4e4f2f88e1eb086f9f00ce0a2a85f741",
+        "mode": "100644"
+      }
+    },
+    {
+      "path": "carr-library/docs/LARGE_LIBRARY_SCALE.md",
+      "before": {
+        "sha": "7884517a2fd9bfd70cb07900a12fe21ad69734a1",
+        "mode": "100644"
+      },
+      "after": {
+        "sha": "730547027a66e471181bc7e4f93c9d650f821e3f",
+        "mode": "100644"
+      }
+    },
+    {
+      "path": "carr-library/docs/V3_RELEASE_READINESS.md",
+      "before": {
+        "sha": "5ca4633735f04a0e4ae9d26eb9dfe8dd4236f444",
+        "mode": "100644"
+      },
+      "after": {
+        "sha": "b87307627e45f9a5f39e1062e5cbc7998f832828",
+        "mode": "100644"
+      }
+    },
+    {
+      "path": "carr-library/docs/WORD_DESKTOP_INTEGRATION.md",
+      "before": {
+        "sha": "b4cdee794040864e0efae8bd8084daa046896b80",
+        "mode": "100644"
+      },
+      "after": {
+        "sha": "1c4ca4fc5275c92d5741e842b2c070b86a723bf4",
+        "mode": "100644"
+      }
+    },
+    {
+      "path": "carr-library/packaging/build_windows_bundle.py",
+      "before": {
+        "sha": "5a9924c2ad0387dd180af8f3ba3c8668f226d379",
+        "mode": "100644"
+      },
+      "after": {
+        "sha": "6e5cbea9d9b92ebc86ec129ebd1cd72bc369a971",
+        "mode": "100644"
+      }
+    },
+    {
+      "path": "carr-library/packaging/refresh_private_bundle.py",
+      "before": {
+        "sha": "07a3e62a1975d961d24e55eccc63befe0bcb56f3",
+        "mode": "100644"
+      },
+      "after": {
+        "sha": "a0ada7add5d2b10c820579463bb1bef99a9e5c54",
+        "mode": "100644"
+      }
+    },
+    {
+      "path": "carr-library/src/carr_library/ingest/pipeline.py",
+      "before": {
+        "sha": "8d27e0e3d52e323325f139f870a2fc6e6b58152e",
+        "mode": "100644"
+      },
+      "after": {
+        "sha": "cf6ffa2cece1bfaa47a76d230934f93d69dea17e",
+        "mode": "100644"
+      }
+    },
+    {
+      "path": "carr-library/src/carr_library/ingest/worker.py",
+      "before": {
+        "sha": "4b78e411e37c3b5e68fd6496cb72448e8fcb0b4f",
+        "mode": "100644"
+      },
+      "after": {
+        "sha": "63f5d2ef09c584d94f0be761b6c264b31f568802",
+        "mode": "100644"
+      }
+    },
+    {
+      "path": "carr-library/tests/e2e/test_import_files_cancellation.py",
+      "before": {
+        "sha": "423143a9a994d35839ac6342e57f525f11ff3984",
+        "mode": "100644"
+      },
+      "after": {
+        "sha": "6e1b58a0fcecc2b83c7b941dc07a80a973a52c2d",
+        "mode": "100644"
+      }
+    },
+    {
+      "path": "carr-library/tests/operations/test_ocr_admission.py",
+      "before": {
+        "sha": "8ca4090c270fe337d26283a66f409c96a5763d79",
+        "mode": "100644"
+      },
+      "after": {
+        "sha": "0eb4b0f9d144c002700a5708ebc188f1b018d4e8",
+        "mode": "100644"
+      }
+    },
+    {
+      "path": "carr-library/tests/packaging/test_preparation_notice_closure.py",
+      "before": {
+        "sha": "d5065ef28e8ded417a535b25d8a8ad7215fc4f95",
+        "mode": "100644"
+      },
+      "after": {
+        "sha": "72ba5770af6fd355189fff990716c679b178943c",
+        "mode": "100644"
+      }
+    },
+    {
+      "path": "carr-library/tests/packaging/test_refresh_private_bundle_review.py",
+      "before": {
+        "sha": "2fa8627fc3f803335ebafb97d4e4a74b1ac4b339",
+        "mode": "100644"
+      },
+      "after": {
+        "sha": "796bf728f42157721ff7754ff0577f3ab1c584d4",
+        "mode": "100644"
+      }
+    },
+    {
+      "path": "carr-library/tests/packaging/test_windows_bundle.py",
+      "before": {
+        "sha": "d97961759a7e0e60458469317202539131686aa0",
+        "mode": "100644"
+      },
+      "after": {
+        "sha": "35bfe2d17d47c4ed6e2039121fff36450f765fdc",
+        "mode": "100644"
+      }
+    },
+    {
+      "path": "carr-library/tests/ui/test_desktop_handlers.py",
+      "before": {
+        "sha": "6b2473037fbc2fe9af35559845e6cb74408488c3",
+        "mode": "100644"
+      },
+      "after": {
+        "sha": "6ef37550a8463a125de82e1f0628244d5e0e1d17",
+        "mode": "100644"
+      }
+    }
+  ],
+  "maintained_workflows": [
+    {
+      "path": ".github/workflows/carr-bibliography.yml",
+      "sha": "5a61e842d3bb70591fc3e5f3d0a9cb829ea8f882"
+    },
+    {
+      "path": ".github/workflows/carr-calibre-reading-review.yml",
+      "sha": "2de8f8fdcb91ef8ad42109cd71e8a76cdfe6c2b3"
+    },
+    {
+      "path": ".github/workflows/carr-legacy-reading-review.yml",
+      "sha": "13168b80c241db1f8b59f2c90b7319b002daec08"
+    },
+    {
+      "path": ".github/workflows/carr-library-scale.yml",
+      "sha": "75994a6df89d8b1d38ce96a82e36f159eae32283"
+    },
+    {
+      "path": ".github/workflows/carr-native-launcher.yml",
+      "sha": "0e8ce239bd8f00648a957ddda71088e9fa819c16"
+    },
+    {
+      "path": ".github/workflows/carr-v3.yml",
+      "sha": "58756c7778f90484df7dbf563dfdf9f0b40f982b"
+    },
+    {
+      "path": ".github/workflows/carr-windows.yml",
+      "sha": "ffd99edb913e37f76c0cd7a8ad338b84538cd8a9"
+    }
+  ],
+  "temporary_workflows_present": false,
+  "preflight_comparison": {
+    "head": "bdc3c6f1383f39e9c0b8e6f60c694a11a5fbb515",
+    "tree": "9247d7f1378722a0554f4bcaac04ec18874b4a32",
+    "package_bootstrap_packaging_files": 654,
+    "all_package_bootstrap_packaging_bytes_equal": true,
+    "all_carr_library_non_documentation_bytes_equal": true,
+    "differences": [
+      {
+        "path": ".github/workflows/carr-final-scope-preflight.yml",
+        "before": {
+          "sha": "9512dd57563a3fe28b65ebee8214b1ebe97d1d4b",
+          "mode": "100644"
+        },
+        "after": null
+      },
+      {
+        "path": ".github/workflows/carr-v3.yml",
+        "before": {
+          "sha": "f659d18ab272b45cbab4eabdff2d2ac6f5acc951",
+          "mode": "100644"
+        },
+        "after": {
+          "sha": "58756c7778f90484df7dbf563dfdf9f0b40f982b",
+          "mode": "100644"
+        }
+      },
+      {
+        "path": ".github/workflows/carr-windows.yml",
+        "before": {
+          "sha": "2d088e5e7fa622024a1706002674fe0a519da97a",
+          "mode": "100644"
+        },
+        "after": {
+          "sha": "ffd99edb913e37f76c0cd7a8ad338b84538cd8a9",
+          "mode": "100644"
+        }
+      },
+      {
+        "path": "carr-library/docs/AUDIO_SILENCE_INSPECTION.md",
+        "before": {
+          "sha": "049bdf6be0ff765e7f167daa266c389fe8aec8a1",
+          "mode": "100644"
+        },
+        "after": {
+          "sha": "affe57cd4e4f2f88e1eb086f9f00ce0a2a85f741",
+          "mode": "100644"
+        }
+      },
+      {
+        "path": "carr-library/docs/LARGE_LIBRARY_SCALE.md",
+        "before": {
+          "sha": "7884517a2fd9bfd70cb07900a12fe21ad69734a1",
+          "mode": "100644"
+        },
+        "after": {
+          "sha": "730547027a66e471181bc7e4f93c9d650f821e3f",
+          "mode": "100644"
+        }
+      },
+      {
+        "path": "carr-library/docs/V3_RELEASE_READINESS.md",
+        "before": {
+          "sha": "5ca4633735f04a0e4ae9d26eb9dfe8dd4236f444",
+          "mode": "100644"
+        },
+        "after": {
+          "sha": "b87307627e45f9a5f39e1062e5cbc7998f832828",
+          "mode": "100644"
+        }
+      },
+      {
+        "path": "carr-library/docs/WORD_DESKTOP_INTEGRATION.md",
+        "before": {
+          "sha": "b4cdee794040864e0efae8bd8084daa046896b80",
+          "mode": "100644"
+        },
+        "after": {
+          "sha": "1c4ca4fc5275c92d5741e842b2c070b86a723bf4",
+          "mode": "100644"
+        }
+      }
+    ]
+  },
+  "importer": {
+    "evidence": "59db4383dde5426f77650b3996bc2da3d984b005",
+    "handoff": "d8c9f855bec8111f5b4aa49b98b76c3ca4d29f50",
+    "exact_qualified_public_paths": [
+      {
+        "path": "carr-library/src/carr_library/ingest/worker.py",
+        "expected": "63f5d2ef09c584d94f0be761b6c264b31f568802",
+        "actual": "63f5d2ef09c584d94f0be761b6c264b31f568802",
+        "pass": true
+      },
+      {
+        "path": "carr-library/src/carr_library/ingest/pipeline.py",
+        "expected": "cf6ffa2cece1bfaa47a76d230934f93d69dea17e",
+        "actual": "cf6ffa2cece1bfaa47a76d230934f93d69dea17e",
+        "pass": true
+      },
+      {
+        "path": "carr-library/tests/e2e/test_import_files_cancellation.py",
+        "expected": "6e1b58a0fcecc2b83c7b941dc07a80a973a52c2d",
+        "actual": "6e1b58a0fcecc2b83c7b941dc07a80a973a52c2d",
+        "pass": true
+      },
+      {
+        "path": "carr-library/tests/operations/test_ocr_admission.py",
+        "expected": "0eb4b0f9d144c002700a5708ebc188f1b018d4e8",
+        "actual": "0eb4b0f9d144c002700a5708ebc188f1b018d4e8",
+        "pass": true
+      }
+    ]
+  },
+  "helper": {
+    "path": "carr-library/scripts/run_final_scope_native.py",
+    "sha": "b3beaa992d508f42672fdfa5cd15c5cb96f04af7",
+    "configuration_sha": "1094b16fe3f201496ffd01913de5ced5baa42178",
+    "pending_helper2952_not_in_candidate": true
+  },
+  "canonical_technical_docs": [
+    {
+      "path": "carr-library/docs/UNIVERSAL_SCOPE_V3_AUDIO_AGENT.md",
+      "candidate": "d0b2761dd22b33233b311d4800230fb47f5d3d8b",
+      "canonical": "d0b2761dd22b33233b311d4800230fb47f5d3d8b"
+    },
+    {
+      "path": "carr-library/docs/UNIVERSAL_SCOPE_V3_FINALIZATION.md",
+      "candidate": "db8adbdc483a03c262885928c7ed214ca70bbaa7",
+      "canonical": "db8adbdc483a03c262885928c7ed214ca70bbaa7"
+    }
+  ],
+  "limitations": [
+    "Finite complete-tree composition review only; no additional runtime gate executed.",
+    "The composed bdc3 speech-preparation native failure remains unresolved pending actual artifact diagnosis.",
+    "Approved helper2952 is not present; current helper is exactly b3beaa992d508f42672fdfa5cd15c5cb96f04af7.",
+    "No final branch/ref mutation performed by this reviewer."
+  ]
+}

@@ -1,0 +1,254 @@
+{
+  "schema": "carr-finalization-continuation/19",
+  "observed_utc": "2026-11-28 10:39:00 UTC",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "pr": 143,
+  "current_pr": {
+    "head": "71ca92be691455d0ff51ed163b1d91749e5ae62e",
+    "tree": "73c43b7486974a7b301aa8c210c891b4d94ddb0d",
+    "files": 1567,
+    "branch": "carr/canonical-integrity-finish-20261127",
+    "base": "carr-library",
+    "pr": 143,
+    "ref_readback": true,
+    "status": "ACTUAL_REQUIRED_GATES_FAILED; MUST_NOT_MERGE"
+  },
+  "current_head_may_merge": false,
+  "canonical": "e5c64a5245583f8f8b404a0f042f6ca438c24d7f",
+  "specs": {
+    "finalization": "db8adbdc483a03c262885928c7ed214ca70bbaa7",
+    "audio_agent": "d0b2761dd22b33233b311d4800230fb47f5d3d8b",
+    "root_agents": "080bb9104d3224749e9317c2273d803c0ac37835"
+  },
+  "prepared_final": {
+    "head": "57bd81ebabc0df2ffc4106c44b94805ee2da7588",
+    "tree": "b58326e5724c64eea195814ac198c4237720292c",
+    "files": 1567,
+    "parent": "11589b7a19911d0c20c526fbf8186e9adfb41859",
+    "changes_from_parent": [
+      {
+        "path": "carr-library/scripts/run_final_scope_native.py",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "29529724af1dea6c8bd0cfb83f990eaa8c82ee1c"
+      },
+      {
+        "path": "carr-library/scripts/windows_speech_preparation_smoke.py",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "ac76d8f4f73dc33a4d15042540537c509386af8b"
+      },
+      {
+        "path": ".github/workflows/carr-library-scale.yml",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "a15383d04d22e6c4085cb5672dab74556fea372a"
+      },
+      {
+        "path": "carr-library/docs/LARGE_LIBRARY_SCALE.md",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "ad9b0eddd196ffccddea31dfb8185395e04b3289"
+      }
+    ],
+    "changes_from_pr": 19,
+    "verified": true,
+    "status": "PREPARED_PENDING_COHERENT_NATIVE_AND_REQUIRED_FINAL_GATES",
+    "source_reviews": {
+      "native_prep": "4b1fd670cb77b00047981d10402981a7c155ed40",
+      "scale": "12747fa1dc3baa765faf07cbb29d1335e3b29983"
+    },
+    "product_and_packaging_unchanged_from_11589": true,
+    "source_composition_review": "3500259691cab4cac762b9e70006c4f577bb0b2f",
+    "preceding_source_composition_review": "ef655edb386aec113d8f4d1ac1fd3d0619645eb4",
+    "published_to_pr": false
+  },
+  "active_preflight": {
+    "head": "6c7e02188dc0c4895cff17f69d75bcd61ee932a9",
+    "tree": "2a79d522d16ace9648f96d2742e074bebfd285bc",
+    "files": 1568,
+    "branch": "carr/final-scope-preflight-20261128",
+    "parents": [
+      "57bd81ebabc0df2ffc4106c44b94805ee2da7588",
+      "bdc3c6f1383f39e9c0b8e6f60c694a11a5fbb515"
+    ],
+    "candidate": "57bd81ebabc0df2ffc4106c44b94805ee2da7588",
+    "ref_readback": true,
+    "verified": true,
+    "status": "QUEUED; NO_RUNTIME_PASS",
+    "run": 46135090394,
+    "observed": "2026-11-28 10:36:07 UTC"
+  },
+  "completed_syntax": {
+    "head": "2de5ee3d4e6e373ab8562f52e6fa8f4abe5d0380",
+    "source_parent": "11589b7a19911d0c20c526fbf8186e9adfb41859",
+    "run": 46132103113,
+    "job": 140939309074,
+    "record": "5757752b46758985f25299493b7704622501698c",
+    "status": "PASS",
+    "python": 1246,
+    "embedded_python": 11,
+    "powershell": 43,
+    "workflows": 8,
+    "entrypoints": 6,
+    "limits": "Syntax only, predates four final amendments; no native or final-head acceptance."
+  },
+  "corrections": {
+    "importer": {
+      "head": "5b87b13974d57d1aeb59f92c78c0f64366fd8a8c",
+      "run": 46130074946,
+      "status": "PASS_ALL_FOUR_CONTEXTS",
+      "source_and_installed_each_os": 141,
+      "failures": 0,
+      "skips": 0,
+      "expected_failures": 0,
+      "record": "59db4383dde5426f77650b3996bc2da3d984b005",
+      "handoff": "d8c9f855bec8111f5b4aa49b98b76c3ca4d29f50"
+    },
+    "runtime_sbom": {
+      "head": "eb9b66d67322c3c243d9b8f27bc8e93dd23fe3c9",
+      "run": 46130223315,
+      "status": "PASS_ALL_FOUR_CONTEXTS",
+      "source_and_installed_each_os": 42,
+      "subtests_each_context": 18,
+      "record": "bfab85fc24f6ef6810b49c0c1a4a868bb7788def",
+      "literal_main_dependency_step": "PASS_52_PINS_PLUS_EXACT_8_VENDORED_FILES"
+    },
+    "fixtures": {
+      "run": 46128142463,
+      "status": "PASS_ALL_FOUR_CONTEXTS",
+      "source_and_installed_each_os": 61,
+      "record": "8a8168ccdb4c1b6e30dd0b473f96f774b68abc2e"
+    },
+    "native_preparation": {
+      "failed_head": "bdc3c6f1383f39e9c0b8e6f60c694a11a5fbb515",
+      "failed_run": 46130308277,
+      "diagnosis": "03aa9e9e6a335263af60dd78a2cbf3f2de7638e6",
+      "observed_assertion": "direct destruction withdraws the genuine worker result",
+      "operand_failure": "UNKNOWN: combined native peer deletion and accepted document comparison",
+      "source_review": "4b1fd670cb77b00047981d10402981a7c155ed40",
+      "probe": "ac76d8f4f73dc33a4d15042540537c509386af8b",
+      "helper": "29529724af1dea6c8bd0cfb83f990eaa8c82ee1c",
+      "status": "SOURCE_APPROVED_AND_IN_57BD; RUNTIME_PENDING",
+      "preserved": "Same deadlines, genuine held result, original final state/replay assertions, product and native launch ownership."
+    },
+    "scale_caller_policies": {
+      "workflow": "a15383d04d22e6c4085cb5672dab74556fea372a",
+      "guide": "ad9b0eddd196ffccddea31dfb8185395e04b3289",
+      "review": "12747fa1dc3baa765faf07cbb29d1335e3b29983",
+      "status": "SOURCE_APPROVED_AND_IN_57BD; RUNTIME_PENDING",
+      "books_50000_spool_mib": 8192,
+      "source_2gib_spool_mib": 16384,
+      "product_changed": false,
+      "guards_relaxed": false,
+      "causality": "Source-supported cache share mismatch; failed index size and cache branch are not observed."
+    }
+  },
+  "original71ca_gates": {
+    "main": {
+      "run": 46124998890,
+      "status": "FAIL_STEP12_INVENTORY",
+      "record": "884ff0dabfe218d7d97c7da8d7e8edb843210b7e"
+    },
+    "v3": {
+      "run": 46124998937,
+      "status": "COMPLETED_FAILURE",
+      "portable": {
+        "passed": 10898,
+        "failed": 5,
+        "subtests": 42,
+        "record": "a984e0a5a8d6454a520277d9f4628f224d59ba6c"
+      },
+      "windows": {
+        "installed": {
+          "passed": 9851,
+          "failed": 3,
+          "skipped": 0
+        },
+        "shared": {
+          "passed": 5228,
+          "failed": 3,
+          "skipped": 0
+        },
+        "broad": {
+          "passed": 5101,
+          "skipped": 8,
+          "skip_reasons": "NOT_DECODED"
+        },
+        "native_steps_9_11": "NOT_RUN",
+        "record": "5594f90582e6b0f2ba5b26e7c83e3f78870878ae"
+      },
+      "unique_failures": "Five; all map to exact qualified importer/fixture corrections."
+    },
+    "capacity": {
+      "run": 46124999025,
+      "observed_utc": "2026-11-28 10:22 UTC",
+      "pass": 8,
+      "fail": 1,
+      "running": 3,
+      "required_largest_backup_verdicts_completed": 0,
+      "six_tier_metrics": "e9c9059cc506f40aa1a08d86776e779d61235938",
+      "both_10000_metrics": "114e9d7422a00e1426b18e9295b9f050b6775abc",
+      "linux_2gib_failure": "0a45062daebc3b76ed1c097a9cc2be427228839c",
+      "linux_2gib_failure_phase": "Second complete-scope search rewrote unchanged index rows; not reported timeout or OOM.",
+      "remaining": [
+        "Windows 2 GiB",
+        "Linux 50,000 books",
+        "Windows 50,000 books"
+      ],
+      "active_failure_report_reader": {
+        "head": "e5ea0d6446ea17d4114f0bb6be494580a5aed245",
+        "run": 46135670812,
+        "checkpoint": "4069bd384caabd0c00a0d1d0607c8a423549f2f7",
+        "status": "QUEUED_AT_OWNER_HANDOFF; SAVED_REPORTS_ONLY"
+      }
+    },
+    "launcher": {
+      "status": "PASS",
+      "run": 46124998938,
+      "record": "3245c4e650564ed52e853ba3a9329827d9aefb4e"
+    },
+    "bibliography": {
+      "status": "PASS",
+      "run": 46124998884,
+      "record": "cd590c064f6f74d3b73c83ab30943f0cae634bff"
+    },
+    "calibre": {
+      "status": "PASS",
+      "run": 46124995558,
+      "record": "8f4dc8524191d74228f882ad5fbe3cd08d3d5cf7"
+    },
+    "legacy": {
+      "status": "PASS",
+      "run": 46124995570,
+      "record": "4f5d8286802fbea77e5355146638478d7bc64d8f"
+    }
+  },
+  "next": [
+    "Complete actual syntax and all eight native contracts on 6c7. Seven are required; actual Office permits only strict NOT_RUN with zero checks and reason.",
+    "Retain all current old-head completed results without cancelling healthy capacity jobs.",
+    "After coherent native acceptance, fresh-read canonical/spec/PR refs, verify all final tree entries and publish 57bd by expected-SHA normal update.",
+    "Complete all seven maintained workflows and every actual 12-tier capacity outcome on exact final head, including four largest backup/verify/fresh-restore cases.",
+    "Record final evidence and PR status without changing tested source; merge PR143 with exact expected head only after all required acceptance."
+  ],
+  "owners": {
+    "reader_review": "6c7 full native preflight and final V3/native gates",
+    "import_recovery_review": "Bounded spec completeness audit, then final launcher/bibliography/legacy gates",
+    "release_audit": "Old capacity and failure metrics, then final 12 actual tiers",
+    "root": "Final composition/publication, main/Calibre, evidence/PR and merge"
+  },
+  "limits": {
+    "private_models": "SEPARATE_QUALIFICATION",
+    "language_135_quality": "SEPARATE_QUALIFICATION",
+    "physical_audio_and_NVDA": "SEPARATE_QUALIFICATION",
+    "actual_Office": "OPTIONAL_EXPLICIT_NOT_RUN_ALLOWED",
+    "publisher_signing_and_installer_distribution": "NOT_CLAIMED",
+    "runtime_transfer": "NONE"
+  },
+  "constraints": {
+    "local_executor": "DISCONNECTED; do not retry",
+    "candidate_store": "phasefinish_final_candidate19_map is 57bd; phasefinish_final_feature_selection remains 71ca",
+    "approval": "Completion and merge authorized; queued CI is not a stopping reason",
+    "source_evidence_branch": "71ca source snapshot retained; evidence-only mutations."
+  }
+}

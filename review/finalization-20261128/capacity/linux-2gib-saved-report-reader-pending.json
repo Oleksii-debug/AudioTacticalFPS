@@ -1,0 +1,69 @@
+{
+  "schema": "carr-final-corpus-failure-evidence-source/1",
+  "published_at": "2026-11-28 10:32:43 UTC",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "branch": "carr/final-corpus-failure-evidence-review-20261128",
+  "head": "e5ea0d6446ea17d4114f0bb6be494580a5aed245",
+  "tree": "0d72e2126b7ffac7826b5a82db294291dfcf307c",
+  "parent": "71ca92be691455d0ff51ed163b1d91749e5ae62e",
+  "files": 1570,
+  "full_tree_verified": true,
+  "paths": [
+    {
+      "path": ".github/diagnostics/harvest_final_scale_artifacts.py",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "21ebb52f0da128860eb8dd9d117390dd05784051"
+    },
+    {
+      "path": ".github/diagnostics/final_scale_artifacts.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "316a6d5140e68170692dca4a70e0a595b17dd933"
+    },
+    {
+      "path": ".github/workflows/carr-final-corpus-evidence-review.yml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "7e2f014495afe4942845e17fc035eeef212beb8c"
+    }
+  ],
+  "source_review": {
+    "reviewer": "/root/import_recovery_review",
+    "script": "21ebb52f0da128860eb8dd9d117390dd05784051",
+    "workflow": "7e2f014495afe4942845e17fc035eeef212beb8c",
+    "selection": "316a6d5140e68170692dca4a70e0a595b17dd933",
+    "verdict": "SOURCE_APPROVED",
+    "scope": "Only five completed_saved_reports lines and three owned workflow names. Existing selected report size/SHA verification, compact filtering, 256 KiB output bound, failed outcomes and API/ZIP/token/source proofs unchanged.",
+    "runtime": "NOT_RUN"
+  },
+  "selection": {
+    "schema": "carr-final-scale-artifact-selection/1",
+    "repository": "Oleksii-debug/AudioTacticalFPS",
+    "target": "71ca92be691455d0ff51ed163b1d91749e5ae62e",
+    "run_id": 46124999025,
+    "artifacts": [
+      {
+        "job_id": 140917529733,
+        "artifact_id": 15258975624,
+        "tier": "text-2g",
+        "os": "ubuntu-24.04",
+        "conclusion": "failure",
+        "size_in_bytes": 122712,
+        "sha256": "5d10aab9a1d6bb77d763bc22b49e1b04633eff619856d424d4097e2293c242cb"
+      }
+    ]
+  },
+  "qualification": "READ_ONLY_ARTIFACT_CAPTURE_PENDING",
+  "original_job_conclusion": "failure",
+  "limits": {
+    "compressed_bytes": 536870912,
+    "expanded_bytes": 2415919104,
+    "member_bytes": 1073741824,
+    "json_bytes": 8388608,
+    "json_total_bytes": 67108864,
+    "entries": 200050,
+    "result_bytes": 262144
+  },
+  "scope": "Read only the one exact completed failed artifact. Never extract or import members. Keep original failure and report only already saved completed phases. Do not rerun corpus or modify final PR/source."
+}

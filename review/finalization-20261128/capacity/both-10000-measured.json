@@ -1,0 +1,1930 @@
+{
+  "schema": "carr-final-scale-ten-thousand-artifact-evidence/1",
+  "status": "ACTUAL_TWO_COMPLETED_TIER_RECORDS_DECODED",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "target": "71ca92be691455d0ff51ed163b1d91749e5ae62e",
+  "original_run": 46124999025,
+  "harvester": {
+    "head": "f75d12536665ccd9f12b92a303b57cd3505fd11c",
+    "tree": "342060bd9d90ff1b729ecbbd41e00d27f05f331c",
+    "run": 46133477392,
+    "job": 140943551530,
+    "conclusion": "success",
+    "raw_log_blob": "f04e82a366fce5d79b3c218a37781ea9a75fbd65",
+    "checkpoint": "f5da65aeb4b8464a3d316752a9d540f6d44ecfd2",
+    "script": "948b6a122ad960a70ec52921a752da9d26d623a8",
+    "workflow": "41ac6ada1a90cd0211a9b51f72ca5f0636d1f1fd",
+    "selection": "29fa4155ed4cf9ac40ba9e4c26694eda87b1c2f5"
+  },
+  "package_python_files": 426,
+  "selected_origins": 45,
+  "measurement_scripts": 3,
+  "package_sha256": "805d2713cccb7ee797412ff3aac0977c414f846580d83850cb589bdaa2ec3bd1",
+  "qualification": "Both exact71ca 10,000-book jobs completed full public import/crash/resume/catalog/search, with before/after selected source and installed identities. No largest backup is required for these tiers.",
+  "metric_notes": [
+    "API timing sums include actual first-commit work and measured subsequent batch calls, not coordinator downtime or CI wall time.",
+    "Coordinator and maximum individual worker peaks are separate own-process observations; simultaneous family peak remains NOT_MEASURED.",
+    "Logical application-profile disk includes originals and SQLite; these categories overlap and must not be added.",
+    "Linux allocated bytes are stat.st_blocks observations; Windows physical allocated bytes remain NOT_MEASURED.",
+    "No performance ratio or future final-head qualification is inferred."
+  ],
+  "original_job_receipts": [
+    "f6e59a812d86cfd1bca3a0aa5a41b72afb96c9df",
+    "c93a21572383b3cb28c1af5a3662a4211c2abdb9"
+  ],
+  "first_six_evidence": "e9c9059cc506f40aa1a08d86776e779d61235938",
+  "summary": [
+    {
+      "tier": "books-10000",
+      "os": "ubuntu-24.04",
+      "job": 140917529783,
+      "books": 10000,
+      "segments": 400000,
+      "original_bytes": 102790003,
+      "measured_scan_seconds": 24.355595187000034,
+      "measured_import_seconds": 1723.7174126529999,
+      "catalog_seconds": 45.796165028999894,
+      "search_seconds": 553.0374785870001,
+      "source_windows": 4000,
+      "literal_page_latency": {
+        "maximum_seconds": 0.15240794400006052,
+        "minimum_seconds": 0.0934631709999394,
+        "p50_seconds": 0.10480940800005101,
+        "p95_method": "nearest rank",
+        "p95_seconds": 0.11092507300008947,
+        "samples": 4000
+      },
+      "anchor_latency": {
+        "maximum_seconds": 0.0689040219999697,
+        "minimum_seconds": 0.039690752000296925,
+        "p50_seconds": 0.05622876749998795,
+        "p95_method": "nearest rank",
+        "p95_seconds": 0.06786082200005694,
+        "samples": 50
+      },
+      "ranking": [
+        {
+          "first_page_seconds": 62.11416088599981,
+          "index_bytes": 287088640,
+          "label": "first_complete_scope_call",
+          "source_pages": 400000,
+          "total_results": 400000,
+          "updated_index_rows": 400000
+        },
+        {
+          "first_page_seconds": 57.26800956899979,
+          "index_bytes": 287088640,
+          "label": "same_source_cache_reopen",
+          "source_pages": 400000,
+          "total_results": 400000,
+          "updated_index_rows": 0
+        }
+      ],
+      "coordinator_own_peak_bytes": 64159744,
+      "largest_individual_worker_own_peak_bytes": 59961344,
+      "measured_worker_exits": 11,
+      "search_working_allowance_bytes": 67108864,
+      "actual_disk": {
+        "application_profile": {
+          "allocated_bytes": 1185210368,
+          "allocation_method": "stat.st_blocks * 512",
+          "entries": 20045,
+          "files": 20036,
+          "logical_bytes": 1145413535
+        },
+        "benchmark_evidence": {
+          "allocated_bytes": 155648,
+          "allocation_method": "stat.st_blocks * 512",
+          "entries": 39,
+          "files": 37,
+          "logical_bytes": 29002
+        },
+        "external_originals": {
+          "allocated_bytes": 122880000,
+          "allocation_method": "stat.st_blocks * 512",
+          "entries": 10000,
+          "files": 10000,
+          "logical_bytes": 102790003
+        },
+        "imports.sqlite": {
+          "main": 314593280
+        },
+        "library.sqlite": {
+          "main": 408363008
+        },
+        "note": "application_profile includes retained originals and SQLite files; categories overlap.",
+        "retained_originals": {
+          "allocated_bytes": 122966016,
+          "allocation_method": "stat.st_blocks * 512",
+          "entries": 10021,
+          "files": 10021,
+          "logical_bytes": 102790948
+        }
+      },
+      "runner_capacity": {
+        "fixture": "/home/runner/work/_temp/carr-scale-books-10000-43axeetu/fixture",
+        "observed_roots": [
+          {
+            "canonical_path": "/home/runner/work/_temp",
+            "free_bytes": 90884628480,
+            "identity": [
+              66305,
+              4726324,
+              16877,
+              0
+            ],
+            "name": "RUNNER_TEMP",
+            "supplied_path": "/home/runner/work/_temp",
+            "total_bytes": 154894188544
+          },
+          {
+            "canonical_path": "/tmp",
+            "free_bytes": 90884628480,
+            "identity": [
+              66305,
+              1700,
+              17407,
+              0
+            ],
+            "name": "python_tempfile",
+            "supplied_path": "/tmp",
+            "total_bytes": 154894188544
+          }
+        ],
+        "private_parent": "/home/runner/work/_temp/carr-scale-books-10000-43axeetu",
+        "private_parent_identity": [
+          66305,
+          4726346,
+          16832,
+          0
+        ],
+        "resource_admission": "NOT_YET_RUN; generator, import and backup keep their own preflight",
+        "selected_root": {
+          "canonical_path": "/home/runner/work/_temp",
+          "free_bytes": 90884628480,
+          "identity": [
+            66305,
+            4726324,
+            16877,
+            0
+          ],
+          "name": "RUNNER_TEMP",
+          "supplied_path": "/home/runner/work/_temp",
+          "total_bytes": 154894188544
+        },
+        "selection": "larger measured free space among two known runner temporary roots"
+      },
+      "operations": {
+        "authored_postcommit_crash": {
+          "batch_id": "e3e829257c4044b9890840f6d56e5b5d",
+          "boundary": "durable batch save after actual owned worker return",
+          "committed": 1,
+          "elapsed_seconds": 1.1671189870000092,
+          "pid": 2317,
+          "schema": "carr-library-catalog-benchmark/1"
+        },
+        "import_slices": {
+          "maximum_seconds": 184.015241355,
+          "minimum_seconds": 1.1671189870000092,
+          "p50_seconds": 169.562957738,
+          "p95_method": "nearest rank",
+          "p95_seconds": 184.015241355,
+          "samples": 11
+        },
+        "measured_import_seconds": 1723.7174126529999,
+        "measured_scan_seconds": 24.355595187000034,
+        "note": "Measured API calls, including actual worker cleanup; coordinator downtime is excluded.",
+        "scan": {
+          "maximum_seconds": 2.5433687280001323,
+          "minimum_seconds": 2.3503049849999798,
+          "p50_seconds": 2.4246535400000653,
+          "p95_method": "nearest rank",
+          "p95_seconds": 2.5433687280001323,
+          "samples": 10
+        }
+      },
+      "family_peak": "NOT_MEASURED",
+      "largest_backup_scope": {
+        "reason": "Full roundtrip is required on the 50k and 2GiB tiers.",
+        "status": "NOT_REQUIRED"
+      }
+    },
+    {
+      "tier": "books-10000",
+      "os": "windows-2022",
+      "job": 140917529730,
+      "books": 10000,
+      "segments": 400000,
+      "original_bytes": 102790003,
+      "measured_scan_seconds": 58.69437789999972,
+      "measured_import_seconds": 2874.1389512999995,
+      "catalog_seconds": 72.53994550000016,
+      "search_seconds": 780.6565829000001,
+      "source_windows": 4000,
+      "literal_page_latency": {
+        "maximum_seconds": 0.2874108000000888,
+        "minimum_seconds": 0.13490469999987909,
+        "p50_seconds": 0.15010345000018788,
+        "p95_method": "nearest rank",
+        "p95_seconds": 0.15939009999965492,
+        "samples": 4000
+      },
+      "anchor_latency": {
+        "maximum_seconds": 0.14261759999999413,
+        "minimum_seconds": 0.08251400000017384,
+        "p50_seconds": 0.11435350000010658,
+        "p95_method": "nearest rank",
+        "p95_seconds": 0.1373873000002277,
+        "samples": 50
+      },
+      "ranking": [
+        {
+          "first_page_seconds": 79.11795919999986,
+          "index_bytes": 287129600,
+          "label": "first_complete_scope_call",
+          "source_pages": 400000,
+          "total_results": 400000,
+          "updated_index_rows": 400000
+        },
+        {
+          "first_page_seconds": 76.41938189999928,
+          "index_bytes": 287129600,
+          "label": "same_source_cache_reopen",
+          "source_pages": 400000,
+          "total_results": 400000,
+          "updated_index_rows": 0
+        }
+      ],
+      "coordinator_own_peak_bytes": 60006400,
+      "largest_individual_worker_own_peak_bytes": 46219264,
+      "measured_worker_exits": 11,
+      "search_working_allowance_bytes": 67108864,
+      "actual_disk": {
+        "application_profile": {
+          "allocated_bytes": null,
+          "allocation_method": "NOT_MEASURED",
+          "entries": 20045,
+          "files": 20036,
+          "logical_bytes": 1145119624
+        },
+        "benchmark_evidence": {
+          "allocated_bytes": null,
+          "allocation_method": "NOT_MEASURED",
+          "entries": 39,
+          "files": 37,
+          "logical_bytes": 29270
+        },
+        "external_originals": {
+          "allocated_bytes": null,
+          "allocation_method": "NOT_MEASURED",
+          "entries": 10000,
+          "files": 10000,
+          "logical_bytes": 102790003
+        },
+        "imports.sqlite": {
+          "main": 314601472
+        },
+        "library.sqlite": {
+          "main": 408240128
+        },
+        "note": "application_profile includes retained originals and SQLite files; categories overlap.",
+        "retained_originals": {
+          "allocated_bytes": null,
+          "allocation_method": "NOT_MEASURED",
+          "entries": 10021,
+          "files": 10021,
+          "logical_bytes": 102790948
+        }
+      },
+      "runner_capacity": {
+        "fixture": "D:\\a\\_temp\\carr-scale-books-10000-cmfwesp6\\fixture",
+        "observed_roots": [
+          {
+            "canonical_path": "D:\\a\\_temp",
+            "free_bytes": 236044353536,
+            "identity": [
+              1356536314,
+              281474976710694,
+              16895,
+              16
+            ],
+            "name": "RUNNER_TEMP",
+            "supplied_path": "D:\\a\\_temp",
+            "total_bytes": 236205371392
+          },
+          {
+            "canonical_path": "C:\\Users\\runneradmin\\AppData\\Local\\Temp",
+            "free_bytes": 82587783168,
+            "identity": [
+              2695480082,
+              1407374883585200,
+              16895,
+              16
+            ],
+            "name": "python_tempfile",
+            "supplied_path": "C:\\Users\\RUNNER~1\\AppData\\Local\\Temp",
+            "total_bytes": 274284392448
+          }
+        ],
+        "private_parent": "D:\\a\\_temp\\carr-scale-books-10000-cmfwesp6",
+        "private_parent_identity": [
+          1356536314,
+          281474976712777,
+          16895,
+          16
+        ],
+        "resource_admission": "NOT_YET_RUN; generator, import and backup keep their own preflight",
+        "selected_root": {
+          "canonical_path": "D:\\a\\_temp",
+          "free_bytes": 236044353536,
+          "identity": [
+            1356536314,
+            281474976710694,
+            16895,
+            16
+          ],
+          "name": "RUNNER_TEMP",
+          "supplied_path": "D:\\a\\_temp",
+          "total_bytes": 236205371392
+        },
+        "selection": "larger measured free space among two known runner temporary roots"
+      },
+      "operations": {
+        "authored_postcommit_crash": {
+          "batch_id": "cd94cd8ab9674a459f125ca24a6b3451",
+          "boundary": "durable batch save after actual owned worker return",
+          "committed": 1,
+          "elapsed_seconds": 1.6971815999999649,
+          "pid": 2368,
+          "schema": "carr-library-catalog-benchmark/1"
+        },
+        "import_slices": {
+          "maximum_seconds": 302.2399236000001,
+          "minimum_seconds": 1.6971815999999649,
+          "p50_seconds": 286.6440875999999,
+          "p95_method": "nearest rank",
+          "p95_seconds": 302.2399236000001,
+          "samples": 11
+        },
+        "measured_import_seconds": 2874.1389512999995,
+        "measured_scan_seconds": 58.69437789999972,
+        "note": "Measured API calls, including actual worker cleanup; coordinator downtime is excluded.",
+        "scan": {
+          "maximum_seconds": 5.991030799999976,
+          "minimum_seconds": 5.735616899999968,
+          "p50_seconds": 5.875516150000067,
+          "p95_method": "nearest rank",
+          "p95_seconds": 5.991030799999976,
+          "samples": 10
+        }
+      },
+      "family_peak": "NOT_MEASURED",
+      "largest_backup_scope": {
+        "reason": "Full roundtrip is required on the 50k and 2GiB tiers.",
+        "status": "NOT_REQUIRED"
+      }
+    }
+  ],
+  "records": [
+    {
+      "artifact_expanded_bytes": 72215589,
+      "job_steps": [
+        {
+          "completed_at": "2026-11-28T09:04:01Z",
+          "conclusion": "success",
+          "name": "Set up job",
+          "number": 1,
+          "started_at": "2026-11-28T09:03:59Z",
+          "status": "completed"
+        },
+        {
+          "completed_at": "2026-11-28T09:04:06Z",
+          "conclusion": "success",
+          "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "number": 2,
+          "started_at": "2026-11-28T09:04:01Z",
+          "status": "completed"
+        },
+        {
+          "completed_at": "2026-11-28T09:04:06Z",
+          "conclusion": "success",
+          "name": "Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+          "number": 3,
+          "started_at": "2026-11-28T09:04:06Z",
+          "status": "completed"
+        },
+        {
+          "completed_at": "2026-11-28T09:04:07Z",
+          "conclusion": "success",
+          "name": "Select this runner's fresh measured profile path",
+          "number": 4,
+          "started_at": "2026-11-28T09:04:06Z",
+          "status": "completed"
+        },
+        {
+          "completed_at": "2026-11-28T09:04:27Z",
+          "conclusion": "success",
+          "name": "Install the exact composed application",
+          "number": 5,
+          "started_at": "2026-11-28T09:04:07Z",
+          "status": "completed"
+        },
+        {
+          "completed_at": "2026-11-28T09:04:27Z",
+          "conclusion": "success",
+          "name": "Bind all installed package bytes and the actual measurement scripts",
+          "number": 6,
+          "started_at": "2026-11-28T09:04:27Z",
+          "status": "completed"
+        },
+        {
+          "completed_at": "2026-11-28T09:04:27Z",
+          "conclusion": "success",
+          "name": "Admit largest-tier import and full backup capacity before writing the corpus",
+          "number": 7,
+          "started_at": "2026-11-28T09:04:27Z",
+          "status": "completed"
+        },
+        {
+          "completed_at": "2026-11-28T09:04:48Z",
+          "conclusion": "success",
+          "name": "Generate and independently hash the actual original corpus",
+          "number": 8,
+          "started_at": "2026-11-28T09:04:27Z",
+          "status": "completed"
+        },
+        {
+          "completed_at": "2026-11-28T09:04:54Z",
+          "conclusion": "success",
+          "name": "Admit the measured profile through the actual public queue",
+          "number": 9,
+          "started_at": "2026-11-28T09:04:48Z",
+          "status": "completed"
+        },
+        {
+          "completed_at": "2026-11-28T09:04:55Z",
+          "conclusion": "success",
+          "name": "Interrupt the actual coordinator after one committed and quiescent publication",
+          "number": 10,
+          "started_at": "2026-11-28T09:04:54Z",
+          "status": "completed"
+        },
+        {
+          "completed_at": "2026-11-28T09:34:00Z",
+          "conclusion": "success",
+          "name": "Resume the same durable queue in a new actual process",
+          "number": 11,
+          "started_at": "2026-11-28T09:04:55Z",
+          "status": "completed"
+        },
+        {
+          "completed_at": "2026-11-28T09:34:46Z",
+          "conclusion": "success",
+          "name": "Reopen and verify every original catalog segment and retained source",
+          "number": 12,
+          "started_at": "2026-11-28T09:34:00Z",
+          "status": "completed"
+        },
+        {
+          "completed_at": "2026-11-28T09:43:59Z",
+          "conclusion": "success",
+          "name": "Measure actual complete traversal, exact quotations and scoped ranking",
+          "number": 13,
+          "started_at": "2026-11-28T09:34:46Z",
+          "status": "completed"
+        },
+        {
+          "completed_at": "2026-11-28T09:43:59Z",
+          "conclusion": "skipped",
+          "name": "Require actual complete backup verification and fresh restore on the largest tiers",
+          "number": 14,
+          "started_at": "2026-11-28T09:43:59Z",
+          "status": "completed"
+        },
+        {
+          "completed_at": "2026-11-28T09:44:00Z",
+          "conclusion": "success",
+          "name": "Preserve actual measured phase records and independent original manifest",
+          "number": 15,
+          "started_at": "2026-11-28T09:43:59Z",
+          "status": "completed"
+        },
+        {
+          "completed_at": "2026-11-28T09:44:00Z",
+          "conclusion": "success",
+          "name": "Require complete exact counts and unchanged installed bytes",
+          "number": 16,
+          "started_at": "2026-11-28T09:44:00Z",
+          "status": "completed"
+        },
+        {
+          "completed_at": "2026-11-28T09:44:00Z",
+          "conclusion": "success",
+          "name": "Preserve selected dependency identity",
+          "number": 17,
+          "started_at": "2026-11-28T09:44:00Z",
+          "status": "completed"
+        },
+        {
+          "completed_at": "2026-11-28T09:44:03Z",
+          "conclusion": "success",
+          "name": "Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+          "number": 18,
+          "started_at": "2026-11-28T09:44:00Z",
+          "status": "completed"
+        },
+        {
+          "completed_at": "2026-11-28T09:44:03Z",
+          "conclusion": "success",
+          "name": "Post Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+          "number": 35,
+          "started_at": "2026-11-28T09:44:03Z",
+          "status": "completed"
+        },
+        {
+          "completed_at": "2026-11-28T09:44:04Z",
+          "conclusion": "success",
+          "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "number": 36,
+          "started_at": "2026-11-28T09:44:03Z",
+          "status": "completed"
+        },
+        {
+          "completed_at": "2026-11-28T09:44:04Z",
+          "conclusion": "success",
+          "name": "Complete job",
+          "number": 37,
+          "started_at": "2026-11-28T09:44:04Z",
+          "status": "completed"
+        }
+      ],
+      "largest_tier_capacity": {
+        "reason": "Full roundtrip is required on the 50k and 2GiB tiers.",
+        "status": "NOT_REQUIRED"
+      },
+      "outcome": {
+        "actual_books": 10000,
+        "actual_original_segments": 400000,
+        "backup_roundtrip": null,
+        "backup_roundtrip_scope": "NOT_REQUIRED_ON_THIS_TIER",
+        "catalog": {
+          "created_pid": 2315,
+          "disk": {
+            "application_profile": {
+              "allocated_bytes": 898121728,
+              "allocation_method": "stat.st_blocks * 512",
+              "entries": 20043,
+              "files": 20035,
+              "logical_bytes": 858324895
+            },
+            "benchmark_evidence": {
+              "allocated_bytes": 143360,
+              "allocation_method": "stat.st_blocks * 512",
+              "entries": 37,
+              "files": 35,
+              "logical_bytes": 21534
+            },
+            "external_originals": {
+              "allocated_bytes": 122880000,
+              "allocation_method": "stat.st_blocks * 512",
+              "entries": 10000,
+              "files": 10000,
+              "logical_bytes": 102790003
+            },
+            "imports.sqlite": {
+              "main": 314593280
+            },
+            "library.sqlite": {
+              "main": 408363008
+            },
+            "note": "application_profile includes retained originals and SQLite files; categories overlap.",
+            "retained_originals": {
+              "allocated_bytes": 122966016,
+              "allocation_method": "stat.st_blocks * 512",
+              "entries": 10021,
+              "files": 10021,
+              "logical_bytes": 102790948
+            }
+          },
+          "durable_scan_pages": 10,
+          "elapsed_seconds": 45.796165028999894,
+          "implementation_unchanged": true,
+          "library_benchmark": "SEARCH_NOT_RUN",
+          "memory": {
+            "coordinator_method": "resource.getrusage(RUSAGE_SELF).ru_maxrss",
+            "coordinator_peak_bytes": 48046080,
+            "largest_reaped_child_peak_bytes": 0,
+            "simultaneous_family_peak_bytes": null
+          },
+          "operations": {
+            "authored_postcommit_crash": {
+              "batch_id": "e3e829257c4044b9890840f6d56e5b5d",
+              "boundary": "durable batch save after actual owned worker return",
+              "committed": 1,
+              "elapsed_seconds": 1.1671189870000092,
+              "pid": 2317,
+              "schema": "carr-library-catalog-benchmark/1"
+            },
+            "import_slices": {
+              "maximum_seconds": 184.015241355,
+              "minimum_seconds": 1.1671189870000092,
+              "p50_seconds": 169.562957738,
+              "p95_method": "nearest rank",
+              "p95_seconds": 184.015241355,
+              "samples": 11
+            },
+            "measured_import_seconds": 1723.7174126529999,
+            "measured_scan_seconds": 24.355595187000034,
+            "note": "Measured API calls, including actual worker cleanup; coordinator downtime is excluded.",
+            "scan": {
+              "maximum_seconds": 2.5433687280001323,
+              "minimum_seconds": 2.3503049849999798,
+              "p50_seconds": 2.4246535400000653,
+              "p95_method": "nearest rank",
+              "p95_seconds": 2.5433687280001323,
+              "samples": 10
+            }
+          },
+          "originals": {
+            "declared_original_segments": 400000,
+            "verified_original_bytes": 102790003,
+            "verified_sources": 10000
+          },
+          "pid": 2688,
+          "raw_characters": 97600000,
+          "raw_utf8_bytes": 102400000,
+          "schema": "carr-library-catalog-benchmark/1",
+          "separate_process": true,
+          "source_books": 10000,
+          "source_segments": 400000,
+          "startup_seconds": 4.9061985829998775,
+          "status": "CATALOG_VERIFIED",
+          "worker_peaks": {
+            "maximum_worker_own_peak_bytes": 59961344,
+            "measured_worker_exits": 11,
+            "methods": [
+              "resource.getrusage(RUSAGE_SELF).ru_maxrss"
+            ],
+            "note": "Actual per-worker exit peaks; concurrent family peak is not measured.",
+            "simultaneous_family_peak_bytes": null
+          }
+        },
+        "commit": "71ca92be691455d0ff51ed163b1d91749e5ae62e",
+        "generation": {
+          "completed_books": 10000,
+          "generated_bytes": 102790003,
+          "generation_seconds": 17.85295667999999,
+          "library_benchmark": "NOT_RUN",
+          "manifest_sha256": "0b9e527f2e42c813d13ab207fbccae7af8e80e1fcd0bb2e0b6a635639412472e",
+          "schema": "carr-library-scale/1",
+          "segments": 400000,
+          "status": "FIXTURE_GENERATED_NOT_BENCHMARKED"
+        },
+        "installed_package_sha256": "805d2713cccb7ee797412ff3aac0977c414f846580d83850cb589bdaa2ec3bd1",
+        "manifest_sha256": "0b9e527f2e42c813d13ab207fbccae7af8e80e1fcd0bb2e0b6a635639412472e",
+        "physical_or_human_quality": "NOT_ASSESSED",
+        "real_first_commit_process_exit": 73,
+        "resume_same_saved_queue": true,
+        "run": "46124999025",
+        "search": {
+          "bounded_title_anchor_latency": {
+            "maximum_seconds": 0.0689040219999697,
+            "minimum_seconds": 0.039690752000296925,
+            "p50_seconds": 0.05622876749998795,
+            "p95_method": "nearest rank",
+            "p95_seconds": 0.06786082200005694,
+            "samples": 50
+          },
+          "cold_definition": "fresh process and LibraryApp; OS and persistent search caches are not cleared",
+          "complete_scope_ranking": [
+            {
+              "first_page_seconds": 62.11416088599981,
+              "index_bytes": 287088640,
+              "label": "first_complete_scope_call",
+              "source_pages": 400000,
+              "total_results": 400000,
+              "updated_index_rows": 400000
+            },
+            {
+              "first_page_seconds": 57.26800956899979,
+              "index_bytes": 287088640,
+              "label": "same_source_cache_reopen",
+              "source_pages": 400000,
+              "total_results": 400000,
+              "updated_index_rows": 0
+            }
+          ],
+          "created_pid": 2315,
+          "disk": {
+            "application_profile": {
+              "allocated_bytes": 1185210368,
+              "allocation_method": "stat.st_blocks * 512",
+              "entries": 20045,
+              "files": 20036,
+              "logical_bytes": 1145413535
+            },
+            "benchmark_evidence": {
+              "allocated_bytes": 155648,
+              "allocation_method": "stat.st_blocks * 512",
+              "entries": 39,
+              "files": 37,
+              "logical_bytes": 29002
+            },
+            "external_originals": {
+              "allocated_bytes": 122880000,
+              "allocation_method": "stat.st_blocks * 512",
+              "entries": 10000,
+              "files": 10000,
+              "logical_bytes": 102790003
+            },
+            "imports.sqlite": {
+              "main": 314593280
+            },
+            "library.sqlite": {
+              "main": 408363008
+            },
+            "note": "application_profile includes retained originals and SQLite files; categories overlap.",
+            "retained_originals": {
+              "allocated_bytes": 122966016,
+              "allocation_method": "stat.st_blocks * 512",
+              "entries": 10021,
+              "files": 10021,
+              "logical_bytes": 102790948
+            }
+          },
+          "elapsed_seconds": 553.0374785870001,
+          "explicit_library_navigation": {
+            "pages": 2,
+            "selected": 21
+          },
+          "federated_cleanup_confirmed": true,
+          "implementation_unchanged": true,
+          "literal_page_latency": {
+            "maximum_seconds": 0.15240794400006052,
+            "minimum_seconds": 0.0934631709999394,
+            "p50_seconds": 0.10480940800005101,
+            "p95_method": "nearest rank",
+            "p95_seconds": 0.11092507300008947,
+            "samples": 4000
+          },
+          "memory": {
+            "coordinator_method": "resource.getrusage(RUSAGE_SELF).ru_maxrss",
+            "coordinator_peak_bytes": 64159744,
+            "largest_reaped_child_peak_bytes": 0,
+            "simultaneous_family_peak_bytes": null
+          },
+          "operations": {
+            "authored_postcommit_crash": {
+              "batch_id": "e3e829257c4044b9890840f6d56e5b5d",
+              "boundary": "durable batch save after actual owned worker return",
+              "committed": 1,
+              "elapsed_seconds": 1.1671189870000092,
+              "pid": 2317,
+              "schema": "carr-library-catalog-benchmark/1"
+            },
+            "import_slices": {
+              "maximum_seconds": 184.015241355,
+              "minimum_seconds": 1.1671189870000092,
+              "p50_seconds": 169.562957738,
+              "p95_method": "nearest rank",
+              "p95_seconds": 184.015241355,
+              "samples": 11
+            },
+            "measured_import_seconds": 1723.7174126529999,
+            "measured_scan_seconds": 24.355595187000034,
+            "note": "Measured API calls, including actual worker cleanup; coordinator downtime is excluded.",
+            "scan": {
+              "maximum_seconds": 2.5433687280001323,
+              "minimum_seconds": 2.3503049849999798,
+              "p50_seconds": 2.4246535400000653,
+              "p95_method": "nearest rank",
+              "p95_seconds": 2.5433687280001323,
+              "samples": 10
+            }
+          },
+          "originals": {
+            "declared_original_segments": 400000,
+            "verified_original_bytes": 102790003,
+            "verified_sources": 10000
+          },
+          "physical_or_human_quality": "NOT_ASSESSED",
+          "pid": 2694,
+          "schema": "carr-library-catalog-benchmark/1",
+          "search_memory_allowance_bytes": 67108864,
+          "semantic_model": "NOT_RUN",
+          "separate_process": true,
+          "simultaneous_family_peak": "NOT_MEASURED",
+          "source_books": 10000,
+          "source_segments": 400000,
+          "source_windows": 4000,
+          "startup_seconds": 4.898090820000107,
+          "status": "MEASURED_SYNTHETIC_CORPUS",
+          "unicode_quotations": [
+            {
+              "book": 0,
+              "last_segment": 40,
+              "quote_sha256": "a3b67c7104a1427359b00c7e9cad51df5e2f14b34149025d5288ee3dd7927da9",
+              "source_windows": 1
+            },
+            {
+              "book": 9999,
+              "last_segment": 40,
+              "quote_sha256": "6a09445b9c41b33fdf51a0108b6dbc9a3fafabe38a5be6b3ea1b5b663a6f6b3b",
+              "source_windows": 1
+            }
+          ],
+          "worker_peaks": {
+            "maximum_worker_own_peak_bytes": 59961344,
+            "measured_worker_exits": 11,
+            "methods": [
+              "resource.getrusage(RUSAGE_SELF).ru_maxrss"
+            ],
+            "note": "Actual per-worker exit peaks; concurrent family peak is not measured.",
+            "simultaneous_family_peak_bytes": null
+          }
+        },
+        "semantic_model": "NOT_RUN",
+        "simultaneous_family_peak": "NOT_MEASURED",
+        "status": "MEASURED_SYNTHETIC_CORPUS",
+        "tier": "books-10000"
+      },
+      "package_files": 426,
+      "package_sha256": "805d2713cccb7ee797412ff3aac0977c414f846580d83850cb589bdaa2ec3bd1",
+      "phase_admissions": {
+        "benchmark/state.json": {
+          "disk": {
+            "components": {
+              "catalog_estimate_bytes": 717970009,
+              "fixture_manifest_estimate_bytes": 107524096,
+              "free_reserve_bytes": 1073741824,
+              "journal_estimate_bytes": 369420006,
+              "memory_headroom_bytes": 1342177280,
+              "original_bytes": 102790003,
+              "retained_bytes": 102790003,
+              "search_spool_budget_bytes": 4294967296
+            },
+            "free_bytes": 90270793728,
+            "required_estimate_bytes": 6769203237,
+            "total_bytes": 154894188544
+          },
+          "memory": {
+            "available_bytes": 15775449088,
+            "cgroup": null,
+            "method": "/proc/meminfo.MemAvailable",
+            "required_headroom_bytes": 1342177280
+          },
+          "note": "Admission estimates are not measured application use or enforced memory limits.",
+          "reason": null,
+          "status": "READY_FOR_FIXTURE"
+        }
+      },
+      "platform": "Linux-7.0.0-1020-azure-x86_64-with-glibc2.39",
+      "python": "3.11.18 (main, Oct 26 2026, 02:48:34) [GCC 13.3.0]",
+      "run_id": 46124999025,
+      "runner_capacity": {
+        "fixture": "/home/runner/work/_temp/carr-scale-books-10000-43axeetu/fixture",
+        "observed_roots": [
+          {
+            "canonical_path": "/home/runner/work/_temp",
+            "free_bytes": 90884628480,
+            "identity": [
+              66305,
+              4726324,
+              16877,
+              0
+            ],
+            "name": "RUNNER_TEMP",
+            "supplied_path": "/home/runner/work/_temp",
+            "total_bytes": 154894188544
+          },
+          {
+            "canonical_path": "/tmp",
+            "free_bytes": 90884628480,
+            "identity": [
+              66305,
+              1700,
+              17407,
+              0
+            ],
+            "name": "python_tempfile",
+            "supplied_path": "/tmp",
+            "total_bytes": 154894188544
+          }
+        ],
+        "private_parent": "/home/runner/work/_temp/carr-scale-books-10000-43axeetu",
+        "private_parent_identity": [
+          66305,
+          4726346,
+          16832,
+          0
+        ],
+        "resource_admission": "NOT_YET_RUN; generator, import and backup keep their own preflight",
+        "selected_root": {
+          "canonical_path": "/home/runner/work/_temp",
+          "free_bytes": 90884628480,
+          "identity": [
+            66305,
+            4726324,
+            16877,
+            0
+          ],
+          "name": "RUNNER_TEMP",
+          "supplied_path": "/home/runner/work/_temp",
+          "total_bytes": 154894188544
+        },
+        "selection": "larger measured free space among two known runner temporary roots"
+      },
+      "schema": "carr-final-scale-artifact-harvest/1",
+      "scope": "READ_ONLY_SAVED_ACTUAL_REPORTS_NO_CORPUS_REPLAY",
+      "scripts": {
+        "benchmark_library_backup.py": "8cf97171449547b2636daadd1602b7c0ffcc1c77d9d29b933d0ecb1f8eb0e57b",
+        "benchmark_library_catalog.py": "582b5fbc2d4ff1a39bfc5e68de582895138831a4ad763a1465c3a4e1ee275238",
+        "benchmark_library_scale.py": "9ab82726e5e61e085302db94f322a1e12914538d447685b677a4c66a2532149d"
+      },
+      "selected_json_bytes": 179960,
+      "selected_origins": {
+        "carr_library.application": {
+          "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/application.py",
+          "sha256": "9239ea355b5c5a38d24097720e2489bde7ba15ad7381aba6082eb187c7fe131a"
+        },
+        "carr_library.audio.cleanup": {
+          "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/audio/cleanup.py",
+          "sha256": "35af682e01736cee2b91b8ad2e10110aa7fb708b0584f60733f8fe2dd2600103"
+        },
+        "carr_library.audio.process": {
+          "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/audio/process.py",
+          "sha256": "70c485f69ffc5e5c26d29a3e56bccbf2cd231a45cb16668f42accc3c81a57bfb"
+        },
+        "carr_library.backup_budget": {
+          "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/backup_budget.py",
+          "sha256": "f9e34ea0a38e446fdd7218c3708bb6a65bd7093178e985b700fe4d0d34442a8b"
+        },
+        "carr_library.backup_current": {
+          "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/backup_current.py",
+          "sha256": "4d1f3fbef0e7c53998310cb1362fa2cb98d2dd43a90c32b1e9ccd32546e0d644"
+        },
+        "carr_library.backup_producers": {
+          "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/backup_producers.py",
+          "sha256": "8895d2ca9b7533eff67f590cc06569a5d1821108f0fbd7e2f3ebfe458cb092be"
+        },
+        "carr_library.backup_sidecars": {
+          "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/backup_sidecars.py",
+          "sha256": "bbea423dbaef7d2c396b4b8092bd8ffa9fbe538c88f3a1917ced735bbb4e0da4"
+        },
+        "carr_library.backup_transcription": {
+          "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/backup_transcription.py",
+          "sha256": "b32790b54edba557dd54b83af00a92c214971e9cadf9d066b2e59adfecc193e9"
+        },
+        "carr_library.catalog.intake": {
+          "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/catalog/intake.py",
+          "sha256": "9ac86c0fce3a205d4e9dc2eb3f06f6a5bf85a82dfd643e858c06a2d12813ad28"
+        },
+        "carr_library.catalog.membership": {
+          "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/catalog/membership.py",
+          "sha256": "1616e05e3433b22b47dc7e96e5893f777f9c0ca06a9bd63a113b2955616ed937"
+        },
+        "carr_library.catalog.read_views": {
+          "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/catalog/read_views.py",
+          "sha256": "d5d87ffc31f1d44862d7717dc322ef169e53367261e2dbd51ed13d3b17c09687"
+        },
+        "carr_library.catalog.registration": {
+          "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/catalog/registration.py",
+          "sha256": "602b78bbffd8220b8de22208efe777b41786379c7603f1d5a5aea7d2930432ef"
+        },
+        "carr_library.citations.historical": {
+          "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/citations/historical.py",
+          "sha256": "a4421f05e5c80c614219c4b4b00456d7f1ac6b66e2cd769045a0b9c711613d9e"
+        },
+        "carr_library.citations.pdf_review_attestation": {
+          "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/citations/pdf_review_attestation.py",
+          "sha256": "474763e81f29d2fbb60288ba079509d7634246732e53fd85d43cc1b0436a2645"
+        },
+        "carr_library.citations.text_attestation": {
+          "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/citations/text_attestation.py",
+          "sha256": "a58cc9df3eefe1652c32953665b36b418a18576a2efdf2a622cb684d24594a3e"
+        },
+        "carr_library.durable_state": {
+          "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/durable_state.py",
+          "sha256": "9b173d6cde27dd4362a920b01283cec0cbaaa42e4569f96e5b9bd24f6bd156b8"
+        },
+        "carr_library.extract.page_ocr": {
+          "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/extract/page_ocr.py",
+          "sha256": "5cda8df281b7644f2e0037fc1427dded513a7e2dbdea9c744700f728bb648c41"
+        },
+        "carr_library.extract.raster_pages": {
+          "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/extract/raster_pages.py",
+          "sha256": "5590e87310cbc21541ccbe28ecd5164e8c8abd9a2a6be4c584c0ad427811bb9a"
+        },
+        "carr_library.extract.runtime_identity": {
+          "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/extract/runtime_identity.py",
+          "sha256": "7cf8684d7dc99cf4c5dfb9f3bd634c2b3dc2411f15ab60195d80d6d48931d1f9"
+        },
+        "carr_library.ingest.batch_pages": {
+          "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/ingest/batch_pages.py",
+          "sha256": "64031c10dc86579d4122378f625c95351ad26c638a644c95efbf04967b417ac4"
+        },
+        "carr_library.ingest.batch_scan": {
+          "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/ingest/batch_scan.py",
+          "sha256": "8d1f3a30b46b7bd3aa759e49609c072bdecf0a74cfc9ffcc346c909d7092e5ca"
+        },
+        "carr_library.ingest.batches": {
+          "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/ingest/batches.py",
+          "sha256": "8f48ae93a34920d6cc857d93b4c165640e4d46fd085477b8f78c795ecde02e29"
+        },
+        "carr_library.ingest.catalog_asset_copy": {
+          "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/ingest/catalog_asset_copy.py",
+          "sha256": "a06a6dda7177b22f1af55b388fb599e6f0369df77a69ee3e436287d757078d88"
+        },
+        "carr_library.ingest.pipeline": {
+          "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/ingest/pipeline.py",
+          "sha256": "a47c7b809d00042f454d385c1210b1a547a8d8ba72e75e14e0a6e53ddb89cb63"
+        },
+        "carr_library.ingest.publication_identity": {
+          "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/ingest/publication_identity.py",
+          "sha256": "7808ac278b60bb15e9b39512186b5118cc7741d7007fefa015e95fd5096ebc07"
+        },
+        "carr_library.ingest.reconciliation": {
+          "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/ingest/reconciliation.py",
+          "sha256": "48d6750a4f9bce48f3c6edb7c9076ddaa2737519f24a03ff9490f2741e479a71"
+        },
+        "carr_library.ingest.resource_budget": {
+          "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/ingest/resource_budget.py",
+          "sha256": "8ead273af549219f6ca48541e3f6be5f162e1299929d3c6718df9d356cd3f6fb"
+        },
+        "carr_library.ingest.restore": {
+          "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/ingest/restore.py",
+          "sha256": "597f6dd758df252004084ad3cdadcb028ee68a5796bf2c2919098a6dfbf33859"
+        },
+        "carr_library.ingest.retained_assets": {
+          "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/ingest/retained_assets.py",
+          "sha256": "9444911ed72158103d87e5551b2d7f24ab1b30b686af8a8788bf9f0a965e0eb6"
+        },
+        "carr_library.ingest.session": {
+          "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/ingest/session.py",
+          "sha256": "ced3447525e22ae557c25a70e27d47a97bdc1d57b4ee264a12085e3df5641598"
+        },
+        "carr_library.ingest.slices": {
+          "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/ingest/slices.py",
+          "sha256": "7fbe9314fc305d723e8f1f9260fad3c36c052867c30519058791cb14fd964376"
+        },
+        "carr_library.ingest.worker": {
+          "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/ingest/worker.py",
+          "sha256": "f86183b6c26c0a38c4829003c16063693148424e3e50039c86a32dd25435e310"
+        },
+        "carr_library.library_backup": {
+          "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/library_backup.py",
+          "sha256": "752054dded62c442708cec597d5af39dfa47ebd66b1e662e494d668eba8f9d2e"
+        },
+        "carr_library.operations.broker": {
+          "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/operations/broker.py",
+          "sha256": "24940baa024716fb6e23bd052e427cbed17e2434098de3594e8cae47d307195b"
+        },
+        "carr_library.operations.models": {
+          "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/operations/models.py",
+          "sha256": "cb711ae7bde38c77fe039678afe1b57b56bd85d653fb982284fbef43f62b2545"
+        },
+        "carr_library.pending_backup": {
+          "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/pending_backup.py",
+          "sha256": "60ead9abcc82f473cf2d321b7fc8e97cb66ba256cd86d56e5aad886c38a8106f"
+        },
+        "carr_library.search.federated": {
+          "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/search/federated.py",
+          "sha256": "5453979f2b69f33a1a497e6bfa9b8daf4618872354e49d1a0d761e48336b6583"
+        },
+        "carr_library.search.literal": {
+          "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/search/literal.py",
+          "sha256": "ccb413548f5115ed487430bbd6ae5b284e2b98afb8946e9ef46051c18e5f62d6"
+        },
+        "carr_library.search.paging": {
+          "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/search/paging.py",
+          "sha256": "1485292255ea2fb389307aab31f9ceac99e9b34e6932edc18fca6a5381369d98"
+        },
+        "carr_library.search.ranked_scope": {
+          "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/search/ranked_scope.py",
+          "sha256": "bf9d70393a41d8069371eb449c4a863abe1f4ee6943701aa69d1def838c48691"
+        },
+        "carr_library.search.semantic_windows": {
+          "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/search/semantic_windows.py",
+          "sha256": "453e5a64c48b55c4415971e5bd1b75fdb7be0c795f61aa73b01fac4270f0e9fe"
+        },
+        "carr_library.search.thematic": {
+          "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/search/thematic.py",
+          "sha256": "811e87ce340f43ec8d5336045425d389f05c94eb08b1ac80768360ed66bf24e6"
+        },
+        "carr_library.semantic": {
+          "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/semantic.py",
+          "sha256": "15384da7582ed9e0d39b464b361393addf7029c64fd2df2b1cad4ba40f7ba0d4"
+        },
+        "carr_library.storage.publication": {
+          "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/storage/publication.py",
+          "sha256": "c70fc5e102613bd6ae1fa60f7640c9921c1325d615b377994c3abce4f49c60d7"
+        },
+        "carr_library.storage.revisions": {
+          "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/storage/revisions.py",
+          "sha256": "5d83c85838bbbf441618143106ffed4514e8185485955fdb310ec221cb08d419"
+        }
+      },
+      "selected_sha256": {
+        "backup-capacity-before-import.json": "50a3a6ee1e6cccd86dfac8ca00efc943479c04742d577366ef1653ef968096b2",
+        "collected-evidence.json": "3dee25863bfa3783f46bfb99701fe9d70eff39f85053538a3d1563c633ac62c4",
+        "fixture-evidence/benchmark/authored-crash.json": "324f73b89b6fb3173ffe9b5faf652c3480bae1f575c8de3dcb786f128acba5ac",
+        "fixture-evidence/benchmark/catalog-verification.json": "f548efa995f7af5d62a8977868617a74f02346ea2f6f311005e4064985d38a0c",
+        "fixture-evidence/benchmark/search-measurements.json": "5d80a87b023578e49a44540e3861c1b106a1d8bd8effb550201e73e1a4cf77e2",
+        "fixture-evidence/benchmark/state.json": "dafd5ebd117b581f332495805af021e3ca30d066c56c64e1c2f1dcf9d983c2f0",
+        "fixture-evidence/generation.json": "43e90a5493acb6fd52cf721f3c0b38adc67a73872bdbeceec230da9c45ff60bd",
+        "fixture-evidence/preflight.json": "d719e0219bd2259fc8f808e70c4fddf7f5a5ffedfc43db2724b4c6ee7df4543d",
+        "installed-after.json": "3351fb16f90c4162f7f8fee340c5e54d8952d7ab47c8fc012106f314b97a1421",
+        "installed-before.json": "3351fb16f90c4162f7f8fee340c5e54d8952d7ab47c8fc012106f314b97a1421",
+        "outcome.json": "44af325e48adb4f56415883394bd4875748d4f37b32a8af2646c2c7f80ed9e33",
+        "runner-capacity.json": "b494a69c9b82e40734c3f851aaa3b6b892c6710513243200718105aa32d76240"
+      },
+      "selection": {
+        "artifact_id": 15257866744,
+        "conclusion": "success",
+        "job_id": 140917529783,
+        "os": "ubuntu-24.04",
+        "sha256": "7df7550af4fd90d9fb21a02eda46e61204fee3b0594dfd4262c2d605b0045cdd",
+        "size_in_bytes": 17004201,
+        "tier": "books-10000"
+      },
+      "sqlite": "3.45.1",
+      "target": "71ca92be691455d0ff51ed163b1d91749e5ae62e"
+    },
+    {
+      "artifact_expanded_bytes": 72216645,
+      "job_steps": [
+        {
+          "completed_at": "2026-11-28T08:56:39Z",
+          "conclusion": "success",
+          "name": "Set up job",
+          "number": 1,
+          "started_at": "2026-11-28T08:56:38Z",
+          "status": "completed"
+        },
+        {
+          "completed_at": "2026-11-28T08:56:47Z",
+          "conclusion": "success",
+          "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "number": 2,
+          "started_at": "2026-11-28T08:56:39Z",
+          "status": "completed"
+        },
+        {
+          "completed_at": "2026-11-28T08:56:47Z",
+          "conclusion": "success",
+          "name": "Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+          "number": 3,
+          "started_at": "2026-11-28T08:56:47Z",
+          "status": "completed"
+        },
+        {
+          "completed_at": "2026-11-28T08:56:49Z",
+          "conclusion": "success",
+          "name": "Select this runner's fresh measured profile path",
+          "number": 4,
+          "started_at": "2026-11-28T08:56:47Z",
+          "status": "completed"
+        },
+        {
+          "completed_at": "2026-11-28T08:57:36Z",
+          "conclusion": "success",
+          "name": "Install the exact composed application",
+          "number": 5,
+          "started_at": "2026-11-28T08:56:49Z",
+          "status": "completed"
+        },
+        {
+          "completed_at": "2026-11-28T08:57:37Z",
+          "conclusion": "success",
+          "name": "Bind all installed package bytes and the actual measurement scripts",
+          "number": 6,
+          "started_at": "2026-11-28T08:57:36Z",
+          "status": "completed"
+        },
+        {
+          "completed_at": "2026-11-28T08:57:37Z",
+          "conclusion": "success",
+          "name": "Admit largest-tier import and full backup capacity before writing the corpus",
+          "number": 7,
+          "started_at": "2026-11-28T08:57:37Z",
+          "status": "completed"
+        },
+        {
+          "completed_at": "2026-11-28T08:57:53Z",
+          "conclusion": "success",
+          "name": "Generate and independently hash the actual original corpus",
+          "number": 8,
+          "started_at": "2026-11-28T08:57:37Z",
+          "status": "completed"
+        },
+        {
+          "completed_at": "2026-11-28T08:58:08Z",
+          "conclusion": "success",
+          "name": "Admit the measured profile through the actual public queue",
+          "number": 9,
+          "started_at": "2026-11-28T08:57:53Z",
+          "status": "completed"
+        },
+        {
+          "completed_at": "2026-11-28T08:58:11Z",
+          "conclusion": "success",
+          "name": "Interrupt the actual coordinator after one committed and quiescent publication",
+          "number": 10,
+          "started_at": "2026-11-28T08:58:08Z",
+          "status": "completed"
+        },
+        {
+          "completed_at": "2026-11-28T09:46:57Z",
+          "conclusion": "success",
+          "name": "Resume the same durable queue in a new actual process",
+          "number": 11,
+          "started_at": "2026-11-28T08:58:11Z",
+          "status": "completed"
+        },
+        {
+          "completed_at": "2026-11-28T09:48:10Z",
+          "conclusion": "success",
+          "name": "Reopen and verify every original catalog segment and retained source",
+          "number": 12,
+          "started_at": "2026-11-28T09:46:57Z",
+          "status": "completed"
+        },
+        {
+          "completed_at": "2026-11-28T10:01:10Z",
+          "conclusion": "success",
+          "name": "Measure actual complete traversal, exact quotations and scoped ranking",
+          "number": 13,
+          "started_at": "2026-11-28T09:48:10Z",
+          "status": "completed"
+        },
+        {
+          "completed_at": "2026-11-28T10:01:11Z",
+          "conclusion": "skipped",
+          "name": "Require actual complete backup verification and fresh restore on the largest tiers",
+          "number": 14,
+          "started_at": "2026-11-28T10:01:10Z",
+          "status": "completed"
+        },
+        {
+          "completed_at": "2026-11-28T10:01:11Z",
+          "conclusion": "success",
+          "name": "Preserve actual measured phase records and independent original manifest",
+          "number": 15,
+          "started_at": "2026-11-28T10:01:11Z",
+          "status": "completed"
+        },
+        {
+          "completed_at": "2026-11-28T10:01:11Z",
+          "conclusion": "success",
+          "name": "Require complete exact counts and unchanged installed bytes",
+          "number": 16,
+          "started_at": "2026-11-28T10:01:11Z",
+          "status": "completed"
+        },
+        {
+          "completed_at": "2026-11-28T10:01:12Z",
+          "conclusion": "success",
+          "name": "Preserve selected dependency identity",
+          "number": 17,
+          "started_at": "2026-11-28T10:01:11Z",
+          "status": "completed"
+        },
+        {
+          "completed_at": "2026-11-28T10:01:15Z",
+          "conclusion": "success",
+          "name": "Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+          "number": 18,
+          "started_at": "2026-11-28T10:01:12Z",
+          "status": "completed"
+        },
+        {
+          "completed_at": "2026-11-28T10:01:15Z",
+          "conclusion": "success",
+          "name": "Post Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+          "number": 35,
+          "started_at": "2026-11-28T10:01:15Z",
+          "status": "completed"
+        },
+        {
+          "completed_at": "2026-11-28T10:01:17Z",
+          "conclusion": "success",
+          "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "number": 36,
+          "started_at": "2026-11-28T10:01:15Z",
+          "status": "completed"
+        },
+        {
+          "completed_at": "2026-11-28T10:01:17Z",
+          "conclusion": "success",
+          "name": "Complete job",
+          "number": 37,
+          "started_at": "2026-11-28T10:01:17Z",
+          "status": "completed"
+        }
+      ],
+      "largest_tier_capacity": {
+        "reason": "Full roundtrip is required on the 50k and 2GiB tiers.",
+        "status": "NOT_REQUIRED"
+      },
+      "outcome": {
+        "actual_books": 10000,
+        "actual_original_segments": 400000,
+        "backup_roundtrip": null,
+        "backup_roundtrip_scope": "NOT_REQUIRED_ON_THIS_TIER",
+        "catalog": {
+          "created_pid": 1056,
+          "disk": {
+            "application_profile": {
+              "allocated_bytes": null,
+              "allocation_method": "NOT_MEASURED",
+              "entries": 20043,
+              "files": 20035,
+              "logical_bytes": 857990024
+            },
+            "benchmark_evidence": {
+              "allocated_bytes": null,
+              "allocation_method": "NOT_MEASURED",
+              "entries": 37,
+              "files": 35,
+              "logical_bytes": 21774
+            },
+            "external_originals": {
+              "allocated_bytes": null,
+              "allocation_method": "NOT_MEASURED",
+              "entries": 10000,
+              "files": 10000,
+              "logical_bytes": 102790003
+            },
+            "imports.sqlite": {
+              "main": 314601472
+            },
+            "library.sqlite": {
+              "main": 408240128
+            },
+            "note": "application_profile includes retained originals and SQLite files; categories overlap.",
+            "retained_originals": {
+              "allocated_bytes": null,
+              "allocation_method": "NOT_MEASURED",
+              "entries": 10021,
+              "files": 10021,
+              "logical_bytes": 102790948
+            }
+          },
+          "durable_scan_pages": 10,
+          "elapsed_seconds": 72.53994550000016,
+          "implementation_unchanged": true,
+          "library_benchmark": "SEARCH_NOT_RUN",
+          "memory": {
+            "coordinator_method": "GetProcessMemoryInfo.PeakWorkingSetSize",
+            "coordinator_peak_bytes": 60428288,
+            "largest_reaped_child_peak_bytes": null,
+            "simultaneous_family_peak_bytes": null
+          },
+          "operations": {
+            "authored_postcommit_crash": {
+              "batch_id": "cd94cd8ab9674a459f125ca24a6b3451",
+              "boundary": "durable batch save after actual owned worker return",
+              "committed": 1,
+              "elapsed_seconds": 1.6971815999999649,
+              "pid": 2368,
+              "schema": "carr-library-catalog-benchmark/1"
+            },
+            "import_slices": {
+              "maximum_seconds": 302.2399236000001,
+              "minimum_seconds": 1.6971815999999649,
+              "p50_seconds": 286.6440875999999,
+              "p95_method": "nearest rank",
+              "p95_seconds": 302.2399236000001,
+              "samples": 11
+            },
+            "measured_import_seconds": 2874.1389512999995,
+            "measured_scan_seconds": 58.69437789999972,
+            "note": "Measured API calls, including actual worker cleanup; coordinator downtime is excluded.",
+            "scan": {
+              "maximum_seconds": 5.991030799999976,
+              "minimum_seconds": 5.735616899999968,
+              "p50_seconds": 5.875516150000067,
+              "p95_method": "nearest rank",
+              "p95_seconds": 5.991030799999976,
+              "samples": 10
+            }
+          },
+          "originals": {
+            "declared_original_segments": 400000,
+            "verified_original_bytes": 102790003,
+            "verified_sources": 10000
+          },
+          "pid": 7608,
+          "raw_characters": 97600000,
+          "raw_utf8_bytes": 102400000,
+          "schema": "carr-library-catalog-benchmark/1",
+          "separate_process": true,
+          "source_books": 10000,
+          "source_segments": 400000,
+          "startup_seconds": 6.01881289999983,
+          "status": "CATALOG_VERIFIED",
+          "worker_peaks": {
+            "maximum_worker_own_peak_bytes": 46219264,
+            "measured_worker_exits": 11,
+            "methods": [
+              "GetProcessMemoryInfo.PeakWorkingSetSize"
+            ],
+            "note": "Actual per-worker exit peaks; concurrent family peak is not measured.",
+            "simultaneous_family_peak_bytes": null
+          }
+        },
+        "commit": "71ca92be691455d0ff51ed163b1d91749e5ae62e",
+        "generation": {
+          "completed_books": 10000,
+          "generated_bytes": 102790003,
+          "generation_seconds": 8.126910599999974,
+          "library_benchmark": "NOT_RUN",
+          "manifest_sha256": "cbf6cb77eb8da6cc39b77e83d658a2a42afbd1f1f0c12e6b8f83d142a782660d",
+          "schema": "carr-library-scale/1",
+          "segments": 400000,
+          "status": "FIXTURE_GENERATED_NOT_BENCHMARKED"
+        },
+        "installed_package_sha256": "805d2713cccb7ee797412ff3aac0977c414f846580d83850cb589bdaa2ec3bd1",
+        "manifest_sha256": "cbf6cb77eb8da6cc39b77e83d658a2a42afbd1f1f0c12e6b8f83d142a782660d",
+        "physical_or_human_quality": "NOT_ASSESSED",
+        "real_first_commit_process_exit": 73,
+        "resume_same_saved_queue": true,
+        "run": "46124999025",
+        "search": {
+          "bounded_title_anchor_latency": {
+            "maximum_seconds": 0.14261759999999413,
+            "minimum_seconds": 0.08251400000017384,
+            "p50_seconds": 0.11435350000010658,
+            "p95_method": "nearest rank",
+            "p95_seconds": 0.1373873000002277,
+            "samples": 50
+          },
+          "cold_definition": "fresh process and LibraryApp; OS and persistent search caches are not cleared",
+          "complete_scope_ranking": [
+            {
+              "first_page_seconds": 79.11795919999986,
+              "index_bytes": 287129600,
+              "label": "first_complete_scope_call",
+              "source_pages": 400000,
+              "total_results": 400000,
+              "updated_index_rows": 400000
+            },
+            {
+              "first_page_seconds": 76.41938189999928,
+              "index_bytes": 287129600,
+              "label": "same_source_cache_reopen",
+              "source_pages": 400000,
+              "total_results": 400000,
+              "updated_index_rows": 0
+            }
+          ],
+          "created_pid": 1056,
+          "disk": {
+            "application_profile": {
+              "allocated_bytes": null,
+              "allocation_method": "NOT_MEASURED",
+              "entries": 20045,
+              "files": 20036,
+              "logical_bytes": 1145119624
+            },
+            "benchmark_evidence": {
+              "allocated_bytes": null,
+              "allocation_method": "NOT_MEASURED",
+              "entries": 39,
+              "files": 37,
+              "logical_bytes": 29270
+            },
+            "external_originals": {
+              "allocated_bytes": null,
+              "allocation_method": "NOT_MEASURED",
+              "entries": 10000,
+              "files": 10000,
+              "logical_bytes": 102790003
+            },
+            "imports.sqlite": {
+              "main": 314601472
+            },
+            "library.sqlite": {
+              "main": 408240128
+            },
+            "note": "application_profile includes retained originals and SQLite files; categories overlap.",
+            "retained_originals": {
+              "allocated_bytes": null,
+              "allocation_method": "NOT_MEASURED",
+              "entries": 10021,
+              "files": 10021,
+              "logical_bytes": 102790948
+            }
+          },
+          "elapsed_seconds": 780.6565829000001,
+          "explicit_library_navigation": {
+            "pages": 2,
+            "selected": 21
+          },
+          "federated_cleanup_confirmed": true,
+          "implementation_unchanged": true,
+          "literal_page_latency": {
+            "maximum_seconds": 0.2874108000000888,
+            "minimum_seconds": 0.13490469999987909,
+            "p50_seconds": 0.15010345000018788,
+            "p95_method": "nearest rank",
+            "p95_seconds": 0.15939009999965492,
+            "samples": 4000
+          },
+          "memory": {
+            "coordinator_method": "GetProcessMemoryInfo.PeakWorkingSetSize",
+            "coordinator_peak_bytes": 60006400,
+            "largest_reaped_child_peak_bytes": null,
+            "simultaneous_family_peak_bytes": null
+          },
+          "operations": {
+            "authored_postcommit_crash": {
+              "batch_id": "cd94cd8ab9674a459f125ca24a6b3451",
+              "boundary": "durable batch save after actual owned worker return",
+              "committed": 1,
+              "elapsed_seconds": 1.6971815999999649,
+              "pid": 2368,
+              "schema": "carr-library-catalog-benchmark/1"
+            },
+            "import_slices": {
+              "maximum_seconds": 302.2399236000001,
+              "minimum_seconds": 1.6971815999999649,
+              "p50_seconds": 286.6440875999999,
+              "p95_method": "nearest rank",
+              "p95_seconds": 302.2399236000001,
+              "samples": 11
+            },
+            "measured_import_seconds": 2874.1389512999995,
+            "measured_scan_seconds": 58.69437789999972,
+            "note": "Measured API calls, including actual worker cleanup; coordinator downtime is excluded.",
+            "scan": {
+              "maximum_seconds": 5.991030799999976,
+              "minimum_seconds": 5.735616899999968,
+              "p50_seconds": 5.875516150000067,
+              "p95_method": "nearest rank",
+              "p95_seconds": 5.991030799999976,
+              "samples": 10
+            }
+          },
+          "originals": {
+            "declared_original_segments": 400000,
+            "verified_original_bytes": 102790003,
+            "verified_sources": 10000
+          },
+          "physical_or_human_quality": "NOT_ASSESSED",
+          "pid": 6964,
+          "schema": "carr-library-catalog-benchmark/1",
+          "search_memory_allowance_bytes": 67108864,
+          "semantic_model": "NOT_RUN",
+          "separate_process": true,
+          "simultaneous_family_peak": "NOT_MEASURED",
+          "source_books": 10000,
+          "source_segments": 400000,
+          "source_windows": 4000,
+          "startup_seconds": 6.249260999999933,
+          "status": "MEASURED_SYNTHETIC_CORPUS",
+          "unicode_quotations": [
+            {
+              "book": 0,
+              "last_segment": 40,
+              "quote_sha256": "a3b67c7104a1427359b00c7e9cad51df5e2f14b34149025d5288ee3dd7927da9",
+              "source_windows": 1
+            },
+            {
+              "book": 9999,
+              "last_segment": 40,
+              "quote_sha256": "6a09445b9c41b33fdf51a0108b6dbc9a3fafabe38a5be6b3ea1b5b663a6f6b3b",
+              "source_windows": 1
+            }
+          ],
+          "worker_peaks": {
+            "maximum_worker_own_peak_bytes": 46219264,
+            "measured_worker_exits": 11,
+            "methods": [
+              "GetProcessMemoryInfo.PeakWorkingSetSize"
+            ],
+            "note": "Actual per-worker exit peaks; concurrent family peak is not measured.",
+            "simultaneous_family_peak_bytes": null
+          }
+        },
+        "semantic_model": "NOT_RUN",
+        "simultaneous_family_peak": "NOT_MEASURED",
+        "status": "MEASURED_SYNTHETIC_CORPUS",
+        "tier": "books-10000"
+      },
+      "package_files": 426,
+      "package_sha256": "805d2713cccb7ee797412ff3aac0977c414f846580d83850cb589bdaa2ec3bd1",
+      "phase_admissions": {
+        "benchmark/state.json": {
+          "disk": {
+            "components": {
+              "catalog_estimate_bytes": 717970009,
+              "fixture_manifest_estimate_bytes": 107524096,
+              "free_reserve_bytes": 1073741824,
+              "journal_estimate_bytes": 369420006,
+              "memory_headroom_bytes": 1342177280,
+              "original_bytes": 102790003,
+              "retained_bytes": 102790003,
+              "search_spool_budget_bytes": 4294967296
+            },
+            "free_bytes": 235824242688,
+            "required_estimate_bytes": 6769203237,
+            "total_bytes": 236205371392
+          },
+          "memory": {
+            "available_bytes": 14362292224,
+            "cgroup": null,
+            "method": "GlobalMemoryStatusEx.ullAvailPhys",
+            "required_headroom_bytes": 1342177280
+          },
+          "note": "Admission estimates are not measured application use or enforced memory limits.",
+          "reason": null,
+          "status": "READY_FOR_FIXTURE"
+        }
+      },
+      "platform": "Windows-10-10.0.20348-SP0",
+      "python": "3.11.9 (tags/v3.11.9:de54cf5, Apr  2 2024, 10:12:12) [MSC v.1938 64 bit (AMD64)]",
+      "run_id": 46124999025,
+      "runner_capacity": {
+        "fixture": "D:\\a\\_temp\\carr-scale-books-10000-cmfwesp6\\fixture",
+        "observed_roots": [
+          {
+            "canonical_path": "D:\\a\\_temp",
+            "free_bytes": 236044353536,
+            "identity": [
+              1356536314,
+              281474976710694,
+              16895,
+              16
+            ],
+            "name": "RUNNER_TEMP",
+            "supplied_path": "D:\\a\\_temp",
+            "total_bytes": 236205371392
+          },
+          {
+            "canonical_path": "C:\\Users\\runneradmin\\AppData\\Local\\Temp",
+            "free_bytes": 82587783168,
+            "identity": [
+              2695480082,
+              1407374883585200,
+              16895,
+              16
+            ],
+            "name": "python_tempfile",
+            "supplied_path": "C:\\Users\\RUNNER~1\\AppData\\Local\\Temp",
+            "total_bytes": 274284392448
+          }
+        ],
+        "private_parent": "D:\\a\\_temp\\carr-scale-books-10000-cmfwesp6",
+        "private_parent_identity": [
+          1356536314,
+          281474976712777,
+          16895,
+          16
+        ],
+        "resource_admission": "NOT_YET_RUN; generator, import and backup keep their own preflight",
+        "selected_root": {
+          "canonical_path": "D:\\a\\_temp",
+          "free_bytes": 236044353536,
+          "identity": [
+            1356536314,
+            281474976710694,
+            16895,
+            16
+          ],
+          "name": "RUNNER_TEMP",
+          "supplied_path": "D:\\a\\_temp",
+          "total_bytes": 236205371392
+        },
+        "selection": "larger measured free space among two known runner temporary roots"
+      },
+      "schema": "carr-final-scale-artifact-harvest/1",
+      "scope": "READ_ONLY_SAVED_ACTUAL_REPORTS_NO_CORPUS_REPLAY",
+      "scripts": {
+        "benchmark_library_backup.py": "8cf97171449547b2636daadd1602b7c0ffcc1c77d9d29b933d0ecb1f8eb0e57b",
+        "benchmark_library_catalog.py": "582b5fbc2d4ff1a39bfc5e68de582895138831a4ad763a1465c3a4e1ee275238",
+        "benchmark_library_scale.py": "9ab82726e5e61e085302db94f322a1e12914538d447685b677a4c66a2532149d"
+      },
+      "selected_json_bytes": 180662,
+      "selected_origins": {
+        "carr_library.application": {
+          "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\application.py",
+          "sha256": "9239ea355b5c5a38d24097720e2489bde7ba15ad7381aba6082eb187c7fe131a"
+        },
+        "carr_library.audio.cleanup": {
+          "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\audio\\cleanup.py",
+          "sha256": "35af682e01736cee2b91b8ad2e10110aa7fb708b0584f60733f8fe2dd2600103"
+        },
+        "carr_library.audio.process": {
+          "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\audio\\process.py",
+          "sha256": "70c485f69ffc5e5c26d29a3e56bccbf2cd231a45cb16668f42accc3c81a57bfb"
+        },
+        "carr_library.backup_budget": {
+          "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\backup_budget.py",
+          "sha256": "f9e34ea0a38e446fdd7218c3708bb6a65bd7093178e985b700fe4d0d34442a8b"
+        },
+        "carr_library.backup_current": {
+          "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\backup_current.py",
+          "sha256": "4d1f3fbef0e7c53998310cb1362fa2cb98d2dd43a90c32b1e9ccd32546e0d644"
+        },
+        "carr_library.backup_producers": {
+          "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\backup_producers.py",
+          "sha256": "8895d2ca9b7533eff67f590cc06569a5d1821108f0fbd7e2f3ebfe458cb092be"
+        },
+        "carr_library.backup_sidecars": {
+          "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\backup_sidecars.py",
+          "sha256": "bbea423dbaef7d2c396b4b8092bd8ffa9fbe538c88f3a1917ced735bbb4e0da4"
+        },
+        "carr_library.backup_transcription": {
+          "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\backup_transcription.py",
+          "sha256": "b32790b54edba557dd54b83af00a92c214971e9cadf9d066b2e59adfecc193e9"
+        },
+        "carr_library.catalog.intake": {
+          "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\catalog\\intake.py",
+          "sha256": "9ac86c0fce3a205d4e9dc2eb3f06f6a5bf85a82dfd643e858c06a2d12813ad28"
+        },
+        "carr_library.catalog.membership": {
+          "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\catalog\\membership.py",
+          "sha256": "1616e05e3433b22b47dc7e96e5893f777f9c0ca06a9bd63a113b2955616ed937"
+        },
+        "carr_library.catalog.read_views": {
+          "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\catalog\\read_views.py",
+          "sha256": "d5d87ffc31f1d44862d7717dc322ef169e53367261e2dbd51ed13d3b17c09687"
+        },
+        "carr_library.catalog.registration": {
+          "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\catalog\\registration.py",
+          "sha256": "602b78bbffd8220b8de22208efe777b41786379c7603f1d5a5aea7d2930432ef"
+        },
+        "carr_library.citations.historical": {
+          "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\citations\\historical.py",
+          "sha256": "a4421f05e5c80c614219c4b4b00456d7f1ac6b66e2cd769045a0b9c711613d9e"
+        },
+        "carr_library.citations.pdf_review_attestation": {
+          "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\citations\\pdf_review_attestation.py",
+          "sha256": "474763e81f29d2fbb60288ba079509d7634246732e53fd85d43cc1b0436a2645"
+        },
+        "carr_library.citations.text_attestation": {
+          "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\citations\\text_attestation.py",
+          "sha256": "a58cc9df3eefe1652c32953665b36b418a18576a2efdf2a622cb684d24594a3e"
+        },
+        "carr_library.durable_state": {
+          "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\durable_state.py",
+          "sha256": "9b173d6cde27dd4362a920b01283cec0cbaaa42e4569f96e5b9bd24f6bd156b8"
+        },
+        "carr_library.extract.page_ocr": {
+          "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\extract\\page_ocr.py",
+          "sha256": "5cda8df281b7644f2e0037fc1427dded513a7e2dbdea9c744700f728bb648c41"
+        },
+        "carr_library.extract.raster_pages": {
+          "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\extract\\raster_pages.py",
+          "sha256": "5590e87310cbc21541ccbe28ecd5164e8c8abd9a2a6be4c584c0ad427811bb9a"
+        },
+        "carr_library.extract.runtime_identity": {
+          "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\extract\\runtime_identity.py",
+          "sha256": "7cf8684d7dc99cf4c5dfb9f3bd634c2b3dc2411f15ab60195d80d6d48931d1f9"
+        },
+        "carr_library.ingest.batch_pages": {
+          "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ingest\\batch_pages.py",
+          "sha256": "64031c10dc86579d4122378f625c95351ad26c638a644c95efbf04967b417ac4"
+        },
+        "carr_library.ingest.batch_scan": {
+          "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ingest\\batch_scan.py",
+          "sha256": "8d1f3a30b46b7bd3aa759e49609c072bdecf0a74cfc9ffcc346c909d7092e5ca"
+        },
+        "carr_library.ingest.batches": {
+          "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ingest\\batches.py",
+          "sha256": "8f48ae93a34920d6cc857d93b4c165640e4d46fd085477b8f78c795ecde02e29"
+        },
+        "carr_library.ingest.catalog_asset_copy": {
+          "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ingest\\catalog_asset_copy.py",
+          "sha256": "a06a6dda7177b22f1af55b388fb599e6f0369df77a69ee3e436287d757078d88"
+        },
+        "carr_library.ingest.pipeline": {
+          "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ingest\\pipeline.py",
+          "sha256": "a47c7b809d00042f454d385c1210b1a547a8d8ba72e75e14e0a6e53ddb89cb63"
+        },
+        "carr_library.ingest.publication_identity": {
+          "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ingest\\publication_identity.py",
+          "sha256": "7808ac278b60bb15e9b39512186b5118cc7741d7007fefa015e95fd5096ebc07"
+        },
+        "carr_library.ingest.reconciliation": {
+          "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ingest\\reconciliation.py",
+          "sha256": "48d6750a4f9bce48f3c6edb7c9076ddaa2737519f24a03ff9490f2741e479a71"
+        },
+        "carr_library.ingest.resource_budget": {
+          "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ingest\\resource_budget.py",
+          "sha256": "8ead273af549219f6ca48541e3f6be5f162e1299929d3c6718df9d356cd3f6fb"
+        },
+        "carr_library.ingest.restore": {
+          "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ingest\\restore.py",
+          "sha256": "597f6dd758df252004084ad3cdadcb028ee68a5796bf2c2919098a6dfbf33859"
+        },
+        "carr_library.ingest.retained_assets": {
+          "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ingest\\retained_assets.py",
+          "sha256": "9444911ed72158103d87e5551b2d7f24ab1b30b686af8a8788bf9f0a965e0eb6"
+        },
+        "carr_library.ingest.session": {
+          "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ingest\\session.py",
+          "sha256": "ced3447525e22ae557c25a70e27d47a97bdc1d57b4ee264a12085e3df5641598"
+        },
+        "carr_library.ingest.slices": {
+          "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ingest\\slices.py",
+          "sha256": "7fbe9314fc305d723e8f1f9260fad3c36c052867c30519058791cb14fd964376"
+        },
+        "carr_library.ingest.worker": {
+          "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ingest\\worker.py",
+          "sha256": "f86183b6c26c0a38c4829003c16063693148424e3e50039c86a32dd25435e310"
+        },
+        "carr_library.library_backup": {
+          "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\library_backup.py",
+          "sha256": "752054dded62c442708cec597d5af39dfa47ebd66b1e662e494d668eba8f9d2e"
+        },
+        "carr_library.operations.broker": {
+          "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\operations\\broker.py",
+          "sha256": "24940baa024716fb6e23bd052e427cbed17e2434098de3594e8cae47d307195b"
+        },
+        "carr_library.operations.models": {
+          "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\operations\\models.py",
+          "sha256": "cb711ae7bde38c77fe039678afe1b57b56bd85d653fb982284fbef43f62b2545"
+        },
+        "carr_library.pending_backup": {
+          "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\pending_backup.py",
+          "sha256": "60ead9abcc82f473cf2d321b7fc8e97cb66ba256cd86d56e5aad886c38a8106f"
+        },
+        "carr_library.search.federated": {
+          "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\search\\federated.py",
+          "sha256": "5453979f2b69f33a1a497e6bfa9b8daf4618872354e49d1a0d761e48336b6583"
+        },
+        "carr_library.search.literal": {
+          "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\search\\literal.py",
+          "sha256": "ccb413548f5115ed487430bbd6ae5b284e2b98afb8946e9ef46051c18e5f62d6"
+        },
+        "carr_library.search.paging": {
+          "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\search\\paging.py",
+          "sha256": "1485292255ea2fb389307aab31f9ceac99e9b34e6932edc18fca6a5381369d98"
+        },
+        "carr_library.search.ranked_scope": {
+          "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\search\\ranked_scope.py",
+          "sha256": "bf9d70393a41d8069371eb449c4a863abe1f4ee6943701aa69d1def838c48691"
+        },
+        "carr_library.search.semantic_windows": {
+          "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\search\\semantic_windows.py",
+          "sha256": "453e5a64c48b55c4415971e5bd1b75fdb7be0c795f61aa73b01fac4270f0e9fe"
+        },
+        "carr_library.search.thematic": {
+          "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\search\\thematic.py",
+          "sha256": "811e87ce340f43ec8d5336045425d389f05c94eb08b1ac80768360ed66bf24e6"
+        },
+        "carr_library.semantic": {
+          "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\semantic.py",
+          "sha256": "15384da7582ed9e0d39b464b361393addf7029c64fd2df2b1cad4ba40f7ba0d4"
+        },
+        "carr_library.storage.publication": {
+          "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\storage\\publication.py",
+          "sha256": "c70fc5e102613bd6ae1fa60f7640c9921c1325d615b377994c3abce4f49c60d7"
+        },
+        "carr_library.storage.revisions": {
+          "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\storage\\revisions.py",
+          "sha256": "5d83c85838bbbf441618143106ffed4514e8185485955fdb310ec221cb08d419"
+        }
+      },
+      "selected_sha256": {
+        "backup-capacity-before-import.json": "50a3a6ee1e6cccd86dfac8ca00efc943479c04742d577366ef1653ef968096b2",
+        "collected-evidence.json": "4c1b78e1726aa574347e3887a37f264c64084c07c361837db667a1f0aadb3be0",
+        "fixture-evidence/benchmark/authored-crash.json": "5053af006b6e48297ad3cedf20d93fd005be0ac280eeb8ec7cd61718a6c80835",
+        "fixture-evidence/benchmark/catalog-verification.json": "d0ec4c6c8d8207194dfc1fed761c1876a567c12b533d56a5c05f9c7cd2def754",
+        "fixture-evidence/benchmark/search-measurements.json": "0d3c8e2105c27b3bb804223cca76e976f8adfe8791ec7731046b22d9056486be",
+        "fixture-evidence/benchmark/state.json": "7d564a2d1deb5c590488c6240ac6b1df0b2b56fcd2c87160b1cd468dca1bdc21",
+        "fixture-evidence/generation.json": "c13fafdff0ad653a62d1ebd9099f1aecccb5d43bfb711b169cd4805aecc4f675",
+        "fixture-evidence/preflight.json": "d3eb1c227c88fa6bffa21fa24840f552a89f0fa8d45d704928e662a33aa39f01",
+        "installed-after.json": "624a60a0899f6778ee529a5308f414ab442b05b220bae197411280626373bdea",
+        "installed-before.json": "624a60a0899f6778ee529a5308f414ab442b05b220bae197411280626373bdea",
+        "outcome.json": "f9415285accf7346250729642e4c4b1a6b53569ad2cac2e558c01fc650675d45",
+        "runner-capacity.json": "35012394da9819b7680fdfc73348e024ab352f265bc26ebf8de85ff7cbb8c982"
+      },
+      "selection": {
+        "artifact_id": 15258103267,
+        "conclusion": "success",
+        "job_id": 140917529730,
+        "os": "windows-2022",
+        "sha256": "ff9bd0d1924b436ccfb374746b487c6090261efad680c1c8ef2a8914c93ad140",
+        "size_in_bytes": 17003987,
+        "tier": "books-10000"
+      },
+      "sqlite": "3.45.1",
+      "target": "71ca92be691455d0ff51ed163b1d91749e5ae62e"
+    }
+  ],
+  "remaining": {
+    "jobs": 4,
+    "tiers": [
+      "books-50000 / ubuntu-24.04",
+      "books-50000 / windows-2022",
+      "text-2g / ubuntu-24.04",
+      "text-2g / windows-2022"
+    ],
+    "required_full_backup_and_fresh_restore_verdicts": 4,
+    "status": "RUNNING_NOT_QUALIFIED"
+  },
+  "overall_final_merge_acceptance": "NOT_COMPLETE; original main/V3 failures and corrected-head gates remain separate."
+}

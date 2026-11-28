@@ -1,0 +1,52 @@
+{
+  "schema": "carr.preparation-native-withdrawal-fix.v1",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "path": "carr-library/scripts/windows_speech_preparation_smoke.py",
+  "base": "7f468b9454e22fa021848b05fd1c4aaa96bf1542",
+  "after": "ac76d8f4f73dc33a4d15042540537c509386af8b",
+  "source_readback": "EXACT",
+  "actual_failed_composition": {
+    "head": "bdc3c6f1383f39e9c0b8e6f60c694a11a5fbb515",
+    "run": 46130308277,
+    "job": 140935317017,
+    "evidence": "03aa9e9e6a335263af60dd78a2cbf3f2de7638e6",
+    "decoded_raw": "661657b1dbd2924162973acfea141baaba2ae730",
+    "assertion": "direct destruction withdraws the genuine worker result",
+    "old_line": 596,
+    "returncode": 1,
+    "exact_identity_after": "PASS",
+    "failed_operand": "UNKNOWN: the old assertion combined native-peer deletion with current-document equality."
+  },
+  "source_boundary": {
+    "ui": "82a06fedeb15ed7513a47e0379816e5a750c5015",
+    "reader_host": "e8d611c1077ede505e74663d282db3d02f0bcac5",
+    "logical_withdrawal": "Destroy synchronously sets alive=False and the private withdrawal event before delegating wx.Dialog.Destroy.",
+    "native_deletion": "The documented native dialog deletion may wait until idle; worker CallAfter delivery does not itself acknowledge that deletion.",
+    "primary_reference": "https://docs.wxpython.org/wx.Window.html#wx.Window.Destroy",
+    "claim_scope": "Source-supported acknowledgement gap; deferred deletion is not asserted as an independently observed operand of the failed compound assertion."
+  },
+  "changes": [
+    "Bind the real held-result dialog to its existing cached-native-ID destruction observer.",
+    "Before releasing the genuine completed worker result, independently assert immediate logical withdrawal and unchanged document.",
+    "Within the same existing 20-second completion wait, require actual returned and delivered work plus exactly one matching native destruction and a false native peer for the direct-destruction scenario.",
+    "Retain the original final dead-peer/document equality and genuine late-callback replay assertions verbatim."
+  ],
+  "unchanged": [
+    "Production/UI/reader code",
+    "Owned parent and isolated --native-child launch",
+    "360-second parent,330-second child,270-second scenario and20-second completion wait",
+    "Real native keys, focus, full viewport and nested-modal negative control",
+    "Every EN/UK/SK text/source-map/history/recovery and Studio Save/Undo oracle",
+    "One actual native destruction per dialog and exact installed/script/license before-after proof"
+  ],
+  "peer_review": {
+    "reviewer": "import_recovery_review",
+    "verdict": "SOURCE_APPROVED",
+    "comparison": "Mechanical reversal recovers every base byte; current producer, cached-ID observation, timer and lifetime contracts independently read."
+  },
+  "runtime": "NOT_RUN for ac76. Root will execute the existing composed native preflight; no separate component workflow or final ref mutation.",
+  "prior_component_evidence": "9033d18c80d3ea299122968fe9075dac5ee128a5",
+  "physical_audio": "NOT_RUN",
+  "speech_quality": "NOT_RUN",
+  "NVDA": "NOT_RUN"
+}

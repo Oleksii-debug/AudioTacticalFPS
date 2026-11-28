@@ -1,0 +1,53 @@
+{
+  "schema": "carr-final-maintained-selector-syntax/1",
+  "status": "PASS_SYNTAX_ONLY",
+  "head": "2de5ee3d4e6e373ab8562f52e6fa8f4abe5d0380",
+  "tree": "5f328db32882f3ec7661c2ad1f54aceb6415af46",
+  "run_id": 46132103113,
+  "job_id": 140939309074,
+  "source_parent": "11589b7a19911d0c20c526fbf8186e9adfb41859",
+  "source_tree": "02498e5525522a78fed306925f07c040082e480a",
+  "raw_log_blob": "68d3ed75e2a7f0b1d6ee345795500af8742ffef6",
+  "python_yaml": {
+    "entrypoints": 6,
+    "head": "2de5ee3d4e6e373ab8562f52e6fa8f4abe5d0380",
+    "powershell_blocks_pending": 43,
+    "python_blocks": 11,
+    "python_files": 1246,
+    "scope": "Python compile, duplicate-free YAML, current workflow module/native paths",
+    "status": "PASS",
+    "workflows": [
+      ".github/workflows/carr-bibliography.yml",
+      ".github/workflows/carr-calibre-reading-review.yml",
+      ".github/workflows/carr-final-workflow-syntax.yml",
+      ".github/workflows/carr-legacy-reading-review.yml",
+      ".github/workflows/carr-library-scale.yml",
+      ".github/workflows/carr-native-launcher.yml",
+      ".github/workflows/carr-v3.yml",
+      ".github/workflows/carr-windows.yml"
+    ]
+  },
+  "powershell": {
+    "status": "PASS",
+    "blocks": 43,
+    "errors": []
+  },
+  "maintained_workflows": {
+    "main": "ffd99edb913e37f76c0cd7a8ad338b84538cd8a9",
+    "v3": "58756c7778f90484df7dbf563dfdf9f0b40f982b"
+  },
+  "source_review": "5146c44256d15d2b0a5adcbdfbfa81c5055f1da1",
+  "artifacts": [
+    {
+      "id": 15258238926,
+      "name": "final-composition-syntax-2de5ee3d4e6e373ab8562f52e6fa8f4abe5d0380",
+      "size_in_bytes": 101844,
+      "digest": "sha256:3ae0ff124bc9d3c53b4f1679c3987527d1d991b3c0bdbfdac2a4f3f5e58cc432"
+    }
+  ],
+  "limits": [
+    "Syntax acceptance does not execute or qualify the native scopes, tests or sealed/offline bundle.",
+    "The separate bdc3 native speech-preparation failure still requires diagnosis and correction.",
+    "The later bounded-diagnostic helper2952 was not in this source."
+  ]
+}

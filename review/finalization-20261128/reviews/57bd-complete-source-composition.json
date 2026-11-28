@@ -1,0 +1,171 @@
+{
+  "schema": "carr-final-source-composition-amendment-review/1",
+  "status": "SOURCE_COMPOSITION_APPROVED_RUNTIME_NOT_TRANSFERRED",
+  "candidate": {
+    "head": "57bd81ebabc0df2ffc4106c44b94805ee2da7588",
+    "tree": "b58326e5724c64eea195814ac198c4237720292c",
+    "entries": 1664,
+    "blobs": 1567,
+    "truncated": false
+  },
+  "parent": {
+    "head": "11589b7a19911d0c20c526fbf8186e9adfb41859",
+    "tree": "02498e5525522a78fed306925f07c040082e480a",
+    "independent_composition_evidence": "ef655edb386aec113d8f4d1ac1fd3d0619645eb4"
+  },
+  "baseline": {
+    "head": "71ca92be691455d0ff51ed163b1d91749e5ae62e",
+    "tree": "73c43b7486974a7b301aa8c210c891b4d94ddb0d",
+    "total_changed_blobs": 19
+  },
+  "amendment": {
+    "changed_blobs": [
+      {
+        "path": ".github/workflows/carr-library-scale.yml",
+        "base": "75994a6df89d8b1d38ce96a82e36f159eae32283",
+        "sha": "a15383d04d22e6c4085cb5672dab74556fea372a",
+        "mode": "100644",
+        "type": "blob"
+      },
+      {
+        "path": "carr-library/docs/LARGE_LIBRARY_SCALE.md",
+        "base": "730547027a66e471181bc7e4f93c9d650f821e3f",
+        "sha": "ad9b0eddd196ffccddea31dfb8185395e04b3289",
+        "mode": "100644",
+        "type": "blob"
+      },
+      {
+        "path": "carr-library/scripts/run_final_scope_native.py",
+        "base": "b3beaa992d508f42672fdfa5cd15c5cb96f04af7",
+        "sha": "29529724af1dea6c8bd0cfb83f990eaa8c82ee1c",
+        "mode": "100644",
+        "type": "blob"
+      },
+      {
+        "path": "carr-library/scripts/windows_speech_preparation_smoke.py",
+        "base": "7f468b9454e22fa021848b05fd1c4aaa96bf1542",
+        "sha": "ac76d8f4f73dc33a4d15042540537c509386af8b",
+        "mode": "100644",
+        "type": "blob"
+      }
+    ],
+    "added_paths": [],
+    "removed_paths": [],
+    "all_entry_modes_and_types_preserved": true
+  },
+  "canonical": {
+    "head": "e5c64a5245583f8f8b404a0f042f6ca438c24d7f",
+    "retained_paths": 910,
+    "missing_or_changed_type_mode": 0,
+    "source": "same exact canonical snapshot independently checked in parent evidence; no canonical ref mutation"
+  },
+  "product_comparison": {
+    "reference_head": "bdc3c6f1383f39e9c0b8e6f60c694a11a5fbb515",
+    "prefixes": [
+      "carr-library/src/",
+      "carr-library/bootstrap/",
+      "carr-library/packaging/"
+    ],
+    "files": 654,
+    "all_bytes_modes_types_equal": true
+  },
+  "maintained_workflows": [
+    {
+      "path": ".github/workflows/carr-bibliography.yml",
+      "sha": "5a61e842d3bb70591fc3e5f3d0a9cb829ea8f882"
+    },
+    {
+      "path": ".github/workflows/carr-calibre-reading-review.yml",
+      "sha": "2de8f8fdcb91ef8ad42109cd71e8a76cdfe6c2b3"
+    },
+    {
+      "path": ".github/workflows/carr-legacy-reading-review.yml",
+      "sha": "13168b80c241db1f8b59f2c90b7319b002daec08"
+    },
+    {
+      "path": ".github/workflows/carr-library-scale.yml",
+      "sha": "a15383d04d22e6c4085cb5672dab74556fea372a"
+    },
+    {
+      "path": ".github/workflows/carr-native-launcher.yml",
+      "sha": "0e8ce239bd8f00648a957ddda71088e9fa819c16"
+    },
+    {
+      "path": ".github/workflows/carr-v3.yml",
+      "sha": "58756c7778f90484df7dbf563dfdf9f0b40f982b"
+    },
+    {
+      "path": ".github/workflows/carr-windows.yml",
+      "sha": "ffd99edb913e37f76c0cd7a8ad338b84538cd8a9"
+    }
+  ],
+  "temporary_workflows_present": false,
+  "qualified_importer": {
+    "paths": [
+      {
+        "path": "carr-library/src/carr_library/ingest/worker.py",
+        "sha": "63f5d2ef09c584d94f0be761b6c264b31f568802"
+      },
+      {
+        "path": "carr-library/src/carr_library/ingest/pipeline.py",
+        "sha": "cf6ffa2cece1bfaa47a76d230934f93d69dea17e"
+      },
+      {
+        "path": "carr-library/tests/e2e/test_import_files_cancellation.py",
+        "sha": "6e1b58a0fcecc2b83c7b941dc07a80a973a52c2d"
+      },
+      {
+        "path": "carr-library/tests/operations/test_ocr_admission.py",
+        "sha": "0eb4b0f9d144c002700a5708ebc188f1b018d4e8"
+      }
+    ],
+    "evidence": "59db4383dde5426f77650b3996bc2da3d984b005",
+    "handoff": "d8c9f855bec8111f5b4aa49b98b76c3ca4d29f50",
+    "source_and_installed_cases_per_os": 141,
+    "qualification_scope": "earlier exact 5b87 component only; not a runtime claim for this head"
+  },
+  "finite_amendment_checks": {
+    "preparation_probe": {
+      "exact_reviewed_blob": "ac76d8f4f73dc33a4d15042540537c509386af8b",
+      "preimage": "7f468b9454e22fa021848b05fd1c4aaa96bf1542",
+      "mechanical_reverse_recovers_preimage": true,
+      "same_completion_wait_seconds": 20,
+      "additive_immediate_owner_and_document_checks": true,
+      "actual_cached_id_destroy_event_and_false_peer_required": true,
+      "old_final_document_and_late_replay_oracles_retained": true,
+      "product_and_launch_unchanged": true,
+      "failed_prior_compound_operand": "NOT_OBSERVED"
+    },
+    "native_helper": {
+      "blob": "29529724af1dea6c8bd0cfb83f990eaa8c82ee1c",
+      "scope": "only failure diagnostics from already collected stdout/stderr; last 8192 characters per channel, fixed synthetic acceptance probes; complete artifact records and original failure outcome retained"
+    },
+    "scale_workflow": {
+      "blob": "a15383d04d22e6c4085cb5672dab74556fea372a",
+      "mechanical_reverse_recovers_preimage": true,
+      "only_selected_disk_policy_changes": [
+        {
+          "tier": "books-50000",
+          "old_spool_mib": 4096,
+          "new_spool_mib": 8192
+        },
+        {
+          "tier": "text-2g",
+          "old_spool_mib": 8192,
+          "new_spool_mib": 16384
+        }
+      ],
+      "source_counts_memory_import_scratch_deadlines_and_all_oracles_unchanged": true
+    },
+    "scale_guide": {
+      "blob": "ad9b0eddd196ffccddea31dfb8185395e04b3289",
+      "scope": "documents the failed original 2 GiB warm-cache oracle, distinguishes source-supported explanation from unreported failing index measurements, updates exactly the two declared disk profiles, and requires new exact-head full executions; no largest-tier backup success transferred"
+    }
+  },
+  "limitations": [
+    "Read-only composition and finite source review; no new runtime execution or final ref mutation.",
+    "The active 6c7e preflight is owned by reader/root. Its outcome is not inferred here.",
+    "The original preparation failure exposed a compound assertion; the failed operand remains unknown until runtime evidence.",
+    "Prior component results and successful smaller corpus tiers do not qualify this amended head or largest-tier backup roundtrips."
+  ]
+}

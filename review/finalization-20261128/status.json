@@ -1,6 +1,6 @@
 {
-  "schema": "carr-finalization-continuation/18",
-  "observed_utc": "2026-11-28 10:02:18 UTC",
+  "schema": "carr-finalization-continuation/19",
+  "observed_utc": "2026-11-28 10:39:00 UTC",
   "repository": "Oleksii-debug/AudioTacticalFPS",
   "pr": 143,
   "current_pr": {
@@ -11,7 +11,7 @@
     "base": "carr-library",
     "pr": 143,
     "ref_readback": true,
-    "status": "PUBLISHED_GATES_PENDING"
+    "status": "ACTUAL_REQUIRED_GATES_FAILED; MUST_NOT_MERGE"
   },
   "current_head_may_merge": false,
   "canonical": "e5c64a5245583f8f8b404a0f042f6ca438c24d7f",
@@ -21,206 +21,234 @@
     "root_agents": "080bb9104d3224749e9317c2273d803c0ac37835"
   },
   "prepared_final": {
-    "head": "11589b7a19911d0c20c526fbf8186e9adfb41859",
-    "tree": "02498e5525522a78fed306925f07c040082e480a",
+    "head": "57bd81ebabc0df2ffc4106c44b94805ee2da7588",
+    "tree": "b58326e5724c64eea195814ac198c4237720292c",
     "files": 1567,
-    "changed_paths": [
+    "parent": "11589b7a19911d0c20c526fbf8186e9adfb41859",
+    "changes_from_parent": [
       {
-        "path": ".github/workflows/carr-v3.yml",
+        "path": "carr-library/scripts/run_final_scope_native.py",
         "mode": "100644",
         "type": "blob",
-        "sha": "58756c7778f90484df7dbf563dfdf9f0b40f982b"
+        "sha": "29529724af1dea6c8bd0cfb83f990eaa8c82ee1c"
       },
       {
-        "path": ".github/workflows/carr-windows.yml",
+        "path": "carr-library/scripts/windows_speech_preparation_smoke.py",
         "mode": "100644",
         "type": "blob",
-        "sha": "ffd99edb913e37f76c0cd7a8ad338b84538cd8a9"
+        "sha": "ac76d8f4f73dc33a4d15042540537c509386af8b"
+      },
+      {
+        "path": ".github/workflows/carr-library-scale.yml",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "a15383d04d22e6c4085cb5672dab74556fea372a"
       },
       {
         "path": "carr-library/docs/LARGE_LIBRARY_SCALE.md",
         "mode": "100644",
         "type": "blob",
-        "sha": "730547027a66e471181bc7e4f93c9d650f821e3f"
-      },
-      {
-        "path": "carr-library/docs/V3_RELEASE_READINESS.md",
-        "sha": "b87307627e45f9a5f39e1062e5cbc7998f832828",
-        "mode": "100644",
-        "type": "blob"
-      },
-      {
-        "path": "carr-library/packaging/build_windows_bundle.py",
-        "mode": "100644",
-        "type": "blob",
-        "sha": "6e5cbea9d9b92ebc86ec129ebd1cd72bc369a971"
-      },
-      {
-        "path": "carr-library/packaging/refresh_private_bundle.py",
-        "mode": "100644",
-        "type": "blob",
-        "sha": "a0ada7add5d2b10c820579463bb1bef99a9e5c54"
-      },
-      {
-        "path": "carr-library/src/carr_library/ingest/pipeline.py",
-        "mode": "100644",
-        "type": "blob",
-        "sha": "cf6ffa2cece1bfaa47a76d230934f93d69dea17e"
-      },
-      {
-        "path": "carr-library/src/carr_library/ingest/worker.py",
-        "mode": "100644",
-        "type": "blob",
-        "sha": "63f5d2ef09c584d94f0be761b6c264b31f568802"
-      },
-      {
-        "path": "carr-library/tests/e2e/test_import_files_cancellation.py",
-        "mode": "100644",
-        "type": "blob",
-        "sha": "6e1b58a0fcecc2b83c7b941dc07a80a973a52c2d"
-      },
-      {
-        "path": "carr-library/tests/operations/test_ocr_admission.py",
-        "mode": "100644",
-        "type": "blob",
-        "sha": "0eb4b0f9d144c002700a5708ebc188f1b018d4e8"
-      },
-      {
-        "path": "carr-library/tests/packaging/test_refresh_private_bundle_review.py",
-        "mode": "100644",
-        "type": "blob",
-        "sha": "796bf728f42157721ff7754ff0577f3ab1c584d4"
-      },
-      {
-        "path": "carr-library/tests/packaging/test_windows_bundle.py",
-        "mode": "100644",
-        "type": "blob",
-        "sha": "35bfe2d17d47c4ed6e2039121fff36450f765fdc"
-      },
-      {
-        "path": "carr-library/tests/ui/test_desktop_handlers.py",
-        "mode": "100644",
-        "type": "blob",
-        "sha": "6ef37550a8463a125de82e1f0628244d5e0e1d17"
-      },
-      {
-        "path": "carr-library/tests/packaging/test_preparation_notice_closure.py",
-        "mode": "100644",
-        "type": "blob",
-        "sha": "72ba5770af6fd355189fff990716c679b178943c"
-      },
-      {
-        "path": "carr-library/docs/AUDIO_SILENCE_INSPECTION.md",
-        "sha": "affe57cd4e4f2f88e1eb086f9f00ce0a2a85f741",
-        "mode": "100644",
-        "type": "blob"
-      },
-      {
-        "path": "carr-library/docs/WORD_DESKTOP_INTEGRATION.md",
-        "sha": "1c4ca4fc5275c92d5741e842b2c070b86a723bf4",
-        "mode": "100644",
-        "type": "blob"
+        "sha": "ad9b0eddd196ffccddea31dfb8185395e04b3289"
       }
     ],
-    "status": "PREPARED_NOT_PUBLISHED_TO_PR; native failure unresolved and final gates not run",
-    "product_and_packaging_bytes_equal_bdc3": true
-  },
-  "syntax_companion": {
-    "head": "2de5ee3d4e6e373ab8562f52e6fa8f4abe5d0380",
-    "tree": "5f328db32882f3ec7661c2ad1f54aceb6415af46",
-    "files": 1568,
-    "parent": "11589b7a19911d0c20c526fbf8186e9adfb41859",
-    "branch": "carr/final-workflow-syntax-20261128",
-    "source_tree": "02498e5525522a78fed306925f07c040082e480a",
-    "delta": [
-      {
-        "path": ".github/workflows/carr-final-workflow-syntax.yml",
-        "mode": "100644",
-        "type": "blob",
-        "sha": "a2c05998b2b2a24d86eee89a1480e5b943b81ac8"
-      }
-    ],
+    "changes_from_pr": 19,
     "verified": true,
-    "status": "PENDING_RUNTIME",
-    "run_id": 46132103113,
-    "job_id": 140939309074
+    "status": "PREPARED_PENDING_COHERENT_NATIVE_AND_REQUIRED_FINAL_GATES",
+    "source_reviews": {
+      "native_prep": "4b1fd670cb77b00047981d10402981a7c155ed40",
+      "scale": "12747fa1dc3baa765faf07cbb29d1335e3b29983"
+    },
+    "product_and_packaging_unchanged_from_11589": true,
+    "source_composition_review": "3500259691cab4cac762b9e70006c4f577bb0b2f",
+    "preceding_source_composition_review": "ef655edb386aec113d8f4d1ac1fd3d0619645eb4",
+    "published_to_pr": false
   },
-  "correction_evidence": {
-    "runtime_sbom": {
-      "status": "PASS",
-      "head": "eb9b66d67322c3c243d9b8f27bc8e93dd23fe3c9",
-      "run": 46130223315,
-      "record": "bfab85fc24f6ef6810b49c0c1a4a868bb7788def",
-      "cases_each_context": 42,
-      "subtests_each_context": 18
-    },
-    "fixtures": {
-      "status": "PASS",
-      "record": "8a8168ccdb4c1b6e30dd0b473f96f774b68abc2e",
-      "cases_each_context": 61
-    },
+  "active_preflight": {
+    "head": "6c7e02188dc0c4895cff17f69d75bcd61ee932a9",
+    "tree": "2a79d522d16ace9648f96d2742e074bebfd285bc",
+    "files": 1568,
+    "branch": "carr/final-scope-preflight-20261128",
+    "parents": [
+      "57bd81ebabc0df2ffc4106c44b94805ee2da7588",
+      "bdc3c6f1383f39e9c0b8e6f60c694a11a5fbb515"
+    ],
+    "candidate": "57bd81ebabc0df2ffc4106c44b94805ee2da7588",
+    "ref_readback": true,
+    "verified": true,
+    "status": "QUEUED; NO_RUNTIME_PASS",
+    "run": 46135090394,
+    "observed": "2026-11-28 10:36:07 UTC"
+  },
+  "completed_syntax": {
+    "head": "2de5ee3d4e6e373ab8562f52e6fa8f4abe5d0380",
+    "source_parent": "11589b7a19911d0c20c526fbf8186e9adfb41859",
+    "run": 46132103113,
+    "job": 140939309074,
+    "record": "5757752b46758985f25299493b7704622501698c",
+    "status": "PASS",
+    "python": 1246,
+    "embedded_python": 11,
+    "powershell": 43,
+    "workflows": 8,
+    "entrypoints": 6,
+    "limits": "Syntax only, predates four final amendments; no native or final-head acceptance."
+  },
+  "corrections": {
     "importer": {
       "head": "5b87b13974d57d1aeb59f92c78c0f64366fd8a8c",
       "run": 46130074946,
-      "linux": "PASS_141_SOURCE_141_INSTALLED",
-      "linux_evidence": "c84ca09dfb44b96ae11986fff800512db6cdfbbb",
-      "windows": "RUNNING; await owner exact completed evidence"
+      "status": "PASS_ALL_FOUR_CONTEXTS",
+      "source_and_installed_each_os": 141,
+      "failures": 0,
+      "skips": 0,
+      "expected_failures": 0,
+      "record": "59db4383dde5426f77650b3996bc2da3d984b005",
+      "handoff": "d8c9f855bec8111f5b4aa49b98b76c3ca4d29f50"
     },
-    "composed_preflight": {
-      "head": "bdc3c6f1383f39e9c0b8e6f60c694a11a5fbb515",
-      "run": 46130308277,
-      "syntax": "PASS_1246_PYTHON_11_EMBEDDED_43_POWERSHELL",
-      "native": "FAIL_AT_SPEECH_PREPARATION; cause pending fixed artifact decode"
+    "runtime_sbom": {
+      "head": "eb9b66d67322c3c243d9b8f27bc8e93dd23fe3c9",
+      "run": 46130223315,
+      "status": "PASS_ALL_FOUR_CONTEXTS",
+      "source_and_installed_each_os": 42,
+      "subtests_each_context": 18,
+      "record": "bfab85fc24f6ef6810b49c0c1a4a868bb7788def",
+      "literal_main_dependency_step": "PASS_52_PINS_PLUS_EXACT_8_VENDORED_FILES"
     },
-    "diagnostic_helper": {
-      "sha": "29529724af1dea6c8bd0cfb83f990eaa8c82ee1c",
-      "status": "SOURCE_APPROVED_NOT_YET_COMPOSED"
+    "fixtures": {
+      "run": 46128142463,
+      "status": "PASS_ALL_FOUR_CONTEXTS",
+      "source_and_installed_each_os": 61,
+      "record": "8a8168ccdb4c1b6e30dd0b473f96f774b68abc2e"
+    },
+    "native_preparation": {
+      "failed_head": "bdc3c6f1383f39e9c0b8e6f60c694a11a5fbb515",
+      "failed_run": 46130308277,
+      "diagnosis": "03aa9e9e6a335263af60dd78a2cbf3f2de7638e6",
+      "observed_assertion": "direct destruction withdraws the genuine worker result",
+      "operand_failure": "UNKNOWN: combined native peer deletion and accepted document comparison",
+      "source_review": "4b1fd670cb77b00047981d10402981a7c155ed40",
+      "probe": "ac76d8f4f73dc33a4d15042540537c509386af8b",
+      "helper": "29529724af1dea6c8bd0cfb83f990eaa8c82ee1c",
+      "status": "SOURCE_APPROVED_AND_IN_57BD; RUNTIME_PENDING",
+      "preserved": "Same deadlines, genuine held result, original final state/replay assertions, product and native launch ownership."
+    },
+    "scale_caller_policies": {
+      "workflow": "a15383d04d22e6c4085cb5672dab74556fea372a",
+      "guide": "ad9b0eddd196ffccddea31dfb8185395e04b3289",
+      "review": "12747fa1dc3baa765faf07cbb29d1335e3b29983",
+      "status": "SOURCE_APPROVED_AND_IN_57BD; RUNTIME_PENDING",
+      "books_50000_spool_mib": 8192,
+      "source_2gib_spool_mib": 16384,
+      "product_changed": false,
+      "guards_relaxed": false,
+      "causality": "Source-supported cache share mismatch; failed index size and cache branch are not observed."
     }
   },
   "original71ca_gates": {
-    "main": "FAIL inventory step12; record884ff0dabfe218d7d97c7da8d7e8edb843210b7e",
+    "main": {
+      "run": 46124998890,
+      "status": "FAIL_STEP12_INVENTORY",
+      "record": "884ff0dabfe218d7d97c7da8d7e8edb843210b7e"
+    },
     "v3": {
       "run": 46124998937,
-      "portable": "FAIL_10898_PASS_5_FAIL_42_SUBTESTS",
-      "windows_installed8": "FAIL; exact assertions pending completed job log",
-      "native9_11": "NOT_RUN",
-      "progress13": "PASS",
-      "broad14": "PASS",
-      "publication15": "PASS",
-      "shared16": "RUNNING"
+      "status": "COMPLETED_FAILURE",
+      "portable": {
+        "passed": 10898,
+        "failed": 5,
+        "subtests": 42,
+        "record": "a984e0a5a8d6454a520277d9f4628f224d59ba6c"
+      },
+      "windows": {
+        "installed": {
+          "passed": 9851,
+          "failed": 3,
+          "skipped": 0
+        },
+        "shared": {
+          "passed": 5228,
+          "failed": 3,
+          "skipped": 0
+        },
+        "broad": {
+          "passed": 5101,
+          "skipped": 8,
+          "skip_reasons": "NOT_DECODED"
+        },
+        "native_steps_9_11": "NOT_RUN",
+        "record": "5594f90582e6b0f2ba5b26e7c83e3f78870878ae"
+      },
+      "unique_failures": "Five; all map to exact qualified importer/fixture corrections."
     },
     "capacity": {
       "run": 46124999025,
-      "completed": 7,
-      "pending": 5,
-      "required_largest_backup_verdicts_pending": 4,
+      "observed_utc": "2026-11-28 10:22 UTC",
+      "pass": 8,
+      "fail": 1,
+      "running": 3,
+      "required_largest_backup_verdicts_completed": 0,
       "six_tier_metrics": "e9c9059cc506f40aa1a08d86776e779d61235938",
-      "linux_10000_receipt": "f6e59a812d86cfd1bca3a0aa5a41b72afb96c9df"
+      "both_10000_metrics": "114e9d7422a00e1426b18e9295b9f050b6775abc",
+      "linux_2gib_failure": "0a45062daebc3b76ed1c097a9cc2be427228839c",
+      "linux_2gib_failure_phase": "Second complete-scope search rewrote unchanged index rows; not reported timeout or OOM.",
+      "remaining": [
+        "Windows 2 GiB",
+        "Linux 50,000 books",
+        "Windows 50,000 books"
+      ],
+      "active_failure_report_reader": {
+        "head": "e5ea0d6446ea17d4114f0bb6be494580a5aed245",
+        "run": 46135670812,
+        "checkpoint": "4069bd384caabd0c00a0d1d0607c8a423549f2f7",
+        "status": "QUEUED_AT_OWNER_HANDOFF; SAVED_REPORTS_ONLY"
+      }
     },
-    "launcher": "PASS_3245c4e650564ed52e853ba3a9329827d9aefb4e",
-    "bibliography": "PASS_cd590c064f6f74d3b73c83ab30943f0cae634bff",
-    "calibre": "PASS_8f4dc8524191d74228f882ad5fbe3cd08d3d5cf7",
-    "legacy": "PASS_4f5d8286802fbea77e5355146638478d7bc64d8f"
+    "launcher": {
+      "status": "PASS",
+      "run": 46124998938,
+      "record": "3245c4e650564ed52e853ba3a9329827d9aefb4e"
+    },
+    "bibliography": {
+      "status": "PASS",
+      "run": 46124998884,
+      "record": "cd590c064f6f74d3b73c83ab30943f0cae634bff"
+    },
+    "calibre": {
+      "status": "PASS",
+      "run": 46124995558,
+      "record": "8f4dc8524191d74228f882ad5fbe3cd08d3d5cf7"
+    },
+    "legacy": {
+      "status": "PASS",
+      "run": 46124995570,
+      "record": "4f5d8286802fbea77e5355146638478d7bc64d8f"
+    }
   },
   "next": [
-    "Receive actual saved native stderr/result from auditor run46132889609; do not change child flags based on speculation.",
-    "Fix the concrete composed-native cause, retain all required scenarios and add source-approved bounded diagnostic helper2952 to the next coherent preflight and final source.",
-    "Await importer Windows actual141-case outcome and current71ca V3 final shared-resource step; retain every completed failure/result before normal final-ref supersession.",
-    "Do not manually cancel healthy jobs. Original capacity is cancel-in-progress:false and may retain independent outcomes while a corrected final head is later tested.",
-    "Fresh-read canonical/spec/PR refs, recursively verify the corrected final tree, expected-SHA normal update, then complete all seven maintained workflows and all12 actual capacity tiers on that exact head before expected-head mergePR143.",
-    "Current prepared11589 code/guide records are durable through syntax-child2de5. It is not yet a qualified final candidate."
+    "Complete actual syntax and all eight native contracts on 6c7. Seven are required; actual Office permits only strict NOT_RUN with zero checks and reason.",
+    "Retain all current old-head completed results without cancelling healthy capacity jobs.",
+    "After coherent native acceptance, fresh-read canonical/spec/PR refs, verify all final tree entries and publish 57bd by expected-SHA normal update.",
+    "Complete all seven maintained workflows and every actual 12-tier capacity outcome on exact final head, including four largest backup/verify/fresh-restore cases.",
+    "Record final evidence and PR status without changing tested source; merge PR143 with exact expected head only after all required acceptance."
   ],
   "owners": {
-    "reader_review": "V3 completed log and speech-preparation source diagnosis",
-    "import_recovery_review": "Importer141×4 actual completion and read-only diagnosis peer review",
-    "release_audit": "Original12-tier capacity, metrics harvesting and fixed native-artifact decode",
-    "root": "Composed native preflight, final source composition, PR/evidence and final merge"
+    "reader_review": "6c7 full native preflight and final V3/native gates",
+    "import_recovery_review": "Bounded spec completeness audit, then final launcher/bibliography/legacy gates",
+    "release_audit": "Old capacity and failure metrics, then final 12 actual tiers",
+    "root": "Final composition/publication, main/Calibre, evidence/PR and merge"
+  },
+  "limits": {
+    "private_models": "SEPARATE_QUALIFICATION",
+    "language_135_quality": "SEPARATE_QUALIFICATION",
+    "physical_audio_and_NVDA": "SEPARATE_QUALIFICATION",
+    "actual_Office": "OPTIONAL_EXPLICIT_NOT_RUN_ALLOWED",
+    "publisher_signing_and_installer_distribution": "NOT_CLAIMED",
+    "runtime_transfer": "NONE"
   },
   "constraints": {
-    "local_executor": "DISCONNECTED; do not retry exec or shell",
-    "tools": "GitHub structured blob/tree/commit/Actions; code-mode stores hold full candidates and raw logs",
-    "final_feature_selection_store": "phasefinish_final_feature_selection is STILL71ca; use phasefinish_corrected_final_candidate_map for11589",
-    "additional_uncomposed_helper_store": "phasefinish_native_helper_diagnostic_draft",
-    "approval": "User authorized completion and merge; do not ask again because CI is queued."
+    "local_executor": "DISCONNECTED; do not retry",
+    "candidate_store": "phasefinish_final_candidate19_map is 57bd; phasefinish_final_feature_selection remains 71ca",
+    "approval": "Completion and merge authorized; queued CI is not a stopping reason",
+    "source_evidence_branch": "71ca source snapshot retained; evidence-only mutations."
   }
 }

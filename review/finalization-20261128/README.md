@@ -1,16 +1,16 @@
 # Finalization evidence
 
-The source snapshot on this branch is PR143 head `71ca92be691455d0ff51ed163b1d91749e5ae62e`. Its current required acceptance has failed; it must not merge.
+The source snapshot on this evidence branch is PR143 head `71ca92be691455d0ff51ed163b1d91749e5ae62e`. Its required main, V3 and Linux 2 GiB acceptance failed; it must not merge.
 
-[Current status](status.json) and [continuation checkpoint](checkpoints/correction-cycle-18.json) record actual results and the remaining work. [Correction candidates](checkpoints/correction-cycle-18.json) identify the exact reviewed source, tests, workflow trees and separate pending runs. [PR description](pull-request.md) records the reviewable scope and qualification boundaries.
+[Current status](status.json) and [continuation checkpoint 19](checkpoints/correction-cycle-19.json) identify the exact prepared source `57bd81ebabc0df2ffc4106c44b94805ee2da7588`, reviewed corrections, completed focused acceptance and the active full native preflight. That source has not yet replaced the PR head. [PR description](pull-request.md) records implementation scope and qualification boundaries.
 
 ## Evidence groups
 
-- `components/`: independently executed source, installed and native component contracts; each result belongs to its recorded head.
-- `gates/`: the seven maintained workflows on the actual PR head, including failed outcomes and completed independent successes.
-- `preflights/`: actual composed syntax/native outcomes; skipped native work is not labelled passed.
-- `reviews/`: finite source reviews, explicitly separate from runtime evidence.
-- `corrections/`: fixture/product correction evidence, including the failed newly authored fixture before its forward correction.
-- `capacity/`: fixed artifact selections and bounded read-only extraction checkpoints for actual saved quantitative reports.
+- `components/`: actual source, installed and native component contracts on their recorded heads.
+- `gates/`: maintained workflow results, including completed failures and independent successes on 71ca.
+- `preflights/`: actual syntax/native outcomes and bounded decoding of the failed preparation artifact.
+- `reviews/`: finite source and full composition reviews, separate from runtime acceptance.
+- `corrections/`: qualified importer, inventory and fixture corrections, with predecessor failures retained.
+- `capacity/`: actual metrics for eight passed tiers, Linux 2 GiB failure and the bounded saved-report reader checkpoint.
 
-The earlier evidence is retained. No predecessor or isolated component PASS qualifies a changed final head. A future final merge requires all maintained gates and the complete actual scale matrix on that exact source, followed by an expected-head merge.
+Every prior record remains. No isolated component or predecessor PASS qualifies a changed final head. Final integration requires all seven maintained gates and all twelve actual capacity tiers on the exact selected source, including four largest-profile backup/verify/fresh-restore outcomes, then an expected-head merge.
