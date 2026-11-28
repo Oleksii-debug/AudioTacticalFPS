@@ -63,14 +63,14 @@ def test_actual_profiled_measure_preserves_complete_traversal_restart_and_retain
         assert recorded['qualification'] == 'DIAGNOSTIC_ONLY'
         assert 0 < len(recorded['functions']) <= 80
         assert 'diagnostic_profile' not in phases[0] and 'diagnostic_profile' not in phases[2]
-        assert b'CORPUS_PROFILE ' in completed.stdout
+        assert b'CORPUS_PROFILE ' in (output / '2/measure.stdout.txt').read_bytes()
         assert 'DIAGNOSTIC_ONLY' in report['claims']['profiled_timing_qualification']
         assert any(row['function'] == 'traverse' for row in recorded['functions'])
     else:
         assert 'diagnostic_profile' not in configuration and 'diagnostic_profile' not in report
         assert all('diagnostic_profile' not in row for row in phases)
         assert 'profiled_timing_qualification' not in report['claims']
-        assert b'CORPUS_PROFILE ' not in completed.stdout
+        assert b'CORPUS_PROFILE ' not in (output / '2/measure.stdout.txt').read_bytes()
     assert not list(output.rglob('*.prof')) and not list(output.rglob('*.pstats'))
 
 

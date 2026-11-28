@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "actual_source_commit": "a66ee8ba7aa3a2e2740f2caf3c6c7b3edaa89499",
+  "run": 46102408418,
+  "job": 140847570313,
+  "actual": "70 passed; one diagnostic assertion failed. All24+25old benchmark and15new cancellation cases passed. Optional profile suite6pass/1fail. Instrumented1000x40 phase NOT_RUN.",
+  "root_cause": "The production supervisor correctly retains child stdout in the phase file; the new optional-profile test incorrectly looked in supervisor stdout.",
+  "correction": "Both flag-on and flag-off controls inspect the actual measure child stdout file. Unchanged application, harness, child capture, all phase/corpus/identity/count assertions, and exact seven cases.",
+  "changes": [
+    {
+      "path": "carr-library/tests/packaging/test_library_scale_profile.py",
+      "before": "1d9358be81555a60c6948235725fe3186a4ad4f4",
+      "sha": "4e79f8e4299f7adc414e575a0c59ba509984ead4"
+    },
+    {
+      "path": ".github/workflows/carr-corpus-profile.yml",
+      "before": "8915dffd690ddc63fb76619e9fdc6877c1b77e52",
+      "sha": "b910e2a1a2257b6834a57f715d608aebe1398f59"
+    }
+  ]
+}
