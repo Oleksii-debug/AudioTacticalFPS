@@ -1,0 +1,60 @@
+{
+  "schema": "carr-independent-targeted-receiving-review/1",
+  "head": "943f585659c55481046266338f428e4a1043a9bd",
+  "standard_linux": {
+    "head": "943f585659c55481046266338f428e4a1043a9bd",
+    "log": {
+      "sha256": "20e98892e303fe1871a53ec61d0018c0b79c8e504043a0cc04fe3e30bada8a10",
+      "bytes": 282686
+    },
+    "selectors": 11,
+    "source": {
+      "passed": 353,
+      "failed": 0,
+      "skipped": 0
+    },
+    "installer_module": {
+      "status": "PASS",
+      "suite": "tests/packaging/test_standard_installer.py",
+      "passed": 151,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0
+    },
+    "installed_summary": [
+      "& $env:CARR_PYTHON -I -B -X utf8 -c \"import xml.etree.ElementTree as E; cases=list(E.parse('ci-standard-installation-results/installed.xml').getroot().iter('testcase')); assert cases and all(c.find('failure') is None and c.find('error') is None and c.find('skipped') is None for c in cases); print('INSTALLED_CASES_PASS',len(cases))\" 2>&1 | Tee-Object ci-standard-installation-results/installed-verdict.txt",
+      "353 passed, 22 subtests passed in 10.86s",
+      "INSTALLED_CASES_PASS 353"
+    ],
+    "inventory_rows": 383,
+    "inventory_matches": true,
+    "qualification_transfer": false
+  },
+  "core_bundle_spawn": {
+    "head": "943f585659c55481046266338f428e4a1043a9bd",
+    "log": {
+      "sha256": "858533ab7e42774d29c8fd8afd2968ef0f6ec9c19e68302bbe35e1aba15eb56c",
+      "bytes": 314147
+    },
+    "exact_source_entries": 7,
+    "actual_result_matches_log": true,
+    "host_module_rows": 383,
+    "all_rows_match_reference": true,
+    "actual_bundled_namespace_modules": 383,
+    "passed": 2,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+    "expected_failures": false,
+    "seconds": 1.59,
+    "entry_sha256": "cf8dd5f04a6c914d6b9ada908b1f7b8dda73c8cdc74d3d43a311f9966223d754",
+    "wrapper_sha256": "d4609b3b4353e070d123e4a3c62dfc6526a217c71076e926444700365cccd33c",
+    "actual_command_units_including_nul": 26090,
+    "command_limit": 32767,
+    "namespace_record_seal_unchanged": true,
+    "full_media_wrapper_executed": false,
+    "qualification_transfer": false
+  },
+  "verdict": "CLEAR for named executed scopes only",
+  "qualification_transfer": false
+}

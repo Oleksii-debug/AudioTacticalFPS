@@ -1,0 +1,21 @@
+[decoded log line 1110] 943f585659c55481046266338f428e4a1043a9bd
+[decoded log line 1138] 943f585659c55481046266338f428e4a1043a9bd
+[decoded log line 1394] {"payload_files": 493, "project_name": "universal-research-library", "project_version": "0.2.0.dev2", "required_runtime_files": 398, "source_commit": "943f585659c55481046266338f428e4a1043a9bd", "source_tree": "86b1ee1a4a859917f11571e8dc9d5a1ded704b5c", "wheel_sha256": "165e55ffac79bc37200a5a2e43c41d2d21a4bd93a933c9e8958ba5a7a4e7fd48"}
+[decoded log line 1522] .PASS: tests/packaging/test_standard_installer.py: junit_passed=151, failed=0, skipped=0, pytest_exit=0
+[decoded log line 1534] .PASS: tests/packaging/test_native_checks.py: junit_passed=37, failed=0, skipped=0, pytest_exit=0
+[decoded log line 1545] PASS: tests/packaging/test_windows_bundle.py: junit_passed=16, failed=0, skipped=0, pytest_exit=0
+[decoded log line 1556] ....PASS: tests/packaging/test_managed_launch_boundary.py: junit_passed=47, failed=0, skipped=0, pytest_exit=0
+[decoded log line 1567] tests/packaging/test_install_bytecode.py PASS: tests/packaging/test_windows_launcher_bundle.py: junit_passed=24, failed=0, skipped=0, pytest_exit=0
+[decoded log line 1578] PASS: tests/packaging/test_worker_bytecode.py: junit_passed=3, failed=0, skipped=0, pytest_exit=0
+[decoded log line 1589] PASS: tests/packaging/test_source_wheel.py: junit_passed=25, failed=0, skipped=0, pytest_exit=0
+[decoded log line 1600] PASS: tests/packaging/test_native_runtime.py: junit_passed=16, failed=0, skipped=0, pytest_exit=0
+[decoded log line 1611] PASS: tests/audio/test_local_runtime_cli.py: junit_passed=15, failed=0, skipped=0, pytest_exit=0
+[decoded log line 1622] PASS: tests/test_delivery_cli.py: junit_passed=7, failed=0, skipped=0, pytest_exit=0
+[decoded log line 1627] PASS: tests/packaging/test_install_bytecode.py: junit_passed=12, failed=0, skipped=0, pytest_exit=0
+[decoded log line 1628] Required suites complete: 11; passed=11; failed=0
+[decoded log line 1687] 353 passed, 22 subtests passed in 10.86s
+[decoded log line 1688] INSTALLED_CASES_PASS 353
+[decoded log line 1724] With the provided path, there will be 8 files uploaded
+[decoded log line 1731] SHA256 digest of uploaded artifact is b64a85c889342f4813ad3f9ff792f5a7a8f2ff3f32f2dd228238689701c93b42
+[decoded log line 1733] Artifact carr-standard-installation-ubuntu-24.04-943f585659c55481046266338f428e4a1043a9bd-1 successfully finalized. Artifact ID 15252563772
+[decoded log line 1734] Artifact carr-standard-installation-ubuntu-24.04-943f585659c55481046266338f428e4a1043a9bd-1 has been successfully uploaded! Final size is 29651 bytes. Artifact ID is 15252563772

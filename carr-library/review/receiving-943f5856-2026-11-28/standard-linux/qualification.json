@@ -1,0 +1,192 @@
+{
+  "schema": "carr-exact-head-standard-receiving/1",
+  "status": "PASS_FOR_LINUX_SOURCE_AND_INSTALLED_SCOPE",
+  "commit": "943f585659c55481046266338f428e4a1043a9bd",
+  "tree": "86b1ee1a4a859917f11571e8dc9d5a1ded704b5c",
+  "run_id": 46118771937,
+  "run_attempt": 1,
+  "event": "push",
+  "branch": "carr/standard-installation-evaluation-20261128",
+  "job_id": 140898401616,
+  "job_name": "Standard installation / ubuntu-24.04 / source and installed",
+  "job_conclusion": "success",
+  "started_at": "2026-11-28T06:57:58Z",
+  "completed_at": "2026-11-28T06:58:54Z",
+  "job_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46118771937/job/140898401616",
+  "workflow": {
+    "path": ".github/workflows/carr-standard-installation-evaluation.yml",
+    "blob": "bf91d0b1afd318d7a733fa528b4c334c596becc1"
+  },
+  "tests": {
+    "required_selectors": [
+      "tests/packaging/test_standard_installer.py",
+      "tests/packaging/test_managed_launch_boundary.py",
+      "tests/packaging/test_native_checks.py",
+      "tests/packaging/test_windows_bundle.py",
+      "tests/packaging/test_windows_launcher_bundle.py",
+      "tests/packaging/test_install_bytecode.py",
+      "tests/packaging/test_worker_bytecode.py",
+      "tests/packaging/test_source_wheel.py",
+      "tests/packaging/test_native_runtime.py",
+      "tests/audio/test_local_runtime_cli.py",
+      "tests/test_delivery_cli.py"
+    ],
+    "source": {
+      "modules": 11,
+      "passed": 353,
+      "failed": 0,
+      "skipped": 0,
+      "all_pytest_exits": 0,
+      "per_module": "source-module-verdicts.json"
+    },
+    "installed": {
+      "selected_modules": 11,
+      "passed": 353,
+      "subtests_passed": 22,
+      "seconds": 10.86,
+      "junit_case_count": 353,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "strict_marker": "INSTALLED_CASES_PASS 353",
+      "per_module_counts": "Not separately emitted by the installed aggregate; no per-module installed counts are inferred."
+    },
+    "cache_regression": {
+      "selector": "tests/packaging/test_standard_installer.py",
+      "source_module_passed": 151,
+      "source_failed": 0,
+      "source_skipped": 0,
+      "existing_cases": 149,
+      "new_cases": 2,
+      "source_blob": "e5fa35570d33440dc74b110ec255a8ccba6aabf2",
+      "interpretation": "The exact module's complete source run passes all 151 cases, including both actual timestamp-pyc copy/import/forced-rewrite cases. The same unchanged module is selected in the clean installed aggregate."
+    }
+  },
+  "identity": {
+    "application_python_modules": 383,
+    "unique_paths": 383,
+    "all_source_wheel_installed_rows_match": true,
+    "all_emitted_rows_equal_2df_reference": true,
+    "reference_commit": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7",
+    "reference_evidence_tree": "12437ce701abb716d28834ea10957fe72433a022",
+    "reference_qualification_blob": "b70c0e69b4282ea6a330d7cbd17c1e3349071be2",
+    "runtime_rows_sha256": "88caab4fabbe9961a65ee4edd5fcc44362d5c033ca3202a66941b633ebc7f869",
+    "row_encoding": "JSON.stringify(python_files), UTF-8 without trailing newline, emitted order",
+    "source_inventory_file": "source-wheel-installed-inventory.json",
+    "historical_execution_transfer": false
+  },
+  "environment": {
+    "platform": "ubuntu-24.04",
+    "python": "3.11.18 (main, Oct 26 2026, 02:48:34) [GCC 13.3.0]",
+    "executable": "/home/runner/work/_temp/carr-standard-installation-python/bin/python",
+    "prefix": "/home/runner/work/_temp/carr-standard-installation-python",
+    "installed_package": "/home/runner/work/_temp/carr-standard-installation-python/lib/python3.11/site-packages/carr_library",
+    "source_package": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library",
+    "dependency_selection": {
+      "build_support": {
+        "setuptools": "84.2.1",
+        "wheel": "0.48.0",
+        "zstandard": "0.25.0"
+      },
+      "effective_requirements_sha256": "278c2f1ce60630b010fa773c70ab94018340b3d6a2188918f5b7bf7bc9320fb0",
+      "excluded": [
+        "comtypes",
+        "wxpython"
+      ],
+      "pins": {
+        "bibtexparser": "2.1.0",
+        "cffi": "2.1.1",
+        "cryptography": "50.0.2",
+        "defusedxml": "0.7.1",
+        "filelock": "3.29.0",
+        "lxml": "6.1.3",
+        "numpy": "2.4.6",
+        "pillow": "13.0.0",
+        "platformdirs": "4.10.0",
+        "py3langid": "0.4.0",
+        "pycparser": "3.12",
+        "pylatexenc": "2.11",
+        "pypdf": "7.1.1",
+        "pypdfium2": "5.13.0",
+        "python-docx": "1.2.0",
+        "quickjs-ng": "0.18.0.2",
+        "typing-extensions": "4.16.0"
+      },
+      "platform": "linux",
+      "pytest": "9.0.2",
+      "repository_lock_sha256": "c1c725f7ba5c0352dc48e6e9a4092d6e4c6878102dad7abe416b69f859edf798",
+      "verification_support": "packaging==26.4",
+      "windows_dependency_hashes_required": false
+    },
+    "installed_gate": "Exact existing ci_check.PYTEST_CHILD offline/XFAIL/XPASS policy under -I -B with empty pytest pythonpath; independent strict JUnit refusal for failures, errors and skips."
+  },
+  "wheel": {
+    "payload_files": 493,
+    "project_name": "universal-research-library",
+    "project_version": "0.2.0.dev2",
+    "required_runtime_files": 398,
+    "source_commit": "943f585659c55481046266338f428e4a1043a9bd",
+    "source_tree": "86b1ee1a4a859917f11571e8dc9d5a1ded704b5c",
+    "wheel_sha256": "165e55ffac79bc37200a5a2e43c41d2d21a4bd93a933c9e8958ba5a7a4e7fd48"
+  },
+  "native": {
+    "windows_install_repair_uninstall": "NOT_RUN on Linux",
+    "windows_lifecycle_checks": "No result transferred from another job or head",
+    "conditional_windows_phases": [
+      {
+        "number": 9,
+        "name": "Acquire the existing pinned compiler, original Python and native DLL runtime",
+        "conclusion": "skipped"
+      },
+      {
+        "number": 10,
+        "name": "Build one exact current core bundle and its standard setup",
+        "conclusion": "skipped"
+      },
+      {
+        "number": 11,
+        "name": "Require actual native standard Install Repair and Uninstall",
+        "conclusion": "skipped"
+      }
+    ],
+    "native_windows": "Pending separate Windows job at receipt creation"
+  },
+  "artifact": {
+    "id": 15252563772,
+    "node_id": "MDg6QXJ0aWZhY3QxNTI1MjU2Mzc3Mg==",
+    "name": "carr-standard-installation-ubuntu-24.04-943f585659c55481046266338f428e4a1043a9bd-1",
+    "size_in_bytes": 29651,
+    "url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15252563772",
+    "archive_download_url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15252563772/zip",
+    "expired": false,
+    "digest": "sha256:b64a85c889342f4813ad3f9ff792f5a7a8f2ff3f32f2dd228238689701c93b42",
+    "created_at": "2026-11-28T06:58:50Z",
+    "updated_at": "2026-11-28T06:58:50Z",
+    "expires_at": "2026-12-05T06:58:49Z",
+    "workflow_run": {
+      "id": 46118771937,
+      "repository_id": 1341777614,
+      "head_repository_id": 1341777614,
+      "head_branch": "carr/standard-installation-evaluation-20261128",
+      "head_sha": "943f585659c55481046266338f428e4a1043a9bd"
+    }
+  },
+  "provenance": {
+    "log_file": "full-decoded-log.txt",
+    "decoded_utf8_bytes": 282686,
+    "decoded_utf8_sha256": "20e98892e303fe1871a53ec61d0018c0b79c8e504043a0cc04fe3e30bada8a10",
+    "log_type": "Complete terminal GitHub connector-decoded text; original decoded BOM, timestamps and line endings retained.",
+    "metadata": "Job metadata was terminal before logs were fetched. The run-level endpoint still reported queued; this receipt relies on the completed job and its actual log.",
+    "derived_json": "Inventory, wheel and verdict JSON are extracted/serialized from decoded log output; they are not downloaded artifact-member bytes.",
+    "artifact_zip_downloaded": false,
+    "original_junit_bytes_claimed": false,
+    "counts": "Source ci_check per-module verdicts and actual installed pytest/strict-JUnit log output."
+  },
+  "scope_limits": [
+    "This is the exact 943f Linux source/installed trial, not a transferred 2df PASS.",
+    "It does not qualify native Windows Inno setup, physical capture, model inference, audible playback, human NVDA, signing or distribution rights.",
+    "The full MAIN media/model/OCR gate and other stage-one jobs remain independent."
+  ],
+  "source_changes_by_receiver": false,
+  "ref_changes_by_receiver": false
+}

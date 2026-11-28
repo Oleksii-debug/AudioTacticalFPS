@@ -1,0 +1,62 @@
+{
+  "schema": "carr-exact-source-receiving-evidence/1",
+  "application_head": "943f585659c55481046266338f428e4a1043a9bd",
+  "application_tree": "86b1ee1a4a859917f11571e8dc9d5a1ded704b5c",
+  "branch": "carr/receiving-evidence-943f5856-20261128",
+  "purpose": "Append-only exact-source receiving records kept separately from application changes.",
+  "application_changes": false,
+  "qualification_transfer": false,
+  "previous_evidence": {
+    "commit": "e6603f0989a36d00a0f30fe09eabe61862e99abe",
+    "index": "carr-library/review/receiving-evidence-2dfc5d32-2026-11-28.json"
+  },
+  "composition": {
+    "path": "carr-library/review/windows-receiving-correction-composition-2026-11-28.json",
+    "blob": "e52caa0c9d1c034f1ee279f00b027e5e039c5dea",
+    "status_at_composition": "SOURCE_REVIEWED; NOT_RUN",
+    "application_package_files": 476,
+    "application_python_modules": 383,
+    "all_package_blobs_unchanged_from": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7",
+    "changes_relative_to_2df": {
+      "added": 11,
+      "modified": 6,
+      "deleted": 0
+    },
+    "qualification_transfer": false
+  },
+  "evidence_sets": [
+    {
+      "tested_source": "943f585659c55481046266338f428e4a1043a9bd",
+      "sparse_tree": "b1341f54e5b6f1f7d1f845aa5fa6f7179d486b23",
+      "run": 46118771937,
+      "job": 140898401616,
+      "kind": "Terminal Linux standard installation: all 11 source selectors /353 passed, including151 installer cases; installed353 plus22subtests. Full383module rows match source/wheel/installed. No Windows lifecycle result transferred.",
+      "qualification": "carr-library/review/receiving-943f5856-2026-11-28/standard-linux/qualification.json"
+    },
+    {
+      "tested_source": "943f585659c55481046266338f428e4a1043a9bd",
+      "sparse_tree": "60f1b23c257ab7ec5a58004ca84de0e58f0e463b",
+      "run": 46119011105,
+      "job": 140899152704,
+      "kind": "Terminal actual bundled CORE spawn regression: two unchanged real-process cases passed, zero failures/errors/skips/XFAIL. Exact reviewed -c transport, 383module namespace/RECORD and before/after seal verified; full media/OCR/model wrapper not executed.",
+      "qualification": "carr-library/review/receiving-943f-core-bundle-spawn-2026-11-28/provenance.json"
+    }
+  ],
+  "candidate_runs": {
+    "word": 46118770338,
+    "standard_installation": 46118771937,
+    "bundle_spawn": 46119011105
+  },
+  "execution": "Focused actual CORE bundle spawn is terminal SUCCESS. Linux standard source/installed is terminal SUCCESS. Windows standard and focused Word are queued at this checkpoint; broader ordinary/full receiving has not yet been dispatched at this head. No aggregate release or final wheel is qualified.",
+  "latest_source_verification": {
+    "python_modules": 383,
+    "git_tree_rows_sha256": "0b7b07269abcde4961a02ba1b086d064881fd919996758f9b54b669e9fa69365",
+    "runtime_rows_sha256": "88caab4fabbe9961a65ee4edd5fcc44362d5c033ca3202a66941b633ebc7f869",
+    "runtime_compact_mapping_sha256": "02991995fd42510e0967435ef2c78f60485c4068ddfa7dad22fe743257673fa6",
+    "note": "Distinct documented encodings; complete paths and each current content hash were reconciled independently. This is source identity, not transfer of execution results."
+  },
+  "ci_trigger_review": "Evidence branch name is outside current workflow push branch filters. All workflow and application source blobs remain exact candidate bytes.",
+  "private_artifacts": "Only public source review, metadata, decoded logs and synthetic test evidence; no private model, recordings, runtime binaries or credentials.",
+  "remaining_acceptance": "Complete exact-head required Windows/ordinary workflows; selected capture, human Windows11/NVDA and listening, actual authorized engines/languages, private signing/provider assembly and distribution rights remain separately required.",
+  "independent_review": "carr-library/review/receiving-943f5856-2026-11-28/targeted-independent-review.json"
+}

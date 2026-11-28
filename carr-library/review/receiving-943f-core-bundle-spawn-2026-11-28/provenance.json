@@ -1,0 +1,255 @@
+{
+  "schema": "carr-core-bundle-spawn-receiving/1",
+  "status": "SCOPED_PASS",
+  "application_head": "943f585659c55481046266338f428e4a1043a9bd",
+  "source_tree": "86b1ee1a4a859917f11571e8dc9d5a1ded704b5c",
+  "run": {
+    "id": 46119011105,
+    "job": 140899152704,
+    "event": "push",
+    "branch": "carr/bundle-spawn-evaluation-20261128",
+    "attempt": 1,
+    "conclusion": "success",
+    "created_at": "2026-11-28T06:58:06Z",
+    "updated_at": "2026-11-28T07:04:35Z",
+    "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46119011105"
+  },
+  "reviewed_component_tree": "a0528d0e575ae611ec68b5522daacdca05091eba",
+  "source_entries": [
+    {
+      "path": ".github/scripts/carr_prepare_bundle_spawn_check.py",
+      "blob": "7c8ba5698e868ca821cb8c0a62aebefb9bf4b033"
+    },
+    {
+      "path": ".github/workflows/carr-bundle-spawn-evaluation.yml",
+      "blob": "f9627c50b6632319c03117bff17240249426a492"
+    },
+    {
+      "path": ".github/workflows/carr-windows.yml",
+      "blob": "8a2340458123a20fc5f050dfe5232c184fec1316"
+    },
+    {
+      "path": "carr-library/packaging/windows-python.json",
+      "blob": "3945fc762a831fcf59c66a5f8afe88f7fef6c97a"
+    },
+    {
+      "path": "carr-library/scripts/ci_check.py",
+      "blob": "801ae3d91b0bb287bcb10d987c4af37d234db722"
+    },
+    {
+      "path": "carr-library/tests/operations/carr_resource_process_fixture.py",
+      "blob": "484a4ff45a84467f2be9738636c39b862787af91"
+    },
+    {
+      "path": "carr-library/tests/operations/test_resources.py",
+      "blob": "83aca3017ad570c6d8fad29fcf105a0c72878463"
+    }
+  ],
+  "original_completed_log": {
+    "path": "job-log.txt",
+    "characters": 314145,
+    "utf8_bytes": 314147,
+    "sha256": "858533ab7e42774d29c8fd8afd2968ef0f6ec9c19e68302bbe35e1aba15eb56c",
+    "unchanged": true
+  },
+  "actual_result": {
+    "application_namespace_record_and_source_unchanged": true,
+    "application_python_modules": 383,
+    "argv_bundle_index": 1,
+    "audio_devices": "NOT_RUN",
+    "base_interpreter": "D:\\a\\_temp\\carr-bundle-spawn-private\\core spawn regression\\runtime\\python.exe",
+    "broker_origin": "D:\\a\\_temp\\carr-bundle-spawn-private\\core spawn regression\\.venv\\Lib\\site-packages\\carr_library\\operations\\broker.py",
+    "bundle_manifest_sha256": "f6b88ab9b20cce6662feb594852ea0b03352af4049c55ff8df7e963e74608717",
+    "bundled_python": "D:\\a\\_temp\\carr-bundle-spawn-private\\core spawn regression\\.venv\\Scripts\\python.exe",
+    "checker_sha256": "51de00b8b9de738c520efdeba638632905c1a5f045a0d799b1d8cccaea995bb6",
+    "code_sha256": "cf8dd5f04a6c914d6b9ada908b1f7b8dda73c8cdc74d3d43a311f9966223d754",
+    "command_line_utf16_units_including_nul": 26090,
+    "errors": 0,
+    "expected_failures": false,
+    "failed": 0,
+    "full_media_wrapper_executed": false,
+    "model_inference": "NOT_RUN",
+    "no_main_path_reconstruction": true,
+    "nvda": "NOT_RUN",
+    "ocr": "NOT_RUN",
+    "offline_and_xfail_policy_sha256": "cc2a5af2142f46f7d4ba1341d1af278cd75aaf973c6c03c76549008833326d30",
+    "original_real_process_cases": [
+      "test_actual_spawned_process_crash_releases_without_pid_reaping",
+      "test_actual_process_contention_has_no_overlapping_admission"
+    ],
+    "package_origin": "D:\\a\\_temp\\carr-bundle-spawn-private\\core spawn regression\\.venv\\Lib\\site-packages\\carr_library\\__init__.py",
+    "passed": 2,
+    "phase": "completed",
+    "powershell_argument_mode": "Windows",
+    "powershell_conservative_command_units": 26123,
+    "powershell_version": "7.6.10",
+    "pytest_argv_start": 2,
+    "python_version": "3.11.18 (main, Nov 11 2026, 00:17:57) [MSC v.1944 64 bit (AMD64)]",
+    "scope": "CORE bundled interpreter and installed broker spawn entry",
+    "sealed_files_verified_after": true,
+    "skipped": 0,
+    "source_commit": "943f585659c55481046266338f428e4a1043a9bd",
+    "status": "PASS",
+    "unchanged_case_and_spawn_helper_sha256": {
+      "tests/operations/carr_resource_process_fixture.py": "6804d2c4bc5f95e43cbb3e1dd366a9f5afc541ef365f272f3fe62dd622dbf685",
+      "tests/operations/test_resources.py": "f6dc81676e95056ee4df08859f50c6d5023ee667185044320f2404bd58743371"
+    },
+    "wrapper_data_sha256": "d4609b3b4353e070d123e4a3c62dfc6526a217c71076e926444700365cccd33c",
+    "wrapper_data_utf16_units": 25052,
+    "pytest_seconds": 1.59
+  },
+  "exact_source_and_received_hash_checks": {
+    "checker_sha": true,
+    "main_workflow_sha": true,
+    "wrapper_sha": true,
+    "command_sha": true,
+    "test_sha": true,
+    "target_sha": true,
+    "exact_cases": true,
+    "command_bound": true,
+    "exact_head": true
+  },
+  "scope": {
+    "entry": "Actual Windows bundled CORE interpreter, direct -I -B -c command entry.",
+    "original_main_body": "Exact 25052 UTF-16 source body transported as data; never executed in this focused receiving job.",
+    "expected_argv": {
+      "bundle": 1,
+      "pytest_start": 2
+    },
+    "actual_command_units_including_nul": 26090,
+    "measured_powershell_bound": 26123,
+    "command_limit": 32767,
+    "policy": "Exact existing scripts/ci_check.py PYTEST_CHILD string, including offline Python socket and XFAIL/XPASS rejection policy.",
+    "actual_core_bootstrap": true,
+    "original_two_spawn_cases_unchanged": true,
+    "readiness_and_join_budgets_unchanged": true,
+    "no_main_file_reconstruction": true,
+    "full_application_namespace_and_RECORD_verified_before_after": true,
+    "sealed_core_verified_before_after": true
+  },
+  "host_source_installed_inventory": {
+    "file": "host-installed-python-inventory-from-log.json",
+    "modules": 383,
+    "source_commit": "943f585659c55481046266338f428e4a1043a9bd",
+    "role": "Host installed wheel/source identity before CORE packaging; the bundled interpreter separately verifies the same full namespace before and after its real tests."
+  },
+  "sealed_source_identity": {
+    "bundle_manifest_sha256": "f6b88ab9b20cce6662feb594852ea0b03352af4049c55ff8df7e963e74608717",
+    "payload_files": 493,
+    "profile": "current-core-19-windows-pins",
+    "project_name": "universal-research-library",
+    "project_version": "0.2.0.dev2",
+    "required_runtime_files": 398,
+    "source_commit": "943f585659c55481046266338f428e4a1043a9bd",
+    "source_tree": "86b1ee1a4a859917f11571e8dc9d5a1ded704b5c",
+    "wheel_sha256": "4c12bb94b75e71d10337ec25c95796ce6ddd55cdd2dd21376b55c31f76a53745"
+  },
+  "actual_launcher_build_probe": {
+    "file": "launcher-probe-from-log.json",
+    "checks": 9,
+    "scope": "Existing pinned Zig launcher prerequisite; no MSVC claim from this workflow."
+  },
+  "steps": [
+    {
+      "number": 1,
+      "name": "Set up job",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "number": 2,
+      "name": "Preserve exact committed source bytes",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "number": 3,
+      "name": "Check out the exact triggering commit",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "number": 4,
+      "name": "Set up native x64 CPython",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "number": 5,
+      "name": "Build and install the exact event wheel with existing dependency pins",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "number": 6,
+      "name": "Prove complete source wheel and installed Python identity",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "number": 7,
+      "name": "Acquire the existing pinned compiler, original Python and native DLL runtime",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "number": 8,
+      "name": "Build one exact current CORE bundle",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "number": 9,
+      "name": "Run the original two spawn cases through the actual bundled command entry",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "number": 10,
+      "name": "Preserve bounded public regression receipts",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "number": 19,
+      "name": "Post Set up native x64 CPython",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "number": 20,
+      "name": "Post Check out the exact triggering commit",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "number": 21,
+      "name": "Complete job",
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "artifacts": [
+    {
+      "id": 15252654333,
+      "name": "carr-bundle-spawn-943f585659c55481046266338f428e4a1043a9bd-1",
+      "bytes": 51382,
+      "digest": "sha256:4c1c430e378249cc3375bddcb86ada0e67fd0699681fbc9a468b6526b428d29b",
+      "expired": false,
+      "created_at": "2026-11-28T07:04:30Z",
+      "updated_at": "2026-11-28T07:04:30Z"
+    }
+  ],
+  "retention": {
+    "json_files": "Exact decoded JSON records extracted from the completed job log; filenames explicitly identify this derivation. They are not represented as original archived-member bytes.",
+    "artifact_archive": "GitHub API identity/size/digest metadata retained. The archive was not independently downloaded by this evidence step.",
+    "runtime_per_module_inventory": "The actual checker wrote its full per-module final inventory into the retained artifact; its complete equality before/after was asserted during execution and reported PASS."
+  },
+  "limitations": [
+    "This is a focused CORE-bundle regression, not execution of MAIN's full media/OCR/model wrapper.",
+    "The earlier f831 full-bundle failure remains historical evidence; this two-case result does not rewrite that aggregate.",
+    "No application module, original resource test, readiness budget, product broker, OS audio consent or selected-device policy was changed here.",
+    "No standard Install/Repair/Uninstall, perceptual listening, physical capture, model inference, OCR, NVDA or native-network-isolation qualification is inferred from this job.",
+    "The exact candidate head is recorded. No result is transferred to another source head or event."
+  ]
+}
