@@ -101,6 +101,13 @@ jobs:
           $proof | & $env:CARR_PYTHON -I -B - 2>&1 | Tee-Object 'ci-results/endpoint-installed-source.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+      - name: Require durable path safety and complete installed acceptance controls
+        id: union_source_controls
+        timeout-minutes: 6
+        run: |
+          & $env:CARR_PYTHON scripts/ci_check.py --jobs 1 tests/storage/test_durable_state_read.py tests/storage/test_durable_state_publication.py tests/packaging/test_standard_installer.py 2>&1 | Tee-Object 'ci-results/union-source-controls.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
       - name: Require the exact endpoint guards and serialization controls
         id: endpoint_controls
         timeout-minutes: 3
@@ -364,6 +371,13 @@ jobs:
           & $env:CARR_PYTHON -I -B -c "import json,pathlib,re,runpy; pairs=re.findall(r'^([A-Za-z0-9_.-]+)==([^\s]+)',pathlib.Path('packaging/windows-semantic-cp311.lock').read_text(),re.M); pins=dict(pairs); assert pins and len(pairs)==len({re.sub(r'[-_.]+','-',n).lower() for n,_ in pairs}), 'Empty or duplicate normalized dependency pins'; verify=runpy.run_path('packaging/sbom_inventory.py')['verify_installed']; actual=verify(pathlib.Path('packaging/windows-semantic-sbom.cdx.json').read_bytes(),pins); print(json.dumps(actual,sort_keys=True))" | Tee-Object 'ci-results/full-lock-source-inventory.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $env:CARR_PYTHON -I -B -c "import importlib.metadata as m,json,pathlib,re,runpy; pins=dict(re.findall(r'^([A-Za-z0-9_.-]+)==([^\s]+)',pathlib.Path('packaging/windows-semantic-cp311.lock').read_text(),re.M)); raw=pathlib.Path('packaging/windows-semantic-sbom.cdx.json').read_bytes(); verify=runpy.run_path('packaging/sbom_inventory.py')['verify_installed']; actual=verify(raw,pins); bom=json.loads(raw); assert bom['metadata']['component']['version']==m.version('universal-research-library'); print(json.dumps(dict(status='PASS',runtime_dependencies=actual,sbom='MATCHES_FULL_LOCK',declared_model='EXACT_REVIEWED_BYTES')))" | Tee-Object 'ci-results/source-runtime-parity.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Require fresh cancellation and actual production accounting controls
+        id: union_production_controls
+        timeout-minutes: 6
+        run: |
+          & $env:CARR_PYTHON scripts/ci_check.py --jobs 1 tests/operations/test_production_admission.py 2>&1 | Tee-Object 'ci-results/union-production-controls.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Prepare the verified OCR engine before its required source regression
@@ -747,47 +761,60 @@ jobs:
           $env:CARR_CI_AUDIO_DIR = $sealedAudio
           $env:CARR_V3_AUDIO = $sealedAudio
           $env:PATH = (Join-Path $sealedAudio 'bin') + ';' + $previousBundlePath
-          & $installedPython -I -B -c "import os,runpy,sys; from carr_library.native_runtime import activate_bundled_runtime; handle=activate_bundled_runtime(); assert handle is not None; os.environ['PATH']=os.path.join(os.environ['CARR_PROGRAM_DIR'],'audio-runtime','bin')+os.pathsep+os.environ.get('PATH',''); runpy.run_path(sys.argv[1],run_name='__main__')" (Resolve-Path scripts/windows_v3_smoke.py).Path 2>&1 | Tee-Object 'ci-results/installed-native-v3.txt'
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & $installedPython -I -B scripts/windows_assistant_smoke.py --bundle $bundle --result 'ci-results/full-bundle-assistant.json' 2>&1 | Tee-Object 'ci-results/full-bundle-assistant.log'
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & $installedPython -I -B -c "import os,runpy,sys; os.environ['CARR_OCR_DIR']=os.path.join(os.environ['CARR_PROGRAM_DIR'],'ocr'); sys.argv=[sys.argv[1],'--installed']; runpy.run_path(sys.argv[0],run_name='__main__')" (Resolve-Path scripts/windows_automatic_ocr_smoke.py).Path 2>&1 | Tee-Object 'ci-results/full-bundle-automatic-ocr.txt'
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & $installedPython -I -B scripts/windows_audio_metadata_smoke.py 2>&1 | Tee-Object 'ci-results/full-bundle-audio-metadata.txt'
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & $installedPython -I -B scripts/windows_workflow_templates_smoke.py --installed 2>&1 | Tee-Object 'ci-results/full-bundle-workflow-templates.txt'
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & $installedPython -I -B scripts/ocr_catalog_smoke.py --model-directory (Join-Path $bundle 'ocr/tessdata') | Tee-Object 'ci-results/offline-bundle-ocr-catalogue.json'
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & $installedPython -I -B scripts/windows_installer_launchers_smoke.py --bundle $bundle 2>&1 | Tee-Object 'ci-results/installed-launchers.json'
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          # This probe imports wx first: hold the application's verified DLL
-          # directory handle before loading that native extension.
-          & $installedPython -I -B -c "import runpy,sys; from carr_library.native_runtime import activate_bundled_runtime; handle=activate_bundled_runtime(); assert handle is not None; runpy.run_path(sys.argv[1],run_name='__main__')" (Resolve-Path tests/ui/probe_source_open_native.py).Path 2>&1 | Tee-Object 'ci-results/core-bundle-native.txt'
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & $installedPython -I -B -c "import runpy,sys; from carr_library.native_runtime import activate_bundled_runtime; handle=activate_bundled_runtime(); assert handle is not None; runpy.run_path(sys.argv[1],run_name='__main__')" (Resolve-Path scripts/windows_academic_smoke.py).Path 2>&1 | Tee-Object 'ci-results/full-bundle-academic-native.txt'
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & $installedPython -I -B -c "import runpy,sys; from carr_library.native_runtime import activate_bundled_runtime; handle=activate_bundled_runtime(); assert handle is not None; sys.argv=[sys.argv[1],'--require-windows']; runpy.run_path(sys.argv[0],run_name='__main__')" (Resolve-Path tests/ui/native_academic_tools_smoke.py).Path 2>&1 | Tee-Object 'ci-results/full-bundle-academic-tools-native.txt'
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & $installedPython -I -B -c "import runpy,sys; from carr_library.native_runtime import activate_bundled_runtime; handle=activate_bundled_runtime(); assert handle is not None; sys.argv=[sys.argv[1]]; runpy.run_path(sys.argv[0],run_name='__main__')" (Resolve-Path scripts/windows_ocr_models_smoke.py).Path 2>&1 | Tee-Object 'ci-results/full-bundle-ocr-models-native.txt'
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & $installedPython -I -B tests/ui/probe_advanced_search_native.py 2>&1 | Tee-Object 'ci-results/full-bundle-advanced-search.txt'
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & $installedPython -I -B -c "import runpy,sys; from carr_library.native_runtime import activate_bundled_runtime; handle=activate_bundled_runtime(); assert handle is not None; runpy.run_path(sys.argv[1],run_name='__main__')" (Resolve-Path scripts/windows_bibliography_interchange_smoke.py).Path 2>&1 | Tee-Object 'ci-results/full-bundle-bibliography-native.txt'
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & $installedPython -I -B -c "import runpy,sys; from carr_library.native_runtime import activate_bundled_runtime; handle=activate_bundled_runtime(); assert handle is not None; runpy.run_path(sys.argv[1],run_name='__main__')" (Resolve-Path scripts/windows_progress_smoke.py).Path 2>&1 | Tee-Object 'ci-results/full-bundle-operation-progress-native.txt'
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & $installedPython -I -B -c "import runpy,sys; from carr_library.native_runtime import activate_bundled_runtime; handle=activate_bundled_runtime(); assert handle is not None; script=sys.argv.pop(1); runpy.run_path(script,run_name='__main__')" (Resolve-Path tests/ui/native_keyboard_settings_smoke.py).Path --native 2>&1 | Tee-Object 'ci-results/full-bundle-semantic-keyboard-native.txt'
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & $installedPython -I -B -c "import runpy,sys; from carr_library.native_runtime import activate_bundled_runtime; handle=activate_bundled_runtime(); assert handle is not None; sys.argv=[sys.argv[1],'--native']; runpy.run_path(sys.argv[0],run_name='__main__')" (Resolve-Path tests/ui/native_document_formats_smoke.py).Path 2>&1 | Tee-Object 'ci-results/full-bundle-document-formats-native.txt'
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          # Establish a fresh sealed, installed build before independent native probes.
+          # A failed native result remains a failure in the exact core and tail ledgers.
           if ((Get-FileHash -LiteralPath $manifest -Algorithm SHA256).Hash -ne $manifestBefore) { throw 'Bundle manifest changed during installation or startup.' }
-          & $bundledPython -I -B -c "import importlib.util,json,pathlib,sys; root=pathlib.Path(sys.argv[1]); spec=importlib.util.spec_from_file_location('bundle_verifier',root/'install_windows.py'); module=importlib.util.module_from_spec(spec); spec.loader.exec_module(module); module.verify(root); manifest=json.loads((root/'bundle-manifest.json').read_text()); assert manifest['bundled_model'] and manifest['bundled_ocr'] and manifest['bundled_native_runtime'] and manifest['bundled_audio_runtime']; assert 'runtime-sbom.cdx.json' in manifest['files']; assert (root/'runtime-sbom.cdx.json').read_bytes()==pathlib.Path('packaging/windows-semantic-sbom.cdx.json').read_bytes(); print(json.dumps(dict(status='PASS',runtime_sbom='VERIFIED',python=sys.version,manifest_unchanged=True,sealed_files_verified=True,model='INCLUDED',ocr='INCLUDED',private_native_runtime='INCLUDED',nvda='NOT_RUN')))" $bundle | Tee-Object 'ci-results/full-bundle-verified.json'
+          & $bundledPython -I -B -c "import importlib.util,json,pathlib,sys; root=pathlib.Path(sys.argv[1]); spec=importlib.util.spec_from_file_location('bundle_verifier',root/'install_windows.py'); module=importlib.util.module_from_spec(spec); spec.loader.exec_module(module); module.verify(root); manifest=json.loads((root/'bundle-manifest.json').read_text()); assert manifest['bundled_model'] and manifest['bundled_ocr'] and manifest['bundled_native_runtime'] and manifest['bundled_audio_runtime']; assert 'runtime-sbom.cdx.json' in manifest['files']; assert (root/'runtime-sbom.cdx.json').read_bytes()==pathlib.Path('packaging/windows-semantic-sbom.cdx.json').read_bytes(); print(json.dumps(dict(status='PASS',runtime_sbom='VERIFIED',python=sys.version,manifest_unchanged=True,sealed_files_verified=True,model='INCLUDED',ocr='INCLUDED',private_native_runtime='INCLUDED',nvda='NOT_RUN')))" $bundle | Tee-Object 'ci-results/full-bundle-build-verified.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           "CARR_CI_BUNDLE=$bundle" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           # Readiness authorizes independent inspection of the verified build, not native acceptance.
           "verified_bundle_ready=true" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
 
+          $bundleCoreChecks = [System.Collections.Generic.List[object]]::new()
+          function Add-CoreBundleCheck {
+            param([string]$Name, $ExitCode)
+            if ($ExitCode -isnot [int]) { throw 'Required core bundle check did not return an integer exit code.' }
+            $bundleCoreChecks.Add([ordered]@{ name=$Name; exit_code=$ExitCode })
+            [ordered]@{ schema=1; checks=@($bundleCoreChecks.ToArray()) } | ConvertTo-Json -Depth 5 | Set-Content 'ci-results/full-bundle-core-exits.json'
+          }
+          # Keep every original native command and record each actual child exit.
+          & $installedPython -I -B -c "import os,runpy,sys; from carr_library.native_runtime import activate_bundled_runtime; handle=activate_bundled_runtime(); assert handle is not None; os.environ['PATH']=os.path.join(os.environ['CARR_PROGRAM_DIR'],'audio-runtime','bin')+os.pathsep+os.environ.get('PATH',''); runpy.run_path(sys.argv[1],run_name='__main__')" (Resolve-Path scripts/windows_v3_smoke.py).Path 2>&1 | Tee-Object 'ci-results/installed-native-v3.txt'
+          Add-CoreBundleCheck 'windows_v3_smoke.py' $LASTEXITCODE
+          & $installedPython -I -B scripts/windows_assistant_smoke.py --bundle $bundle --result 'ci-results/full-bundle-assistant.json' 2>&1 | Tee-Object 'ci-results/full-bundle-assistant.log'
+          Add-CoreBundleCheck 'windows_assistant_smoke.py' $LASTEXITCODE
+          & $installedPython -I -B -c "import os,runpy,sys; os.environ['CARR_OCR_DIR']=os.path.join(os.environ['CARR_PROGRAM_DIR'],'ocr'); sys.argv=[sys.argv[1],'--installed']; runpy.run_path(sys.argv[0],run_name='__main__')" (Resolve-Path scripts/windows_automatic_ocr_smoke.py).Path 2>&1 | Tee-Object 'ci-results/full-bundle-automatic-ocr.txt'
+          Add-CoreBundleCheck 'windows_automatic_ocr_smoke.py' $LASTEXITCODE
+          & $installedPython -I -B scripts/windows_audio_metadata_smoke.py 2>&1 | Tee-Object 'ci-results/full-bundle-audio-metadata.txt'
+          Add-CoreBundleCheck 'windows_audio_metadata_smoke.py' $LASTEXITCODE
+          & $installedPython -I -B scripts/windows_workflow_templates_smoke.py --installed 2>&1 | Tee-Object 'ci-results/full-bundle-workflow-templates.txt'
+          Add-CoreBundleCheck 'windows_workflow_templates_smoke.py' $LASTEXITCODE
+          & $installedPython -I -B scripts/ocr_catalog_smoke.py --model-directory (Join-Path $bundle 'ocr/tessdata') | Tee-Object 'ci-results/offline-bundle-ocr-catalogue.json'
+          Add-CoreBundleCheck 'ocr_catalog_smoke.py' $LASTEXITCODE
+          & $installedPython -I -B scripts/windows_installer_launchers_smoke.py --bundle $bundle 2>&1 | Tee-Object 'ci-results/installed-launchers.json'
+          Add-CoreBundleCheck 'windows_installer_launchers_smoke.py' $LASTEXITCODE
+          # This probe imports wx first: hold the application's verified DLL
+          # directory handle before loading that native extension.
+          & $installedPython -I -B -c "import runpy,sys; from carr_library.native_runtime import activate_bundled_runtime; handle=activate_bundled_runtime(); assert handle is not None; runpy.run_path(sys.argv[1],run_name='__main__')" (Resolve-Path tests/ui/probe_source_open_native.py).Path 2>&1 | Tee-Object 'ci-results/core-bundle-native.txt'
+          Add-CoreBundleCheck 'probe_source_open_native.py' $LASTEXITCODE
+          & $installedPython -I -B -c "import runpy,sys; from carr_library.native_runtime import activate_bundled_runtime; handle=activate_bundled_runtime(); assert handle is not None; runpy.run_path(sys.argv[1],run_name='__main__')" (Resolve-Path scripts/windows_academic_smoke.py).Path 2>&1 | Tee-Object 'ci-results/full-bundle-academic-native.txt'
+          Add-CoreBundleCheck 'windows_academic_smoke.py' $LASTEXITCODE
+          & $installedPython -I -B -c "import runpy,sys; from carr_library.native_runtime import activate_bundled_runtime; handle=activate_bundled_runtime(); assert handle is not None; sys.argv=[sys.argv[1],'--require-windows']; runpy.run_path(sys.argv[0],run_name='__main__')" (Resolve-Path tests/ui/native_academic_tools_smoke.py).Path 2>&1 | Tee-Object 'ci-results/full-bundle-academic-tools-native.txt'
+          Add-CoreBundleCheck 'native_academic_tools_smoke.py' $LASTEXITCODE
+          & $installedPython -I -B -c "import runpy,sys; from carr_library.native_runtime import activate_bundled_runtime; handle=activate_bundled_runtime(); assert handle is not None; sys.argv=[sys.argv[1]]; runpy.run_path(sys.argv[0],run_name='__main__')" (Resolve-Path scripts/windows_ocr_models_smoke.py).Path 2>&1 | Tee-Object 'ci-results/full-bundle-ocr-models-native.txt'
+          Add-CoreBundleCheck 'windows_ocr_models_smoke.py' $LASTEXITCODE
+          & $installedPython -I -B tests/ui/probe_advanced_search_native.py 2>&1 | Tee-Object 'ci-results/full-bundle-advanced-search.txt'
+          Add-CoreBundleCheck 'probe_advanced_search_native.py' $LASTEXITCODE
+          & $installedPython -I -B -c "import runpy,sys; from carr_library.native_runtime import activate_bundled_runtime; handle=activate_bundled_runtime(); assert handle is not None; runpy.run_path(sys.argv[1],run_name='__main__')" (Resolve-Path scripts/windows_bibliography_interchange_smoke.py).Path 2>&1 | Tee-Object 'ci-results/full-bundle-bibliography-native.txt'
+          Add-CoreBundleCheck 'windows_bibliography_interchange_smoke.py' $LASTEXITCODE
+          & $installedPython -I -B -c "import runpy,sys; from carr_library.native_runtime import activate_bundled_runtime; handle=activate_bundled_runtime(); assert handle is not None; runpy.run_path(sys.argv[1],run_name='__main__')" (Resolve-Path scripts/windows_progress_smoke.py).Path 2>&1 | Tee-Object 'ci-results/full-bundle-operation-progress-native.txt'
+          Add-CoreBundleCheck 'windows_progress_smoke.py' $LASTEXITCODE
+          & $installedPython -I -B -c "import runpy,sys; from carr_library.native_runtime import activate_bundled_runtime; handle=activate_bundled_runtime(); assert handle is not None; script=sys.argv.pop(1); runpy.run_path(script,run_name='__main__')" (Resolve-Path tests/ui/native_keyboard_settings_smoke.py).Path --native 2>&1 | Tee-Object 'ci-results/full-bundle-semantic-keyboard-native.txt'
+          Add-CoreBundleCheck 'native_keyboard_settings_smoke.py' $LASTEXITCODE
+          & $installedPython -I -B -c "import runpy,sys; from carr_library.native_runtime import activate_bundled_runtime; handle=activate_bundled_runtime(); assert handle is not None; sys.argv=[sys.argv[1],'--native']; runpy.run_path(sys.argv[0],run_name='__main__')" (Resolve-Path tests/ui/native_document_formats_smoke.py).Path 2>&1 | Tee-Object 'ci-results/full-bundle-document-formats-native.txt'
+          Add-CoreBundleCheck 'native_document_formats_smoke.py' $LASTEXITCODE
+          if ((Get-FileHash -LiteralPath $manifest -Algorithm SHA256).Hash -ne $manifestBefore) { throw 'Bundle manifest changed during installation or startup.' }
+          & $bundledPython -I -B -c "import importlib.util,json,pathlib,sys; root=pathlib.Path(sys.argv[1]); spec=importlib.util.spec_from_file_location('bundle_verifier',root/'install_windows.py'); module=importlib.util.module_from_spec(spec); spec.loader.exec_module(module); module.verify(root); manifest=json.loads((root/'bundle-manifest.json').read_text()); assert manifest['bundled_model'] and manifest['bundled_ocr'] and manifest['bundled_native_runtime'] and manifest['bundled_audio_runtime']; assert 'runtime-sbom.cdx.json' in manifest['files']; assert (root/'runtime-sbom.cdx.json').read_bytes()==pathlib.Path('packaging/windows-semantic-sbom.cdx.json').read_bytes(); print(json.dumps(dict(status='PASS',runtime_sbom='VERIFIED',python=sys.version,manifest_unchanged=True,sealed_files_verified=True,model='INCLUDED',ocr='INCLUDED',private_native_runtime='INCLUDED',nvda='NOT_RUN')))" $bundle | Tee-Object 'ci-results/full-bundle-verified.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $python = Join-Path $bundle '.venv/Scripts/python.exe'
           # Test dependencies are installed only after production installation passes.
           & $python -I -B -m pip install --no-index --find-links $testWheels pytest==9.0.2 reportlab==4.4.9 openpyxl==3.1.5 et-xmlfile==2.0.0
@@ -1171,8 +1198,11 @@ jobs:
           '@
           $verifyWheel | & $env:CARR_PYTHON -I -B - $sealedWheel $sourceCommit | Tee-Object 'ci-results/source-wheel-proof.json'
           Add-BundleCheck 'source_wheel_proof' $LASTEXITCODE
+          & $bundledPython -I -B scripts/windows_bundle_acceptance.py --core 'ci-results/full-bundle-core-exits.json' | Tee-Object 'ci-results/full-bundle-core-verdict.json'
+          $bundleCoreGateExit = $LASTEXITCODE
           & $python -I -B scripts/windows_bundle_acceptance.py 'ci-results/full-bundle-required-exits.json' | Tee-Object 'ci-results/full-bundle-required-verdict.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if ($bundleCoreGateExit -ne 0) { exit $bundleCoreGateExit }
           $wheelProof = Get-Content -LiteralPath 'ci-results/source-wheel-proof.json' -Raw | ConvertFrom-Json
           $sealedWheelHash = $sbomManifest.files.PSObject.Properties[$wheelKey].Value
           if (!$sealedWheelHash -or $wheelProof.wheel_sha256 -ne $sealedWheelHash) { throw 'Verified source wheel differs from the installed bundle seal.' }
