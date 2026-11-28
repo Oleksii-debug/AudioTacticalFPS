@@ -350,6 +350,6 @@ def test_exact_pinned_slovak_source_closure_and_license_ship_with_the_module():
             assert b'GNU Lesser General Public' in raw
             assert not any(isinstance(node, ast.Import) and any(alias.name == 'docopt' for alias in node.names)
                            for node in ast.walk(ast.parse(raw)))
-    assert 'GNU LESSER GENERAL PUBLIC LICENSE' in (root / 'COPYING').read_text()
+    assert 'GNU Lesser General Public License' in (root / 'COPYING').read_text()
     assert not any(isinstance(node, (ast.Import, ast.ImportFrom))
                    for node in ast.walk(ast.parse((root / '__init__.py').read_bytes())))
