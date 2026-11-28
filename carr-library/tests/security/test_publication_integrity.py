@@ -3,12 +3,12 @@ from hashlib import sha256
 import io
 import json
 import threading
-import time
+from types import SimpleNamespace
 import zipfile
 
 import pytest
 
-from carr_library.security import installation
+from carr_library.security import installation, refresh
 from carr_library.security._files import TrustError, json_bytes
 from carr_library.security.anchors import Anchor, WindowsVaultAnchor
 from carr_library.security.entitlements import EntitlementStore
@@ -126,8 +126,20 @@ def test_source_receipt_cannot_be_added_outside_verified_inventory(tmp_path):
 
 @pytest.mark.parametrize('stop', ['close', 'deadline'])
 def test_stop_during_final_canonical_vault_compare_prevents_protected_put(
-        tmp_path, signer, policy, clock, stop):
+        tmp_path, signer, policy, clock, stop, monkeypatch):
     entered, release = threading.Event(), threading.Event()
+    deadline_reached, expired_observed = threading.Event(), threading.Event()
+
+    def monotonic():
+        if deadline_reached.is_set():
+            expired_observed.set()
+            return .05
+        return 0.0
+
+    if stop == 'deadline':
+        # Advance only this worker's deadline at the actual final vault read;
+        # native waits and the rest of the process retain their real clocks.
+        monkeypatch.setattr(refresh, 'time', SimpleNamespace(monotonic=monotonic))
 
     class BarrierVault(CanonicalVault):
         refresh_reads = 0
@@ -161,12 +173,19 @@ def test_stop_during_final_canonical_vault_compare_prevents_protected_put(
         if stop == 'close':
             worker.close(0)
         else:
-            time.sleep(.07)
+            deadline_reached.set()
     finally:
         release.set()
-        if worker._thread is not None:
-            worker._thread.join(2)
-        worker.close()
+        try:
+            if worker._thread is not None:
+                worker._thread.join(2)
+            if stop == 'deadline' and deadline_reached.is_set():
+                assert expired_observed.is_set()
+                assert worker._thread is not None and not worker._thread.is_alive()
+                assert not worker._stop.is_set()
+                assert worker._cancel is not None and not worker._cancel.is_set()
+        finally:
+            worker.close()
     assert not worker.running
     assert anchor.load().sequence == 1
     assert store.current_path.read_bytes() == original
