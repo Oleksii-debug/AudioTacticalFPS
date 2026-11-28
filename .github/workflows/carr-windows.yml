@@ -1375,6 +1375,12 @@ jobs:
           & $env:CARR_PYTHON -I -B tests/ui/native_document_formats_smoke.py --native 2>&1 | Tee-Object 'keyboard-results/native-document-formats.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+      - name: Exercise installed native academic comparison and metadata review
+        timeout-minutes: 3
+        run: |
+          & $env:CARR_PYTHON -I -B tests/ui/native_academic_comparison_smoke.py --require-windows 2>&1 | Tee-Object 'keyboard-results/native-academic-comparison.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
       - name: Require contextual commands and recovery regressions
         id: keyboard-regressions
         run: |
