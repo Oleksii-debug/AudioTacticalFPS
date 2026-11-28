@@ -105,7 +105,7 @@ jobs:
         id: union_source_controls
         timeout-minutes: 6
         run: |
-          & $env:CARR_PYTHON scripts/ci_check.py --jobs 1 tests/storage/test_durable_state_read.py tests/storage/test_durable_state_publication.py tests/packaging/test_standard_installer.py tests/speech/test_playback_devices.py tests/speech/test_playlist_recovery.py tests/ui/test_desktop_integration.py tests/ui/test_audio_playback.py tests/packaging/test_prepare_publication_tools.py tests/catalog/test_intake.py tests/catalog/test_streaming_intake.py tests/catalog/test_intake_portability.py 2>&1 | Tee-Object 'ci-results/union-source-controls.txt'
+          & $env:CARR_PYTHON scripts/ci_check.py --jobs 1 tests/storage/test_durable_state_read.py tests/storage/test_durable_state_publication.py tests/packaging/test_standard_installer.py tests/speech/test_playback_devices.py tests/speech/test_playlist_recovery.py tests/ui/test_desktop_integration.py tests/ui/test_audio_playback.py tests/packaging/test_prepare_publication_tools.py tests/catalog/test_intake.py tests/catalog/test_streaming_intake.py tests/catalog/test_intake_portability.py tests/operations/test_resources.py tests/packaging/test_ci_check.py 2>&1 | Tee-Object 'ci-results/union-source-controls.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Require the exact endpoint guards and serialization controls
@@ -540,6 +540,25 @@ jobs:
             & $env:CARR_PYTHON -I -B (Join-Path scripts $probe) 2>&1 | Tee-Object (Join-Path ci-results ('native-' + $probe + '.txt'))
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           }
+
+      - name: Preserve fresh native diagnostics before complete-bundle acceptance
+        if: always()
+        timeout-minutes: 2
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: carr-current-source-native-chain-${{ github.sha }}-${{ github.run_attempt }}
+          path: |
+            carr-library/ci-results/native-*.txt
+            carr-library/ci-results/endpoint-installed-source.json
+            carr-library/ci-results/endpoint-installed-source.txt
+            carr-library/ci-results/endpoint-source-controls.txt
+            carr-library/ci-results/endpoint-output-identities.json
+            carr-library/ci-results/endpoint-output-identities.txt
+            carr-library/ci-results/endpoint-evaluation.json
+            carr-library/ci-results/endpoint-receipt-readback.txt
+            carr-library/ci-results/tested-commit.txt
+          if-no-files-found: error
+          retention-days: 3
 
       - name: Exercise installed native voice favorites and language profiles
         timeout-minutes: 3
