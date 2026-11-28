@@ -88,7 +88,8 @@ def test_invalid_manifest_types_are_rejected(value):
         module.partition(value)
 
 
-@pytest.mark.parametrize("bad_path", ["../outside.py", "tests/x\nhidden.py", "x" * 513])
+@pytest.mark.parametrize("bad_path", ["../outside.py", "tests/x\nhidden.py", "x" * 513],
+                         ids=("outside", "newline", "long-path"))
 def test_invalid_member_is_rejected_before_partition(bad_path):
     _, suites = workflow_inventory()
     suites[0] = bad_path
@@ -109,7 +110,7 @@ def test_actual_isolated_cli_emits_the_same_required_plan(mode):
     b"[" + b" " * module.MAX_MANIFEST_BYTES + b"]",
     b"{broken",
     b"\xff",
-])
+], ids=("oversize", "invalid-json", "invalid-utf8"))
 def test_actual_cli_rejects_oversize_or_invalid_input(raw):
     result = run_cli("partition", raw)
     assert result.returncode != 0
