@@ -204,7 +204,7 @@ jobs:
             }
             @{ script_sha256=$scriptAfter; selected_runtime_bytes_unchanged=$true; exit_code=$probeExit } | ConvertTo-Json | Set-Content 'ci-word-native/word-controls-runtime-final.json'
             if ($probeExit -ne 0) { throw ('Required native Word controls failed with exit ' + $probeExit) }
-            $outcome = (Get-Content 'ci-word-native/native-word-controls.txt' | Select-Object -Last 1) | ConvertFrom-Json
+            $outcome = (Get-Content 'ci-word-native/native-word-controls.txt' | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | Select-Object -Last 1) | ConvertFrom-Json
             if ($outcome.schema -ne 'carr-native-word-controls/1' -or $outcome.status -ne 'PASS' -or $outcome.actual_native_word_controls -ne 'PASS' -or $outcome.actual_office -ne 'NOT_RUN' -or $outcome.checks -le 0) { throw 'Actual native Word controls did not provide their complete scoped result.' }
           } finally {
             foreach ($ruleName in $ruleNames) { Remove-NetFirewallRule -Name $ruleName -ErrorAction SilentlyContinue }
@@ -266,7 +266,7 @@ jobs:
             }
             @{ script_sha256=$scriptAfter; selected_runtime_bytes_unchanged=$true; exit_code=$probeExit } | ConvertTo-Json | Set-Content 'ci-word-native/word-office-runtime-final.json'
             if ($probeExit -ne 0) { throw ('Actual Office probe failed with exit ' + $probeExit) }
-            $outcome = (Get-Content 'ci-word-native/native-word-office.txt' | Select-Object -Last 1) | ConvertFrom-Json
+            $outcome = (Get-Content 'ci-word-native/native-word-office.txt' | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | Select-Object -Last 1) | ConvertFrom-Json
             if ($outcome.schema -ne 'carr-native-word-citations/2' -or $outcome.status -notin @('PASS','NOT_RUN')) { throw 'Optional Word qualification returned an invalid status.' }
             if ($outcome.status -eq 'PASS' -and ($outcome.actual_office -ne 'PASS' -or $outcome.checks -ne 20 -or $outcome.check_names.Count -ne 20)) { throw 'Actual Office result lacks its twenty required oracles.' }
             if ($outcome.status -eq 'NOT_RUN' -and ($outcome.actual_office -ne 'NOT_RUN' -or $outcome.checks -ne 0)) { throw 'Unavailable Office was misreported as executed.' }
