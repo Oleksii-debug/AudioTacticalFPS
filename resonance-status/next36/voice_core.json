@@ -1,0 +1,293 @@
+{
+  "schema": "carr-component-handoff/1",
+  "created_utc": "2026-11-28 01:10:23 UTC",
+  "component": "V3-21 explicit local voice package/reference lifecycle core",
+  "status": "STATIC_NOT_RUN",
+  "base_head": "de46e79215a4c2603506704b1784b349d7c475d8",
+  "files": [
+    {
+      "path": "carr-library/src/carr_library/audio/voice_manifest.py",
+      "before": null,
+      "after": "2b5cc075286d2892d1262cddb15bcb84a737d007",
+      "exact_readback": true
+    },
+    {
+      "path": "carr-library/src/carr_library/audio/voice_transport.py",
+      "before": null,
+      "after": "f4a9f626688cd26e91f5ed0ea2c1813c9a68897e",
+      "exact_readback": true
+    },
+    {
+      "path": "carr-library/src/carr_library/audio/voice_settings.py",
+      "before": null,
+      "after": "d5d33ba01b294e5bc3f4282cf756aa06a5becbf6",
+      "exact_readback": true
+    },
+    {
+      "path": "carr-library/src/carr_library/runtime_settings.py",
+      "before": "269814e94549fdff700027afa450686a4a15f81b",
+      "after": "00df790d393f9d54f87d0dcf891e6506916437a1",
+      "exact_readback": true
+    },
+    {
+      "path": "carr-library/src/carr_library/audio/voice_packages.py",
+      "before": null,
+      "after": "824275dcace7617ce65123d469537593877d51d3",
+      "exact_readback": true
+    },
+    {
+      "path": "carr-library/src/carr_library/audio/package_publication.py",
+      "before": null,
+      "after": "87cb411c5bd2348cd9ce87bc427d3c84f79a3914",
+      "exact_readback": true
+    },
+    {
+      "path": "carr-library/src/carr_library/audio/voice_lifecycle.py",
+      "before": null,
+      "after": "4327a8b32bc32e7e9624602d8a626035486caa48",
+      "exact_readback": true
+    },
+    {
+      "path": "carr-library/src/carr_library/audio/voice_reference.py",
+      "before": null,
+      "after": "c4ca7841d86fe2e45f84a0c5136b6ab82455f03a",
+      "exact_readback": true
+    },
+    {
+      "path": "carr-library/src/carr_library/audio/voice_restore.py",
+      "before": null,
+      "after": "44844682df24a5d3934830e5ae0d3d78d09a9a6a",
+      "exact_readback": true
+    },
+    {
+      "path": "carr-library/src/carr_library/state_backup.py",
+      "before": "9a03ff34ec8393a98b6d1e43df562f74a7858761",
+      "after": "7027e3f07f967403d6e523aa23c8233176a43222",
+      "exact_readback": true
+    },
+    {
+      "path": "carr-library/src/carr_library/library_backup.py",
+      "before": "d36d2ab93043bff46048bb6146769a1a19f29db8",
+      "after": "30ed3b152fc1cd26b338200b270e73f2e193a3f9",
+      "exact_readback": true
+    },
+    {
+      "path": "carr-library/tests/audio/voice_management_fixtures.py",
+      "before": null,
+      "after": "ef5be0ea225a4222146edfb05ff03f9037dd0eb5",
+      "exact_readback": true
+    },
+    {
+      "path": "carr-library/tests/audio/test_voice_package_management.py",
+      "before": null,
+      "after": "65ab95aa77c62224f7a42d7e9453f013cbb77ec5",
+      "exact_readback": true
+    },
+    {
+      "path": "carr-library/tests/audio/test_voice_management_state.py",
+      "before": null,
+      "after": "a3f4372f0454d18e6a249b5a4248bea019aaae80",
+      "exact_readback": true
+    },
+    {
+      "path": "carr-library/tests/audio/test_voice_reference_management.py",
+      "before": null,
+      "after": "e7c0f0829d9b15e2f8ee40021c9b445cb85ed2f2",
+      "exact_readback": true
+    },
+    {
+      "path": "carr-library/tests/audio/test_voice_protected_management.py",
+      "before": null,
+      "after": "81350202f697d579e1822284c17f0252e2b294db",
+      "exact_readback": true
+    },
+    {
+      "path": "carr-library/tests/audio/test_voice_publication_lifetime.py",
+      "before": null,
+      "after": "6febbed72cb5e134bf94f40859c84526a8c2862f",
+      "exact_readback": true
+    }
+  ],
+  "suites": [
+    {
+      "path": "tests/audio/test_voice_package_management.py",
+      "sha": "65ab95aa77c62224f7a42d7e9453f013cbb77ec5",
+      "cases": 30,
+      "functions": [
+        "test_registration_adds_only_owner_lock_and_exact_current_binding",
+        "test_install_requires_exact_rights_before_owner_mutation",
+        "test_actual_synthetic_owner_install_refreshes_complete_inventory_and_rights",
+        "test_actual_version_activation_keeps_both_immutable_versions_and_rebinds_review",
+        "test_first_managed_install_cannot_retarget_a_legacy_identity",
+        "test_review_never_promotes_an_undeclared_production_language",
+        "test_changed_archive_is_refused_before_install_and_preserves_settings",
+        "test_actual_owner_child_cannot_connect_or_start_an_unowned_child",
+        "test_actual_slow_owner_is_reaped_before_cancellation_releases_admission",
+        "test_owner_helpers_are_captured_and_checked_again_inside_actual_child",
+        "test_owner_install_cannot_rebind_an_unrelated_runtime_change",
+        "test_replaced_library_is_refused_before_any_owner_child_or_recreation",
+        "test_actual_export_contains_exact_reviewed_version_and_preserves_originals",
+        "test_export_requires_separate_exact_permission_before_owner_read",
+        "test_actual_revoke_or_delete_retains_local_revocation_without_legacy_fallback",
+        "test_delete_needs_exact_reviewed_action_before_child",
+        "test_removal_rechecks_review_after_the_actual_owner_lock_is_acquired",
+        "test_changed_ancestor_alias_is_refused_with_same_reference_and_lock_leaf_identities",
+        "test_real_concurrent_stream_lock_waits_before_hashing_administrative_byte"
+      ],
+      "companions": [
+        "tests/audio/voice_management_fixtures.py"
+      ]
+    },
+    {
+      "path": "tests/audio/test_voice_management_state.py",
+      "sha": "a3f4372f0454d18e6a249b5a4248bea019aaae80",
+      "cases": 25,
+      "functions": [
+        "test_explicit_engine_cas_refuses_stale_unmanaged_parent_before_any_write",
+        "test_explicit_engine_cas_also_refuses_a_management_binding_added_later",
+        "test_generic_engine_changes_preserve_dormant_binding_instead_of_erasing_revocation",
+        "test_unreviewed_generic_settings_cannot_create_or_edit_managed_authority",
+        "test_management_registration_preserves_latest_unrelated_voice_preferences",
+        "test_cancelled_registration_preserves_all_current_settings_and_manifest",
+        "test_stale_registration_revision_refuses_before_owner_child",
+        "test_passive_binding_decoder_refuses_untyped_or_external_authority",
+        "test_passive_restore_never_opens_external_runtime_and_disables_old_authority",
+        "test_unmanaged_restore_keeps_exact_existing_settings_bytes",
+        "test_real_state_snapshot_restore_keeps_source_bytes_and_makes_binding_dormant",
+        "test_complete_backup_restores_only_dormant_declarations_without_external_assets",
+        "test_real_same_byte_source_substitution_is_refused_by_held_source_boundary",
+        "test_actual_settings_commit_survives_late_scope_or_interruption"
+      ],
+      "companions": [
+        "tests/audio/voice_management_fixtures.py"
+      ]
+    },
+    {
+      "path": "tests/audio/test_voice_reference_management.py",
+      "sha": "e7c0f0829d9b15e2f8ee40021c9b445cb85ed2f2",
+      "cases": 30,
+      "functions": [
+        "test_actual_pcm_and_owner_child_create_exact_local_data_without_installing",
+        "test_no_reference_or_owner_read_before_exact_consent",
+        "test_arbitrary_wav_is_not_converted_into_other_backend_profiles",
+        "test_create_requires_both_current_permission_and_recording_review",
+        "test_exact_source_metadata_or_registration_change_rejects_old_review",
+        "test_unsupported_pcm_shape_is_an_explicit_error_before_native_inspection",
+        "test_truncated_pcm_is_not_a_successful_reference",
+        "test_measured_quality_warnings_are_numeric_not_speaker_or_model_claims",
+        "test_profile_and_transcript_fields_are_explicit_and_bounded",
+        "test_occupied_destination_fails_before_any_external_or_native_reference_read",
+        "test_competing_destination_is_never_read_or_overwritten_after_owner_package_creation",
+        "test_cancel_after_prepared_owner_archive_keeps_external_destination_absent"
+      ],
+      "companions": [
+        "tests/audio/voice_management_fixtures.py"
+      ]
+    },
+    {
+      "path": "tests/audio/test_voice_protected_management.py",
+      "sha": "81350202f697d579e1822284c17f0252e2b294db",
+      "cases": 15,
+      "functions": [
+        "test_actual_export_uses_same_envelope_and_exact_owner_data",
+        "test_inspection_deletes_plaintext_before_return_and_apply_freshly_rechecks",
+        "test_protected_apply_requires_fresh_exact_permission_before_decryption",
+        "test_wrong_password_never_enters_owner_inspection_or_install",
+        "test_corrupted_envelope_never_produces_an_owner_package",
+        "test_plaintext_with_protected_name_is_not_a_fallback",
+        "test_apply_rejects_stale_identity_before_new_decryption"
+      ],
+      "companions": [
+        "tests/audio/voice_management_fixtures.py"
+      ]
+    },
+    {
+      "path": "tests/audio/test_voice_publication_lifetime.py",
+      "sha": "6febbed72cb5e134bf94f40859c84526a8c2862f",
+      "cases": 9,
+      "functions": [
+        "test_exact_package_publication_uses_actual_create_only_link_and_receipt",
+        "test_existing_competitor_is_never_read_overwritten_or_mislabeled_as_our_commit",
+        "test_same_size_write_during_actual_fsync_fails_before_link",
+        "test_verified_actual_link_retains_commit_truth_after_late_control",
+        "test_real_pending_child_keeps_stage_and_resource_lease_until_exact_quiescence"
+      ],
+      "companions": []
+    }
+  ],
+  "total_new_core_cases": 109,
+  "test_fixture": {
+    "path": "carr-library/tests/audio/voice_management_fixtures.py",
+    "sha": "ef5be0ea225a4222146edfb05ff03f9037dd0eb5",
+    "scope": "Purpose-written synthetic owner metadata/API implementation with actual current isolated transport, native file locks, broker, current Windows Job cleanup. Only inert interpreter marker is substituted with the test interpreter. No downloaded owner source or inference/model files."
+  },
+  "dependencies": {
+    "ownership_manifest": "469e4d403e4cd9a96144bae5f6210afee060ef94",
+    "ownership_source": "2b1dc1d7de15d65bababa7ebf5e3a13191e1c71d",
+    "ui": "Separate Locate component; current core signatures compatible with explicit manager/frame/scope guard.",
+    "provider": "Separate Canonical component4c13a4f4d02ac613500c198d2fadfa7a749e9b1b; final lifecycle dependency4327a8b32bc32e7e9624602d8a626035486caa48 supersedes67b without API change."
+  },
+  "last_corrections": [
+    "Mutating owner child validates every captured ancestor before, inside, finally and after the actual owner lock; new package ancestry is explicitly bound during prepare.",
+    "Manifest revalidation and post-mutation inventory acquire a brief actual owner lease and hash its lock through the held descriptor. That parent lease is released before launching a child that acquires the owner's own lock.",
+    "Final lifecycle/reference verification uses that same held verification helper; no API or publication behavior change.",
+    "Passive restore uses lexists so existing dangling links are rejected by the existing regular-file boundary."
+  ],
+  "contracts": [
+    "Existing current engines.json/state lock/CAS; explicit expected_dordiai compares even legacy rows. Generic save cannot erase or authorize managed assets; disconnect/restore leave authority dormant.",
+    "Existing current run_process/AudioBudget/owned Windows Job and ResourceBroker; same CleanupOwner quiescence precedes borrowed-context disposal.",
+    "Actual committed settings/publication receipts survive later cleanup error; no precommit failure is reported as success.",
+    "Full runtime file manifest retained and refreshed only for the explicitly reviewed operation; all managed or administratively owned IDs suppress legacy fallback.",
+    "Reference WAV creates only an explicit OmniVoice metadata package, never a Holos profile or training job. Current Holos inference path remains separate.",
+    "Encrypted exports reuse current sync.crypto; full/state backups carry only dormant declarations and never follow/copy external runtime/model/reference paths."
+  ],
+  "actual_owner_closure": {
+    "repository": "Oleksii-debug/ChatGPT-Autopilot-ExtensionChatGPT-Autopilot-Extension",
+    "commit": "a1c73a5747bc86eb11f0c037120442e0c2593e91",
+    "directory": "dordiai-voices/source/0.12.2/kx47Runtime",
+    "files": [
+      {
+        "path": "voice_policy.py",
+        "sha": "de305d15a955b92dc1a8bfb719b7f9df501a94d8"
+      },
+      {
+        "path": "voice_packages.py",
+        "sha": "2abe2a50bcf58aea423764ef15acc04538ee2f9b"
+      },
+      {
+        "path": "voice_assets.py",
+        "sha": "6cabd9c44a3979e2b543f2272915fdc83523c87c"
+      }
+    ],
+    "distribution": "Not included in product or public retained reports; separate runner-private direct metadata/API acceptance required.",
+    "sequence": [
+      "Create data-only synthetic source versions with exact document files/roles and explicit provenance/rights.",
+      "create_package(source_dir, document, output); inspect_package(output).",
+      "assets.install_voice_package(output, references, engine_id='holos', resources={}); list_installed_packages(references/'packages'); discover_voices(references, engine_id='holos').",
+      "Create/install distinct version2; assets.activate_voice_version(references, profile, version, engine_id='holos', resources={}); verify exact immutable version1 and changed active version.",
+      "Export current reviewed files using create_package again; inspect/re-hash exact archive data.",
+      "packages.uninstall_package(references/'packages', profile, keep_files=True), assert actual inactive tombstone/no discovery; later explicit install/reactivation remains an independently reviewed action.",
+      "packages.uninstall_package(..., keep_files=False), verify only selected managed files deleted and foreign/legacy canaries unchanged."
+    ],
+    "qualification": "Metadata/data package management only; no actual owner model, speech generation, acoustic identity or quality claim."
+  },
+  "review": {
+    "core": "Root reviewed staged core and concrete ancestry/CAS/lifetime seams; final brief lease/source/whole-test union awaits bounded independent review.",
+    "tests": "Exact source/explicit parametrization counts only; no local execution environment.",
+    "ui_provider": "Separate independent component reviews; not implied by this manifest."
+  },
+  "qualifications": {
+    "source_tests": "NOT_RUN",
+    "installed_tests": "NOT_RUN",
+    "actual_owner_api": "NOT_RUN_SEPARATE_REQUIRED_GATE",
+    "native_ui": "NOT_RUN_SEPARATE_REQUIRED_GATE",
+    "model_inference": "NOT_RUN",
+    "acoustic_quality": "NOT_RUN",
+    "NVDA": "NOT_RUN"
+  },
+  "runtime_requirements": [
+    "Existing test-only FFmpeg/FFprobe are required for the whole reference suite; no skip fallback.",
+    "Existing crypto dependency closure remains required for protected export suite.",
+    "No new production dependency."
+  ]
+}

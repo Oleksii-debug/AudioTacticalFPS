@@ -46,8 +46,8 @@ def test_studio_queues_named_commands_before_final_keyboard_install(monkeypatch)
     install_library_assistant_actions(frame)
     pending = frame._pending_keyboard_commands
     assert [spec.command_id for spec, _ in pending] == [
-        'voice.reader', 'voice.book', 'audio.studio', 'audio.clips', 'audio.publishing', 'audio.convert', 'audio.engines',
-        'assistant.local', 'assistant.providers', 'library.workflows']
+        'voice.reader', 'voice.book', 'audio.studio', 'audio.clips', 'audio.publishing', 'audio.convert', 'audio.convert_batch', 'audio.engines',
+        'assistant.local', 'assistant.templates', 'assistant.providers', 'library.workflows']
     registry = CommandRegistry((*builtin_commands(), *(spec for spec, _ in pending)))
     assert registry.shortcut('audio.studio', {}) == 'Ctrl+Alt+A'
     assert registry.shortcut('voice.reader', {}) == 'Ctrl+Alt+V'
@@ -56,7 +56,7 @@ def test_studio_queues_named_commands_before_final_keyboard_install(monkeypatch)
     assert registry.shortcut('research.search_center', {}) == 'Ctrl+Alt+F'
     assert registry.shortcut('audio.studio', {'audio.studio': 'Ctrl+Alt+U'}) == 'Ctrl+Alt+U'
     assert [label for _, label in frame.menu_bar.menus] == ['&Voice', 'Audio St&udio', '&Tools']
-    assert len(frame.menu_bar.menus[-1][0].items) == 3
-    assert frame.Bind.call_count == 10
+    assert len(frame.menu_bar.menus[-1][0].items) == 4
+    assert frame.Bind.call_count == 12
     for (_, item), call in zip(pending, frame.Bind.call_args_list):
         assert call.args[2] is item

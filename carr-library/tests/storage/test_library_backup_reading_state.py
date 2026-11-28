@@ -1031,11 +1031,12 @@ def test_database_and_personal_state_share_one_writer_snapshot(populated, tmp_pa
     original = Storage.backup
     calls = []
 
-    def competing(storage, target):
+    def competing(storage, target, *, cancelled, maximum_bytes=None):
+        assert callable(cancelled)
         with pytest.raises(WriterBusy):
             ReadingState(app.root).add_bookmark(pages[0].location, 'Concurrent update')
         calls.append(True)
-        return original(storage, target)
+        return original(storage, target, cancelled=cancelled, maximum_bytes=maximum_bytes)
 
     monkeypatch.setattr(Storage, 'backup', competing)
     before = state.path.read_bytes()

@@ -140,11 +140,11 @@ def test_multi_page_quotes_citations_and_research_note_remain_separate(dialog):
     selected = hit()
     dialog.show_results(result(selected))
     assert dialog.quote.value == selected.evidence.anchors[0].quote
-    assert 'PDF page 2' in dialog.citation.value
+    assert 'Physical page 2 (printed page unverified)' in dialog.citation.value
     dialog.parts.index = 1
     dialog.show_part()
     assert dialog.quote.value == selected.evidence.anchors[1].quote
-    assert 'PDF page 3' in dialog.citation.value and 'PDF page 2' not in dialog.citation.value
+    assert 'Physical page 3 (printed page unverified)' in dialog.citation.value and 'Physical page 2 (printed page unverified)' not in dialog.citation.value
     assert dialog.note.value == selected.evidence.note
 
 
@@ -161,7 +161,7 @@ def test_copy_freshly_verifies_composite_identity_and_never_copies_note(dialog, 
     assert call.kwargs['include_archived'] is False
     payload = ui[2].SetData.call_args.args[0]
     assert all(anchor.quote in payload for anchor in selected.evidence.anchors)
-    assert 'PDF page 2' in payload and 'PDF page 3' in payload
+    assert 'Physical page 2 (printed page unverified)' in payload and 'Physical page 3 (printed page unverified)' in payload
     assert selected.evidence.note not in payload
     assert dialog.status.focused
 

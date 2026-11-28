@@ -1,0 +1,156 @@
+{
+  "schema": "carr-source-handoff/1",
+  "task": "Current-host voice package and reference UI",
+  "status": "STATIC_NOT_RUN",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "composition_base": "de46e79215a4c2603506704b1784b349d7c475d8",
+  "writes_no_refs": true,
+  "files": [
+    {
+      "path": "carr-library/src/carr_library/ui/voice_packages.py",
+      "before": null,
+      "after": "bb32612b95eaee36bd6d7517dc3369c5a2e4d6da",
+      "readback_exact": true
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/voice_reference.py",
+      "before": null,
+      "after": "53578efe02f434c72ebd3b3acae95eb729671659",
+      "readback_exact": true
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/engine_settings.py",
+      "before": "3f75ad3448bd9fe452b00cf982b60eb67032617e",
+      "after": "e2ca712b9df71d7808b0fdb620978772c1f4dd65",
+      "readback_exact": true
+    },
+    {
+      "path": "carr-library/tests/ui/test_voice_packages.py",
+      "before": null,
+      "after": "b179baf1923d9fa96597eba0bf985ab270ec1116",
+      "readback_exact": true,
+      "expected_cases": 46,
+      "functions": [
+        "test_existing_worker_inspect_then_fresh_rights_and_password_apply",
+        "test_apply_rechecks_all_inputs_after_password_modal",
+        "test_export_rechecks_review_after_picker_and_password_modal",
+        "test_protected_export_has_separate_permission_and_existing_plain_route",
+        "test_cancelled_inspection_completion_never_becomes_apply_authority",
+        "test_direct_destroy_discards_completed_review_without_touching_controls",
+        "test_queued_cancel_drops_secret_even_when_gui_completion_is_suppressed",
+        "test_secret_submit_failure_clears_handoff_and_restores_idle_state",
+        "test_native_password_entry_clears_controls_and_uses_captured_destroy_identity",
+        "test_completed_inspection_from_replaced_library_is_not_adopted",
+        "test_already_adopted_protected_review_is_revoked_before_owner_cleanup",
+        "test_deferred_native_destroy_revokes_a_result_adopted_before_its_event",
+        "test_completed_removal_approval_is_revoked_on_the_same_owner_close",
+        "test_child_destroy_event_does_not_revoke_the_live_owner_review",
+        "test_borrowed_host_refusal_clears_secret_without_starting_or_owning_another_executor",
+        "test_returned_commit_refreshes_only_live_parent_after_child_close",
+        "test_queued_same_path_replacement_cannot_call_service_or_touch_new_root",
+        "test_every_ordinary_route_refuses_revoked_owner_before_native_control_reads",
+        "test_configure_adopts_returned_commit_without_second_cancellable_configuration_query",
+        "test_reference_creation_requires_current_saved_omnivoice_capability",
+        "test_register_manifest_keeps_default_no_and_captured_revision",
+        "test_saved_settings_receipt_survives_cleanup_failure_and_child_close"
+      ],
+      "whole_file_required": true,
+      "source_and_isolated_installed_required": true
+    },
+    {
+      "path": "carr-library/tests/ui/test_voice_reference.py",
+      "before": null,
+      "after": "ed1c77898b3ff72bc3246c8a8537ca3b5961e945",
+      "readback_exact": true,
+      "expected_cases": 32,
+      "functions": [
+        "test_no_implicit_permission_or_quality_confirmation",
+        "test_actual_borrowed_worker_review_then_explicit_local_handoff",
+        "test_input_edits_remove_prior_consent_and_review",
+        "test_relative_selected_path_is_normalized_only_from_the_worker_result",
+        "test_queued_review_cannot_become_current_after_invalidation",
+        "test_forced_close_inside_destination_picker_never_touches_destroyed_controls",
+        "test_destination_picker_rechecks_authority_before_second_dispatch",
+        "test_late_cancel_after_actual_controlled_commit_is_reported_as_saved",
+        "test_failed_parent_handoff_does_not_turn_a_saved_file_into_a_failed_operation",
+        "test_direct_destroy_during_show_skips_a_second_destroy",
+        "test_child_destroy_does_not_revoke_the_owner",
+        "test_existing_parent_work_is_not_replaced_or_given_another_worker",
+        "test_recorder_is_explicit_and_only_selects_a_new_unapproved_input",
+        "test_delayed_recorder_selection_cannot_cross_reference_scope",
+        "test_package_adapter_reuses_exact_nested_desktop_recorder_and_captured_scope",
+        "test_package_adapter_without_explicit_desktop_cannot_create_a_fallback_dispatcher",
+        "test_package_handoff_uses_read_only_parent_inspection_and_never_applies",
+        "test_parent_root_change_during_reference_dialog_preserves_saved_result_without_handoff",
+        "test_reference_create_preserves_committed_flag_through_borrowed_dispatcher",
+        "test_package_adapter_propagates_actual_host_refusal_to_reference_child",
+        "test_adapter_root_replacement_cannot_admit_recorder_selection_or_worker",
+        "test_repeated_reference_close_revokes_once_and_never_ends_returned_modal"
+      ],
+      "whole_file_required": true,
+      "source_and_isolated_installed_required": true
+    },
+    {
+      "path": "carr-library/tests/ui/test_engine_settings_lifetime.py",
+      "before": "b8297a4688f10faac5ec2b620a511b204e504fca",
+      "after": "fd4674f62ec4a8696e08618b7f30fa72a7127537",
+      "readback_exact": true,
+      "expected_cases": 43,
+      "functions": [
+        "test_picker_return_cannot_write_or_probe_a_stale_library",
+        "test_confirmation_return_rechecks_original_owner_before_side_effects",
+        "test_external_metadata_return_cannot_commit_to_a_replaced_original_root",
+        "test_late_callback_after_dialog_lifetime_has_no_reads_writes_or_control_updates",
+        "test_current_explicit_choice_still_persists_through_existing_shared_settings",
+        "test_package_hook_borrows_exact_parent_and_reloads_current_settings_before_next_choice",
+        "test_pending_package_commit_cannot_be_overwritten_from_stale_parent_snapshot",
+        "test_package_callbacks_cannot_refresh_or_write_after_captured_root_changes",
+        "test_late_package_settlement_after_parent_close_does_not_read_settings_or_touch_controls",
+        "test_publish_passes_detached_expected_voice_row_and_keeps_other_preferences",
+        "test_package_final_refresh_failure_is_readable_and_keeps_last_valid_settings",
+        "test_package_entry_requires_idle_host_and_explicit_connected_runtime"
+      ],
+      "whole_file_required": true,
+      "source_and_isolated_installed_required": true
+    },
+    {
+      "path": "carr-library/docs/VOICE_PACKAGE_MANAGEMENT.md",
+      "before": null,
+      "after": "247d5dddcaff0bd2ab177077dd39bb9c92b0ebb3",
+      "readback_exact": true
+    }
+  ],
+  "static_case_total": 121,
+  "dependencies": {
+    "voice_packages": "824275dcace7617ce65123d469537593877d51d3",
+    "voice_settings": "d5d33ba01b294e5bc3f4282cf756aa06a5becbf6",
+    "voice_lifecycle": "4327a8b32bc32e7e9624602d8a626035486caa48",
+    "voice_reference": "c4ca7841d86fe2e45f84a0c5136b6ab82455f03a",
+    "voice_transport": "f4a9f626688cd26e91f5ed0ea2c1813c9a68897e",
+    "runtime_settings": "00df790d393f9d54f87d0dcf891e6506916437a1",
+    "desktop_app": "85c0991f744bd521ca247a0e15da93aa585ea30d",
+    "package_publication": "87cb411c5bd2348cd9ce87bc427d3c84f79a3914"
+  },
+  "review": {
+    "root_engine_prior": "041998/7341 guards, detached CAS and final refresh accepted; current engine adds disconnected/working entry refusal and two regressions",
+    "progress": "ACCEPTED_STATIC_NOT_RUN: current facade APIs and borrowed Future/secret settlement; exact final receipt/lifetime corrections bb326/b179 and53578/ed1c accepted. All121 cases remain NOT_RUN."
+  },
+  "contracts": [
+    "One existing frame.run_job executor; no registry/provider replacement.",
+    "Explicit captured LibraryApp, root path/device/inode and parent lifetime at queued/late/picker boundaries.",
+    "Current runtime settings map only; explicit expected_dordiai CAS and guarded reload preserve other preferences.",
+    "Distinct ordinary/protected export permission and operation-only password lifetime.",
+    "Reference creation only for current saved OmniVoice capability; current verified recorder callback, no implicit microphone or training.",
+    "Exact saved settings receipt retained after late cleanup failure, including closed child; reviews revoked.",
+    "Default No registration; reference permissions and quality confirmation begin unchecked; removal requires exact fresh review text."
+  ],
+  "required_native": "Separate actual Windows host/keyboard/owner-metadata smoke is being completed; not yet included or run.",
+  "companions": [],
+  "guide_hook": "Add docs/VOICE_PACKAGE_MANAGEMENT.md to the existing guide-copy allowlist; root owns shared builder.",
+  "limits": [
+    "All new tests and UI native execution NOT_RUN.",
+    "Synthetic owner protocol is not evidence of real private model inference or acoustic quality.",
+    "No user private assets, external messages, refs or automations changed."
+  ],
+  "core_manifest": "c469c42421df0a373469d85e34a5fc7664620736"
+}

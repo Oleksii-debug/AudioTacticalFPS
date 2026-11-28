@@ -1,0 +1,125 @@
+{
+  "schema": "carr-component-handoff/1",
+  "created_utc": "2026-11-28 01:12:30 UTC",
+  "base_head": "29757494b2c95e643a9e148e3150e06ba6bfcd65",
+  "status": "STATIC_NOT_RUN",
+  "component": "Existing dordiai provider current managed-asset authority",
+  "files": [
+    {
+      "path": "carr-library/src/carr_library/integrations/_dordiai_authority.py",
+      "before": null,
+      "after": "ed4abebffe6baab4a6c17ba30f8f0ea28e2dcb83"
+    },
+    {
+      "path": "carr-library/src/carr_library/integrations/dordiai_voices.py",
+      "before": "22730d5b73670ba6525a0d68c76ab42ed2a49e8e",
+      "after": "9f8e090fb780acba417af3db0b8702615acae2a9"
+    },
+    {
+      "path": "carr-library/src/carr_library/integrations/dordiai_speech.py",
+      "before": "79f67586831828a48e3d0d5c42e9077028cb6f4c",
+      "after": "85c9248923b6332da9ea30d7b0dc644f90dc77ba"
+    },
+    {
+      "path": "carr-library/tests/integrations/test_dordiai_owner_lease.py",
+      "before": null,
+      "after": "a1ec1bbb76e22a9e966a480324107475f0b88c41"
+    },
+    {
+      "path": "carr-library/tests/integrations/test_dordiai_managed_authority.py",
+      "before": null,
+      "after": "7e1522e102826b75eea702d5ddc44eec2afe86f5"
+    },
+    {
+      "path": "carr-library/docs/DORDIAI_MANAGED_AUTHORITY.md",
+      "before": null,
+      "after": "577ddd9e414344fe8ffda1f9f031dc51869e3bd9"
+    }
+  ],
+  "suites": [
+    {
+      "path": "tests/integrations/test_dordiai_owner_lease.py",
+      "sha": "a1ec1bbb76e22a9e966a480324107475f0b88c41",
+      "cases": 22,
+      "functions": [
+        "test_legacy_enumeration_keeps_original_ids_and_creates_no_owner_namespace",
+        "test_unbound_adapter_never_falls_back_for_any_owned_profile",
+        "test_package_stream_holds_actual_owner_lock_until_child_is_quiescent",
+        "test_actual_pending_child_cleanup_keeps_package_lease_until_native_retry_finishes",
+        "test_first_management_namespace_appearance_retires_existing_legacy_worker",
+        "test_index_mutation_after_pcm_revokes_current_stream_before_another_chunk",
+        "test_same_bytes_do_not_reauthorize_replaced_owner_scope",
+        "test_owner_wait_cancellation_starts_no_probe_and_never_reclaims_the_other_lease",
+        "test_unmanaged_factory_still_checks_current_library_configuration_before_cache",
+        "test_authority_metadata_cannot_escape_its_active_worker_scope"
+      ]
+    },
+    {
+      "path": "tests/integrations/test_dordiai_managed_authority.py",
+      "sha": "7e1522e102826b75eea702d5ddc44eec2afe86f5",
+      "cases": 18,
+      "functions": [
+        "test_managed_capabilities_and_public_identity_bind_active_version_document_references_and_approval",
+        "test_actual_managed_pcm_uses_existing_registry_and_releases_only_after_child_death",
+        "test_actual_activation_rejects_old_queued_selection_and_changes_new_public_id",
+        "test_actual_revoke_or_delete_never_falls_back_or_reuses_a_saved_plan",
+        "test_explicit_reregistration_does_not_invent_missing_per_profile_rights",
+        "test_changed_exact_asset_refuses_before_any_pcm_or_new_public_handle",
+        "test_current_managed_stream_rechecks_authority_after_each_actual_pcm_yield",
+        "test_restored_binding_stays_dormant_until_explicit_current_registration",
+        "test_managed_lock_digest_uses_only_current_held_descriptor_during_full_fingerprint",
+        "test_direct_adapter_cannot_adopt_a_library_review_without_its_binding"
+      ]
+    }
+  ],
+  "total_new_cases": 40,
+  "companions": [
+    {
+      "path": "tests/integrations/test_dordiai_voices.py",
+      "sha": "e46257220ef1af5c129669aa9037dafa788077af"
+    },
+    {
+      "path": "tests/audio/voice_management_fixtures.py",
+      "sha": "ef5be0ea225a4222146edfb05ff03f9037dd0eb5"
+    }
+  ],
+  "core_dependencies": {
+    "voice_ownership": "2b1dc1d7de15d65bababa7ebf5e3a13191e1c71d",
+    "voice_manifest": "2b5cc075286d2892d1262cddb15bcb84a737d007",
+    "voice_settings": "d5d33ba01b294e5bc3f4282cf756aa06a5becbf6",
+    "voice_packages": "824275dcace7617ce65123d469537593877d51d3",
+    "voice_lifecycle": "4327a8b32bc32e7e9624602d8a626035486caa48",
+    "voice_transport": "f4a9f626688cd26e91f5ed0ea2c1813c9a68897e",
+    "runtime_settings": "00df790d393f9d54f87d0dcf891e6506916437a1"
+  },
+  "review": {
+    "source": "Progress bounded full-source review ACCEPTED_STATIC_NOT_RUN for ed4ab/9f8/85c; exact legacy ID formula and inner PCM/render preserved, live lease/native cleanup/authority checked.",
+    "owner_lease_tests": "Progress ACCEPTED_STATIC_NOT_RUN for all22 cases/10functions a1ec; actual child/OS exclusion/scope replacement/pending cleanup fixtures inspected, no execution claim.",
+    "managed_tests": "Progress read exact7e15218cases and found no concrete fixture/API blocker; Locate separate review pending.",
+    "self": "All files exact readback; current probe API, manager configuration/registration/lifecycle APIs and tests independently inspected. No local execution."
+  },
+  "retained_contracts": [
+    "Existing PCM inner protocol and provider inner render body unchanged.",
+    "Legacy public ID formula unchanged; managed identity additionally binds active version/document/reference/approval digests.",
+    "Complete fresh manifest/configuration and held owner lock; no cross-call authority cache.",
+    "Current CleanupOwner retains lease until actual process quiescence; no new broker or engine.",
+    "No public owner source/model/reference bytes are included."
+  ],
+  "required_old_whole_suites": [
+    "tests/integrations/test_dordiai_voices.py",
+    "tests/integrations/test_dordiai_speech.py",
+    "tests/integrations/test_dordiai_host_lifecycle.py",
+    "tests/integrations/test_dordiai_settings.py",
+    "tests/integrations/test_dordiai_probe_cancellation.py",
+    "tests/integrations/test_dordiai_convergence.py"
+  ],
+  "qualifications": {
+    "actual_tests": "NOT_RUN",
+    "actual_owner_api": "SEPARATE_GATE",
+    "actual_holos_inference": "NOT_RUN",
+    "acoustic_quality": "NOT_RUN",
+    "NVDA": "NOT_RUN"
+  },
+  "supersedes": "4c13a4f4d02ac613500c198d2fadfa7a749e9b1b",
+  "core_component_manifest": "c469c42421df0a373469d85e34a5fc7664620736"
+}

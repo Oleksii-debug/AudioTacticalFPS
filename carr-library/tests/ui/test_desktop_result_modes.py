@@ -16,7 +16,8 @@ def panel(tmp_path):
     tree = ast.parse(path.read_text(encoding='utf-8'))
     cls = next(node for node in tree.body if isinstance(node, ast.ClassDef)
                and node.name == 'DesktopSearchPanel')
-    env = {'PagedSearchPanel': object, 'Hit': Hit}
+    env = {'__name__': 'carr_library.ui._desktop_result_test',
+           '__package__': 'carr_library.ui', 'PagedSearchPanel': object, 'Hit': Hit}
     exec(compile(ast.Module(body=[cls], type_ignores=[]), str(path), 'exec'), env)
     instance = object.__new__(env['DesktopSearchPanel'])
     app = LibraryApp(tmp_path / 'data')
@@ -39,6 +40,11 @@ def panel(tmp_path):
     instance.filters = {}
     instance.results = {}
     instance._context_epoch = 0
+    instance._search_page, instance._source_history = None, []
+    instance.search_navigation = {key: Mock() for key in (
+        'result_previous', 'result_next', 'source_previous', 'source_next')}
+    instance.search_timeout = Mock()
+    instance.search_timeout.GetValue.return_value = '300'
     instance._refresh_details = Mock()
     return instance
 
@@ -48,8 +54,9 @@ def test_control_dispatches_presentation_to_real_application(panel, selection):
     panel.result_mode.GetSelection.return_value = selection
     panel.on_search(None)
     _, operation, done = panel.frame.run_job.call_args.args
-    rows = operation()
-    done(rows)
+    page = operation()
+    done(page)
+    rows = page.results
     assert rows and panel.model.hits[0].quote == rows[0].quote
     assert len(rows[0].quote) > len('railway')
     assert panel.frame.library.copy(rows[0].workspace, rows[0].ref, rows[0].revision, 'quote') == rows[0].quote
@@ -74,6 +81,8 @@ def test_changed_options_clear_selection_and_discard_pending_search(panel):
     panel.on_options_changed(event)
     assert not panel.model.hits and not panel.results
     assert panel.details.ChangeValue.call_args.args == ('',)
+    assert panel._search_page is None and panel._source_history == []
+    assert all(button.Enable.call_args.args == (False,) for button in panel.search_navigation.values())
     event.Skip.assert_called_once()
     done(rows)
     assert not panel.model.hits and not panel.results
@@ -84,8 +93,9 @@ def test_advanced_control_dispatches_to_real_scoped_search(panel):
     panel.query.GetValue.return_value = 'railway AND NOT airport'
     panel.on_search(None)
     _, operation, done = panel.frame.run_job.call_args.args
-    rows = operation()
-    done(rows)
+    page = operation()
+    done(page)
+    rows = page.results
     assert len(rows) == 1
     assert rows[0].quote == 'A meaningful railway source quotation.'
     assert 'one page or text segment' in panel.status.ChangeValue.call_args.args[0]

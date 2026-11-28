@@ -404,6 +404,8 @@ def restore_backup(source, destination, expected_manifest_sha256, *, capacity_pr
         from .backup_transcription import prepare_restored_inventory
         restored_sidecars = prepare_restored_inventory(stage, destination, inventory.entries,
                                                        cancelled=cancelled)
+        from .audio.voice_restore import prepare_restored_inventory as prepare_restored_voices
+        restored_sidecars = prepare_restored_voices(stage, restored_sidecars, cancelled=cancelled)
         destination.mkdir(mode=0o700)
         _sync_file(destination / INCOMPLETE, b'Restore has not completed. Do not open this data directory.\n')
         _sync_directory(destination)

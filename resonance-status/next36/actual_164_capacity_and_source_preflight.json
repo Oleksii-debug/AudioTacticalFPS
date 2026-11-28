@@ -1,0 +1,208 @@
+{
+  "schema": 1,
+  "classification": "ACTUAL_CI_PREFLIGHT_AND_INSTALLED_NATIVE_EVIDENCE",
+  "observed_utc": "2026-11-28 01:36:20 UTC",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "head": "1647725fe43dbee59b403726787bf1d96c8e3e81",
+  "tree": "1793a664f1c0fdfc9b956f90ea90b1693a17707f",
+  "component_manifest": "b0d0c7225a577f5e584f92fbdc62b7f1f6ff1254",
+  "jobs": [
+    {
+      "run": 46092770990,
+      "job": 140817249505,
+      "platform": "ubuntu-24.04",
+      "conclusion": "SUCCESS",
+      "scope": "whole source suites",
+      "rows": [
+        "PASS: tests/ingest/test_checked_catalog_commit.py: junit_passed=10, failed=0, skipped=0, pytest_exit=0",
+        "PASS: tests/storage/test_scoped_locator_capacity.py: junit_passed=4, failed=0, skipped=0, pytest_exit=0",
+        "PASS: tests/search/test_search_query_work.py: junit_passed=17, failed=0, skipped=0, pytest_exit=0",
+        "PASS: tests/search/test_paged_candidate_work.py: junit_passed=30, failed=0, skipped=0, pytest_exit=0",
+        "PASS: tests/search/test_window_catalog_projection.py: junit_passed=27, failed=0, skipped=0, pytest_exit=0",
+        "PASS: tests/ui/test_native_recording_driver.py: junit_passed=10, failed=0, skipped=0, pytest_exit=0",
+        "PASS: tests/operations/test_broker_scope.py: junit_passed=20, failed=0, skipped=0, pytest_exit=0",
+        "PASS: tests/ingest/test_application_atomic_gate.py: junit_passed=1, failed=0, skipped=0, pytest_exit=0",
+        "PASS: tests/ingest/test_pipeline.py: junit_passed=9, failed=0, skipped=0, pytest_exit=0",
+        "PASS: tests/ingest/test_initial_publication_completion.py: junit_passed=4, failed=0, skipped=0, pytest_exit=0",
+        "PASS: tests/ingest/test_worker_publication_boundary.py: junit_passed=32, failed=0, skipped=0, pytest_exit=0",
+        "PASS: tests/e2e/test_import_worker_publication.py: junit_passed=36, failed=0, skipped=0, pytest_exit=0",
+        "PASS: tests/storage/test_schema_boundary.py: junit_passed=9, failed=0, skipped=0, pytest_exit=0",
+        "PASS: tests/storage/test_revisions.py: junit_passed=5, failed=0, skipped=0, pytest_exit=0",
+        "PASS: tests/storage/test_read_boundary.py: junit_passed=5, failed=0, skipped=0, pytest_exit=0",
+        "PASS: tests/storage/test_locator_integrity.py: junit_passed=8, failed=0, skipped=0, pytest_exit=0",
+        "PASS: tests/storage/test_printed_label_integrity.py: junit_passed=37, failed=0, skipped=0, pytest_exit=0",
+        "PASS: tests/catalog/test_read_views.py: junit_passed=9, failed=0, skipped=0, pytest_exit=0",
+        "PASS: tests/catalog/test_read_views_v2_integration.py: junit_passed=5, failed=0, skipped=0, pytest_exit=0",
+        "PASS: tests/search/test_search_paging.py: junit_passed=27, failed=0, skipped=0, pytest_exit=0",
+        "PASS: tests/search/test_literal_integrity.py: junit_passed=6, failed=0, skipped=0, pytest_exit=0",
+        "PASS: tests/search/test_literal_readonly.py: junit_passed=6, failed=0, skipped=0, pytest_exit=0",
+        "PASS: tests/search/test_literal_v2_composition.py: junit_passed=6, failed=0, skipped=0, pytest_exit=0",
+        "PASS: tests/e2e/test_retained_source_search_integrity.py: junit_passed=11, failed=0, skipped=0, pytest_exit=0",
+        "PASS: tests/operations/test_facade.py: junit_passed=22, failed=0, skipped=0, pytest_exit=0",
+        "PASS: tests/operations/test_import_admission.py: junit_passed=6, failed=0, skipped=0, pytest_exit=0",
+        "PASS: tests/operations/test_production_admission.py: junit_passed=18, failed=0, skipped=0, pytest_exit=0",
+        "PASS: tests/operations/test_resources.py: junit_passed=18, failed=0, skipped=0, pytest_exit=0",
+        "PASS: tests/operations/test_transcription_admission.py: junit_passed=10, failed=0, skipped=0, pytest_exit=0",
+        "PASS: tests/operations/test_current_union.py: junit_passed=11, failed=0, skipped=0, pytest_exit=0",
+        "PASS: tests/operations/test_worker_start_cleanup.py: junit_passed=2, failed=0, skipped=0, pytest_exit=0",
+        "PASS: tests/ui/test_operations_dialog.py: junit_passed=13, failed=0, skipped=0, pytest_exit=0",
+        "PASS: tests/ui/test_operations_policy.py: junit_passed=37, failed=0, skipped=0, pytest_exit=0",
+        "PASS: tests/e2e/test_operations_cli.py: junit_passed=5, failed=0, skipped=0, pytest_exit=0",
+        "PASS: tests/operations/test_resources_posix.py: junit_passed=1, failed=0, skipped=0, pytest_exit=0"
+      ],
+      "summary": [
+        "{\"status\": \"PASS\", \"reportlab_version\": \"4.4.9\", \"canvas_import\": \"reportlab.pdfgen.canvas.Canvas\"}",
+        "{\"status\": \"PASS\", \"whole_suites\": 35, \"expected_cases\": 477, \"source_before_after\": true, \"runtime_before_after\": true, \"failed_or_missing_exact_verdicts\": []}"
+      ],
+      "log_characters": 232388,
+      "actual_source_passed": 477
+    },
+    {
+      "run": 46092770990,
+      "job": 140817249216,
+      "platform": "windows-2022",
+      "conclusion": "SUCCESS",
+      "scope": "whole source suites",
+      "rows": [
+        "PASS: tests/ingest/test_checked_catalog_commit.py: junit_passed=10, failed=0, skipped=0, pytest_exit=0",
+        "PASS: tests/storage/test_scoped_locator_capacity.py: junit_passed=4, failed=0, skipped=0, pytest_exit=0",
+        "PASS: tests/search/test_search_query_work.py: junit_passed=17, failed=0, skipped=0, pytest_exit=0",
+        "PASS: tests/search/test_paged_candidate_work.py: junit_passed=30, failed=0, skipped=0, pytest_exit=0",
+        "PASS: tests/search/test_window_catalog_projection.py: junit_passed=27, failed=0, skipped=0, pytest_exit=0",
+        "PASS: tests/ui/test_native_recording_driver.py: junit_passed=10, failed=0, skipped=0, pytest_exit=0",
+        "PASS: tests/operations/test_broker_scope.py: junit_passed=20, failed=0, skipped=0, pytest_exit=0",
+        "PASS: tests/ingest/test_application_atomic_gate.py: junit_passed=1, failed=0, skipped=0, pytest_exit=0",
+        "PASS: tests/ingest/test_pipeline.py: junit_passed=9, failed=0, skipped=0, pytest_exit=0",
+        "PASS: tests/ingest/test_initial_publication_completion.py: junit_passed=4, failed=0, skipped=0, pytest_exit=0",
+        "PASS: tests/ingest/test_worker_publication_boundary.py: junit_passed=32, failed=0, skipped=0, pytest_exit=0",
+        "PASS: tests/e2e/test_import_worker_publication.py: junit_passed=36, failed=0, skipped=0, pytest_exit=0",
+        "PASS: tests/storage/test_schema_boundary.py: junit_passed=9, failed=0, skipped=0, pytest_exit=0",
+        "PASS: tests/storage/test_revisions.py: junit_passed=5, failed=0, skipped=0, pytest_exit=0",
+        "PASS: tests/storage/test_read_boundary.py: junit_passed=5, failed=0, skipped=0, pytest_exit=0",
+        "PASS: tests/storage/test_locator_integrity.py: junit_passed=8, failed=0, skipped=0, pytest_exit=0",
+        "PASS: tests/storage/test_printed_label_integrity.py: junit_passed=37, failed=0, skipped=0, pytest_exit=0",
+        "PASS: tests/catalog/test_read_views.py: junit_passed=9, failed=0, skipped=0, pytest_exit=0",
+        "PASS: tests/catalog/test_read_views_v2_integration.py: junit_passed=5, failed=0, skipped=0, pytest_exit=0",
+        "PASS: tests/search/test_search_paging.py: junit_passed=27, failed=0, skipped=0, pytest_exit=0",
+        "PASS: tests/search/test_literal_integrity.py: junit_passed=6, failed=0, skipped=0, pytest_exit=0",
+        "PASS: tests/search/test_literal_readonly.py: junit_passed=6, failed=0, skipped=0, pytest_exit=0",
+        "PASS: tests/search/test_literal_v2_composition.py: junit_passed=6, failed=0, skipped=0, pytest_exit=0",
+        "PASS: tests/e2e/test_retained_source_search_integrity.py: junit_passed=11, failed=0, skipped=0, pytest_exit=0",
+        "PASS: tests/operations/test_facade.py: junit_passed=22, failed=0, skipped=0, pytest_exit=0",
+        "PASS: tests/operations/test_import_admission.py: junit_passed=6, failed=0, skipped=0, pytest_exit=0",
+        "PASS: tests/operations/test_production_admission.py: junit_passed=18, failed=0, skipped=0, pytest_exit=0",
+        "PASS: tests/operations/test_resources.py: junit_passed=18, failed=0, skipped=0, pytest_exit=0",
+        "PASS: tests/operations/test_transcription_admission.py: junit_passed=10, failed=0, skipped=0, pytest_exit=0",
+        "PASS: tests/operations/test_current_union.py: junit_passed=11, failed=0, skipped=0, pytest_exit=0",
+        "PASS: tests/operations/test_worker_start_cleanup.py: junit_passed=2, failed=0, skipped=0, pytest_exit=0",
+        "PASS: tests/ui/test_operations_dialog.py: junit_passed=13, failed=0, skipped=0, pytest_exit=0",
+        "PASS: tests/ui/test_operations_policy.py: junit_passed=37, failed=0, skipped=0, pytest_exit=0",
+        "PASS: tests/e2e/test_operations_cli.py: junit_passed=5, failed=0, skipped=0, pytest_exit=0"
+      ],
+      "summary": [
+        "{\"status\": \"PASS\", \"reportlab_version\": \"4.4.9\", \"canvas_import\": \"reportlab.pdfgen.canvas.Canvas\"}",
+        "{\"status\": \"PASS\", \"whole_suites\": 34, \"expected_cases\": 476, \"source_before_after\": true, \"runtime_before_after\": true, \"failed_or_missing_exact_verdicts\": []}"
+      ],
+      "log_characters": 186185,
+      "actual_source_passed": 476
+    },
+    {
+      "run": 46092769234,
+      "job": 140817244601,
+      "platform": "ubuntu-24.04",
+      "conclusion": "SUCCESS",
+      "scope": "whole source plus independently staged isolated installed suites",
+      "rows": [
+        "PASS: tests/search/test_window_catalog_projection.py: junit_passed=27, failed=0, skipped=0, pytest_exit=0",
+        "PASS: tests/packaging/test_library_scale_benchmark.py: junit_passed=24, failed=0, skipped=0, pytest_exit=0",
+        "PASS: tests/packaging/test_library_capacity_measurement.py: junit_passed=25, failed=0, skipped=0, pytest_exit=0",
+        "PASS: tests/storage/test_backup_capacity.py: junit_passed=28, failed=0, skipped=0, pytest_exit=0",
+        "PASS: tests/storage/test_backup_capacity_cli.py: junit_passed=3, failed=0, skipped=0, pytest_exit=0",
+        "PASS: tests/ui/test_backup_capacity.py: junit_passed=17, failed=0, skipped=0, pytest_exit=0",
+        "PASS: tests/storage/test_library_backup.py: junit_passed=9, failed=0, skipped=0, pytest_exit=0",
+        "PASS: tests/storage/test_crash_backup.py: junit_passed=5, failed=0, skipped=0, pytest_exit=0",
+        "PASS: tests/storage/test_complete_pending_backup.py: junit_passed=4, failed=0, skipped=0, pytest_exit=0",
+        "PASS: tests/storage/test_backup_pending_common4.py: junit_passed=27, failed=0, skipped=0, pytest_exit=0",
+        "PASS: tests/storage/test_backup_schema_identity.py: junit_passed=36, failed=0, skipped=0, pytest_exit=0",
+        "PASS: tests/ui/test_native_backup_capacity_driver.py: junit_passed=11, failed=0, skipped=0, pytest_exit=0"
+      ],
+      "summary": [
+        "{\"all_children_reaped\": true, \"inputs_unchanged\": true, \"installed_passed\": 216, \"source_commit\": \"1647725fe43dbee59b403726787bf1d96c8e3e81\", \"source_passed\": 216, \"source_tree\": \"1793a664f1c0fdfc9b956f90ea90b1693a17707f\", \"status\": \"PASS\"}"
+      ],
+      "log_characters": 138557,
+      "actual_source_passed": 216
+    },
+    {
+      "run": 46092769234,
+      "job": 140817244306,
+      "platform": "windows-2022",
+      "conclusion": "SUCCESS",
+      "scope": "whole source plus independently staged isolated installed suites; actual installed Windows backup controls",
+      "rows": [
+        "PASS: tests/search/test_window_catalog_projection.py: junit_passed=27, failed=0, skipped=0, pytest_exit=0",
+        "PASS: tests/packaging/test_library_scale_benchmark.py: junit_passed=24, failed=0, skipped=0, pytest_exit=0",
+        "PASS: tests/packaging/test_library_capacity_measurement.py: junit_passed=25, failed=0, skipped=0, pytest_exit=0",
+        "PASS: tests/storage/test_backup_capacity.py: junit_passed=28, failed=0, skipped=0, pytest_exit=0",
+        "PASS: tests/storage/test_backup_capacity_cli.py: junit_passed=3, failed=0, skipped=0, pytest_exit=0",
+        "PASS: tests/ui/test_backup_capacity.py: junit_passed=17, failed=0, skipped=0, pytest_exit=0",
+        "PASS: tests/storage/test_library_backup.py: junit_passed=9, failed=0, skipped=0, pytest_exit=0",
+        "PASS: tests/storage/test_crash_backup.py: junit_passed=5, failed=0, skipped=0, pytest_exit=0",
+        "PASS: tests/storage/test_complete_pending_backup.py: junit_passed=4, failed=0, skipped=0, pytest_exit=0",
+        "PASS: tests/storage/test_backup_pending_common4.py: junit_passed=27, failed=0, skipped=0, pytest_exit=0",
+        "PASS: tests/storage/test_backup_schema_identity.py: junit_passed=36, failed=0, skipped=0, pytest_exit=0",
+        "PASS: tests/ui/test_native_backup_capacity_driver.py: junit_passed=11, failed=0, skipped=0, pytest_exit=0"
+      ],
+      "summary": [
+        "{\"all_children_reaped\": true, \"inputs_unchanged\": true, \"installed_passed\": 216, \"source_commit\": \"1647725fe43dbee59b403726787bf1d96c8e3e81\", \"source_passed\": 216, \"source_tree\": \"1793a664f1c0fdfc9b956f90ea90b1693a17707f\", \"status\": \"PASS\"}",
+        "{\"status\": \"PASS\", \"source_commit\": \"1647725fe43dbee59b403726787bf1d96c8e3e81\", \"required_checks\": 44, \"installed_origins\": 12, \"native_execution\": \"PASS\", \"windows11_qualification\": \"NOT_RUN\", \"bundled_runtime_qualification\": \"NOT_RUN\"}"
+      ],
+      "log_characters": 184614,
+      "actual_source_passed": 216
+    }
+  ],
+  "artifact_identity": [
+    {
+      "id": 15242331290,
+      "name": "next9-focused-windows-1647725fe43dbee59b403726787bf1d96c8e3e81-1",
+      "size_in_bytes": 21893,
+      "digest": "sha256:3d5ff101f9e74bd658d4d2f1982ff6737ded7b2154eb04896d84763966f2b1fb",
+      "expired": false,
+      "run": 46092770990,
+      "head": "1647725fe43dbee59b403726787bf1d96c8e3e81"
+    },
+    {
+      "id": 15242122895,
+      "name": "next9-focused-linux-1647725fe43dbee59b403726787bf1d96c8e3e81-1",
+      "size_in_bytes": 21706,
+      "digest": "sha256:5eefa12a5353a0601ef911bb70111886fd3e1bf799ffb5fee8e2e564ecc42bc3",
+      "expired": false,
+      "run": 46092770990,
+      "head": "1647725fe43dbee59b403726787bf1d96c8e3e81"
+    },
+    {
+      "id": 15241818501,
+      "name": "capacity-profile-contracts-windows-2022-1647725fe43dbee59b403726787bf1d96c8e3e81-1",
+      "size_in_bytes": 60997,
+      "digest": "sha256:bd349c9b343760586adac4cd0645bb47d63b18c62d3e90e31fe12b0a9cdf2b56",
+      "expired": false,
+      "run": 46092769234,
+      "head": "1647725fe43dbee59b403726787bf1d96c8e3e81"
+    },
+    {
+      "id": 15241123821,
+      "name": "capacity-profile-contracts-ubuntu-24.04-1647725fe43dbee59b403726787bf1d96c8e3e81-1",
+      "size_in_bytes": 53134,
+      "digest": "sha256:32801cceadddde898af2a95d8e65760e9abb8f4a3f5ef9151749fcefc8a322c3",
+      "expired": false,
+      "run": 46092769234,
+      "head": "1647725fe43dbee59b403726787bf1d96c8e3e81"
+    }
+  ],
+  "interpretation": [
+    "Each exact source case count comes from every retained whole-suite PASS verdict; the separately verified installed totals are in the helper completion summaries.",
+    "Case executions overlap between focused and capacity validation; do not sum them into unique-test coverage.",
+    "New window projection 27 cases passed in each relevant source/installed route. No sustained-import or full corpus performance conclusion follows from these tests.",
+    "Windows backup controls report 44 required checks and 12 installed origins; Windows 11 and bundled-runtime qualification remain NOT_RUN.",
+    "The four actual retained-capacity jobs are a separate unfinished measurement at this observation; this evidence makes no 50000-book or 2-million-segment PASS claim."
+  ]
+}

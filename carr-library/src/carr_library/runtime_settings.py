@@ -1,5 +1,8 @@
 """Explicit local engine configuration; no installers, remote fallback or secrets."""
 from dataclasses import asdict
+from copy import deepcopy
+
+_UNREVIEWED_DORDIAI = object()
 from pathlib import Path
 import re
 
@@ -122,7 +125,7 @@ def validate_dordiai_configuration(value):
     """Validate saved declarations without probing a private installation."""
     if value is None:
         return None
-    allowed = {'enabled', 'runtime_directory', 'python_executable', 'expected_worker_sha256'}
+    allowed = {'enabled', 'runtime_directory', 'python_executable', 'expected_worker_sha256', 'management'}
     if (not isinstance(value, dict) or not set(value) <= allowed
             or type(value.get('enabled')) is not bool):
         raise ValueError('A dordiai-voices configuration needs an explicit enabled boolean.')
@@ -136,6 +139,9 @@ def validate_dordiai_configuration(value):
     expected = value.get('expected_worker_sha256')
     if 'expected_worker_sha256' in value and (not isinstance(expected, str) or not re.fullmatch('[0-9a-f]{64}', expected)):
         raise ValueError('The reviewed dordiai-voices worker fingerprint must be a lowercase SHA-256.')
+    if 'management' in value:
+        from .audio.voice_settings import validate_management_binding
+        value = {**value, 'management': validate_management_binding(value['management'])}
     return dict(value)
 
 
@@ -172,7 +178,7 @@ def load_settings(state_root):
     return value
 
 
-def save_settings(state_root, value):
+def save_settings(state_root, value, *, expected_dordiai=_UNREVIEWED_DORDIAI):
     # Validate all declarations before changing the last good configuration.
     supplied_preferences = isinstance(value, dict) and 'voice_preferences' in value
     value = _normalize_settings(value)
@@ -196,10 +202,32 @@ def save_settings(state_root, value):
     path = settings_path(state_root)
     with state_lock(path.parent):
         if path.exists():
-            current = _read_settings(state_root)['voice_preferences']
+            stored = _read_settings(state_root)
+            current = stored['voice_preferences']
             if supplied_preferences and current != value['voice_preferences']:
                 raise ValueError('Voice preferences changed. Reload engine settings before saving; use the voice preferences dialog to edit them.')
             value['voice_preferences'] = current
+            previous, proposed = stored['dordiai'], value['dordiai']
+            old_management = previous.get('management') if previous else None
+            new_management = proposed.get('management') if proposed else None
+            if (expected_dordiai is not _UNREVIEWED_DORDIAI
+                    and expected_dordiai != previous):
+                raise ValueError('Voice engine settings changed. Reload engine settings before saving.')
+            if old_management is not None or new_management is not None:
+                if expected_dordiai is _UNREVIEWED_DORDIAI and proposed != previous:
+                    raise ValueError('Managed voice authority changed. Reload engine settings before saving.')
+                if new_management is not None and new_management != old_management:
+                    raise ValueError('Use the reviewed package manager to change voice authority.')
+                if old_management is not None and proposed != previous:
+                    # Reset/disconnect cannot erase revocation into an unrestricted
+                    # registration. Keep dormant authority until explicit review.
+                    dormant = deepcopy(old_management)
+                    dormant['restored'] = True
+                    if proposed is None:
+                        proposed = {**previous, 'enabled': False}
+                    value['dordiai'] = {**proposed, 'management': dormant}
+        elif value['dordiai'] is not None and 'management' in value['dordiai']:
+            raise ValueError('Use explicit package registration to create managed voice authority.')
         atomic_json(path, value, replace=path.exists())
 
 
@@ -222,7 +250,8 @@ def voice_registry(state_root, *, cancelled=lambda: False):
     registry = VoiceRegistry.discover(ffmpeg=ffmpeg, cancelled=cancelled)
     try:
         from .integrations.dordiai_speech import install_dordiai_provider
-        install_dordiai_provider(registry, value['dordiai'], cancelled=cancelled)
+        install_dordiai_provider(registry, value['dordiai'], cancelled=cancelled,
+                                 state_root=state_root)
         for item in value['piper']:
             if set(item) != {'executable', 'models'}:
                 raise ValueError('Invalid Piper configuration fields.')

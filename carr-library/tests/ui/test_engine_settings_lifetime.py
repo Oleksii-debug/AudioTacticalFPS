@@ -23,6 +23,7 @@ LABELS = {
     'dordiai': 'Connect installed &dordiai-voices',
     'disable': 'Disable dordiai-voices',
     'reset': 'Reset overrides',
+    'packages': 'Manage reviewed voice packages and references...',
 }
 
 
@@ -255,3 +256,156 @@ def test_current_explicit_choice_still_persists_through_existing_shared_settings
     assert len(answers.status_values) == 2
     assert answers.status_name == 'Local engine configuration and availability'
     assert answers.dialog.destroyed and all(item.destroyed for item in answers.pickers)
+
+
+def test_package_hook_borrows_exact_parent_and_reloads_current_settings_before_next_choice(owner, monkeypatch):
+    from carr_library.ui import voice_packages
+    answers = NativeAnswers(monkeypatch, owner.frame, owner.executable)
+    received = []
+    def manage(frame, *, window_parent, scope_guard, on_settled):
+        assert frame is owner.frame and window_parent is answers.dialog
+        scope_guard()
+        current = runtime_settings.load_settings(owner.root / 'state')
+        current['dordiai'] = None
+        runtime_settings.save_settings(owner.root / 'state', current)
+        received.append(current)
+        on_settled()
+    monkeypatch.setattr(voice_packages, 'show_voice_packages', manage)
+    saved, original = [], engine_settings.save_settings
+    def write(root, candidate, *, expected_dordiai):
+        saved.append(expected_dordiai)
+        return original(root, candidate, expected_dordiai=expected_dordiai)
+    monkeypatch.setattr(engine_settings, 'save_settings', write)
+    def opened():
+        answers.press('packages')
+        answers.press('executable')
+    answers.on_open = opened
+    engine_settings.show_engine_settings(owner.frame)
+    assert len(received) == 1 and saved == [None]
+    assert runtime_settings.load_settings(owner.root / 'state')['dordiai'] is None
+    assert answers.dialog.destroyed
+
+
+def test_pending_package_commit_cannot_be_overwritten_from_stale_parent_snapshot(owner, monkeypatch):
+    from carr_library.ui import voice_packages
+    new_executable = owner.tmp_path / 'should-not-be-registered.fixture'
+    new_executable.write_bytes(b'Never executed.')
+    answers = NativeAnswers(monkeypatch, owner.frame, new_executable)
+    def pending(frame, *, window_parent, scope_guard, on_settled):
+        scope_guard()
+        # The real package future has not delivered its GUI settlement yet.
+        frame.working = True
+        current = runtime_settings.load_settings(owner.root / 'state')
+        current['dordiai'] = None
+        runtime_settings.save_settings(owner.root / 'state', current)
+    monkeypatch.setattr(voice_packages, 'show_voice_packages', pending)
+    def opened():
+        answers.press('packages')
+        owner.frame.working = False
+        answers.press('executable')
+    answers.on_open = opened
+    engine_settings.show_engine_settings(owner.frame)
+    current = runtime_settings.load_settings(owner.root / 'state')
+    assert current['dordiai'] is None
+    assert current['ffmpeg'] == str(owner.executable)
+    assert any('changed' in value.lower() for value in answers.status_values)
+
+
+@pytest.mark.parametrize('change', ['other-library-object', 'same-path-replacement', 'closing'])
+def test_package_callbacks_cannot_refresh_or_write_after_captured_root_changes(owner, monkeypatch, change):
+    from carr_library.ui import voice_packages
+    answers = NativeAnswers(monkeypatch, owner.frame, owner.executable)
+    calls = []
+    def manage(frame, *, window_parent, scope_guard, on_settled):
+        calls.append(frame)
+        scope_guard()
+        invalidate(owner, change)
+        with pytest.raises(InterruptedError, match='current library'):
+            scope_guard()
+        with pytest.raises(InterruptedError, match='current library'):
+            on_settled()
+    monkeypatch.setattr(voice_packages, 'show_voice_packages', manage)
+    answers.on_open = lambda: answers.press('packages')
+    engine_settings.show_engine_settings(owner.frame)
+    unchanged(owner)
+    assert calls == [owner.frame] and len(answers.status_values) == 1
+
+
+def test_late_package_settlement_after_parent_close_does_not_read_settings_or_touch_controls(owner, monkeypatch):
+    from carr_library.ui import voice_packages
+    answers = NativeAnswers(monkeypatch, owner.frame, owner.executable)
+    callbacks = {}
+    monkeypatch.setattr(voice_packages, 'show_voice_packages',
+        lambda frame, **kwargs: callbacks.update(kwargs))
+    answers.on_open = lambda: answers.press('packages')
+    engine_settings.show_engine_settings(owner.frame)
+    assert answers.dialog.destroyed
+    before = list(answers.status_values)
+    monkeypatch.setattr(engine_settings, 'load_settings',
+        lambda *_: pytest.fail('A closed parent must not reload current settings.'))
+    with pytest.raises(InterruptedError):
+        callbacks['scope_guard']()
+    with pytest.raises(InterruptedError):
+        callbacks['on_settled']()
+    assert answers.status_values == before
+    unchanged(owner)
+
+
+def test_publish_passes_detached_expected_voice_row_and_keeps_other_preferences(owner, monkeypatch):
+    answers = NativeAnswers(monkeypatch, owner.frame, owner.executable)
+    calls, original = [], engine_settings.save_settings
+    def save(root, candidate, *, expected_dordiai):
+        assert expected_dordiai == candidate['dordiai']
+        assert expected_dordiai is not candidate['dordiai']
+        calls.append(expected_dordiai)
+        return original(root, candidate, expected_dordiai=expected_dordiai)
+    monkeypatch.setattr(engine_settings, 'save_settings', save)
+    before = runtime_settings.load_settings(owner.root / 'state')
+    answers.on_open = lambda: answers.press('executable')
+    engine_settings.show_engine_settings(owner.frame)
+    after = runtime_settings.load_settings(owner.root / 'state')
+    assert calls == [before['dordiai']]
+    assert after == before
+
+
+def test_package_final_refresh_failure_is_readable_and_keeps_last_valid_settings(owner, monkeypatch):
+    from carr_library.ui import voice_packages
+    answers = NativeAnswers(monkeypatch, owner.frame, owner.executable)
+    monkeypatch.setattr(voice_packages, 'show_voice_packages', lambda *args, **kwargs: None)
+    original, reads = engine_settings.load_settings, []
+    def load(root):
+        reads.append(root)
+        if len(reads) == 2:
+            raise ValueError('The configured executable is no longer available.')
+        return original(root)
+    monkeypatch.setattr(engine_settings, 'load_settings', load)
+    def opened():
+        answers.press('packages')
+        assert answers.status_values[-1] == 'The configured executable is no longer available.'
+        answers.press('executable')
+    answers.on_open = opened
+    engine_settings.show_engine_settings(owner.frame)
+    assert len(reads) == 3 and answers.dialog.destroyed
+    assert answers.status_values[0] == answers.status_values[-1]
+    unchanged(owner)
+
+
+@pytest.mark.parametrize('reason', ['busy', 'disabled'])
+def test_package_entry_requires_idle_host_and_explicit_connected_runtime(owner, monkeypatch, reason):
+    from carr_library.ui import voice_packages
+    if reason == 'disabled':
+        current = runtime_settings.load_settings(owner.root / 'state')
+        current['dordiai'] = None
+        runtime_settings.save_settings(owner.root / 'state', current)
+    else:
+        owner.frame.working = True
+    before = runtime_settings.settings_path(owner.root / 'state').read_bytes()
+    answers = NativeAnswers(monkeypatch, owner.frame, owner.executable)
+    monkeypatch.setattr(voice_packages, 'show_voice_packages',
+        lambda *args, **kwargs: pytest.fail('An unavailable package owner was opened.'))
+    answers.on_open = lambda: answers.press('packages')
+    engine_settings.show_engine_settings(owner.frame)
+    assert runtime_settings.settings_path(owner.root / 'state').read_bytes() == before
+    assert answers.dialog.destroyed
+    if reason == 'disabled':
+        assert 'Connect the installed' in answers.status_values[-1]

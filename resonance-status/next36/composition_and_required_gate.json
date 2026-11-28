@@ -1,0 +1,470 @@
+{
+  "schema": "carr-current-voice-management-gate/1",
+  "status": "STATIC_NOT_RUN",
+  "parent": "89ba80ffc2cf7e21e30e5be0cd09f8c8060d3b59",
+  "files": [
+    {
+      "path": "carr-library/src/carr_library/audio/voice_manifest.py",
+      "before": null,
+      "after": "2b5cc075286d2892d1262cddb15bcb84a737d007"
+    },
+    {
+      "path": "carr-library/src/carr_library/audio/voice_transport.py",
+      "before": null,
+      "after": "f4a9f626688cd26e91f5ed0ea2c1813c9a68897e"
+    },
+    {
+      "path": "carr-library/src/carr_library/audio/voice_settings.py",
+      "before": null,
+      "after": "d5d33ba01b294e5bc3f4282cf756aa06a5becbf6"
+    },
+    {
+      "path": "carr-library/src/carr_library/runtime_settings.py",
+      "before": "269814e94549fdff700027afa450686a4a15f81b",
+      "after": "00df790d393f9d54f87d0dcf891e6506916437a1"
+    },
+    {
+      "path": "carr-library/src/carr_library/audio/voice_packages.py",
+      "before": null,
+      "after": "824275dcace7617ce65123d469537593877d51d3"
+    },
+    {
+      "path": "carr-library/src/carr_library/audio/package_publication.py",
+      "before": null,
+      "after": "87cb411c5bd2348cd9ce87bc427d3c84f79a3914"
+    },
+    {
+      "path": "carr-library/src/carr_library/audio/voice_lifecycle.py",
+      "before": null,
+      "after": "4327a8b32bc32e7e9624602d8a626035486caa48"
+    },
+    {
+      "path": "carr-library/src/carr_library/audio/voice_reference.py",
+      "before": null,
+      "after": "c4ca7841d86fe2e45f84a0c5136b6ab82455f03a"
+    },
+    {
+      "path": "carr-library/src/carr_library/audio/voice_restore.py",
+      "before": null,
+      "after": "44844682df24a5d3934830e5ae0d3d78d09a9a6a"
+    },
+    {
+      "path": "carr-library/src/carr_library/state_backup.py",
+      "before": "9a03ff34ec8393a98b6d1e43df562f74a7858761",
+      "after": "7027e3f07f967403d6e523aa23c8233176a43222"
+    },
+    {
+      "path": "carr-library/src/carr_library/library_backup.py",
+      "before": "d36d2ab93043bff46048bb6146769a1a19f29db8",
+      "after": "30ed3b152fc1cd26b338200b270e73f2e193a3f9"
+    },
+    {
+      "path": "carr-library/tests/audio/voice_management_fixtures.py",
+      "before": null,
+      "after": "ef5be0ea225a4222146edfb05ff03f9037dd0eb5"
+    },
+    {
+      "path": "carr-library/tests/audio/test_voice_package_management.py",
+      "before": null,
+      "after": "65ab95aa77c62224f7a42d7e9453f013cbb77ec5"
+    },
+    {
+      "path": "carr-library/tests/audio/test_voice_management_state.py",
+      "before": null,
+      "after": "a3f4372f0454d18e6a249b5a4248bea019aaae80"
+    },
+    {
+      "path": "carr-library/tests/audio/test_voice_reference_management.py",
+      "before": null,
+      "after": "e7c0f0829d9b15e2f8ee40021c9b445cb85ed2f2"
+    },
+    {
+      "path": "carr-library/tests/audio/test_voice_protected_management.py",
+      "before": null,
+      "after": "81350202f697d579e1822284c17f0252e2b294db"
+    },
+    {
+      "path": "carr-library/tests/audio/test_voice_publication_lifetime.py",
+      "before": null,
+      "after": "6febbed72cb5e134bf94f40859c84526a8c2862f"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/voice_packages.py",
+      "before": null,
+      "after": "bb32612b95eaee36bd6d7517dc3369c5a2e4d6da"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/voice_reference.py",
+      "before": null,
+      "after": "53578efe02f434c72ebd3b3acae95eb729671659"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/engine_settings.py",
+      "before": "3f75ad3448bd9fe452b00cf982b60eb67032617e",
+      "after": "e2ca712b9df71d7808b0fdb620978772c1f4dd65"
+    },
+    {
+      "path": "carr-library/tests/ui/test_voice_packages.py",
+      "before": null,
+      "after": "b179baf1923d9fa96597eba0bf985ab270ec1116"
+    },
+    {
+      "path": "carr-library/tests/ui/test_voice_reference.py",
+      "before": null,
+      "after": "ed1c77898b3ff72bc3246c8a8537ca3b5961e945"
+    },
+    {
+      "path": "carr-library/tests/ui/test_engine_settings_lifetime.py",
+      "before": "b8297a4688f10faac5ec2b620a511b204e504fca",
+      "after": "fd4674f62ec4a8696e08618b7f30fa72a7127537"
+    },
+    {
+      "path": "carr-library/docs/VOICE_PACKAGE_MANAGEMENT.md",
+      "before": null,
+      "after": "247d5dddcaff0bd2ab177077dd39bb9c92b0ebb3"
+    },
+    {
+      "path": "carr-library/src/carr_library/integrations/_dordiai_authority.py",
+      "before": null,
+      "after": "ed4abebffe6baab4a6c17ba30f8f0ea28e2dcb83"
+    },
+    {
+      "path": "carr-library/src/carr_library/integrations/dordiai_voices.py",
+      "before": "22730d5b73670ba6525a0d68c76ab42ed2a49e8e",
+      "after": "9f8e090fb780acba417af3db0b8702615acae2a9"
+    },
+    {
+      "path": "carr-library/src/carr_library/integrations/dordiai_speech.py",
+      "before": "79f67586831828a48e3d0d5c42e9077028cb6f4c",
+      "after": "85c9248923b6332da9ea30d7b0dc644f90dc77ba"
+    },
+    {
+      "path": "carr-library/tests/integrations/test_dordiai_owner_lease.py",
+      "before": null,
+      "after": "a1ec1bbb76e22a9e966a480324107475f0b88c41"
+    },
+    {
+      "path": "carr-library/tests/integrations/test_dordiai_managed_authority.py",
+      "before": null,
+      "after": "7e1522e102826b75eea702d5ddc44eec2afe86f5"
+    },
+    {
+      "path": "carr-library/docs/DORDIAI_MANAGED_AUTHORITY.md",
+      "before": null,
+      "after": "577ddd9e414344fe8ffda1f9f031dc51869e3bd9"
+    },
+    {
+      "path": "carr-library/src/carr_library/audio/voice_ownership.py",
+      "before": null,
+      "after": "2b1dc1d7de15d65bababa7ebf5e3a13191e1c71d"
+    },
+    {
+      "path": "carr-library/tests/audio/test_voice_ownership.py",
+      "before": null,
+      "after": "078cdf3a83f84c390f6a242b59d4a19b9b9d52c9"
+    },
+    {
+      "path": "carr-library/scripts/windows_voice_management_smoke.py",
+      "before": null,
+      "after": "7f1f806035ab334713a2b9c13c21bbca59bb09f0"
+    },
+    {
+      "path": "carr-library/tests/ui/test_desktop_query_jobs.py",
+      "before": "50fac9912629b0010ecf52ebc944f10bdfb3d461",
+      "after": "5e44022f54c0b8b851c3aaa94db5224bd6728555"
+    },
+    {
+      "path": "carr-library/tests/ui/test_desktop_result_modes.py",
+      "before": "a1badad00fb06bc9d47ac519e564d17aaedd8fa3",
+      "after": "2220061a23adf2b50dcae6c04224ced12f95a7cc"
+    },
+    {
+      "path": "carr-library/tests/ui/test_notebook_search_actions.py",
+      "before": "593368df6bd0f1c9290794683feec56fc945c895",
+      "after": "c6a402aa66cae4371ebb6777f4f58f4189c9eebe"
+    },
+    {
+      "path": "carr-library/tests/ui/test_studio_keyboard_registration.py",
+      "before": "6d8f9a18ccc5329ba8978ddf5783fbf465f082de",
+      "after": "fcb11e1f915d0b6959ac29135f0a5350e182dc9a"
+    },
+    {
+      "path": "carr-library/tests/ingest/test_batch_scan.py",
+      "before": "3e6077556541e0cf8234fbb909c936c321b7345f",
+      "after": "dea62f80d707457ddf08819c0dad1039e15aa38e"
+    },
+    {
+      "path": "carr-library/tests/e2e/test_import_batches.py",
+      "before": "24cf16cf627fb345c21c3d3100b6a5cbede2efce",
+      "after": "6ff439ff98dde1e7b212e627376f7c2257ad6a37"
+    },
+    {
+      "path": "carr-library/tests/e2e/test_epub_library.py",
+      "before": "334e28f83e3428a40e532bab70c999a978683062",
+      "after": "433f956ef4cefe5f6d3dfe37882dd60ef568dbdd"
+    },
+    {
+      "path": "carr-library/tests/storage/test_library_backup_reading_state.py",
+      "before": "a55da6cebc55d834c358379f52163ec73e0d4e78",
+      "after": "78f02e7994d1474dc1e98beda8afbeb3a70d35e8"
+    },
+    {
+      "path": "carr-library/tests/ingest/test_import_metadata_shape.py",
+      "before": "09c7c790ab07beb90f3300b27ff58193c0ff7e30",
+      "after": "31a0695ef52fecb47607c92cfda54227a0e053c4"
+    },
+    {
+      "path": "carr-library/scripts/ci_voice_management_owner_smoke.py",
+      "before": null,
+      "after": "14bc8f48cd5c5fc4ffeca5a37a973c7860f7efef"
+    },
+    {
+      "path": "carr-library/scripts/ci_voice_management_contracts.py",
+      "before": null,
+      "after": "f0db457f3663b385498e7251552e13547ebfc955"
+    },
+    {
+      "path": ".github/workflows/carr-voice-management.yml",
+      "before": null,
+      "after": "452a9e12993c20c808e1bf68eb32954fc268779d"
+    }
+  ],
+  "suites": {
+    "tests/audio/test_voice_package_management.py": 30,
+    "tests/audio/test_voice_management_state.py": 25,
+    "tests/audio/test_voice_reference_management.py": 30,
+    "tests/audio/test_voice_protected_management.py": 15,
+    "tests/audio/test_voice_publication_lifetime.py": 9,
+    "tests/audio/test_voice_ownership.py": 30,
+    "tests/integrations/test_dordiai_owner_lease.py": 22,
+    "tests/integrations/test_dordiai_managed_authority.py": 18,
+    "tests/ui/test_voice_packages.py": 46,
+    "tests/ui/test_voice_reference.py": 32,
+    "tests/ui/test_engine_settings_lifetime.py": 43,
+    "tests/integrations/test_dordiai_voices.py": 40,
+    "tests/integrations/test_dordiai_speech.py": 10,
+    "tests/integrations/test_dordiai_host_lifecycle.py": 13,
+    "tests/integrations/test_dordiai_settings.py": 17,
+    "tests/integrations/test_dordiai_probe_cancellation.py": 7,
+    "tests/integrations/test_dordiai_convergence.py": 10,
+    "tests/audio/test_bundled_runtime_settings.py": 8,
+    "tests/storage/test_v3_state_backup.py": 42,
+    "tests/storage/test_library_backup.py": 9,
+    "tests/storage/test_state_backup_portability.py": 27
+  },
+  "source_cases": 483,
+  "installed_cases": 483,
+  "source_suites": 21,
+  "installed_suites": 21,
+  "pins": {
+    "src/carr_library/audio/voice_manifest.py": "2b5cc075286d2892d1262cddb15bcb84a737d007",
+    "src/carr_library/audio/voice_transport.py": "f4a9f626688cd26e91f5ed0ea2c1813c9a68897e",
+    "src/carr_library/audio/voice_settings.py": "d5d33ba01b294e5bc3f4282cf756aa06a5becbf6",
+    "src/carr_library/runtime_settings.py": "00df790d393f9d54f87d0dcf891e6506916437a1",
+    "src/carr_library/audio/voice_packages.py": "824275dcace7617ce65123d469537593877d51d3",
+    "src/carr_library/audio/package_publication.py": "87cb411c5bd2348cd9ce87bc427d3c84f79a3914",
+    "src/carr_library/audio/voice_lifecycle.py": "4327a8b32bc32e7e9624602d8a626035486caa48",
+    "src/carr_library/audio/voice_reference.py": "c4ca7841d86fe2e45f84a0c5136b6ab82455f03a",
+    "src/carr_library/audio/voice_restore.py": "44844682df24a5d3934830e5ae0d3d78d09a9a6a",
+    "src/carr_library/state_backup.py": "7027e3f07f967403d6e523aa23c8233176a43222",
+    "src/carr_library/library_backup.py": "30ed3b152fc1cd26b338200b270e73f2e193a3f9",
+    "src/carr_library/ui/voice_packages.py": "bb32612b95eaee36bd6d7517dc3369c5a2e4d6da",
+    "src/carr_library/ui/voice_reference.py": "53578efe02f434c72ebd3b3acae95eb729671659",
+    "src/carr_library/ui/engine_settings.py": "e2ca712b9df71d7808b0fdb620978772c1f4dd65",
+    "src/carr_library/integrations/_dordiai_authority.py": "ed4abebffe6baab4a6c17ba30f8f0ea28e2dcb83",
+    "src/carr_library/integrations/dordiai_voices.py": "9f8e090fb780acba417af3db0b8702615acae2a9",
+    "src/carr_library/integrations/dordiai_speech.py": "85c9248923b6332da9ea30d7b0dc644f90dc77ba",
+    "src/carr_library/audio/voice_ownership.py": "2b1dc1d7de15d65bababa7ebf5e3a13191e1c71d",
+    "src/carr_library/audio/models.py": "35694ae7cb9ad00e6a37ee11e18cdf60c6b2d7f6",
+    "src/carr_library/audio/dsp.py": "f7833b5f600e3a822a3fa2f2068661c922576230",
+    "src/carr_library/audio/cleanup.py": "77d69f8406db93dc0ff6110b9597ad805bd92dc5",
+    "src/carr_library/audio/process.py": "014c47d5297a937a8bf6061420dd009206863669",
+    "src/carr_library/operations/broker.py": "107e1a600bb4bdf0f3edb7735ee5fcdb68d9fb36",
+    "src/carr_library/operations/_locks.py": "ae161b8483f84b2a4aa2f153b4b11b08f76b9693",
+    "src/carr_library/durable_state.py": "d2b95bde04aa72cdd21ee6b4f0092d3350f84fcb",
+    "src/carr_library/file_publication.py": "2ce3bdaa2c489cfeff301907e29ca6b552a2f90f",
+    "src/carr_library/research/export_file.py": "335fd4d03ed4e612d628ec2f93b615feba49e97d",
+    "src/carr_library/studio/publishing.py": "e369f0d40cbc818d9374e1d4f84bc3e28e09ad63",
+    "src/carr_library/sync/crypto.py": "681a08530212f8cb18f600cfaf9314cc36a787e9",
+    "src/carr_library/speech/__init__.py": "f3a90829d0e3780e4fd88512f200e64a947c83a8",
+    "src/carr_library/application.py": "82af31743ca5cc6557477f6492c08b912751f4a4",
+    "src/carr_library/native_runtime.py": "50ca93914325753f7d9cb91f1bc4f48fc9ae230f",
+    "bootstrap/__init__.py": "6981b7faa1cca8d29f37fe85751c110c693dae55",
+    "src/carr_library/audio/windows_job.py": "27aeb47c39660ac74335d791e22e58b44058db3b",
+    "src/carr_library/ui/desktop_app.py": "85c0991f744bd521ca247a0e15da93aa585ea30d",
+    "src/carr_library/ui/worker_lifetime.py": "ed62603159bc095724c3b240d4754f989141a2c9",
+    "src/carr_library/ui/recording_dialog.py": "d2447529f7f5ac6ee07de2e06c9da7189ee3c067",
+    "tests/audio/test_voice_package_management.py": "65ab95aa77c62224f7a42d7e9453f013cbb77ec5",
+    "tests/audio/test_voice_management_state.py": "a3f4372f0454d18e6a249b5a4248bea019aaae80",
+    "tests/audio/test_voice_reference_management.py": "e7c0f0829d9b15e2f8ee40021c9b445cb85ed2f2",
+    "tests/audio/test_voice_protected_management.py": "81350202f697d579e1822284c17f0252e2b294db",
+    "tests/audio/test_voice_publication_lifetime.py": "6febbed72cb5e134bf94f40859c84526a8c2862f",
+    "tests/audio/test_voice_ownership.py": "078cdf3a83f84c390f6a242b59d4a19b9b9d52c9",
+    "tests/integrations/test_dordiai_owner_lease.py": "a1ec1bbb76e22a9e966a480324107475f0b88c41",
+    "tests/integrations/test_dordiai_managed_authority.py": "7e1522e102826b75eea702d5ddc44eec2afe86f5",
+    "tests/ui/test_voice_packages.py": "b179baf1923d9fa96597eba0bf985ab270ec1116",
+    "tests/ui/test_voice_reference.py": "ed1c77898b3ff72bc3246c8a8537ca3b5961e945",
+    "tests/ui/test_engine_settings_lifetime.py": "fd4674f62ec4a8696e08618b7f30fa72a7127537",
+    "tests/integrations/test_dordiai_voices.py": "e46257220ef1af5c129669aa9037dafa788077af",
+    "tests/integrations/test_dordiai_speech.py": "1b8191f2a59c9eea4da662423c1b8bd4cd03fb19",
+    "tests/integrations/test_dordiai_host_lifecycle.py": "52f3cce2330add9be0b7b81f575cdd6ee659e9af",
+    "tests/integrations/test_dordiai_settings.py": "3f4a49f3ef04d72cd4ad05d7ca4fe170925359a8",
+    "tests/integrations/test_dordiai_probe_cancellation.py": "96ec861256678a75010ca3ec9b1620d13876d866",
+    "tests/integrations/test_dordiai_convergence.py": "e18e02267f7a3d3a7fdaed909abff8b1c8e78e92",
+    "tests/audio/test_bundled_runtime_settings.py": "1e48791b33ae256ff5ede4ac7c24dd64afb78beb",
+    "tests/storage/test_v3_state_backup.py": "feb3ab5bc89db85614d1bb947e6f6a34e5578e64",
+    "tests/storage/test_library_backup.py": "d14b278b356bb47fe66e822125a257807f2cd895",
+    "tests/storage/test_state_backup_portability.py": "b346d9eab3eb98627116228ac5b13c93e3283476",
+    "tests/audio/voice_management_fixtures.py": "ef5be0ea225a4222146edfb05ff03f9037dd0eb5",
+    "tests/integrations/__init__.py": "1ca9f3fafe08709103c64426a7c5311eb3f28455",
+    "scripts/ci_check.py": "6ad3055cfcd7c6a1b1af8544ae462c5d51adb473",
+    "packaging/source_wheel.py": "478de248451d59a44b35784eb808fb2974f0af67",
+    "packaging/windows-audio.lock.json": "2bc706ffc6208f5596a10abee61d3da33f20e6c6",
+    "scripts/windows_voice_management_smoke.py": "7f1f806035ab334713a2b9c13c21bbca59bb09f0",
+    "scripts/ci_owner_voice_api_smoke.py": "e22c226ef24cf48957d04c32f25cb472e48c764e",
+    "scripts/ci_voice_management_owner_smoke.py": "14bc8f48cd5c5fc4ffeca5a37a973c7860f7efef",
+    "src/carr_library/catalog/intake.py": "5a55fa8b1326a43ea2b6a4773f4072886e436031"
+  },
+  "linux_origins": [
+    "carr_library.audio.voice_manifest",
+    "carr_library.audio.voice_transport",
+    "carr_library.audio.voice_settings",
+    "carr_library.runtime_settings",
+    "carr_library.audio.voice_packages",
+    "carr_library.audio.package_publication",
+    "carr_library.audio.voice_lifecycle",
+    "carr_library.audio.voice_reference",
+    "carr_library.audio.voice_restore",
+    "carr_library.state_backup",
+    "carr_library.library_backup",
+    "carr_library.ui.voice_packages",
+    "carr_library.ui.voice_reference",
+    "carr_library.ui.engine_settings",
+    "carr_library.integrations._dordiai_authority",
+    "carr_library.integrations.dordiai_voices",
+    "carr_library.integrations.dordiai_speech",
+    "carr_library.audio.voice_ownership",
+    "carr_library.audio.models",
+    "carr_library.audio.dsp",
+    "carr_library.audio.cleanup",
+    "carr_library.audio.process",
+    "carr_library.operations.broker",
+    "carr_library.operations._locks",
+    "carr_library.durable_state",
+    "carr_library.file_publication",
+    "carr_library.research.export_file",
+    "carr_library.studio.publishing",
+    "carr_library.sync.crypto",
+    "carr_library.speech",
+    "carr_library.application",
+    "carr_library.native_runtime",
+    "bootstrap",
+    "carr_library.catalog.intake",
+    "carr_library.audio.windows_job"
+  ],
+  "windows_origins": [
+    "carr_library.audio.voice_manifest",
+    "carr_library.audio.voice_transport",
+    "carr_library.audio.voice_settings",
+    "carr_library.runtime_settings",
+    "carr_library.audio.voice_packages",
+    "carr_library.audio.package_publication",
+    "carr_library.audio.voice_lifecycle",
+    "carr_library.audio.voice_reference",
+    "carr_library.audio.voice_restore",
+    "carr_library.state_backup",
+    "carr_library.library_backup",
+    "carr_library.ui.voice_packages",
+    "carr_library.ui.voice_reference",
+    "carr_library.ui.engine_settings",
+    "carr_library.integrations._dordiai_authority",
+    "carr_library.integrations.dordiai_voices",
+    "carr_library.integrations.dordiai_speech",
+    "carr_library.audio.voice_ownership",
+    "carr_library.audio.models",
+    "carr_library.audio.dsp",
+    "carr_library.audio.cleanup",
+    "carr_library.audio.process",
+    "carr_library.operations.broker",
+    "carr_library.operations._locks",
+    "carr_library.durable_state",
+    "carr_library.file_publication",
+    "carr_library.research.export_file",
+    "carr_library.studio.publishing",
+    "carr_library.sync.crypto",
+    "carr_library.speech",
+    "carr_library.application",
+    "carr_library.native_runtime",
+    "bootstrap",
+    "carr_library.audio.windows_job",
+    "carr_library.ui.desktop_app",
+    "carr_library.ui.worker_lifetime",
+    "carr_library.ui.recording_dialog",
+    "carr_library.catalog.intake"
+  ],
+  "companions": [
+    "tests/audio/voice_management_fixtures.py",
+    "tests/integrations/__init__.py"
+  ],
+  "actual_owner": {
+    "script": "14bc8f48cd5c5fc4ffeca5a37a973c7860f7efef",
+    "handoff": "0f12639383fdc2eb27cac46a2429b2133ae78ef2",
+    "required_modes": [
+      "source",
+      "installed"
+    ],
+    "required_checks_per_mode": 25,
+    "origin_count": 18,
+    "acquisition": "Exact three public immutable sources acquired before Windows egress restriction; same read-only closed directory before and after both actual current-manager probes.",
+    "runtime": "NOT_RUN",
+    "inference": "NOT_RUN"
+  },
+  "native": {
+    "script": "7f1f806035ab334713a2b9c13c21bbca59bb09f0",
+    "handoff": "4912c7b84fdf39914fafa4f286e0b57233e1f2ad",
+    "required_unique_checks": 83,
+    "origins": 22,
+    "platform": "Windows",
+    "runtime": "NOT_RUN"
+  },
+  "bounds": {
+    "source_aggregate_seconds": 4500,
+    "whole_suite_seconds": 600,
+    "installed_whole_suite_seconds": 600,
+    "owner_operation_seconds": 900,
+    "owner_process_with_cleanup_seconds": 990,
+    "native_seconds": 330,
+    "gate_step_minutes": 325,
+    "job_minutes": 360,
+    "other_step_maxima_minutes": {
+      "checkout": 3,
+      "python": 5,
+      "preparation": 20,
+      "retention": 2,
+      "upload": 3
+    },
+    "outer_unallocated_minutes": 2
+  },
+  "fixtures": {
+    "changed_old_files": 9,
+    "whole_cases_unchanged": 349,
+    "product_changes_for_old_regressions": false,
+    "runtime": "NOT_RUN"
+  },
+  "reviews": {
+    "core": "Progress source; Canonical/Locate/root seams accepted static.",
+    "provider": "Canonical source; Progress/Locate peer accepted static.",
+    "ownership": "Canonical source; Progress peer accepted static.",
+    "ui_native": "Locate source; Progress peer accepted static.",
+    "actual_owner": "Progress source; Canonical final14bc accepted static.",
+    "old_regressions": "Progress/Locate sources; independent Canonical peer and root metadata-fixture peer accepted static.",
+    "gate": "Canonical ACCEPTED_STATIC_NOT_RUN for exact f0db helper and 452a workflow. Exact prior source/installed/native bodies and original child deadlines preserved. Final outer envelope 358 minutes in job360 verified; every required outcome remains mandatory."
+  },
+  "claims": {
+    "release": "NOT_RUN",
+    "manual_NVDA": "NOT_RUN",
+    "private_inference": "NOT_RUN",
+    "acoustic_quality": "NOT_RUN",
+    "physical_microphone": "NOT_RUN"
+  }
+}

@@ -456,6 +456,8 @@ def restore_state(source, target, entries):
     if (target / 'transcription').exists():
         from .integrations.transcription_protocol import prepare_restored_state
         prepare_restored_state(target)
+    from .audio.voice_restore import prepare_restored_state as prepare_restored_voices
+    prepare_restored_voices(target)
     sync_directory(target)
 
 

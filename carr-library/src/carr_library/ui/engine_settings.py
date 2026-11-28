@@ -1,5 +1,6 @@
 """Native explicit local runtime setup; users select previously installed assets."""
 from pathlib import Path
+from copy import deepcopy
 from ..durable_state import local_path, read_json, regular
 from ..runtime_settings import load_settings, save_settings
 
@@ -54,11 +55,38 @@ def show_engine_settings(frame):
 
     def publish(candidate):
         require_current()
-        save_settings(state_root, candidate)
+        save_settings(state_root, candidate,
+                      expected_dordiai=deepcopy(settings['dordiai']))
+        refresh_settings()
+
+    def refresh_settings():
+        require_current()
+        current_settings = load_settings(state_root)
         require_current()
         settings.clear()
-        settings.update(candidate)
+        settings.update(current_settings)
         describe()
+
+    def manage_voice_packages(event):
+        if not current() or getattr(frame, 'working', False):
+            return
+        if not settings['dordiai'] or settings['dordiai'].get('enabled') is not True:
+            report('Connect the installed dordiai-voices runtime before managing its local voice packages.')
+            return
+        from .voice_packages import show_voice_packages
+        try:
+            show_voice_packages(frame, window_parent=dialog, scope_guard=require_current,
+                                on_settled=refresh_settings)
+        except Exception as exc:
+            report(str(exc))
+        finally:
+            if current() and not getattr(frame, 'working', False):
+                try:
+                    refresh_settings()
+                except Exception as exc:
+                    # Keep the last readable settings if a concurrent local asset
+                    # change makes the new configuration temporarily unavailable.
+                    report(str(exc))
 
     def executable(key):
         if not current():
@@ -166,6 +194,7 @@ def show_engine_settings(frame):
         ('Register a local Piper voice manifest', lambda event: register('piper')),
         ('Connect installed &dordiai-voices', connect_dordiai),
         ('Disable dordiai-voices', disconnect_dordiai),
+        ('Manage reviewed voice packages and references...', manage_voice_packages),
         ('Register a MusicGen or ACE-Step installation', lambda event: register('music_models')),
         ('Register a reviewed local voice helper', lambda event: register('voice_helpers')),
         ('Reset overrides', reset)]:

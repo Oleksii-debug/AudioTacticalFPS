@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import atexit
 import base64
+from contextlib import contextmanager
 from dataclasses import dataclass
 import hashlib
 import json
@@ -102,6 +103,8 @@ class DordiaiCapabilities:
     word_timestamps: bool = False
     emotion: bool = False
     pronunciation_verified: bool = False
+    managed_authority_sha256: str | None = None
+    managed_asset_versions: tuple[tuple[str, ...], ...] = ()
 
 
 @dataclass(frozen=True)
@@ -310,7 +313,7 @@ class DordiaiVoicesAdapter:
     def __init__(self, runtime_directory: str | Path, *,
                  python_executable: str | Path | None = None,
                  expected_worker_sha256: str = REVIEWED_WORKER_SHA256,
-                 request_timeout: float = 120.0):
+                 request_timeout: float = 120.0, authority=None):
         self.runtime = _local_path(runtime_directory, directory=True)
         self.python = _local_path(python_executable or self.runtime / "python/python.exe", directory=False)
         if not isinstance(expected_worker_sha256, str) or not re.fullmatch(r"[0-9a-f]{64}", expected_worker_sha256):
@@ -329,6 +332,13 @@ class DordiaiVoicesAdapter:
         self._active_cancel: Event | None = None
         self._closed = False
         self._validate_installation()
+        from ._dordiai_authority import DordiaiAuthority
+        if authority is None:
+            authority = DordiaiAuthority(self.runtime)
+        if type(authority) is not DordiaiAuthority:
+            raise TypeError('Use the current captured dordiai authority.')
+        self._authority = authority
+        authority.attach(self)
 
     def _validate_installation(self) -> None:
         script = _inside(self.runtime, "nvda_worker.py")
@@ -353,8 +363,29 @@ class DordiaiVoicesAdapter:
                 rows.append((name, None))
         return tuple(rows)
 
+    @contextmanager
+    def _authority_scope(self, *, cancelled=None):
+        from ._dordiai_authority import AuthorityBusy
+        try:
+            with self._authority.operation(cancelled=cancelled, timeout=self.request_timeout):
+                yield
+        except AuthorityBusy as error:
+            raise DordiaiBusy("This dordiai-voices adapter already has an active operation") from error
+        except InterruptedError as error:
+            raise DordiaiCancelled("dordiai-voices operation was cancelled") from error
+
     def _probe(self, refresh: bool = False, *,
                cancelled: Event | Callable[[], bool] | None = None) -> dict:
+        with self._authority_scope(cancelled=cancelled):
+            def guarded():
+                self._authority.checkpoint()
+                return (bool(cancelled()) if callable(cancelled)
+                        else cancelled is not None and cancelled.is_set())
+            result = self._probe_current(refresh, cancelled=guarded)
+            return self._authority.filter_inventory(result)
+
+    def _probe_current(self, refresh: bool = False, *,
+                       cancelled: Event | Callable[[], bool] | None = None) -> dict:
         def check_cancelled() -> None:
             requested = (bool(cancelled()) if callable(cancelled)
                          else cancelled is not None and cancelled.is_set())
@@ -441,8 +472,11 @@ class DordiaiVoicesAdapter:
                      for v in self._probe(refresh, cancelled=cancelled)["voices"] if v["languages"])
 
     def capabilities(self, *, cancelled: Event | Callable[[], bool] | None = None) -> DordiaiCapabilities:
-        inventory = self._probe(cancelled=cancelled)
-        return DordiaiCapabilities(inventory.get("engine_version"), inventory["worker_sha256"])
+        with self._authority_scope(cancelled=cancelled):
+            inventory = self._probe(cancelled=cancelled)
+            authority, versions = self._authority.capability_identity()
+            return DordiaiCapabilities(inventory.get("engine_version"), inventory["worker_sha256"],
+                managed_authority_sha256=authority, managed_asset_versions=versions)
 
     def language_statuses(self, *, cancelled: Event | Callable[[], bool] | None = None) -> tuple[dict, ...]:
         """Copy of installed-resource status, including missing/partial entries."""
@@ -468,6 +502,29 @@ class DordiaiVoicesAdapter:
             if self._worker is worker:
                 self._worker = None
 
+    def _retire_authority_workers(self):
+        """Close actual owned children before releasing a package lease."""
+        self.cancel()
+        with self._state:
+            children = (("_probe_child", self._probe_child), ("_worker", self._worker))
+        errors = []
+        for name, child in children:
+            if child is None:
+                continue
+            try:
+                child.close()
+                if not child._cleanup_done:
+                    raise DordiaiError("The managed voice child has not confirmed cleanup.")
+            except BaseException as error:
+                errors.append(error)
+            else:
+                with self._state:
+                    if getattr(self, name) is child:
+                        setattr(self, name, None)
+        if errors:
+            raise errors[0]
+        return True
+
     def _drain_after_cancel(self, worker: _JsonLinesProcess, pending: bool) -> None:
         """Cancel has no acknowledgement; drain the old reply before drop's ack."""
         try:
@@ -484,6 +541,20 @@ class DordiaiVoicesAdapter:
             self._forget_worker(worker)
 
     def stream_pcm(self, text: str, voice_id: str, language: str, *, speed: float = 1.0,
+                   pitch: int = 50, timbre: int = 50, volume: int = 100,
+                   style: str = "neutral", cancelled: Event | Callable[[], bool] | None = None,
+                   progress: Callable[[DordiaiProgress], None] | None = None) -> Iterator[PCMChunk]:
+        with self._authority_scope(cancelled=cancelled):
+            self._authority.profile_identity(voice_id, select=True)
+            def guarded():
+                self._authority.checkpoint()
+                return (bool(cancelled()) if callable(cancelled)
+                        else cancelled is not None and cancelled.is_set())
+            yield from self._stream_pcm(text, voice_id, language, speed=speed,
+                pitch=pitch, timbre=timbre, volume=volume, style=style,
+                cancelled=guarded, progress=progress)
+
+    def _stream_pcm(self, text: str, voice_id: str, language: str, *, speed: float = 1.0,
                    pitch: int = 50, timbre: int = 50, volume: int = 100,
                    style: str = "neutral", cancelled: Event | Callable[[], bool] | None = None,
                    progress: Callable[[DordiaiProgress], None] | None = None) -> Iterator[PCMChunk]:

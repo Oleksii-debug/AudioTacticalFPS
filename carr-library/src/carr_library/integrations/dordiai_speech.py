@@ -24,11 +24,19 @@ class DordiaiSpeechProvider:
     cancellable_discovery = True
 
     def __init__(self, runtime_directory, *, python_executable=None,
-                 expected_worker_sha256=REVIEWED_WORKER_SHA256):
+                 expected_worker_sha256=REVIEWED_WORKER_SHA256,
+                 configuration=None, state_root=None):
+        from ._dordiai_authority import DordiaiAuthority
+        from .dordiai_voices import _local_path
+        authority = DordiaiAuthority(_local_path(runtime_directory, directory=True),
+                                     configuration=configuration, state_root=state_root)
         self.adapter = DordiaiVoicesAdapter(runtime_directory, python_executable=python_executable,
-                                            expected_worker_sha256=expected_worker_sha256)
+                                            expected_worker_sha256=expected_worker_sha256,
+                                            authority=authority)
+        self._authority = authority
         self.executable = self.adapter.python
         self._tokens = {}
+        self._token_authority = {}
         self._installation_revision = None
         self._worker_revision = None
         self._render_lock = Lock()
@@ -36,6 +44,10 @@ class DordiaiSpeechProvider:
         self._installation_id = sha256(os.path.normcase(str(self.adapter.runtime)).encode("utf-8")).hexdigest()
 
     def voices(self, *, cancelled=lambda: False):
+        with self._authority.operation(cancelled=cancelled, timeout=self.adapter.request_timeout):
+            return self._voices(cancelled=cancelled)
+
+    def _voices(self, *, cancelled=lambda: False):
         from ..speech._io import check_cancelled
         from ..speech.runtime import Voice
 
@@ -45,14 +57,18 @@ class DordiaiSpeechProvider:
         self._cancel.clear()
         stop = lambda: self._cancel.is_set() or bool(cancelled())
         try:
-            result, tokens = [], {}
+            result, tokens, authorities = [], {}, {}
             for item in self.adapter.voices(refresh=True, cancelled=stop):
                 check_cancelled(stop)
                 for language in item.languages:
-                    key = json.dumps([self._installation_id, item.id, language], ensure_ascii=True,
-                                     separators=(",", ":"))
+                    approved = self._authority.profile_identity(item.id)
+                    key_parts = [self._installation_id, item.id, language]
+                    if approved is not None:
+                        key_parts.append(list(approved))
+                    key = json.dumps(key_parts, ensure_ascii=True, separators=(",", ":"))
                     identity = "dordiai-voices:" + sha256(key.encode("ascii")).hexdigest()
                     tokens[identity] = (item.id, language)
+                    authorities[identity] = approved
                     result.append(Voice(identity, f"{item.name} ({language})", "dordiai-voices", language,
                                         ("rate", "volume", "pitch"), vendor="dordiai-voices",
                                         license="Separate installed dordiai-voices resource licenses apply.",
@@ -61,6 +77,7 @@ class DordiaiSpeechProvider:
                         raise ValueError("The installed voice-language inventory exceeds its budget.")
             check_cancelled(stop)
             self._tokens = tokens
+            self._token_authority = authorities
             return tuple(result)
         except DordiaiCancelled:
             raise InterruptedError("Voice discovery cancelled.") from None
@@ -77,6 +94,9 @@ class DordiaiSpeechProvider:
 
         check_cancelled(cancelled)
         path = local_file(path)
+        locked = self._authority.lock_digest(path)
+        if locked is not None:
+            return locked
         signature = self._signature(path)
         checksum = sha256()
         with path.open("rb") as stream:
@@ -93,6 +113,18 @@ class DordiaiSpeechProvider:
         return result
 
     def fingerprint(self, voice_id, *, cancelled=lambda: False):
+        with self._authority.operation(cancelled=cancelled, timeout=self.adapter.request_timeout):
+            if voice_id not in self._tokens:
+                raise ValueError("Reload installed dordiai-voices before selecting this voice.")
+            self._authority.require_identity(self._tokens[voice_id][0], self._token_authority[voice_id])
+            result = self._fingerprint(voice_id, cancelled=cancelled)
+            approved = self._token_authority[voice_id]
+            if approved is None:
+                return result
+            return sha256(json.dumps([result, approved], ensure_ascii=True,
+                                     separators=(",", ":")).encode("ascii")).hexdigest()
+
+    def _fingerprint(self, voice_id, *, cancelled=lambda: False):
         """Content identity verified from installed asset bytes.
 
         Hashing can read a large private installation and remains cancellable.
@@ -107,7 +139,12 @@ class DordiaiSpeechProvider:
             raise ValueError("Reload installed dordiai-voices before selecting this voice.")
         root = self.adapter.runtime
         paths = {self.executable, Path(__file__).resolve(), Path(__file__).with_name("dordiai_voices.py").resolve(),
-                 Path(__file__).with_name("_dordiai_probe.py").resolve()}
+                 Path(__file__).with_name("_dordiai_probe.py").resolve(),
+                 Path(__file__).with_name("_dordiai_authority.py").resolve()}
+        if self._authority._binding is not None:
+            base = Path(__file__).resolve().parents[1] / "audio"
+            paths.update(base / (name + ".py") for name in
+                         ("voice_manifest", "voice_settings", "voice_packages", "voice_ownership"))
         manifest = root.parent / "manifest.ini"
         if manifest.is_file():
             paths.add(manifest)
@@ -145,6 +182,10 @@ class DordiaiSpeechProvider:
                                   "installation": self._installation_revision}, sort_keys=True).encode("utf-8")).hexdigest()
 
     def render(self, text, voice, output, settings, cancelled):
+        with self._authority.operation(cancelled=cancelled, timeout=self.adapter.request_timeout):
+            return self._render(text, voice, output, settings, cancelled)
+
+    def _render(self, text, voice, output, settings, cancelled):
         from ..speech._io import check_cancelled, new_output, text_value
         from ..speech.runtime import SpeechSettings
 
@@ -239,7 +280,7 @@ class DordiaiSpeechProvider:
         self.adapter.close()
 
 
-def install_dordiai_provider(registry, configuration=None, *, cancelled=None):
+def install_dordiai_provider(registry, configuration=None, *, cancelled=None, state_root=None):
     """Register an explicitly enabled saved local installation, without downloads.
 
     A missing/disabled configuration does not inspect the filesystem or start a
@@ -249,7 +290,7 @@ def install_dordiai_provider(registry, configuration=None, *, cancelled=None):
         return None
     if not isinstance(configuration, dict) or type(configuration.get("enabled")) is not bool:
         raise ValueError("A dordiai-voices configuration needs an explicit enabled boolean.")
-    allowed = {"enabled", "runtime_directory", "python_executable", "expected_worker_sha256"}
+    allowed = {"enabled", "runtime_directory", "python_executable", "expected_worker_sha256", "management"}
     if not set(configuration) <= allowed:
         raise ValueError("Unknown dordiai-voices configuration field.")
     if not configuration["enabled"]:
@@ -258,7 +299,8 @@ def install_dordiai_provider(registry, configuration=None, *, cancelled=None):
         raise ValueError("Choose the installed dordiai-voices kx47Runtime directory.")
     provider = DordiaiSpeechProvider(configuration["runtime_directory"],
                                     python_executable=configuration.get("python_executable"),
-                                    expected_worker_sha256=configuration.get("expected_worker_sha256", REVIEWED_WORKER_SHA256))
+                                    expected_worker_sha256=configuration.get("expected_worker_sha256", REVIEWED_WORKER_SHA256),
+                                    configuration=configuration, state_root=state_root)
     try:
         if cancelled is None:
             registry.add_provider(provider)
