@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "application_baseline": "f8311d17fa960448b350cb739b5a90584c30c74b",
+  "application_tree": "905201ae02b07c4899e542f3eb19ac2b059ef92c",
+  "purpose": "Retain completed receiving evidence after the application candidate was frozen, without changing its CI/source identity.",
+  "evidence_sets": [
+    {
+      "tested_source": "10e3be93156c7d5a2a9d75cc67ed98dd600d4a9b",
+      "run": 46103182980,
+      "job": 140850017077,
+      "sparse_tree": "16835382db4c9e292b7f06121d7f035493bfc8c4",
+      "kind": "terminal Windows supplied-bridge receiving"
+    }
+  ],
+  "application_changes": [],
+  "workflow_changes": [],
+  "qualification_transfer": false,
+  "branch": "carr/receiving-evidence-f8311d17-20261128",
+  "ci_trigger_review": "All13 current workflow push branch filters inspected; this evidence-only branch matches none. No CI workflow or product ref is altered."
+}
