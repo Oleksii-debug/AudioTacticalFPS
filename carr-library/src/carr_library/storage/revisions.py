@@ -304,7 +304,13 @@ class Storage:
                 'AND r.edition=a.edition JOIN page p ON p.revision=r.id '
                 'WHERE a.workspace=? AND a.edition=?)', (workspace, edition))
             db.execute('INSERT INTO active VALUES(?,?,?) ON CONFLICT(workspace,edition) DO UPDATE SET revision=excluded.revision',(workspace,edition,revision))
-            db.execute('INSERT INTO indexed SELECT id,raw FROM page WHERE revision=?',(revision,))
+            # Keep only IDs in the source cursor; each triggered write obtains
+            # one exact raw value by its unique page key inside the same savepoint.
+            with closing(db.execute('SELECT id FROM page WHERE revision=?', (revision,))) as selected:
+                for (page_id,) in selected:
+                    db.execute(
+                        'INSERT INTO indexed(id,raw) VALUES(?,(SELECT raw FROM page WHERE id=?))',
+                        (page_id, page_id))
         except BaseException:
             if self.db.in_transaction:
                 db.execute('ROLLBACK TO stage_revision')
@@ -499,7 +505,12 @@ class Storage:
             self._check_schema()
             self.db.execute("INSERT INTO page_fts(page_fts) VALUES('rebuild')")
             self.db.execute('DELETE FROM indexed')
-            self.db.execute('INSERT INTO indexed SELECT id,raw FROM active_page')
+            # The source view does not read indexed or its FTS trigger tables.
+            with closing(self.db.execute('SELECT id FROM active_page')) as selected:
+                for (page_id,) in selected:
+                    self.db.execute(
+                        'INSERT INTO indexed(id,raw) VALUES(?,(SELECT raw FROM page WHERE id=?))',
+                        (page_id, page_id))
             self._check()
 
     def backup(self, path, *, cancelled=lambda: False, max_bytes=None):
