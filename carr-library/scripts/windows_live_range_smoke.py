@@ -1,8 +1,9 @@
 """Native source-range A–B and sleep through the existing live readers.
 
 Source import, source maps, SAPI synthesis, native widgets/keys, the current
-LiveReader worker and every cleanup result are real. Only the PCM output device
-is the existing disclosed controlled fixture. This is not physical output,
+LiveReader worker and every cleanup result are real. The PCM output device is
+the existing disclosed controlled fixture; the exact unsaved-copy question is
+answered NO without changing or saving the copy. This is not physical output,
 audible timing, voice quality or NVDA acceptance.
 """
 import argparse
@@ -87,6 +88,8 @@ def _native():
     state = N(reader=None, view=None, returned=True, waiting=None, description='',
               entered=False, finished=False, started=monotonic())
     original_factory = live_range_controls.create_live_range_controls
+    original_message = wx.MessageBox
+    unsaved_answers = []
 
     def check(label, condition):
         if not condition:
@@ -157,6 +160,17 @@ def _native():
         nonlocal failure_handler
         failure_handler = value
     helpers._nested_modal_failure_acceptance(wx, gui, check, select_failure)
+
+    def reviewed_message(*arguments, **options):
+        if (len(arguments) == 4 and not options
+                and arguments[0] == 'Save the reading copy and its undo history before closing?'
+                and arguments[1] == 'Unsaved reading copy'
+                and arguments[2] == wx.YES_NO | wx.CANCEL | wx.ICON_QUESTION
+                and arguments[3] is state.reader):
+            unsaved_answers.append(arguments[1])
+            return wx.NO
+        return original_message(*arguments, **options)
+    wx.MessageBox = reviewed_message
 
     def pump(predicate, message, seconds=8):
         deadline = monotonic() + seconds
@@ -434,6 +448,8 @@ def _native():
         press(state.view['buttons']['close'])
         yield waiting(lambda: state.returned and not state.reader,
                       'The actual canonical reader did not close')
+        check('only the exact current unsaved-copy question receives the disclosed NO answer',
+              unsaved_answers == ['Unsaved reading copy'])
         check('one existing Desktop executor and one worker per reader remain selected',
               frame.executor is desktop_executor and len(cores) == 2 and len(players) == 2
               and len(set(worker_threads)) <= 2 and threading.get_ident() not in worker_threads
@@ -486,6 +502,7 @@ def _native():
         timer.SetOwner(None)
         abort.stop()
         live_range_controls.create_live_range_controls = original_factory
+        wx.MessageBox = original_message
         for core in cores:
             completion = core.close()
             if completion is not None:
@@ -517,7 +534,8 @@ def _native():
         actual_sapi_renders=[dict(voice_id=item.voice_id, sha256=item.sha256,
                                  duration_seconds=item.duration_seconds) for item in results],
         scope='ACTUAL_NATIVE_SOURCE_AND_COPY_A_B_SLEEP',
-        player='CONTROLLED_PCM_TEST_FIXTURE', physical_output='NOT_RUN',
+        player='CONTROLLED_PCM_TEST_FIXTURE', unsaved_close='CONTROLLED_EXACT_NO_ANSWER',
+        physical_output='NOT_RUN',
         audible_timing='NOT_RUN', voice_quality='NOT_RUN', NVDA='NOT_RUN'), ensure_ascii=False), flush=True)
     return 0
 
