@@ -152,6 +152,7 @@ def test_actual_deadline_retains_partial_data_without_full_scale_pass(tmp_path):
     proof = proof_for_current_package(tmp_path / "source-proof.json")
     result = pilot.run_case(tmp_path / "case", 100, proof, TESTED, seconds=.000001)
     assert result["status"] == "TIMEOUT"
+    assert result["phase"] == "import"
     assert result["requested_books"] == 100 and result["completed_books"] == 0
     assert result["imported"]["count"] == 0
     assert result["imported"]["p50_seconds"] is None and result["imported"]["p95_seconds"] is None

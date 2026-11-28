@@ -507,6 +507,7 @@ def run_case(directory, books, proof_path, tested_commit, *, segments=SEGMENTS,
             scope = app.create_workspace("Generated real TXT pilot")
             report["workspace"] = scope
             checkpoint("startup")
+            stage = "import"
             for number in range(books):
                 check()
                 text = corpus_text(number, segments)
