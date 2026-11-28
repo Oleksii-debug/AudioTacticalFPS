@@ -1,0 +1,207 @@
+{
+  "schema": "carr-benchmark-path-reuse-component/1",
+  "status": "ACCEPTED_STATIC_NOT_RUN",
+  "title": "Reuse exact concrete lexical Path values in the measurement harness while retaining every fresh filesystem and budget check",
+  "base_commit": "f28ce084a1016121a4d04b7a358c0c3ef72b2812",
+  "source_preimages_also_match_root_proposed_E_pinclosure": "d70a2a0173131052ea3f2591952ee928917472c1",
+  "files": [
+    {
+      "path": "carr-library/scripts/benchmark_library_scale.py",
+      "preimage": "05bf43b062f160f973f1521d31a259a69d5f3224",
+      "blob": "7b6afc1463cb078e6aa47c37b9feeee356796844",
+      "sha256": "74d0bf1dc09668e5e3e475fcc6551c3a6cd62cdce3d3ab9e45afa9766354c7bf",
+      "bytes": 78791,
+      "exact_readback": true
+    },
+    {
+      "path": "carr-library/tests/packaging/test_library_scale_benchmark.py",
+      "preimage": "d4bd24dafe5dbc4c0bcd856ab0ff416f9f1f5411",
+      "blob": "906487bd1970ad69b466945461da73bd50cfa941",
+      "sha256": "6ef7cb41e5bbde189d00aa56aa32c658e648a692246804dd2dd8eff38a0829b6",
+      "bytes": 20102,
+      "exact_readback": true
+    }
+  ],
+  "authorization_and_evidence": {
+    "read_only_source_profile_review": "bbadedc88c82d760e0fe2c1352c6c4edef6c993f",
+    "original_instrumented_profile": "d20bdf329c3f58e40f2050881f31b5c18c5db415",
+    "primary_runtime": {
+      "repository": "python/cpython",
+      "version": "v3.11.18",
+      "path": "Lib/pathlib.py",
+      "blob": "ecb1e8a40d8cf02e7df4723c1db6ab3481470e86"
+    },
+    "actual_A3_two_million_case_receipt": "86a8a14841ecfe4128c644f05171d5198c8e9f60",
+    "qualification": "Existing instrumented lexical-construction cost motivated the edit. No unprofiled speed, improved deadline completion, capacity, or product throughput claim follows from this component."
+  },
+  "operations": {
+    "carr-library/scripts/benchmark_library_scale.py": [
+      {
+        "old": "\nSCHEMA = 'carr-library-corpus-benchmark/1'\n",
+        "new": "\n_NATIVE_PATH_TYPE = type(Path())\n\nSCHEMA = 'carr-library-corpus-benchmark/1'\n",
+        "occurrences": 1
+      },
+      {
+        "old": "def plain(path, *, directory=False):\n    value = Path(path).lstat()\n",
+        "new": "def plain(path, *, directory=False):\n    # Coercion still strips overrides from every non-native or subclass value.\n    selected = path if type(path) is _NATIVE_PATH_TYPE else Path(path)\n    value = selected.lstat()\n",
+        "occurrences": 1
+      }
+    ],
+    "carr-library/tests/packaging/test_library_scale_benchmark.py": {
+      "kind": "append_only",
+      "old_prefix": {
+        "sha256": "a5e986c39a60cf55ef8209c6fcbff70121afc13dd3f913b160484e96c7e62583",
+        "bytes": 14166
+      },
+      "new_tail": {
+        "sha256": "249b1dd57dab0bcf1afc3c98c607b71789675e1e5ccc1967c3fa69dba5996fd8",
+        "bytes": 5936
+      }
+    }
+  },
+  "whole_suite": {
+    "path": "tests/packaging/test_library_scale_benchmark.py",
+    "old_count": 24,
+    "count": 30,
+    "old_functions": 14,
+    "functions": [
+      "test_real_imports_source_and_result_cursors_reading_and_cancel_recover",
+      "test_actual_retained_byte_corruption_refuses_reopened_measurement",
+      "test_actual_hardlink_to_retained_input_is_not_an_accepted_corpus",
+      "test_budget_rejects_same_path_directory_replacement_before_action",
+      "test_real_elapsed_deadline_and_measured_disk_refuse_more_work",
+      "test_invalid_budget_never_creates_a_library",
+      "test_explicit_cancel_before_import_leaves_no_library",
+      "test_original_output_is_never_overwritten",
+      "test_actual_cli_runs_three_owned_processes_and_binds_parent_import",
+      "test_real_cli_budget_stop_is_partial_and_remaining_scale_is_not_run",
+      "test_wrong_expected_application_refuses_before_any_output",
+      "test_actual_child_refuses_origin_tamper_before_creating_corpus",
+      "test_percentiles_are_measured_nearest_rank_and_empty_is_not_zero_latency",
+      "test_configuration_replacement_after_precheck_cannot_change_measured_work",
+      "test_plain_reuses_native_path_with_fresh_actual_file_and_link_checks",
+      "test_budget_retains_32_real_root_checks_then_cancellation_and_replacement",
+      "test_plain_keeps_original_coercion_for_non_native_inputs"
+    ],
+    "counts_by_function": [
+      {
+        "name": "test_real_imports_source_and_result_cursors_reading_and_cancel_recover",
+        "cases": 1
+      },
+      {
+        "name": "test_actual_retained_byte_corruption_refuses_reopened_measurement",
+        "cases": 1
+      },
+      {
+        "name": "test_actual_hardlink_to_retained_input_is_not_an_accepted_corpus",
+        "cases": 1
+      },
+      {
+        "name": "test_budget_rejects_same_path_directory_replacement_before_action",
+        "cases": 1
+      },
+      {
+        "name": "test_real_elapsed_deadline_and_measured_disk_refuse_more_work",
+        "cases": 1
+      },
+      {
+        "name": "test_invalid_budget_never_creates_a_library",
+        "cases": 11
+      },
+      {
+        "name": "test_explicit_cancel_before_import_leaves_no_library",
+        "cases": 1
+      },
+      {
+        "name": "test_original_output_is_never_overwritten",
+        "cases": 1
+      },
+      {
+        "name": "test_actual_cli_runs_three_owned_processes_and_binds_parent_import",
+        "cases": 1
+      },
+      {
+        "name": "test_real_cli_budget_stop_is_partial_and_remaining_scale_is_not_run",
+        "cases": 1
+      },
+      {
+        "name": "test_wrong_expected_application_refuses_before_any_output",
+        "cases": 1
+      },
+      {
+        "name": "test_actual_child_refuses_origin_tamper_before_creating_corpus",
+        "cases": 1
+      },
+      {
+        "name": "test_percentiles_are_measured_nearest_rank_and_empty_is_not_zero_latency",
+        "cases": 1
+      },
+      {
+        "name": "test_configuration_replacement_after_precheck_cannot_change_measured_work",
+        "cases": 1
+      },
+      {
+        "name": "test_plain_reuses_native_path_with_fresh_actual_file_and_link_checks",
+        "cases": 1
+      },
+      {
+        "name": "test_budget_retains_32_real_root_checks_then_cancellation_and_replacement",
+        "cases": 1
+      },
+      {
+        "name": "test_plain_keeps_original_coercion_for_non_native_inputs",
+        "cases": 4
+      }
+    ],
+    "added_case_count": 6,
+    "added_function_names": [
+      "test_plain_reuses_native_path_with_fresh_actual_file_and_link_checks",
+      "test_budget_retains_32_real_root_checks_then_cancellation_and_replacement",
+      "test_plain_keeps_original_coercion_for_non_native_inputs"
+    ],
+    "unchanged_companions": [
+      {
+        "path": "scripts/benchmark_library_scale.py",
+        "blob": "7b6afc1463cb078e6aa47c37b9feeee356796844"
+      },
+      {
+        "path": "scripts/benchmark_semantic_cache.py",
+        "blob": "898b05e37b5a50c018567e35c44ef71f1393535d"
+      }
+    ],
+    "new_companions": [],
+    "new_product_origins": []
+  },
+  "static_proof": {
+    "source_two_operations_inverse_exact": true,
+    "old_test_file_is_complete_byte_prefix": true,
+    "old_test_source_sha256": "a5e986c39a60cf55ef8209c6fcbff70121afc13dd3f913b160484e96c7e62583",
+    "whole_budget_class_unchanged": {
+      "bytes": 1362
+    },
+    "plain_predicate_and_return_unchanged": {
+      "bytes": 359
+    },
+    "pure_native_type_capture_contains_no_filesystem_metadata": true,
+    "scripts_or_product_changes_outside_two_paths": false
+  },
+  "added_regressions": [
+    "Genuine file-size change, hardlink creation, and file-to-directory replacement are observed by five actual lstat calls on the same native lexical object; native constructor count remains zero.",
+    "Thirty-two actual Budget.check calls retain thirty-two native lstat observations and cancellation callbacks; the next cancellation still checks the root first, and a same-byte directory replacement is refused before calling cancellation again.",
+    "Text, an actual PathLike, PurePath, and a hostile native Path subclass all traverse the original Path coercion exactly once and reach a real ordinary-file lstat; subclass stat/lstat overrides are never invoked."
+  ],
+  "preserved": [
+    "All existing 24 cases and 14 function bodies, decorators, imports and module loading remain an exact full byte prefix.",
+    "All Budget root identity, cancellation, monotonic deadline, disk reserve, full measured disk accounting and callback ordering remain byte-identical.",
+    "Every plain call still issues a new lstat and applies the unchanged symlink, reparse, file/directory type and hardlink predicate.",
+    "No retained-source, hash, cache, SQL, search, corpus geometry, workload, phase deadline, child budget, benchmark qualification, or product module changes.",
+    "All shared and focused gate changes remain root-owned; no refs were edited."
+  ],
+  "peer": {
+    "record": "ae3d5fd87a3c5951f2df419657362e9e3e6235b9",
+    "agent": "canonical_regression",
+    "status": "ACCEPTED_STATIC_NOT_RUN"
+  },
+  "runtime_status": "NOT_RUN",
+  "created_utc": "2026-11-28 09:03:16 UTC"
+}

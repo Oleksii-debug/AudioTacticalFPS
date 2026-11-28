@@ -30,6 +30,8 @@ import subprocess
 import sys
 from time import monotonic, perf_counter
 
+_NATIVE_PATH_TYPE = type(Path())
+
 SCHEMA = 'carr-library-corpus-benchmark/1'
 QUERY = 'CARRCorpusNeedle'
 MAX_BOOKS = 50_000
@@ -87,7 +89,9 @@ def _identity(info):
 
 
 def plain(path, *, directory=False):
-    value = Path(path).lstat()
+    # Coercion still strips overrides from every non-native or subclass value.
+    selected = path if type(path) is _NATIVE_PATH_TYPE else Path(path)
+    value = selected.lstat()
     require(not stat.S_ISLNK(value.st_mode)
             and not getattr(value, 'st_file_attributes', 0) & 0x400
             and (stat.S_ISDIR(value.st_mode) if directory else stat.S_ISREG(value.st_mode))

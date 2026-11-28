@@ -1,0 +1,116 @@
+{
+  "schema": "carr-exact-source-syntax-actual/1",
+  "status": "PASS_WITHIN_SCOPE",
+  "source_commit": "a7e573b7a4d9cd8e4b96db0cb5230fac4229dd71",
+  "source_tree": "df8cf5ed243d4b170c0a0307c84972246e817a39",
+  "run_id": 46128930916,
+  "job_id": 140929618674,
+  "job_conclusion": "success",
+  "started_at": "2026-11-28T09:13:04Z",
+  "completed_at": "2026-11-28T09:13:23Z",
+  "actual_outputs": [
+    {
+      "explicit_packages": 31,
+      "inventory_sha256": "3899027f4489d45aaffcf077f143397b10d2f4cf140f799feebd704c30577d48",
+      "python_files": 1142,
+      "scope": "Compilation and TOML only; no runtime qualification",
+      "source_commit": "a7e573b7a4d9cd8e4b96db0cb5230fac4229dd71",
+      "status": "PASS"
+    },
+    {
+      "status": "PASS",
+      "source_commit": "a7e573b7a4d9cd8e4b96db0cb5230fac4229dd71",
+      "parsed_bodies": 207,
+      "failed_bodies": 0,
+      "controls": 6,
+      "control_failures": 0,
+      "workflow_size_limit_bytes": 500000,
+      "workflow_size_controls": 4,
+      "report": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/ci-syntax-results/workflow-powershell.json",
+      "runtime_qualification": "NOT_RUN"
+    }
+  ],
+  "source_inventory": {
+    "helper_blob": "a249e767159702bf4dc88434290d60efb1ba03dd",
+    "native_powershell_parser": "PASS",
+    "required_whole_selectors": 493,
+    "shards": [
+      124,
+      123,
+      123,
+      123
+    ],
+    "actual_log_line": "PASS: native source-shard parser, exact 493 selectors, four assignments, and every overlapping case count."
+  },
+  "artifact": {
+    "id": 15256149257,
+    "name": "carr-workflow-syntax-a7e573b7a4d9cd8e4b96db0cb5230fac4229dd71-1",
+    "bytes": 27996,
+    "digest": "sha256:adbe1d35855d9049c540b6267b4fbd7068a2db3be2778aed51b505982c2ecf04",
+    "expired": false,
+    "run_id": 46128930916
+  },
+  "log": {
+    "bytes": 29167,
+    "sha256": "f57328ab24346576a719ce453212d9abe636200bc52a7862d0518caa199d1990",
+    "closed_log_fetched": true
+  },
+  "steps": [
+    {
+      "number": 1,
+      "name": "Set up job",
+      "conclusion": "success"
+    },
+    {
+      "number": 2,
+      "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+      "conclusion": "success"
+    },
+    {
+      "number": 3,
+      "name": "Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+      "conclusion": "success"
+    },
+    {
+      "number": 4,
+      "name": "Compile exact source without importing modules or writing bytecode",
+      "conclusion": "success"
+    },
+    {
+      "number": 5,
+      "name": "Parse workflow PowerShell bodies with the actual YAML and native parsers",
+      "conclusion": "success"
+    },
+    {
+      "number": 6,
+      "name": "Parse and audit the pinned complete source-shard inventory",
+      "conclusion": "success"
+    },
+    {
+      "number": 7,
+      "name": "Preserve exact workflow syntax evidence",
+      "conclusion": "success"
+    },
+    {
+      "number": 13,
+      "name": "Post Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+      "conclusion": "success"
+    },
+    {
+      "number": 14,
+      "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+      "conclusion": "success"
+    },
+    {
+      "number": 15,
+      "name": "Complete job",
+      "conclusion": "success"
+    }
+  ],
+  "limits": [
+    "This establishes actual Python compilation, TOML package metadata, native PowerShell parse controls and source-inventory execution only.",
+    "No actual product runtime, source pytest, installed wheel, native audio, language quality, capacity or distribution acceptance follows.",
+    "The language source lane on this same E head failed separately; syntax PASS does not override it.",
+    "These exact E results are not transferred to F or G."
+  ]
+}

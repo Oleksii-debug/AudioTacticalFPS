@@ -1,0 +1,213 @@
+{
+  "schema": "carr-focused-path-reuse-gates/1",
+  "created_utc": "2026-11-28 09:14:59 UTC",
+  "status": "ACCEPTED_STATIC_NOT_RUN",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "base_commit": "a7e573b7a4d9cd8e4b96db0cb5230fac4229dd71",
+  "base_tree": "df8cf5ed243d4b170c0a0307c84972246e817a39",
+  "source_dependency": {
+    "files": [
+      {
+        "path": "carr-library/scripts/benchmark_library_scale.py",
+        "preimage": "05bf43b062f160f973f1521d31a259a69d5f3224",
+        "successor": "7b6afc1463cb078e6aa47c37b9feeee356796844"
+      },
+      {
+        "path": "carr-library/tests/packaging/test_library_scale_benchmark.py",
+        "preimage": "d4bd24dafe5dbc4c0bcd856ab0ff416f9f1f5411",
+        "successor": "906487bd1970ad69b466945461da73bd50cfa941"
+      }
+    ],
+    "peer": "ae3d5fd87a3c5951f2df419657362e9e3e6235b9",
+    "whole_cases": 30,
+    "whole_functions": 17,
+    "added_cases": 6,
+    "added_functions": {
+      "test_plain_reuses_native_path_with_fresh_actual_file_and_link_checks": 1,
+      "test_budget_retains_32_real_root_checks_then_cancellation_and_replacement": 1,
+      "test_plain_keeps_original_coercion_for_non_native_inputs": 4
+    },
+    "component_git_blob": "16eb37856c9ccf034526399773da142bad930fe6"
+  },
+  "files": [
+    {
+      "path": "carr-library/scripts/ci_capacity_contracts.py",
+      "preimage": "74c63a71377ac84bdf14a05dc0168326517a3248",
+      "successor": "ea386e787ccfeea325a4c88c22b4232b4fcb01d9",
+      "utf8": {
+        "sha256": "278eef8050974c13b992a6706423f0ca7176fe5521410a10f3084a1f83c21158",
+        "bytes": 16847
+      },
+      "readback_exact": true,
+      "inverse_operations": [
+        {
+          "before": "'tests/packaging/test_library_scale_benchmark.py': 24,",
+          "after": "'tests/packaging/test_library_scale_benchmark.py': 30,",
+          "count": 1
+        },
+        {
+          "before": "05bf43b062f160f973f1521d31a259a69d5f3224",
+          "after": "7b6afc1463cb078e6aa47c37b9feeee356796844",
+          "count": 1
+        },
+        {
+          "before": "d4bd24dafe5dbc4c0bcd856ab0ff416f9f1f5411",
+          "after": "906487bd1970ad69b466945461da73bd50cfa941",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": ".github/workflows/carr-next9-capacity.yml",
+      "preimage": "f02e5adbbc8bce17332caa7773a998e21160f5db",
+      "successor": "9773b0a937c98401865b8e06464998d02d7c302f",
+      "utf8": {
+        "sha256": "d33706fb8bd1f831ab6658318aa53adf917bb03ea615ce4852f37ad0d70cb352",
+        "bytes": 35114
+      },
+      "readback_exact": true,
+      "inverse_operations": [
+        {
+          "before": "74c63a71377ac84bdf14a05dc0168326517a3248",
+          "after": "ea386e787ccfeea325a4c88c22b4232b4fcb01d9",
+          "count": 2
+        },
+        {
+          "before": "Require all 315 source and 315 isolated installed cases",
+          "after": "Require all 321 source and 321 isolated installed cases",
+          "count": 2
+        },
+        {
+          "before": "05bf43b062f160f973f1521d31a259a69d5f3224",
+          "after": "7b6afc1463cb078e6aa47c37b9feeee356796844",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": ".github/workflows/carr-corpus-profile.yml",
+      "preimage": "95baf847e7a7d87da1faa66403cb855e06b5b8f7",
+      "successor": "2d9d8e88aaad47f23947f7b877a51e4777016e7f",
+      "utf8": {
+        "sha256": "c21e2af6f0125326316f9af1aa6ad831b253ce330536ce86c937b2420e00acfd",
+        "bytes": 22003
+      },
+      "readback_exact": true,
+      "inverse_operations": [
+        {
+          "before": "05bf43b062f160f973f1521d31a259a69d5f3224",
+          "after": "7b6afc1463cb078e6aa47c37b9feeee356796844",
+          "count": 1
+        },
+        {
+          "before": "d4bd24dafe5dbc4c0bcd856ab0ff416f9f1f5411",
+          "after": "906487bd1970ad69b466945461da73bd50cfa941",
+          "count": 1
+        },
+        {
+          "before": "\"tests/packaging/test_library_scale_benchmark.py\":24",
+          "after": "\"tests/packaging/test_library_scale_benchmark.py\":30",
+          "count": 1
+        },
+        {
+          "before": "name: Source 170 cases and instrumented",
+          "after": "name: Source 176 cases and instrumented",
+          "count": 1
+        },
+        {
+          "before": "sum(suites.values()) == 170",
+          "after": "sum(suites.values()) == 176",
+          "count": 1
+        },
+        {
+          "before": "'required_cases':170,",
+          "after": "'required_cases':176,",
+          "count": 1
+        },
+        {
+          "before": "source['required_cases']==170",
+          "after": "source['required_cases']==176",
+          "count": 1
+        },
+        {
+          "before": "'source_cases_required':170,",
+          "after": "'source_cases_required':176,",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "inventory": {
+    "helper": {
+      "suites": 14,
+      "cases": 321,
+      "pins": 33
+    },
+    "profile": {
+      "suites": 6,
+      "cases": 176,
+      "pins": 38
+    },
+    "audited_pin_occurrences": 71,
+    "capacity_matrix_pin_occurrences": 14,
+    "total_source_pin_occurrences": 85,
+    "capacity_workflow_helper_pin_occurrences": 2,
+    "helper_suites": {
+      "tests/search/test_window_catalog_projection.py": 27,
+      "tests/packaging/test_library_scale_benchmark.py": 30,
+      "tests/packaging/test_library_capacity_measurement.py": 25,
+      "tests/storage/test_backup_capacity.py": 28,
+      "tests/storage/test_backup_capacity_cli.py": 3,
+      "tests/ui/test_backup_capacity.py": 17,
+      "tests/storage/test_library_backup.py": 9,
+      "tests/storage/test_crash_backup.py": 5,
+      "tests/storage/test_complete_pending_backup.py": 4,
+      "tests/storage/test_backup_pending_common4.py": 27,
+      "tests/storage/test_backup_schema_identity.py": 36,
+      "tests/ui/test_native_backup_capacity_driver.py": 11,
+      "tests/catalog/test_text_screen_work.py": 26,
+      "tests/search/test_ascii_mapping_work.py": 73
+    },
+    "profile_suites": {
+      "tests/packaging/test_library_scale_benchmark.py": 30,
+      "tests/packaging/test_library_capacity_measurement.py": 25,
+      "tests/citations/test_attestation_cancellation.py": 15,
+      "tests/packaging/test_library_scale_profile.py": 7,
+      "tests/catalog/test_text_screen_work.py": 26,
+      "tests/search/test_ascii_mapping_work.py": 73
+    }
+  },
+  "unchanged": [
+    "Every prior whole selector and its order; no new whole module, origin or companion path.",
+    "The full installed child string and all source/installed/wheel/source-identity checks.",
+    "Each ordinary whole-suite600-second limit, source jobs, parent/helper/job envelopes and all native requirements.",
+    "All four actual capacity geometries:1000×20,10000×20,50000×20 and50000×40. The2M full traversal remains required.",
+    "Page37, source window100, repeats9, full fresh search/lookahead/source/copy checks and every3600-second phase budget.",
+    "The optional1k×40 diagnostic retains its exact phases and DIAGNOSTIC_ONLY status."
+  ],
+  "validation": {
+    "all_three_preimages_match_exact_E_tree": true,
+    "all_three_complete_inverse_reconstructions": true,
+    "all_85_source_pins_match_E_plus_two_accepted_source_overlays": true,
+    "all_successor_github_readbacks_exact": true,
+    "runtime_parser_or_execution": "NOT_RUN"
+  },
+  "downstream_owner_notice": {
+    "owner": "/root/progress_completion",
+    "main_manual_capacity_helper_occurrences": 0,
+    "main_git_blob": "b84d83988db80f3706db9d2c4800b9a666bb321b",
+    "correction": "The previous claim of two manual main callers was incorrect. Exact E main contains neither the helper path nor its predecessor SHA. The capacity workflow's two manual helper hashes are updated by this component.",
+    "replacement_helper": "ea386e787ccfeea325a4c88c22b4232b4fcb01d9",
+    "main_source_full_installed_v3_case_maps": "Not edited by this component."
+  },
+  "limits": [
+    "This is a static pin/count closure only. No actual speed, full2M capacity or installed/runtime outcome is claimed.",
+    "E language/native jobs remain on exact E and are not superseded or cancelled by this handoff.",
+    "Actual F source/installed preflight and the unchanged full capacity/profile measurements must run on the eventual coherent exact head."
+  ],
+  "peer": {
+    "agent": "/root/progress_completion",
+    "record_git_blob": "76ec822e6ab365e1d02d8523a57c80a219ee0b26",
+    "scope": "All3/3/8 exact inverse operations;71 helper/profile pins, counts and unchanged bounds/geometry/children; author separately checked all14 capacity matrix pins."
+  }
+}

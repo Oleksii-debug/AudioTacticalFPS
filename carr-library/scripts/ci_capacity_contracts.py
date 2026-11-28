@@ -19,7 +19,7 @@ import xml.etree.ElementTree as ET
 ROOT = Path(__file__).resolve().parents[1]
 SUITES = {
     'tests/search/test_window_catalog_projection.py': 27,
-    'tests/packaging/test_library_scale_benchmark.py': 24,
+    'tests/packaging/test_library_scale_benchmark.py': 30,
     'tests/packaging/test_library_capacity_measurement.py': 25,
     'tests/storage/test_backup_capacity.py': 28,
     'tests/storage/test_backup_capacity_cli.py': 3,
@@ -37,9 +37,9 @@ PINS = {
     'tests/search/test_window_catalog_projection.py': 'a1b813b72e036a68fa8683be40bd91293d6b8d51',
     'src/carr_library/catalog/read_views.py': '53bdbf577bd7da349347d8a58cb7f0f5792db138',
     'src/carr_library/search/paging.py': '1c8dd8d0cc764737d6169f74b98d6a575f6c3615',
-    'scripts/benchmark_library_scale.py': '05bf43b062f160f973f1521d31a259a69d5f3224',
+    'scripts/benchmark_library_scale.py': '7b6afc1463cb078e6aa47c37b9feeee356796844',
     'scripts/benchmark_semantic_cache.py': '898b05e37b5a50c018567e35c44ef71f1393535d',
-    'tests/packaging/test_library_scale_benchmark.py': 'd4bd24dafe5dbc4c0bcd856ab0ff416f9f1f5411',
+    'tests/packaging/test_library_scale_benchmark.py': '906487bd1970ad69b466945461da73bd50cfa941',
     'tests/packaging/test_library_capacity_measurement.py': 'a4677e149a71c76832896902db936b232f0f246e',
     'tests/storage/test_backup_capacity.py': '895aec39b689aea7101da23db0801413dac324ef',
     'tests/storage/test_backup_capacity_cli.py': '741a005ca9f351579b9d51b464a88dda9afb52b7',

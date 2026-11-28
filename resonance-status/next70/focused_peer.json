@@ -1,0 +1,49 @@
+{
+  "schema": "carr-focused-benchmark-path-gates-peer/1",
+  "status": "ACCEPTED_STATIC_NOT_RUN",
+  "base_commit": "a7e573b7a4d9cd8e4b96db0cb5230fac4229dd71",
+  "files": [
+    {
+      "path": "carr-library/scripts/ci_capacity_contracts.py",
+      "preimage": "74c63a71377ac84bdf14a05dc0168326517a3248",
+      "blob": "ea386e787ccfeea325a4c88c22b4232b4fcb01d9",
+      "operations": 3,
+      "exact_inverse": true
+    },
+    {
+      "path": ".github/workflows/carr-next9-capacity.yml",
+      "preimage": "f02e5adbbc8bce17332caa7773a998e21160f5db",
+      "blob": "9773b0a937c98401865b8e06464998d02d7c302f",
+      "operations": 3,
+      "exact_inverse": true
+    },
+    {
+      "path": ".github/workflows/carr-corpus-profile.yml",
+      "preimage": "95baf847e7a7d87da1faa66403cb855e06b5b8f7",
+      "blob": "2d9d8e88aaad47f23947f7b877a51e4777016e7f",
+      "operations": 8,
+      "exact_inverse": true
+    }
+  ],
+  "source_component": "16eb37856c9ccf034526399773da142bad930fe6",
+  "verification": {
+    "capacity": {
+      "suites": 14,
+      "cases": 321,
+      "pins": 33
+    },
+    "profile": {
+      "suites": 6,
+      "cases": 176,
+      "pins": 38
+    },
+    "all71pins_match_actual_E_plus_two_accepted_overlays": true,
+    "all_other_bytes_exact_via_inverse": true
+  },
+  "preserved": "All old whole selectors, child/installed wrappers, origin inventories, jobs, source/installed/native/3600-second phase controls, aggregate envelopes and four corpus geometries are unchanged. The only two manual capacity-helper callers are in the focused capacity workflow; exact E main contains no capacity-helper reference.",
+  "runtime_status": "NOT_RUN",
+  "supersedes": {
+    "record": "9a2a254679eab6400049def10683e3d01f9f55f3",
+    "reason": "Metadata-only correction of the previously assumed main caller location; reviewed source/count/pin verdict is unchanged."
+  }
+}

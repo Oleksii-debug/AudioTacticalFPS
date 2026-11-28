@@ -1,0 +1,118 @@
+{
+  "schema": "carr-utf8-fixture-correction/1",
+  "status": "ACCEPTED_STATIC_NOT_RUN",
+  "base_commit": "a7e573b7a4d9cd8e4b96db0cb5230fac4229dd71",
+  "actual_failure_receipt": "ab2cf108fd1a4eaf47d5502f6b84b9de35ffc9c3",
+  "files": [
+    {
+      "path": "carr-library/tests/assistant/test_translation_documents.py",
+      "preimage": "fc0d6148287026dbf6cb2640e5e4b0926a2d0ef8",
+      "blob": "ed45b92ed96f43ed6fc0a8af14c13e2ff46cbfa2",
+      "exact_readback": true
+    },
+    {
+      "path": "carr-library/tests/speech/test_voice_preferences.py",
+      "preimage": "e0993f9ed2f782cad2c8b4e9834a436dba335d45",
+      "blob": "a5037b0d64dfc1e1c97f939bc1edffa7d6f846af",
+      "exact_readback": true
+    }
+  ],
+  "peer": {
+    "agent": "locate_project",
+    "record": "f6f2e4fc087dba723c9861afcf2227b6d9e9eed4",
+    "status": "ACCEPTED_STATIC_NOT_RUN"
+  },
+  "operations": {
+    "carr-library/tests/assistant/test_translation_documents.py": [
+      {
+        "old": "mapping = json.loads((directory / 'translation-structure.json').read_text())",
+        "new": "mapping = json.loads((directory / 'translation-structure.json').read_text(encoding='utf-8'))",
+        "occurrences": 1
+      },
+      {
+        "old": "html = (directory / 'bilingual.html').read_text()",
+        "new": "html = (directory / 'bilingual.html').read_text(encoding='utf-8')",
+        "occurrences": 1
+      },
+      {
+        "old": "report = json.loads((directory / 'translation-provenance.json').read_text())",
+        "new": "report = json.loads((directory / 'translation-provenance.json').read_text(encoding='utf-8'))",
+        "occurrences": 1
+      }
+    ],
+    "carr-library/tests/speech/test_voice_preferences.py": [
+      {
+        "old": "source = json.loads(path.read_text())",
+        "new": "source = json.loads(path.read_text(encoding='utf-8'))",
+        "occurrences": 1
+      },
+      {
+        "old": "path.write_text(json.dumps(source))",
+        "new": "path.write_text(json.dumps(source), encoding='utf-8')",
+        "occurrences": 1
+      },
+      {
+        "old": "restored = json.loads(path.read_text())",
+        "new": "restored = json.loads(path.read_text(encoding='utf-8'))",
+        "occurrences": 1
+      }
+    ]
+  },
+  "writers": {
+    "translation": "29324c1891c4e1fc278f410af6221e50ae3f9b04",
+    "runtime_settings": "00df790d393f9d54f87d0dcf891e6506916437a1",
+    "durable_state": "d2b95bde04aa72cdd21ee6b4f0092d3350f84fcb",
+    "format": "Explicit UTF-8: structured/provenance/preferences use atomic_json and durable_state.encode; bilingual HTML uses html.encode('utf-8')."
+  },
+  "proof": {
+    "inverse_exact": true,
+    "assertion_and_raises_lines_unchanged": 90,
+    "function_names_and_decorators_unchanged": true,
+    "unaffected_test_bodies_byte_identical": true,
+    "whole_cases": 43,
+    "whole_functions": 26
+  },
+  "whole_suites": [
+    {
+      "path": "tests/assistant/test_translation_documents.py",
+      "count": 20,
+      "functions": [
+        "test_paragraph_chunks_preserve_exact_unicode_and_all_source_separators",
+        "test_paragraph_limit_is_inclusive_and_rejects_more_before_job_creation",
+        "test_batch_review_and_prepare_never_contact_provider_or_mutate_originals",
+        "test_old_batch_review_never_authorizes_different_selection_or_profile",
+        "test_duplicate_and_modified_reading_copies_are_not_batch_sources",
+        "test_actual_job_resume_and_structured_export_keep_original_lineage",
+        "test_source_revocation_during_preparation_returns_already_saved_jobs",
+        "test_cancel_after_first_document_preserves_completion_and_resumes_remaining_once",
+        "test_changed_current_profile_blocks_new_calls_but_completed_work_stays_offline",
+        "test_partial_batch_export_returns_real_committed_directories_and_never_deletes_them",
+        "test_local_structured_state_uses_passive_complete_backup_and_restores_without_server",
+        "test_restored_pending_batch_needs_fresh_source_approval_before_any_provider_call",
+        "test_cli_document_capture_enforces_remaining_batch_budget_during_reads",
+        "test_direct_local_resume_rereads_current_catalog_before_any_request"
+      ]
+    },
+    {
+      "path": "tests/speech/test_voice_preferences.py",
+      "count": 23,
+      "functions": [
+        "test_legacy_load_does_not_rewrite_bytes_or_probe_optional_engines",
+        "test_reload_persists_exact_ids_profiles_and_external_declarations",
+        "test_two_windows_refuse_stale_preference_save_without_overwriting",
+        "test_engine_window_cannot_overwrite_a_later_voice_preference_change",
+        "test_shared_settings_lock_refuses_overlapping_changes",
+        "test_explicit_voice_beats_default_but_not_exact_language_guard",
+        "test_profile_controls_are_not_applied_to_a_different_voice_or_language",
+        "test_no_region_or_script_fallback_to_similarly_named_voice",
+        "test_adapter_underscore_tag_and_request_case_use_one_exact_language",
+        "test_removed_voice_and_unsupported_controls_do_not_pick_another_voice",
+        "test_invalid_preferences_keep_prior_bytes_and_do_not_echo_values",
+        "test_owner_guard_is_rechecked_after_latest_settings_read_before_commit"
+      ]
+    }
+  ],
+  "scope": "Only the six explicit format reads/write in the two reproduced failing fixture cases. No product encoding, interpreter locale, CI policy, assertion, selector, callback, budget or source authority change.",
+  "runtime_status": "NOT_RUN",
+  "historical_diagnostic_status": "D remains FAIL: actual112cases per mode,110PASS2FAIL, plus its declared Book30-versus-29 contract mismatch."
+}

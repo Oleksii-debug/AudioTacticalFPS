@@ -1,0 +1,103 @@
+{
+  "schema": 1,
+  "status": "ACCEPTED_STATIC_NOT_RUN",
+  "component": "F documentation reconciliation for Book batch evidence and implemented language review",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "base_commit": "a7e573b7a4d9cd8e4b96db0cb5230fac4229dd71",
+  "base_tree": "df8cf5ed243d4b170c0a0307c84972246e817a39",
+  "files": [
+    {
+      "path": "carr-library/docs/REQUESTED_READER_WORKFLOWS.md",
+      "preimage": "ef5851da5aef09d17197b1a2c86f1f4ff8786223",
+      "successor": "4f3d7cead9415259ba1ae0efcdb5efc31b047eb6",
+      "hunks": [
+        {
+          "old": "| R13 | Process multiple books with review, pause/cancel and resume | [Book batches](BOOK_BATCHES.md); [batch contracts](../tests/studio/test_book_batch.py) | Present, execution unresolved. The A3 30-case whole module timed out at its unchanged 600-second bound; no whole PASS or stuck-case cause is inferred. Every original ownership/recovery case remains required. |",
+          "replacement": "| R13 | Process multiple books with review, pause/cancel and resume | [Book batches](BOOK_BATCHES.md); [batch contracts](../tests/studio/test_book_batch.py) | Present; complete acceptance remains open. The A3 29-case whole module timed out at its unchanged 600-second bound; that historical failure and its unresolved cause remain. In the later [D isolated diagnostic](../../resonance-status/next69/d_installed_diagnostic_actual.json), all 29 cases passed in source (398.859 seconds) and installed (398.344 seconds) modes under the same 600-second bound. The D gate still failed: it expected 30 cases and two other modules had actual failures. These isolated results do not qualify a later head or an audio device. Every original ownership/recovery case remains required. |"
+        }
+      ],
+      "exact_inverse": true,
+      "link_checks": [
+        {
+          "link": "BOOK_BATCHES.md",
+          "path": "carr-library/docs/BOOK_BATCHES.md",
+          "exists": true
+        },
+        {
+          "link": "../tests/studio/test_book_batch.py",
+          "path": "carr-library/tests/studio/test_book_batch.py",
+          "exists": true
+        },
+        {
+          "link": "../../resonance-status/next69/d_installed_diagnostic_actual.json",
+          "path": "resonance-status/next69/d_installed_diagnostic_actual.json",
+          "exists": true
+        }
+      ],
+      "chars": 12511
+    },
+    {
+      "path": "carr-library/docs/V3_RELEASE_READINESS.md",
+      "preimage": "a8b28e278352d23d8f156bd3153d01551d7ed2a7",
+      "successor": "2301fa86b3829ca854fea5d4b5f64711528f979b",
+      "hunks": [
+        {
+          "old": "| Language inventory | The canonical catalog contains 135 target entries with separate capabilities and searchable evidence. | Inventory completeness never establishes 135 working voices, translators, OCR models, ASR models or interface localizations. Each capability/language pair needs its own qualification. |",
+          "replacement": "| Language inventory and evidence review | The canonical catalog contains 135 target entries with separate capabilities. The [E integration](https://github.com/Oleksii-debug/AudioTacticalFPS/commit/a7e573b7a4d9cd8e4b96db0cb5230fac4229dd71) adds observations tied to a recorded configuration, passive import/export, and explicit accept/reject/revoke history through the existing language-evidence UI. Complete and state backups preserve these records; restored positive reviews become dormant until fresh review, while revocations remain effective. | The focused 147-source/147-installed contracts and 75-check native gate remain required; no complete PASS for that source commit is established here. Inventory completeness never establishes 135 working voices, translators, OCR models, ASR models or interface localizations. Each capability/language pair needs its own qualification. Authenticated reviewer identity, linguistic/acoustic quality and human NVDA review remain separate. See [recorded language evidence](language_qualification.md). |"
+        }
+      ],
+      "exact_inverse": true,
+      "link_checks": [
+        {
+          "link": "language_qualification.md",
+          "path": "carr-library/docs/language_qualification.md",
+          "exists": true
+        }
+      ],
+      "chars": 18973
+    }
+  ],
+  "peer": {
+    "reviewer": "progress_completion",
+    "record": "bece5a9a2c7b0351b80b2afe8cba3c242b13230a",
+    "verdict": "ACCEPTED_STATIC_NOT_RUN"
+  },
+  "evidence": {
+    "diagnostic": {
+      "path": "resonance-status/next69/d_installed_diagnostic_actual.json",
+      "git_blob": "ab2cf108fd1a4eaf47d5502f6b84b9de35ffc9c3",
+      "head": "f28ce084a1016121a4d04b7a358c0c3ef72b2812",
+      "source_book": {
+        "cases": 29,
+        "passed": 29,
+        "parent_elapsed_seconds": 398.859
+      },
+      "installed_book": {
+        "cases": 29,
+        "passed": 29,
+        "parent_elapsed_seconds": 398.344
+      },
+      "whole_bound_seconds": 600,
+      "gate": "FAIL: historical expected30 count and two other actual module failures retained."
+    },
+    "language": {
+      "guide": "carr-library/docs/language_qualification.md",
+      "guide_git_blob": "2329190cc1096188bbb7f2debb6e762baab51d3d",
+      "source_component": "dd961c9cd7d78d6946d30b1cc5e704959747a25e",
+      "native_component": "9a3c0fe0cc0568b93c4aefc3419fcb059e155666",
+      "focused_component": "b4c2b9d51d920eb2cf82f2fe2c083b5dc835e482",
+      "ordinary_per_mode": 147,
+      "native_required_unique": 75,
+      "actual_execution": "The required147 source/147 installed and75 native contracts remain obligations. No complete same-source PASS is claimed by this document."
+    }
+  },
+  "preserved": [
+    "Only the R13 row and language inventory row change; complete inverse reconstruction preserves every other byte.",
+    "Historical A3 whole timeout remains a failure with unresolved cause; the29-case correction does not retroactively qualify it.",
+    "D case-level passes do not relabel its failed diagnostic gate, qualify a later candidate or establish physical playback.",
+    "Language implementation presence, recorded reviewer identity, actual language/audio quality and manual NVDA qualification remain separate.",
+    "No test, product, gate, count inventory, deadline or ref change."
+  ],
+  "supersedes": "528303c8bce74d560652f501138877e081a6ccfa",
+  "metadata_reason": "The final readiness row states that exact-head gates remain required without claiming a complete PASS; it does not depend on whether a job is pending, running or failed."
+}

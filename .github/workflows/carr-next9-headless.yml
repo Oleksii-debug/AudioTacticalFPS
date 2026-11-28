@@ -99,7 +99,7 @@ jobs:
           expected = {
               'tests/audio/test_envelopes.py': 64,
               'tests/studio/test_envelope_workflow.py': 17,
-              'tests/packaging/test_library_scale_benchmark.py': 24,
+              'tests/packaging/test_library_scale_benchmark.py': 30,
           }
           for name, count in expected.items():
               assert lines.count(f'PASS: {name}: junit_passed={count}, failed=0, skipped=0, pytest_exit=0') == 1, name

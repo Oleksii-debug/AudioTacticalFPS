@@ -53,7 +53,7 @@ jobs:
           $verify = @'
           from hashlib import sha1
           import importlib.util, pathlib, sys, os
-          pins = {"scripts/ci_installed_failure_contracts.py":"7043f8392cf5ef3bd0bc5e95ca960dc5fdf91949","packaging/windows-cp311.lock":"8dad99c0ea80470b7253873aee78e08857affec6","packaging/windows-sync-cp311.lock":"cd9c18a24d7a7ac203d81cf6a8d82d8bcb8f8ab3","packaging/trusted-client.lock":"6c4b48ac09572dc259d62d0d801057ab47c04583","packaging/windows-sync-test-cp311.lock":"e3f6eda5976e867abe7267c04e0b867b1fd16f7a","packaging/linux-sync-core-cp311.lock":"08f945066be748972a10d5b0ce46480fff722959","packaging/prepare_windows_audio.py":"65b172ac432f28e865200aed2f8e610dda1ac7cf","packaging/windows-audio.lock.json":"2bc706ffc6208f5596a10abee61d3da33f20e6c6"}
+          pins = {"scripts/ci_installed_failure_contracts.py":"a9d0d3288746b2d7555db1029a6aa7205af6da66","packaging/windows-cp311.lock":"8dad99c0ea80470b7253873aee78e08857affec6","packaging/windows-sync-cp311.lock":"cd9c18a24d7a7ac203d81cf6a8d82d8bcb8f8ab3","packaging/trusted-client.lock":"6c4b48ac09572dc259d62d0d801057ab47c04583","packaging/windows-sync-test-cp311.lock":"e3f6eda5976e867abe7267c04e0b867b1fd16f7a","packaging/linux-sync-core-cp311.lock":"08f945066be748972a10d5b0ce46480fff722959","packaging/prepare_windows_audio.py":"65b172ac432f28e865200aed2f8e610dda1ac7cf","packaging/windows-audio.lock.json":"2bc706ffc6208f5596a10abee61d3da33f20e6c6"}
           for name, expected in pins.items():
               path = pathlib.Path(name)
               assert path.is_file() and not path.is_symlink()

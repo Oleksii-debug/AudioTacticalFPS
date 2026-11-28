@@ -1,0 +1,149 @@
+{
+  "schema": 1,
+  "status": "ACCEPTED_STATIC_NOT_RUN",
+  "reviewer": "locate_project",
+  "observed_at": "2026-11-28 09:06:42 UTC",
+  "evidence": "ab2cf108fd1a4eaf47d5502f6b84b9de35ffc9c3",
+  "actual": {
+    "head": "f28ce084a1016121a4d04b7a358c0c3ef72b2812",
+    "run": 46124697721,
+    "job": 140916610238,
+    "source": {
+      "passed": 110,
+      "failed": 2,
+      "skipped": 0
+    },
+    "installed": {
+      "passed": 110,
+      "failed": 2,
+      "skipped": 0
+    },
+    "total_per_mode": 112
+  },
+  "files": [
+    {
+      "path": "carr-library/tests/assistant/test_translation_documents.py",
+      "preimage": "fc0d6148287026dbf6cb2640e5e4b0926a2d0ef8",
+      "successor": "ed45b92ed96f43ed6fc0a8af14c13e2ff46cbfa2",
+      "cases": 20,
+      "functions": 14,
+      "hunks": [
+        {
+          "old_line": 138,
+          "new_line": 138,
+          "removed": [
+            "        mapping = json.loads((directory / 'translation-structure.json').read_text())"
+          ],
+          "added": [
+            "        mapping = json.loads((directory / 'translation-structure.json').read_text(encoding='utf-8'))"
+          ]
+        },
+        {
+          "old_line": 143,
+          "new_line": 143,
+          "removed": [
+            "        html = (directory / 'bilingual.html').read_text()"
+          ],
+          "added": [
+            "        html = (directory / 'bilingual.html').read_text(encoding='utf-8')"
+          ]
+        },
+        {
+          "old_line": 147,
+          "new_line": 147,
+          "removed": [
+            "        report = json.loads((directory / 'translation-provenance.json').read_text())"
+          ],
+          "added": [
+            "        report = json.loads((directory / 'translation-provenance.json').read_text(encoding='utf-8'))"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "carr-library/tests/speech/test_voice_preferences.py",
+      "preimage": "e0993f9ed2f782cad2c8b4e9834a436dba335d45",
+      "successor": "a5037b0d64dfc1e1c97f939bc1edffa7d6f846af",
+      "cases": 23,
+      "functions": 12,
+      "hunks": [
+        {
+          "old_line": 53,
+          "new_line": 53,
+          "removed": [
+            "    source = json.loads(path.read_text())"
+          ],
+          "added": [
+            "    source = json.loads(path.read_text(encoding='utf-8'))"
+          ]
+        },
+        {
+          "old_line": 55,
+          "new_line": 55,
+          "removed": [
+            "    path.write_text(json.dumps(source))"
+          ],
+          "added": [
+            "    path.write_text(json.dumps(source), encoding='utf-8')"
+          ]
+        },
+        {
+          "old_line": 60,
+          "new_line": 60,
+          "removed": [
+            "    restored = json.loads(path.read_text())"
+          ],
+          "added": [
+            "    restored = json.loads(path.read_text(encoding='utf-8'))"
+          ]
+        }
+      ]
+    }
+  ],
+  "inverse_proof": [
+    {
+      "name": "documents",
+      "complete_inverse": true,
+      "assertion_lines_exact": true,
+      "assertion_lines": 63,
+      "functions": 14,
+      "function_names_exact": true,
+      "decorators_exact": true
+    },
+    {
+      "name": "preferences",
+      "complete_inverse": true,
+      "assertion_lines_exact": true,
+      "assertion_lines": 27,
+      "functions": 12,
+      "function_names_exact": true,
+      "decorators_exact": true
+    }
+  ],
+  "source_contracts": [
+    {
+      "path": "carr-library/src/carr_library/assistant/translation.py",
+      "git_blob": "29324c1891c4e1fc278f410af6221e50ae3f9b04",
+      "contract": "translation-structure.json and translation-provenance.json are written by actual atomic_json; bilingual.html is explicitly encoded UTF-8."
+    },
+    {
+      "path": "carr-library/src/carr_library/runtime_settings.py",
+      "git_blob": "00df790d393f9d54f87d0dcf891e6506916437a1",
+      "contract": "Both settings and saved voice preferences use actual atomic_json."
+    },
+    {
+      "path": "carr-library/src/carr_library/durable_state.py",
+      "git_blob": "d2b95bde04aa72cdd21ee6b4f0092d3350f84fcb",
+      "contract": "encode emits UTF-8 bytes; read_json decodes UTF-8."
+    }
+  ],
+  "findings": [
+    "The actual D isolated source and installed traces reproduce default-cp1252 decoding at the named test reads, including mojibake structured originals and the Cyrillic preference-name decode error.",
+    "Exactly three explicit UTF-8 reads in the structured export case and two UTF-8 reads plus one UTF-8 write in the preference case replace implicit locale operations.",
+    "All90 assert/raises lines are byte-identical, as are26 function names and all decorators. The exact inverse of the six line replacements reconstructs both full predecessor files.",
+    "All other test bodies and product bytes are unchanged. No broad error allowance, Unicode normalization, replacement decoding or CI environment workaround is introduced.",
+    "Both existing whole-module counts remain20 and23; no new companions or origins are needed."
+  ],
+  "execution": "NOT_RUN for the two successor fixtures. The old D receipt remains FAIL; no source/installed/native/full-lane success is transferred.",
+  "scope": "Independent fixture/producer-bound peer only; no refs or shared gates changed."
+}

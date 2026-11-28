@@ -1,0 +1,170 @@
+{
+  "schema": 1,
+  "status": "ACCEPTED_STATIC_NOT_RUN",
+  "reviewer": "locate_project",
+  "observed_at": "2026-11-28 09:17:19 UTC",
+  "base_commit": "a7e573b7a4d9cd8e4b96db0cb5230fac4229dd71",
+  "base_tree": "df8cf5ed243d4b170c0a0307c84972246e817a39",
+  "files": [
+    {
+      "path": ".github/workflows/carr-windows.yml",
+      "preimage": "b84d83988db80f3706db9d2c4800b9a666bb321b",
+      "successor": "bbcb5500262598eb3935d36aac7c18561ea51151",
+      "independent_exact_inverse": true,
+      "hunks": 3,
+      "utf8_bytes": 402828
+    },
+    {
+      "path": "carr-library/scripts/check_integrated_source_shard.ps1",
+      "preimage": "a249e767159702bf4dc88434290d60efb1ba03dd",
+      "successor": "fbb5941c2c8fb73861f0ea28469c33717080059c",
+      "independent_exact_inverse": true,
+      "hunks": 1,
+      "utf8_bytes": 52804
+    },
+    {
+      "path": ".github/workflows/carr-integrated-source-shard.yml",
+      "preimage": "385e0434bf9b1e7762d091dd0fc9784b6f5fd4b0",
+      "successor": "96665bb20740c6f56fea8f8614fbee94882d39ea",
+      "independent_exact_inverse": true,
+      "hunks": 1,
+      "utf8_bytes": 11536
+    },
+    {
+      "path": "carr-library/scripts/check_installed_bundle.py",
+      "preimage": "38190898b7c38a1d81bec2f8d6d4005174a6c779",
+      "successor": "93eb4eab03bdb37ae09373ce1adee74632300167",
+      "independent_exact_inverse": true,
+      "hunks": 2,
+      "utf8_bytes": 205717
+    },
+    {
+      "path": ".github/workflows/carr-v3.yml",
+      "preimage": "2d83808c3a49eef7991b46502f4eec579b08e808",
+      "successor": "cebd24c6219e5d4d653bd3b54ad8cf85f3e92365",
+      "independent_exact_inverse": true,
+      "hunks": 5,
+      "utf8_bytes": 402581
+    },
+    {
+      "path": "carr-library/scripts/ci_v3_feature_case_contracts.json",
+      "preimage": "d92016b4a2c924c7f0148c19292bf17a58367f90",
+      "successor": "b8f6c288b53cb14a6a5339d28d7e50843f15a438",
+      "independent_exact_inverse": true,
+      "hunks": 1,
+      "utf8_bytes": 107137
+    },
+    {
+      "path": "carr-library/scripts/ci_installed_failure_contracts.py",
+      "preimage": "7043f8392cf5ef3bd0bc5e95ca960dc5fdf91949",
+      "successor": "a9d0d3288746b2d7555db1029a6aa7205af6da66",
+      "independent_exact_inverse": true,
+      "hunks": 2,
+      "utf8_bytes": 34604
+    },
+    {
+      "path": ".github/workflows/carr-installed-failure-contracts.yml",
+      "preimage": "62aa65d4bab7bf95b15255a4b65276503da88fe2",
+      "successor": "aee1a8fabc5c822c40915fb6d44caa11295669c4",
+      "independent_exact_inverse": true,
+      "hunks": 1,
+      "utf8_bytes": 12796
+    }
+  ],
+  "benchmark_change": {
+    "source_component": "16eb37856c9ccf034526399773da142bad930fe6",
+    "test_blob": "906487bd1970ad69b466945461da73bd50cfa941",
+    "whole_cases": 30,
+    "actual_module_functions": 17,
+    "required_gate_functions": 8,
+    "old_required_functions_retained": 5,
+    "new_required_names": [
+      "test_plain_reuses_native_path_with_fresh_actual_file_and_link_checks",
+      "test_budget_retains_32_real_root_checks_then_cancellation_and_replacement",
+      "test_plain_keeps_original_coercion_for_non_native_inputs"
+    ],
+    "whole_path": "tests/packaging/test_library_scale_benchmark.py",
+    "new_wholes": 0,
+    "new_companions": 0,
+    "new_origins": 0,
+    "data": {
+      "keys": 129,
+      "cases": 3038,
+      "required_functions": 1432,
+      "only_target_changed": true,
+      "bytes": 107137
+    }
+  },
+  "separate_existing_duplicate_corrections": [
+    {
+      "path": "tests/ui/test_native_saved_audio_cleanup.py",
+      "test_blob": "5eeba4884c846a6ca21a85a649ea2cd7830d7429",
+      "old_completed_expected": 13,
+      "current_case_contract": 19,
+      "required_functions": 6
+    },
+    {
+      "path": "tests/ui/test_native_conversion_diagnostics.py",
+      "test_blob": "f75a733ac6c1943de65198998d8055db9f17c225",
+      "old_completed_expected": 23,
+      "current_case_contract": 30,
+      "required_functions": 14
+    }
+  ],
+  "duplicate_cause": "Both stale completed_feature_expected values already existed in E and contradicted the correct reviewed_feature_cases values for the same selected whole modules. The later live strict count assertion could not agree with the earlier correct specification. These are separate additive consistency corrections, not benchmark changes or a change in test counts.",
+  "duplicate_proof": {
+    "installed_overlap_keys": 130,
+    "v3_overlap_keys": 111,
+    "remaining_count_conflicts": 0,
+    "only_two_named_completed_entries_changed_beyond_benchmark": true,
+    "all_strict_assertions_retained": true,
+    "required_function_lists_unchanged": true
+  },
+  "data_binding": {
+    "all129keys_preserved": true,
+    "only_benchmark_row_changed": true,
+    "early_v3_map_unchanged": true,
+    "byte_bound": 107137,
+    "git_blob": "b8f6c288b53cb14a6a5339d28d7e50843f15a438",
+    "three_length_checks_and_git_binding_coherent": true,
+    "same_process_pre_pytest_post_binding_preserved": true
+  },
+  "helper_pins": {
+    "main_source_helper_occurrences": 2,
+    "reusable_source_helper_occurrences": 1,
+    "source_helper": "fbb5941c2c8fb73861f0ea28469c33717080059c",
+    "main_has_no_manual_capacity_helper_call": true
+  },
+  "diagnostic_pins": {
+    "only_two_UTF8_fixture_pins_changed": true,
+    "fixture_peer": "f6f2e4fc087dba723c9861afcf2227b6d9e9eed4",
+    "helper": "a9d0d3288746b2d7555db1029a6aa7205af6da66",
+    "workflow_single_helper_pin": true,
+    "ordinary_total_112_unchanged": true
+  },
+  "unchanged": {
+    "source_wholes": 493,
+    "partitions": [
+      124,
+      123,
+      123,
+      123
+    ],
+    "fast_wholes": 185,
+    "installed_selectors": 342,
+    "installed_wholes": 339,
+    "v3_source_wholes": 223,
+    "v3_installed_wholes": 202,
+    "selectors_and_order": true,
+    "child_budgets_600_900": true,
+    "fast_outer_100_135": true,
+    "native_required_and_hardware_checks": true,
+    "strict_always_and_final_verdicts": true,
+    "fixture_copy_and_source_origin_machinery": true
+  },
+  "limitations": [
+    "This peer verifies the bounded eight-file delta and direct overlapping count maps; root's complete proposed-tree/pin closure remains separate.",
+    "No Python, PowerShell or YAML execution is claimed. Exact-head CI remains required.",
+    "No old E/B/D failure, timeout, incomplete run or native result is relabeled."
+  ]
+}

@@ -135,16 +135,16 @@ def test_actual_job_resume_and_structured_export_keep_original_lineage(bound, tm
         directory = Path(item['path'])
         original = selected.document.source_text
         assert (directory / 'original.txt').read_bytes() == original.encode()
-        mapping = json.loads((directory / 'translation-structure.json').read_text())
+        mapping = json.loads((directory / 'translation-structure.json').read_text(encoding='utf-8'))
         assert mapping['job_id'] == identity and mapping['quotation_authority'] is False
         assert ''.join(row['original'] for row in mapping['paragraphs']) == original
         assert len(mapping['paragraphs']) == 2
         assert all(row['source_positions'] for row in mapping['paragraphs'])
-        html = (directory / 'bilingual.html').read_text()
+        html = (directory / 'bilingual.html').read_text(encoding='utf-8')
         assert 'Original <one>' not in html
         if '<one>' in original:
             assert '&lt;one&gt;' in html
-        report = json.loads((directory / 'translation-provenance.json').read_text())
+        report = json.loads((directory / 'translation-provenance.json').read_text(encoding='utf-8'))
         assert report['source_anchor'] == selected.document.source_anchor
         for name, digest in report['files'].items():
             assert sha256((directory / name).read_bytes()).hexdigest() == digest

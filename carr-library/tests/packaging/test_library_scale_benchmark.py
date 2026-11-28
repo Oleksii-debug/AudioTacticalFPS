@@ -299,3 +299,156 @@ def test_configuration_replacement_after_precheck_cannot_change_measured_work(tm
     assert swapped == [True]
     assert benchmark.read_json(path)['case']['segment_bytes'] == 192
     assert not (directory / 'library').exists() and not (directory / 'build.json').exists()
+
+
+def test_plain_reuses_native_path_with_fresh_actual_file_and_link_checks(tmp_path, monkeypatch):
+    import stat
+
+    target = tmp_path / 'observed.bin'
+    target.write_bytes(b'first')
+    native_type = type(target)
+    original_path = benchmark.Path
+    original_lstat = native_type.lstat
+    allocations, checked = [], []
+
+    def constructed(*args, **kwargs):
+        allocations.append((args, kwargs))
+        return original_path(*args, **kwargs)
+
+    def observed_lstat(value, *args, **kwargs):
+        result = original_lstat(value, *args, **kwargs)
+        if value == target:
+            checked.append((value, result))
+        return result
+
+    monkeypatch.setattr(benchmark, 'Path', constructed)
+    monkeypatch.setattr(native_type, 'lstat', observed_lstat)
+    first = benchmark.plain(target)
+    target.write_bytes(b'second, longer contents')
+    second = benchmark.plain(target)
+    assert first.st_size == 5 and second.st_size == len(b'second, longer contents')
+    assert (first.st_dev, first.st_ino) == (second.st_dev, second.st_ino)
+
+    alias = tmp_path / 'hardlink.bin'
+    os.link(target, alias)
+    with pytest.raises(benchmark.BenchmarkFailure, match='without links'):
+        benchmark.plain(target)
+    alias.unlink()
+    target.unlink()
+    target.mkdir()
+    with pytest.raises(benchmark.BenchmarkFailure, match='ordinary local'):
+        benchmark.plain(target)
+    directory = benchmark.plain(target, directory=True)
+    assert stat.S_ISDIR(directory.st_mode)
+    assert len(checked) == 5 and all(value is target for value, _ in checked)
+    assert first is checked[0][1] and second is checked[1][1]
+    assert directory is checked[4][1]
+    assert allocations == []
+
+
+def test_budget_retains_32_real_root_checks_then_cancellation_and_replacement(tmp_path, monkeypatch):
+    root = tmp_path / 'corpus'
+    root.mkdir()
+    (root / 'retained.txt').write_bytes(b'exact retained bytes')
+    cancelled, callbacks = [], []
+
+    def stop():
+        callbacks.append(True)
+        return bool(cancelled)
+
+    budget = benchmark.Budget(root, case(), cancelled=stop)
+    native_type = type(budget.root)
+    original_path = benchmark.Path
+    original_lstat = native_type.lstat
+    allocations, checked = [], []
+
+    def constructed(*args, **kwargs):
+        allocations.append((args, kwargs))
+        return original_path(*args, **kwargs)
+
+    def observed_lstat(value, *args, **kwargs):
+        result = original_lstat(value, *args, **kwargs)
+        if value == budget.root:
+            checked.append((value, result))
+        return result
+
+    monkeypatch.setattr(benchmark, 'Path', constructed)
+    monkeypatch.setattr(native_type, 'lstat', observed_lstat)
+    for _ in range(32):
+        budget.check()
+    assert len(checked) == len(callbacks) == 32
+    assert all((info.st_dev, info.st_ino) == budget.root_id for _, info in checked)
+
+    cancelled.append(True)
+    with pytest.raises(InterruptedError, match='canonical checkpoint'):
+        budget.check()
+    assert len(checked) == len(callbacks) == 33
+    cancelled.clear()
+
+    retired = tmp_path / 'retired-corpus'
+    root.rename(retired)
+    root.mkdir()
+    (root / 'retained.txt').write_bytes((retired / 'retained.txt').read_bytes())
+    current = original_lstat(root)
+    assert (current.st_dev, current.st_ino) != budget.root_id
+    with pytest.raises(benchmark.BenchmarkFailure, match='root was replaced'):
+        budget.check()
+    assert len(checked) == 34 and len(callbacks) == 33
+    assert all(value is budget.root for value, _ in checked)
+    assert allocations == []
+    assert (root / 'retained.txt').read_bytes() == (retired / 'retained.txt').read_bytes()
+
+
+@pytest.mark.parametrize('kind', ['text', 'pathlike', 'pure', 'hostile_subclass'])
+def test_plain_keeps_original_coercion_for_non_native_inputs(tmp_path, monkeypatch, kind):
+    from pathlib import PurePath
+
+    target = tmp_path / 'input.bin'
+    target.write_bytes(b'actual ordinary input')
+    native_type = type(target)
+    original_path = benchmark.Path
+    original_lstat = native_type.lstat
+    expected = original_lstat(target)
+    pathlike_calls, hostile_calls, constructed_values, checked = [], [], [], []
+
+    class ForeignPathLike:
+        def __fspath__(self):
+            pathlike_calls.append(True)
+            return str(target)
+
+    class HostilePath(native_type):
+        def stat(self, *args, **kwargs):
+            hostile_calls.append('stat')
+            raise AssertionError('A subclass stat override must not acquire authority.')
+
+        def lstat(self, *args, **kwargs):
+            hostile_calls.append('lstat')
+            raise AssertionError('A subclass lstat override must not acquire authority.')
+
+    value = {'text': str(target), 'pathlike': ForeignPathLike(),
+             'pure': PurePath(str(target)), 'hostile_subclass': HostilePath(target)}[kind]
+
+    def constructed(candidate):
+        result = original_path(candidate)
+        constructed_values.append((candidate, result))
+        return result
+
+    def observed_lstat(candidate, *args, **kwargs):
+        result = original_lstat(candidate, *args, **kwargs)
+        if candidate == target:
+            checked.append((candidate, result))
+        return result
+
+    monkeypatch.setattr(benchmark, 'Path', constructed)
+    monkeypatch.setattr(native_type, 'lstat', observed_lstat)
+    result = benchmark.plain(value)
+    assert len(constructed_values) == len(checked) == 1
+    original, selected = constructed_values[0]
+    assert original is value and selected is not value
+    assert type(selected) is native_type and selected == target
+    assert checked[0][0] is selected and checked[0][1] is result
+    assert (result.st_dev, result.st_ino, result.st_size) == (
+        expected.st_dev, expected.st_ino, expected.st_size)
+    assert pathlike_calls == ([True] if kind == 'pathlike' else [])
+    assert hostile_calls == []
+    assert target.read_bytes() == b'actual ordinary input'

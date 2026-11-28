@@ -105,9 +105,9 @@ FUNCTIONS = {
 }
 PINS = {
     "tests/studio/test_book_batch.py": "860b5e112e803527add77983733b0f1833b465e5",
-    "tests/assistant/test_translation_documents.py": "fc0d6148287026dbf6cb2640e5e4b0926a2d0ef8",
+    "tests/assistant/test_translation_documents.py": "ed45b92ed96f43ed6fc0a8af14c13e2ff46cbfa2",
     "tests/transcription/test_admission_boundaries.py": "5fb6e519bfa27ea296aeee775985fc31ba4afc65",
-    "tests/speech/test_voice_preferences.py": "e0993f9ed2f782cad2c8b4e9834a436dba335d45",
+    "tests/speech/test_voice_preferences.py": "a5037b0d64dfc1e1c97f939bc1edffa7d6f846af",
     "tests/assistant/test_translation_local.py": "3db04918a25fa59567e5325be789ee7039b84d59",
     "tests/transcription/fixture_runtime.py": "b4168929226bbe224e75a29f9899b3c63f237eda",
     "tests/transcription/fixtures/protocol_worker.py": "db988156c9c16504a8b82f8b65d4349086fec388",

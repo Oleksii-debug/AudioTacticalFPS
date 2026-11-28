@@ -1,0 +1,403 @@
+{
+  "schema": "carr-language-evidence-windows-failure/1",
+  "created_utc": "2026-11-28 09:22:33 UTC",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "head_sha": "a7e573b7a4d9cd8e4b96db0cb5230fac4229dd71",
+  "tree_sha": "df8cf5ed243d4b170c0a0307c84972246e817a39",
+  "scope": "Closed jobs only; parent workflows still have other queued/running jobs. No result is transferred to a later head.",
+  "current_pins": {
+    "helper": "b8df8ca4ab4400a1b7bb1484fb8e300a1a1c442a",
+    "workflow": "de0ffa6a26dffdcc91bcb1284550f75d704f032d",
+    "data": "6797df44d708230f38ba999760bbfd3cb8581e40",
+    "native": "1a0358e96abb435b6b944c8a69046e8f3f178c1b",
+    "core_test": "4c373f43b005d61ed164a1cff9f665a0a70340c0",
+    "ui_test": "00e756cc58ccbf30821b70fee984760c2a1d3756"
+  },
+  "diagnosis": {
+    "type": "FIXTURE_IMPORT_TYPE_FAILURE",
+    "first_cause": "Both passive tests replaced subprocess.Popen with a function. The first real FileLock import reaches asyncio.windows_utils, whose Popen subclasses subprocess.Popen. Subclassing the replacement function raises TypeError before the intended state operation completes.",
+    "later_cascade": "Later attempts in the same pytest child encounter the partially initialized asyncio module and NameError for base_events.",
+    "product_change_supported": false,
+    "offline_socket_policy_change_supported": false,
+    "correction_plan": "Keep the real Popen class and temporarily replace only its __init__ with the same pytest.fail callback. This also avoids caching a temporary forbidden subclass as asyncio's permanent base.",
+    "execution_status_of_correction": "NOT_RUN"
+  },
+  "primary_sources": [
+    {
+      "url": "https://github.com/python/cpython/blob/v3.11.9/Lib/subprocess.py",
+      "sha256": "baa9f9138d8d20df6284f67e7d2e790f847f65e2c5370de322d54cccd737f2d9",
+      "bytes": 88725,
+      "observed": "The Popen class defines _child_created=False before __init__; __del__ returns immediately when that attribute is false. The sentinel raises before the original initializer creates a child."
+    },
+    {
+      "url": "https://github.com/python/cpython/blob/v3.11.9/Lib/asyncio/windows_utils.py",
+      "sha256": "e6fcffefa2521666bc2aed0f5caf8e862c1c1014ad12d2ab5fbce09c2df9c6f0",
+      "bytes": 5060,
+      "observed": "windows_utils.Popen subclasses subprocess.Popen and calls super().__init__; preserving the original base class avoids a poisoned cached subclass after monkeypatch undo."
+    }
+  ],
+  "jobs": [
+    {
+      "caller": "main",
+      "run_id": 46128930916,
+      "job_id": 140931167881,
+      "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46128930916/job/140931167881",
+      "head_sha": "a7e573b7a4d9cd8e4b96db0cb5230fac4229dd71",
+      "branch": "carr/ci-full-final-e-20261128-5a9e",
+      "workflow_path": ".github/workflows/carr-windows.yml",
+      "run_attempt": 1,
+      "job_status": "completed",
+      "job_conclusion": "failure",
+      "failed_step": {
+        "name": "Require all 147 source, 147 isolated installed and native 75 checks",
+        "status": "completed",
+        "conclusion": "failure",
+        "number": 5
+      },
+      "source": {
+        "status": "FAIL",
+        "expected_cases": 147,
+        "passed": 95,
+        "failed": 52,
+        "skipped": 0,
+        "rows": [
+          {
+            "status": "PASS",
+            "suite": "tests/language_qualification/test_catalog.py",
+            "passed": 31,
+            "failed": 0,
+            "skipped": 0,
+            "pytest_exit": 0,
+            "line": 4892
+          },
+          {
+            "status": "PASS",
+            "suite": "tests/language_qualification/test_ui.py",
+            "passed": 7,
+            "failed": 0,
+            "skipped": 0,
+            "pytest_exit": 0,
+            "line": 4893
+          },
+          {
+            "status": "FAIL",
+            "suite": "tests/language_qualification/test_evidence.py",
+            "passed": 29,
+            "failed": 25,
+            "skipped": 0,
+            "pytest_exit": 1,
+            "line": 4894
+          },
+          {
+            "status": "PASS",
+            "suite": "tests/language_qualification/test_evidence_backup.py",
+            "passed": 27,
+            "failed": 0,
+            "skipped": 0,
+            "pytest_exit": 0,
+            "line": 4895
+          },
+          {
+            "status": "FAIL",
+            "suite": "tests/language_qualification/test_evidence_ui.py",
+            "passed": 1,
+            "failed": 27,
+            "skipped": 0,
+            "pytest_exit": 1,
+            "line": 4896
+          }
+        ],
+        "strict_aggregate": "Required suites complete: 5; passed=3; failed=2"
+      },
+      "installed": {
+        "status": "NOT_RUN"
+      },
+      "native": {
+        "status": "NOT_RUN",
+        "required_checks": 75,
+        "required_origins": 14
+      },
+      "log": {
+        "sha256": "226c27fc2a1358bbe02f37340c35fb144489afbcf74125c04c4f95e0af7bbed3",
+        "bytes": 394211
+      },
+      "line_reference_format": "One-based, timestamp and ANSI stripped closed log lines",
+      "first_failure_frames": [
+        {
+          "pattern": "monkeypatch.setattr(subprocess, 'Popen'",
+          "line": 554,
+          "excerpt": [
+            "    def test_passive_import_and_zero_default_never_execute_or_accept_reviews(tmp_path, monkeypatch, outcome):",
+            "        from carr_library import runtime_settings",
+            "        forbidden = lambda *a, **k: pytest.fail('Passive evidence attempted execution or discovery.')",
+            "        monkeypatch.setattr(subprocess, 'Popen', forbidden)",
+            "        monkeypatch.setattr(socket, 'create_connection', forbidden)",
+            "        monkeypatch.setattr(runtime_settings, 'voice_registry', forbidden)",
+            "        value = fixture.observation(outcome=outcome)"
+          ]
+        },
+        {
+          "pattern": "with state_lock",
+          "line": 577,
+          "excerpt": [
+            "    return self._change(apply, expected_token, cancelled)",
+            "           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^",
+            "src\\carr_library\\language_qualification\\evidence.py:461: in _change",
+            "    with state_lock(self.path.parent, 'language-evidence'):",
+            "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\contextlib.py:137: in __enter__",
+            "    return next(self.gen)",
+            "           ^^^^^^^^^^^^^^"
+          ]
+        },
+        {
+          "pattern": "from filelock import FileLock",
+          "line": 582,
+          "excerpt": [
+            "    return next(self.gen)",
+            "           ^^^^^^^^^^^^^^",
+            "src\\carr_library\\durable_state.py:231: in state_lock",
+            "    from filelock import FileLock, Timeout",
+            "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\filelock\\__init__.py:26: in <module>",
+            "    from ._async_read_write import AsyncAcquireReadWriteReturnProxy, AsyncReadWriteLock",
+            "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\filelock\\_async_read_write.py:5: in <module>"
+          ]
+        },
+        {
+          "pattern": "class Popen(subprocess.Popen)",
+          "line": 717,
+          "excerpt": [
+            "    # Replacement for subprocess.Popen using overlapped pipe handles",
+            "    ",
+            "    ",
+            ">   class Popen(subprocess.Popen):",
+            "E   TypeError: function() argument 'code' must be code, not str",
+            "",
+            "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\asyncio\\windows_utils.py:125: TypeError"
+          ]
+        },
+        {
+          "pattern": "TypeError: function()",
+          "line": 718,
+          "excerpt": [
+            "    ",
+            "    ",
+            ">   class Popen(subprocess.Popen):",
+            "E   TypeError: function() argument 'code' must be code, not str",
+            "",
+            "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\asyncio\\windows_utils.py:125: TypeError",
+            "_ test_passive_import_and_zero_default_never_execute_or_accept_reviews[not_run] _"
+          ]
+        },
+        {
+          "pattern": "NameError: name 'base_events'",
+          "line": 806,
+          "excerpt": [
+            "               threads.__all__ +",
+            "               timeouts.__all__ +",
+            "               transports.__all__)",
+            "E   NameError: name 'base_events' is not defined",
+            "",
+            "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\asyncio\\__init__.py:25: NameError",
+            "_ test_review_binds_complete_observation_and_explicit_distinct_provenance[self] _"
+          ]
+        }
+      ],
+      "artifact": {
+        "id": 15256743369,
+        "name": "language-evidence-windows-a7e573b7a4d9cd8e4b96db0cb5230fac4229dd71-1",
+        "size_in_bytes": 18189,
+        "sha256": "72b3c85872c621bf1aaa5adffd6bf2ec533eb7a4b943fb29d938c984dec99d07",
+        "created_at": "2026-11-28T09:16:27Z",
+        "expires_at": "2026-12-05T09:16:26Z",
+        "head_sha": "a7e573b7a4d9cd8e4b96db0cb5230fac4229dd71",
+        "upload_and_api_agree": true,
+        "contents_downloaded_or_inspected": false
+      }
+    },
+    {
+      "caller": "v3",
+      "run_id": 46128930888,
+      "job_id": 140929618643,
+      "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46128930888/job/140929618643",
+      "head_sha": "a7e573b7a4d9cd8e4b96db0cb5230fac4229dd71",
+      "branch": "carr/ci-full-final-e-20261128-5a9e",
+      "workflow_path": ".github/workflows/carr-v3.yml",
+      "run_attempt": 1,
+      "job_status": "completed",
+      "job_conclusion": "failure",
+      "failed_step": {
+        "name": "Require all 147 source, 147 isolated installed and native 75 checks",
+        "status": "completed",
+        "conclusion": "failure",
+        "number": 5
+      },
+      "source": {
+        "status": "FAIL",
+        "expected_cases": 147,
+        "passed": 95,
+        "failed": 52,
+        "skipped": 0,
+        "rows": [
+          {
+            "status": "PASS",
+            "suite": "tests/language_qualification/test_catalog.py",
+            "passed": 31,
+            "failed": 0,
+            "skipped": 0,
+            "pytest_exit": 0,
+            "line": 4892
+          },
+          {
+            "status": "PASS",
+            "suite": "tests/language_qualification/test_ui.py",
+            "passed": 7,
+            "failed": 0,
+            "skipped": 0,
+            "pytest_exit": 0,
+            "line": 4893
+          },
+          {
+            "status": "FAIL",
+            "suite": "tests/language_qualification/test_evidence.py",
+            "passed": 29,
+            "failed": 25,
+            "skipped": 0,
+            "pytest_exit": 1,
+            "line": 4894
+          },
+          {
+            "status": "PASS",
+            "suite": "tests/language_qualification/test_evidence_backup.py",
+            "passed": 27,
+            "failed": 0,
+            "skipped": 0,
+            "pytest_exit": 0,
+            "line": 4895
+          },
+          {
+            "status": "FAIL",
+            "suite": "tests/language_qualification/test_evidence_ui.py",
+            "passed": 1,
+            "failed": 27,
+            "skipped": 0,
+            "pytest_exit": 1,
+            "line": 4896
+          }
+        ],
+        "strict_aggregate": "Required suites complete: 5; passed=3; failed=2"
+      },
+      "installed": {
+        "status": "NOT_RUN"
+      },
+      "native": {
+        "status": "NOT_RUN",
+        "required_checks": 75,
+        "required_origins": 14
+      },
+      "log": {
+        "sha256": "ba7a2895a874d97a2b6e1bbe4dcab874cef1e6e3ca087b8e470349312a9f9ad4",
+        "bytes": 394204
+      },
+      "line_reference_format": "One-based, timestamp and ANSI stripped closed log lines",
+      "first_failure_frames": [
+        {
+          "pattern": "monkeypatch.setattr(subprocess, 'Popen'",
+          "line": 562,
+          "excerpt": [
+            "    def test_passive_import_and_zero_default_never_execute_or_accept_reviews(tmp_path, monkeypatch, outcome):",
+            "        from carr_library import runtime_settings",
+            "        forbidden = lambda *a, **k: pytest.fail('Passive evidence attempted execution or discovery.')",
+            "        monkeypatch.setattr(subprocess, 'Popen', forbidden)",
+            "        monkeypatch.setattr(socket, 'create_connection', forbidden)",
+            "        monkeypatch.setattr(runtime_settings, 'voice_registry', forbidden)",
+            "        value = fixture.observation(outcome=outcome)"
+          ]
+        },
+        {
+          "pattern": "with state_lock",
+          "line": 585,
+          "excerpt": [
+            "    return self._change(apply, expected_token, cancelled)",
+            "           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^",
+            "src\\carr_library\\language_qualification\\evidence.py:461: in _change",
+            "    with state_lock(self.path.parent, 'language-evidence'):",
+            "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\contextlib.py:137: in __enter__",
+            "    return next(self.gen)",
+            "           ^^^^^^^^^^^^^^"
+          ]
+        },
+        {
+          "pattern": "from filelock import FileLock",
+          "line": 590,
+          "excerpt": [
+            "    return next(self.gen)",
+            "           ^^^^^^^^^^^^^^",
+            "src\\carr_library\\durable_state.py:231: in state_lock",
+            "    from filelock import FileLock, Timeout",
+            "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\filelock\\__init__.py:26: in <module>",
+            "    from ._async_read_write import AsyncAcquireReadWriteReturnProxy, AsyncReadWriteLock",
+            "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\filelock\\_async_read_write.py:5: in <module>"
+          ]
+        },
+        {
+          "pattern": "class Popen(subprocess.Popen)",
+          "line": 725,
+          "excerpt": [
+            "    # Replacement for subprocess.Popen using overlapped pipe handles",
+            "    ",
+            "    ",
+            ">   class Popen(subprocess.Popen):",
+            "E   TypeError: function() argument 'code' must be code, not str",
+            "",
+            "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\asyncio\\windows_utils.py:125: TypeError"
+          ]
+        },
+        {
+          "pattern": "TypeError: function()",
+          "line": 726,
+          "excerpt": [
+            "    ",
+            "    ",
+            ">   class Popen(subprocess.Popen):",
+            "E   TypeError: function() argument 'code' must be code, not str",
+            "",
+            "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\asyncio\\windows_utils.py:125: TypeError",
+            "_ test_passive_import_and_zero_default_never_execute_or_accept_reviews[not_run] _"
+          ]
+        },
+        {
+          "pattern": "NameError: name 'base_events'",
+          "line": 814,
+          "excerpt": [
+            "               threads.__all__ +",
+            "               timeouts.__all__ +",
+            "               transports.__all__)",
+            "E   NameError: name 'base_events' is not defined",
+            "",
+            "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\asyncio\\__init__.py:25: NameError",
+            "_ test_review_binds_complete_observation_and_explicit_distinct_provenance[self] _"
+          ]
+        }
+      ],
+      "artifact": {
+        "id": 15256728059,
+        "name": "language-evidence-windows-a7e573b7a4d9cd8e4b96db0cb5230fac4229dd71-1",
+        "size_in_bytes": 18221,
+        "sha256": "e9b3e77ea5d5c88dd16209a4523f1f679c9c418ab1bfc9a90441f2e60b5c843b",
+        "created_at": "2026-11-28T09:12:58Z",
+        "expires_at": "2026-12-05T09:12:57Z",
+        "head_sha": "a7e573b7a4d9cd8e4b96db0cb5230fac4229dd71",
+        "upload_and_api_agree": true,
+        "contents_downloaded_or_inspected": false
+      }
+    }
+  ],
+  "qualification": {
+    "language_quality": "NOT_CLAIMED",
+    "reviewer_authentication": "NOT_CLAIMED",
+    "current_device_qualification": "NOT_CLAIMED",
+    "corrected_source": "NOT_RUN",
+    "corrected_installed": "NOT_RUN",
+    "corrected_native": "NOT_RUN"
+  }
+}
