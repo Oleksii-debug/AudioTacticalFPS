@@ -1,0 +1,62 @@
+{
+  "schema": "carr-final-scale-artifact-selection/1",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "target": "71ca92be691455d0ff51ed163b1d91749e5ae62e",
+  "run_id": 46124999025,
+  "artifacts": [
+    {
+      "job_id": 140917529551,
+      "artifact_id": 15255746478,
+      "tier": "books-1000",
+      "os": "ubuntu-24.04",
+      "conclusion": "success",
+      "size_in_bytes": 1774585,
+      "sha256": "ec8d6d808b7b08204ee61efac2b784b282f96ef0810d1fb950e5e1885d42f80f"
+    },
+    {
+      "job_id": 140917529723,
+      "artifact_id": 15256096563,
+      "tier": "text-65m",
+      "os": "windows-2022",
+      "conclusion": "success",
+      "size_in_bytes": 82785,
+      "sha256": "610305ccd3fd7de7068dadfc0728f73de81c159ef46b7df8ccc7e8cd8eab797c"
+    },
+    {
+      "job_id": 140917529744,
+      "artifact_id": 15256755017,
+      "tier": "books-1000",
+      "os": "windows-2022",
+      "conclusion": "success",
+      "size_in_bytes": 1774578,
+      "sha256": "384d03a895146d5d5844f5500e8e0efcc7b56a8d36465bc97f0726c48cfe622a"
+    },
+    {
+      "job_id": 140917529780,
+      "artifact_id": 15257370813,
+      "tier": "text-129m",
+      "os": "windows-2022",
+      "conclusion": "success",
+      "size_in_bytes": 83548,
+      "sha256": "68747e744847e77cadf70cfd0d29df1d92f2280ae895d37addb8af225b6ffce2"
+    },
+    {
+      "job_id": 140917529794,
+      "artifact_id": 15256997095,
+      "tier": "text-129m",
+      "os": "ubuntu-24.04",
+      "conclusion": "success",
+      "size_in_bytes": 83557,
+      "sha256": "d1e9ba9ad012eb06e07308e9031eb166622b9dc5ae2aaecce93db07c71527c3b"
+    },
+    {
+      "job_id": 140917529810,
+      "artifact_id": 15257202190,
+      "tier": "text-65m",
+      "os": "ubuntu-24.04",
+      "conclusion": "success",
+      "size_in_bytes": 82729,
+      "sha256": "3b90dbba1ed854c5efceb6e5d8d4ec017b57f571207c1fe5969c09b2c01f4321"
+    }
+  ]
+}
