@@ -1,0 +1,248 @@
+{
+  "schema": "carr-bounded-release-completeness-audit/1",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "status": "NO_NEW_CONCRETE_PUBLIC_IMPLEMENTATION_OR_REQUIRED_GATE_GAP_ESTABLISHED",
+  "head": "57bd81ebabc0df2ffc4106c44b94805ee2da7588",
+  "tree": "b58326e5724c64eea195814ac198c4237720292c",
+  "scope": "Bounded read-only comparison of current PR143 claims, canonical technical requirements, declared source routes, final native configuration and maintained test selectors. This is not a fresh full product/security audit or runtime acceptance.",
+  "inputs": {
+    "pr_body_snapshot": "d657459bfba74f49c40096f8dc73880b0ab25dce",
+    "pr_head": "57bd81ebabc0df2ffc4106c44b94805ee2da7588",
+    "pr_body_updated_at": "2026-11-28T10:44:21Z",
+    "canonical": "e5c64a5245583f8f8b404a0f042f6ca438c24d7f",
+    "requirements": {
+      "audio_agent": "d0b2761dd22b33233b311d4800230fb47f5d3d8b",
+      "finalization": "db8adbdc483a03c262885928c7ed214ca70bbaa7",
+      "acceptance": "45752d31899f91bbdc9c71e4b256ac42975beaac"
+    },
+    "readiness": "b87307627e45f9a5f39e1062e5cbc7998f832828",
+    "reading_checklist": "72a1975f9df0fc966d951d370bfc8aa0db73bd3a",
+    "composition_evidence": [
+      "ef655edb386aec113d8f4d1ac1fd3d0619645eb4",
+      "3500259691cab4cac762b9e70006c4f577bb0b2f"
+    ],
+    "amendment_reviews": {
+      "preparation": "4b1fd670cb77b00047981d10402981a7c155ed40",
+      "scale": "12747fa1dc3baa765faf07cbb29d1335e3b29983"
+    }
+  },
+  "source_and_selector_observations": {
+    "complete_tree_files": 1567,
+    "canonical_paths_retained": 910,
+    "maintained_workflows": 7,
+    "new_pytest_module_paths_from_canonical": 290,
+    "new_module_paths_absent_from_both_explicit_main_v3_and_actual_v3_directory_selections": 0,
+    "caveat": "This checks path inclusion, not case counts or every platform/context. operations/progress directory coverage is the actual V3 portable command; it is not a claim of installed Windows execution of every module.",
+    "final_native_configuration": {
+      "path": "carr-library/scripts/final_scope_native.json",
+      "sha": "1094b16fe3f201496ffd01913de5ced5baa42178",
+      "probes": [
+        {
+          "id": "about",
+          "path": "tests/ui/probe_about_native.py",
+          "sha": "4ec34c02304e0118e9f069746ea720b906e553cd",
+          "optional_office": false,
+          "oracle": "scripts/about_native_oracle.json"
+        },
+        {
+          "id": "diagnostics",
+          "path": "scripts/windows_diagnostics_smoke.py",
+          "sha": "f3811155fdf659a10e03e5b80c1f8a1adaa16c8b",
+          "optional_office": false,
+          "oracle": null
+        },
+        {
+          "id": "speech-preparation",
+          "path": "scripts/windows_speech_preparation_smoke.py",
+          "sha": "ac76d8f4f73dc33a4d15042540537c509386af8b",
+          "optional_office": false,
+          "oracle": null
+        },
+        {
+          "id": "live-range",
+          "path": "scripts/windows_live_range_smoke.py",
+          "sha": "2f615753abecfefd08d4c9bcad41328147662a46",
+          "optional_office": false,
+          "oracle": null
+        },
+        {
+          "id": "studio-silence",
+          "path": "scripts/windows_studio_silence_smoke.py",
+          "sha": "745e03f9ed7d0d5499debd3373288dd4cd75eab6",
+          "optional_office": false,
+          "oracle": null
+        },
+        {
+          "id": "word-ui",
+          "path": "scripts/windows_word_controls_smoke.py",
+          "sha": "4a1a71a388723eeb5027f40529796b951f716c04",
+          "optional_office": false,
+          "oracle": null
+        },
+        {
+          "id": "word-office",
+          "path": "scripts/windows_word_citations_smoke.py",
+          "sha": "439689de1e1093286af533618346f75ed93d38e3",
+          "optional_office": true,
+          "oracle": null
+        },
+        {
+          "id": "research-merge",
+          "path": "scripts/windows_research_merge_smoke.py",
+          "sha": "09979f5cd732a444863ff51baf39e7ea835fb393",
+          "optional_office": false,
+          "oracle": "scripts/research_merge_native_oracle.json"
+        }
+      ],
+      "required": 7,
+      "optional_actual_office": 1,
+      "all_files_and_oracles_present": true
+    },
+    "importer_paths_exact": [
+      {
+        "path": "carr-library/src/carr_library/ingest/worker.py",
+        "sha": "63f5d2ef09c584d94f0be761b6c264b31f568802"
+      },
+      {
+        "path": "carr-library/src/carr_library/ingest/pipeline.py",
+        "sha": "cf6ffa2cece1bfaa47a76d230934f93d69dea17e"
+      },
+      {
+        "path": "carr-library/tests/e2e/test_import_files_cancellation.py",
+        "sha": "6e1b58a0fcecc2b83c7b941dc07a80a973a52c2d"
+      },
+      {
+        "path": "carr-library/tests/operations/test_ocr_admission.py",
+        "sha": "0eb4b0f9d144c002700a5708ebc188f1b018d4e8"
+      }
+    ],
+    "native_helper": "29529724af1dea6c8bd0cfb83f990eaa8c82ee1c"
+  },
+  "closed_cue_coverage_question": {
+    "initial_observation": "The independent libcue script is retained but not invoked by any of the seven maintained final workflows.",
+    "classification": "FACTUAL_COMPONENT_COVERAGE_DISTINCTION_NOT_A_PROVEN_REQUIRED_FINAL_GATE_OMISSION",
+    "canonical_requirement": {
+      "source": "carr-library/docs/UNIVERSAL_SCOPE_V3_FINALIZATION.md",
+      "blob": "db8adbdc483a03c262885928c7ed214ca70bbaa7",
+      "section": "V3-20 Exports and interoperability",
+      "boundary": "Document standard WAV/stem plus cue/EDL interchange; make no proprietary editor-format claim without actual import/export tests.",
+      "acceptance_source": "carr-library/docs/acceptance.md",
+      "acceptance_blob": "45752d31899f91bbdc9c71e4b256ac42975beaac",
+      "acceptance_boundary": "G7 binds the declared deliverable/profile to exact artifact and required gates; V3-S/T covers explicitly included publishing/interchange. Neither names libcue or requires that particular separate reader on every final composition."
+    },
+    "final_selected_real_tests": [
+      {
+        "path": "tests/studio/test_interchange.py",
+        "main_occurrences": 2,
+        "v3_occurrences": 2,
+        "test_blob": "c3887927476540b131ecd02dd577729e6f43f42a"
+      },
+      {
+        "path": "tests/storage/test_cue_interchange_backup.py",
+        "main_occurrences": 2,
+        "v3_occurrences": 2,
+        "test_blob": "97c5f91872c22d63a98c6c188f072d25b6a3ce38"
+      }
+    ],
+    "real_test_boundary": "Actual FFmpeg production publishes CUE through existing receipts, then verifies original/artifact invariance and same-job resume. Common4 tests preserve typed CUE metadata and exact project/source relationships, refuse tampered graphs and keep restore passive.",
+    "independent_probe": {
+      "path": "carr-library/scripts/probe_cue_interchange.py",
+      "sha": "aa413ac41ef50f4fedc4ad4290a691eda3bad69f",
+      "final_execution": "NOT_RUN",
+      "invocation_contract": "isolated installed interpreter; --libcue actual built shared library; --report explicit output; CARR_CUE_HEAD; actual selected FFmpeg/ffprobe and retained real fixture"
+    },
+    "direct_component_identity_comparison": [
+      {
+        "path": "carr-library/src/carr_library/studio/interchange.py",
+        "current": "c3b774f1aeaf31a55715762bf0ca2f7eef4c632d",
+        "component": "c3b774f1aeaf31a55715762bf0ca2f7eef4c632d",
+        "equal": true
+      },
+      {
+        "path": "carr-library/src/carr_library/studio/render.py",
+        "current": "4c1a799a51cc2ab50633d769a39595e43b714346",
+        "component": "4c1a799a51cc2ab50633d769a39595e43b714346",
+        "equal": true
+      },
+      {
+        "path": "carr-library/src/carr_library/backup_producers.py",
+        "current": "9a60268cc814297bb7238251b1d2b87ca1828fe5",
+        "component": "9a60268cc814297bb7238251b1d2b87ca1828fe5",
+        "equal": true
+      },
+      {
+        "path": "carr-library/src/carr_library/backup_current.py",
+        "current": "1a98ddf77074f8d275eeeea3d4a548122ec3fc12",
+        "component": "1a98ddf77074f8d275eeeea3d4a548122ec3fc12",
+        "equal": true
+      },
+      {
+        "path": "carr-library/src/carr_library/backup_sidecars.py",
+        "current": "af7fdb3a78e124567ff7d046330825c740d03dab",
+        "component": "af7fdb3a78e124567ff7d046330825c740d03dab",
+        "equal": true
+      },
+      {
+        "path": "carr-library/scripts/probe_cue_interchange.py",
+        "current": "aa413ac41ef50f4fedc4ad4290a691eda3bad69f",
+        "component": "aa413ac41ef50f4fedc4ad4290a691eda3bad69f",
+        "equal": true
+      },
+      {
+        "path": "carr-library/tests/studio/test_interchange.py",
+        "current": "c3887927476540b131ecd02dd577729e6f43f42a",
+        "component": "c3887927476540b131ecd02dd577729e6f43f42a",
+        "equal": true
+      },
+      {
+        "path": "carr-library/tests/storage/test_cue_interchange_backup.py",
+        "current": "97c5f91872c22d63a98c6c188f072d25b6a3ce38",
+        "component": "97c5f91872c22d63a98c6c188f072d25b6a3ce38",
+        "equal": true
+      }
+    ],
+    "component_evidence": {
+      "head": "3c56c6c4489d2a5da7c3a9ebd3f9b5803a8b817e",
+      "tree": "ed0fa1cbecf211501781c75721edd4bcffc718b7",
+      "run": 46121179440,
+      "record": "f8befd32c9b070f11349dfa41faac7440ee5b681",
+      "workflow": {
+        "path": ".github/workflows/carr-silence-inspection-review.yml",
+        "sha": "5f9a1c97deef9356231fee0e4c59e53dcd11e361"
+      },
+      "independent_reader": "Pinned lipnitsk/libcue cfb98a060fd79dbc3463d85f0f29c3c335dfa0ea; six upstream self-tests, actual published two-track sheet and authored 100-chapter boundary sheets.",
+      "runtime_scope": "That exact component only; not final57 acceptance, GUI editor interoperability, acoustic quality, physical output or NVDA."
+    },
+    "action": "Mandatory-gap interpretation withdrawn. No optional rerun, gate edit or ref mutation."
+  },
+  "excluded_from_completion_claims": [
+    "All final57 required runtime workflows and all twelve declared scale tiers remain governed by their actual exact-head outcomes.",
+    "Private engine/model access, actual Office when unavailable, owner production authority/signing/distribution, physical audio, human NVDA and canonical 135-entry quality are separate stated qualifications.",
+    "Source/path inclusion is not proof of every behavior, every supported format, all language quality or all deployment profiles.",
+    "The PR body snapshot was read during publication transition; its historical/current runtime tables are not treated as a final57 PASS."
+  ],
+  "assigned_final_runtime_watch": [
+    {
+      "name": "bibliography",
+      "run": 46136589151,
+      "job": 140953154953
+    },
+    {
+      "name": "launcher",
+      "run": 46136589124,
+      "jobs": [
+        140953156165,
+        140953156306
+      ]
+    },
+    {
+      "name": "legacy",
+      "run": 46136582933,
+      "jobs": [
+        140953133725,
+        140953133924
+      ]
+    }
+  ],
+  "mutations": "No source, tests, workflows or branch refs changed; only immutable audit records created."
+}

@@ -1,0 +1,131 @@
+{
+  "schema": "carr-final-candidate-publication/2",
+  "head": "57bd81ebabc0df2ffc4106c44b94805ee2da7588",
+  "tree": "b58326e5724c64eea195814ac198c4237720292c",
+  "files": 1567,
+  "branch": "carr/canonical-integrity-finish-20261127",
+  "base": "carr-library",
+  "pr": 143,
+  "predecessor": "71ca92be691455d0ff51ed163b1d91749e5ae62e",
+  "ref_readback": true,
+  "status": "PUBLISHED_REQUIRED_FINAL_GATES_PENDING",
+  "published_utc": "2026-11-28 10:44:21 UTC",
+  "prepublication": {
+    "observed": "2026-11-28 10:44:13 UTC",
+    "canonical": "e5c64a5245583f8f8b404a0f042f6ca438c24d7f",
+    "oldHead": "71ca92be691455d0ff51ed163b1d91749e5ae62e",
+    "newHead": "57bd81ebabc0df2ffc4106c44b94805ee2da7588",
+    "tree": "b58326e5724c64eea195814ac198c4237720292c",
+    "files": 1567,
+    "canonical_files": 910,
+    "specs": [
+      "carr-library/docs/UNIVERSAL_SCOPE_V3_FINALIZATION.md",
+      "carr-library/docs/UNIVERSAL_SCOPE_V3_AUDIO_AGENT.md",
+      "AGENTS.md"
+    ],
+    "preflight": {
+      "run": 46135090394,
+      "head": "6c7e02188dc0c4895cff17f69d75bcd61ee932a9",
+      "conclusion": "success",
+      "completed": "2026-11-28T10:43:20Z"
+    },
+    "mergeable": true,
+    "full_tree_verified": true
+  },
+  "source_reviews": [
+    "ef655edb386aec113d8f4d1ac1fd3d0619645eb4",
+    "3500259691cab4cac762b9e70006c4f577bb0b2f"
+  ],
+  "preflight_evidence": "dfb2fee5171ec60c5f9a290d9662c40ca5e23186",
+  "final_gates": {
+    "head": "57bd81ebabc0df2ffc4106c44b94805ee2da7588",
+    "observed_at_admission": "2026-11-28T10:45:15Z",
+    "status": "PENDING",
+    "runs": [
+      {
+        "id": 46136589151,
+        "name": "CARR bibliography and import acceptance",
+        "path": ".github/workflows/carr-bibliography.yml",
+        "event": "pull_request",
+        "status": "queued",
+        "conclusion": null,
+        "head": "57bd81ebabc0df2ffc4106c44b94805ee2da7588"
+      },
+      {
+        "id": 46136589112,
+        "name": "CARR V3 local studio and assistant",
+        "path": ".github/workflows/carr-v3.yml",
+        "event": "pull_request",
+        "status": "queued",
+        "conclusion": null,
+        "head": "57bd81ebabc0df2ffc4106c44b94805ee2da7588"
+      },
+      {
+        "id": 46136589122,
+        "name": "Actual library corpus scale",
+        "path": ".github/workflows/carr-library-scale.yml",
+        "event": "pull_request",
+        "status": "pending",
+        "conclusion": null,
+        "head": "57bd81ebabc0df2ffc4106c44b94805ee2da7588"
+      },
+      {
+        "id": 46136589124,
+        "name": "CARR native Windows launch entry",
+        "path": ".github/workflows/carr-native-launcher.yml",
+        "event": "pull_request",
+        "status": "queued",
+        "conclusion": null,
+        "head": "57bd81ebabc0df2ffc4106c44b94805ee2da7588"
+      },
+      {
+        "id": 46136589121,
+        "name": "CARR Windows integrated desktop",
+        "path": ".github/workflows/carr-windows.yml",
+        "event": "pull_request",
+        "status": "queued",
+        "conclusion": null,
+        "head": "57bd81ebabc0df2ffc4106c44b94805ee2da7588"
+      },
+      {
+        "id": 46136582933,
+        "name": "Selected legacy document and archive conversion review",
+        "path": ".github/workflows/carr-legacy-reading-review.yml",
+        "event": "push",
+        "status": "queued",
+        "conclusion": null,
+        "head": "57bd81ebabc0df2ffc4106c44b94805ee2da7588"
+      },
+      {
+        "id": 46136582936,
+        "name": "Selected Calibre reading review",
+        "path": ".github/workflows/carr-calibre-reading-review.yml",
+        "event": "push",
+        "status": "queued",
+        "conclusion": null,
+        "head": "57bd81ebabc0df2ffc4106c44b94805ee2da7588"
+      }
+    ],
+    "capacity_admission": "87efbc37fa7339428ecd4bcf46eb7e0968cdad31",
+    "capacity_status": "PENDING_EXISTING_GROUP; ALL12_AND4_BACKUP_ROUNDS_REQUIRED",
+    "duplicate_push_runs": [
+      {
+        "id": 46136582931,
+        "name": "CARR native Windows launch entry",
+        "status": "AUTO_CANCELLED_BY_EXISTING_CONCURRENCY"
+      },
+      {
+        "id": 46136582937,
+        "name": "CARR Windows integrated desktop",
+        "status": "AUTO_CANCELLED_BY_EXISTING_CONCURRENCY"
+      },
+      {
+        "id": 46136582943,
+        "name": "CARR V3 local studio and assistant",
+        "status": "AUTO_CANCELLED_BY_EXISTING_CONCURRENCY"
+      }
+    ],
+    "manual_cancellations": 0
+  },
+  "merge_allowed": false
+}

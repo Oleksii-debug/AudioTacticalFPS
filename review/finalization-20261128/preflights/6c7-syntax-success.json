@@ -1,0 +1,75 @@
+{
+  "schema": "carr-final-scope-preflight-syntax-evidence/1",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "head": "6c7e02188dc0c4895cff17f69d75bcd61ee932a9",
+  "tree": "2a79d522d16ace9648f96d2742e074bebfd285bc",
+  "parents": [
+    "57bd81ebabc0df2ffc4106c44b94805ee2da7588",
+    "bdc3c6f1383f39e9c0b8e6f60c694a11a5fbb515"
+  ],
+  "prepared_final_parent": "57bd81ebabc0df2ffc4106c44b94805ee2da7588",
+  "run_id": 46135090394,
+  "job_id": 140948479758,
+  "conclusion": "success",
+  "started_at": "2026-11-28T10:34:40Z",
+  "completed_at": "2026-11-28T10:34:52Z",
+  "actual_checkout_proof": [
+    "2026-11-28T10:34:41.8920751Z   ref: 6c7e02188dc0c4895cff17f69d75bcd61ee932a9",
+    "2026-11-28T10:34:42.2292754Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin 6c7e02188dc0c4895cff17f69d75bcd61ee932a9",
+    "2026-11-28T10:34:43.8453395Z 6c7e02188dc0c4895cff17f69d75bcd61ee932a9",
+    "2026-11-28T10:34:43.8558509Z [command]/usr/bin/git checkout --progress --force 6c7e02188dc0c4895cff17f69d75bcd61ee932a9",
+    "2026-11-28T10:34:43.9763467Z HEAD is now at 6c7e021 Execute all eight native scopes after the real destruction acknowledgement correction",
+    "2026-11-28T10:34:43.9841516Z 6c7e02188dc0c4895cff17f69d75bcd61ee932a9",
+    "2026-11-28T10:34:48.8481976Z   name: final-composition-syntax-6c7e02188dc0c4895cff17f69d75bcd61ee932a9"
+  ],
+  "python_yaml_path_result": {
+    "entrypoints": 6,
+    "head": "6c7e02188dc0c4895cff17f69d75bcd61ee932a9",
+    "powershell_blocks_pending": 43,
+    "python_blocks": 11,
+    "python_files": 1246,
+    "scope": "Python compile, duplicate-free YAML, current workflow module/native paths",
+    "status": "PASS",
+    "workflows": [
+      ".github/workflows/carr-bibliography.yml",
+      ".github/workflows/carr-calibre-reading-review.yml",
+      ".github/workflows/carr-final-scope-preflight.yml",
+      ".github/workflows/carr-legacy-reading-review.yml",
+      ".github/workflows/carr-library-scale.yml",
+      ".github/workflows/carr-native-launcher.yml",
+      ".github/workflows/carr-v3.yml",
+      ".github/workflows/carr-windows.yml"
+    ]
+  },
+  "powershell_result": {
+    "status": "PASS",
+    "blocks": 43,
+    "errors": []
+  },
+  "python": "3.11.18",
+  "raw_log_blob": "3878a78790a4db8e57dbe50231ea074cb6b50286",
+  "raw_log_readback": "EXACT",
+  "artifact": {
+    "id": 15259472195,
+    "name": "final-composition-syntax-6c7e02188dc0c4895cff17f69d75bcd61ee932a9",
+    "size_in_bytes": 101840,
+    "digest": "sha256:62c4c30987196652fa833a484b87e8e87a6652aeaff7a20bd4a29478dff371f5",
+    "workflow_run": {
+      "id": 46135090394,
+      "repository_id": 1341777614,
+      "head_repository_id": 1341777614,
+      "head_branch": "carr/final-scope-preflight-20261128",
+      "head_sha": "6c7e02188dc0c4895cff17f69d75bcd61ee932a9"
+    }
+  },
+  "native_job": {
+    "id": 140950858599,
+    "last_observed_status": "queued",
+    "qualification": "NOT_RUN_AT_THIS_CHECKPOINT"
+  },
+  "limits": [
+    "Syntax-only evidence; no native or final-head seven-workflow qualification inferred.",
+    "The existing complete native job remains required; no healthy job was cancelled or retried.",
+    "Actual tested checkout is 6c7; parent 57bd is separately identified and does not inherit this result."
+  ]
+}

@@ -1,0 +1,432 @@
+{
+  "schema": "carr-final-scope-composed-preflight-evidence/1",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "head": "6c7e02188dc0c4895cff17f69d75bcd61ee932a9",
+  "tree": "2a79d522d16ace9648f96d2742e074bebfd285bc",
+  "prepared_final_parent": "57bd81ebabc0df2ffc4106c44b94805ee2da7588",
+  "parents": [
+    "57bd81ebabc0df2ffc4106c44b94805ee2da7588",
+    "bdc3c6f1383f39e9c0b8e6f60c694a11a5fbb515"
+  ],
+  "run_id": 46135090394,
+  "run_conclusion": "success",
+  "syntax_evidence": "4f549034411867e20a8ad50a755d3fdb21217e2e",
+  "syntax_summary": {
+    "job": 140948479758,
+    "python_files": 1246,
+    "embedded_python_blocks": 11,
+    "actual_powershell_blocks": 43,
+    "entrypoints": 6,
+    "status": "PASS"
+  },
+  "native_job": {
+    "id": 140950858599,
+    "run_id": 46135090394,
+    "workflow_name": "Final coherent source and native preflight",
+    "head_branch": "carr/final-scope-preflight-20261128",
+    "run_url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/runs/46135090394",
+    "run_attempt": 1,
+    "node_id": "CR_kwDOT_nmzs8AAAAg0VNrZw",
+    "head_sha": "6c7e02188dc0c4895cff17f69d75bcd61ee932a9",
+    "url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/jobs/140950858599",
+    "html_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46135090394/job/140950858599",
+    "status": "completed",
+    "conclusion": "success",
+    "created_at": "2026-11-28T10:34:52Z",
+    "started_at": "2026-11-28T10:41:55Z",
+    "completed_at": "2026-11-28T10:43:19Z",
+    "name": "All eight final installed native scope contracts",
+    "steps": [
+      {
+        "name": "Set up job",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 1,
+        "started_at": "2026-11-28T10:41:55Z",
+        "completed_at": "2026-11-28T10:41:56Z"
+      },
+      {
+        "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 2,
+        "started_at": "2026-11-28T10:41:56Z",
+        "completed_at": "2026-11-28T10:42:03Z"
+      },
+      {
+        "name": "Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 3,
+        "started_at": "2026-11-28T10:42:03Z",
+        "completed_at": "2026-11-28T10:42:03Z"
+      },
+      {
+        "name": "Install the existing pinned standard native profile and exact package",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 4,
+        "started_at": "2026-11-28T10:42:03Z",
+        "completed_at": "2026-11-28T10:42:27Z"
+      },
+      {
+        "name": "Prepare the existing pinned external test audio and retain its exact evidence",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 5,
+        "started_at": "2026-11-28T10:42:27Z",
+        "completed_at": "2026-11-28T10:42:32Z"
+      },
+      {
+        "name": "Verify the actual installed preparation notice in the About inventory",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 6,
+        "started_at": "2026-11-28T10:42:32Z",
+        "completed_at": "2026-11-28T10:42:32Z"
+      },
+      {
+        "name": "Require all real composed native scenarios with committed and installed byte identity",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 7,
+        "started_at": "2026-11-28T10:42:32Z",
+        "completed_at": "2026-11-28T10:43:15Z"
+      },
+      {
+        "name": "Preserve actual source and runtime identity after every outcome",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 8,
+        "started_at": "2026-11-28T10:43:15Z",
+        "completed_at": "2026-11-28T10:43:15Z"
+      },
+      {
+        "name": "Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 9,
+        "started_at": "2026-11-28T10:43:15Z",
+        "completed_at": "2026-11-28T10:43:16Z"
+      },
+      {
+        "name": "Post Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 17,
+        "started_at": "2026-11-28T10:43:16Z",
+        "completed_at": "2026-11-28T10:43:17Z"
+      },
+      {
+        "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 18,
+        "started_at": "2026-11-28T10:43:17Z",
+        "completed_at": "2026-11-28T10:43:18Z"
+      },
+      {
+        "name": "Complete job",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 19,
+        "started_at": "2026-11-28T10:43:18Z",
+        "completed_at": "2026-11-28T10:43:18Z"
+      }
+    ],
+    "check_run_url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/check-runs/140950858599",
+    "labels": [
+      "windows-2022"
+    ],
+    "runner_id": 1000490607,
+    "runner_name": "GitHub Actions 1000490607",
+    "runner_group_id": 0,
+    "runner_group_name": "GitHub Actions"
+  },
+  "actual_checkout_excerpt": [
+    "2026-11-28T10:41:56.8624852Z   ref: 6c7e02188dc0c4895cff17f69d75bcd61ee932a9",
+    "2026-11-28T10:41:59.6889952Z [command]\"C:\\Program Files\\Git\\bin\\git.exe\" -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin 6c7e02188dc0c4895cff17f69d75bcd61ee932a9",
+    "2026-11-28T10:42:01.5193892Z 6c7e02188dc0c4895cff17f69d75bcd61ee932a9",
+    "2026-11-28T10:42:01.5790313Z [command]\"C:\\Program Files\\Git\\bin\\git.exe\" checkout --progress --force 6c7e02188dc0c4895cff17f69d75bcd61ee932a9",
+    "2026-11-28T10:42:01.8820583Z HEAD is now at 6c7e021 Execute all eight native scopes after the real destruction acknowledgement correction",
+    "2026-11-28T10:42:01.9502038Z 6c7e02188dc0c4895cff17f69d75bcd61ee932a9",
+    "2026-11-28T10:43:15.6241846Z   name: final-scope-native-6c7e02188dc0c4895cff17f69d75bcd61ee932a9"
+  ],
+  "executed_guard_excerpt": [
+    "2026-11-28T10:42:32.5971339Z \u001b[36;1mif ($result.status -ne 'PASS_REQUIRED_NATIVE' -or $result.source_commit -ne '6c7e02188dc0c4895cff17f69d75bcd61ee932a9' -or $result.probes.Count -ne 8 -or $result.package_data_files -ne 22) { throw 'The full composed native preflight did not complete all exact source and asset contracts.' }\u001b[0m"
+  ],
+  "installed_notice_excerpt": [
+    "2026-11-28T10:42:32.5319937Z CARR_INSTALLED_PREPARATION_NOTICE_CLOSURE PASS"
+  ],
+  "helper_status": "PASS_REQUIRED_NATIVE",
+  "committed_source_input_count": 1343,
+  "package_python_files": 426,
+  "package_data_files": 22,
+  "package_inventory_sha256": "9a491ba4726e79a1d514c0af02480ea92575b4ab77618f234a57d42ab618e680",
+  "selected_audio_evidence_sha256": "48f90bb1e27f61ad501db9f472a2efa3d64d264686756b00d1cc97003a434a40",
+  "probes": [
+    {
+      "id": "about",
+      "returncode": 0,
+      "exact_identity_after": "PASS",
+      "actual_status": "PASS",
+      "check_count": 19,
+      "required_fields": {
+        "status": "PASS",
+        "check_count": 19,
+        "actual_native_keys": true,
+        "actual_installed_metadata": true,
+        "actual_background_workers": true,
+        "actual_window_destroyed": true
+      },
+      "optional_office": false,
+      "fixed_checks": [
+        "installed-about-module-origins",
+        "one-native-help-about-command",
+        "native-help-event-opens-real-modal",
+        "named-read-only-about-and-status-controls",
+        "named-focusable-component-and-action-controls",
+        "real-installed-component-version-in-catalogue",
+        "real-product-version-and-component-specific-terms",
+        "catalogue-read-runs-on-owned-background-worker",
+        "native-choice-keys-select-installed-component",
+        "native-read-key-opens-notice-inventory",
+        "native-picker-lists-actual-installed-notices",
+        "native-picker-key-opens-upstream-text",
+        "upstream-text-matches-verified-installed-notice",
+        "upstream-reader-is-named-readonly-and-focused",
+        "native-escape-keeps-parent-about-open",
+        "native-refresh-rereads-installed-catalogue",
+        "all-product-notice-reads-use-background-workers",
+        "native-close-destroys-only-about",
+        "parent-library-and-notice-bytes-preserved"
+      ]
+    },
+    {
+      "id": "diagnostics",
+      "returncode": 0,
+      "exact_identity_after": "PASS",
+      "actual_status": "PASS",
+      "check_count": 141,
+      "required_fields": {
+        "result": "PASS",
+        "native_keyboard": "PASS",
+        "exact_redacted_preview_export": "PASS",
+        "actual_create_only_refusal": "PASS",
+        "same_desktop_executor": "PASS",
+        "actual_cancel_and_three_owner_withdrawals": "PASS"
+      },
+      "optional_office": false
+    },
+    {
+      "id": "speech-preparation",
+      "returncode": 0,
+      "exact_identity_after": "PASS",
+      "probe_git_source": "ac76d8f4f73dc33a4d15042540537c509386af8b",
+      "actual_status": "PASS",
+      "check_count": 325,
+      "required_fields": {
+        "result": "PASS",
+        "native_keyboard_automation": "PASS",
+        "three_explicit_text_locales": [
+          "en-US",
+          "uk-UA",
+          "sk-SK"
+        ],
+        "compound_source_maps": "PASS",
+        "actual_reader_recovery": "PASS",
+        "actual_studio_save_undo": "PASS",
+        "existing_host_workers": "PASS",
+        "held_cancel_direct_deletion_late_callback": "PASS"
+      },
+      "optional_office": false
+    },
+    {
+      "id": "live-range",
+      "returncode": 0,
+      "exact_identity_after": "PASS",
+      "probe_git_source": "2f615753abecfefd08d4c9bcad41328147662a46",
+      "actual_status": "PASS",
+      "check_count": 126,
+      "actual_sapi_renders": [
+        {
+          "duration_seconds": 4.40875283446712,
+          "sha256": "34ac9719c0f7eb3f4245a9821e32519f29653f3a0f3daf53fdeb576fadfadd96",
+          "voice_id": "sapi5-64:8ceac258515d5a474e76deba"
+        },
+        {
+          "duration_seconds": 5.988662131519274,
+          "sha256": "8aa1e63f0beffbc5f0bffb9738fe41509ac4c02de0e32579c648889d5f436698",
+          "voice_id": "sapi5-64:8ceac258515d5a474e76deba"
+        },
+        {
+          "duration_seconds": 1.4142403628117914,
+          "sha256": "7551532621aeb5db8a02378cf05d7ce52feb11138d648351b2b564f7877fa988",
+          "voice_id": "sapi5-64:8ceac258515d5a474e76deba"
+        },
+        {
+          "duration_seconds": 4.40875283446712,
+          "sha256": "34ac9719c0f7eb3f4245a9821e32519f29653f3a0f3daf53fdeb576fadfadd96",
+          "voice_id": "sapi5-64:8ceac258515d5a474e76deba"
+        },
+        {
+          "duration_seconds": 4.40875283446712,
+          "sha256": "95fe861882694248bb02786cb9b42451fae743d7c4fa3cda3808cdbc522bb5ab",
+          "voice_id": "sapi5-64:8ceac258515d5a474e76deba"
+        }
+      ],
+      "required_fields": {
+        "status": "PASS",
+        "scope": "ACTUAL_NATIVE_SOURCE_AND_COPY_A_B_SLEEP",
+        "player": "CONTROLLED_PCM_TEST_FIXTURE"
+      },
+      "optional_office": false
+    },
+    {
+      "id": "studio-silence",
+      "returncode": 0,
+      "exact_identity_after": "PASS",
+      "probe_git_source": "745e03f9ed7d0d5499debd3373288dd4cd75eab6",
+      "actual_status": "PASS",
+      "check_count": 98,
+      "required_fields": {
+        "schema": "carr-native-studio-silence/1",
+        "result": "PASS",
+        "scenarios": {
+          "actual_completed_production": "PASS",
+          "native_saved_job_selection": "PASS",
+          "invalid_criteria_no_admission": "PASS",
+          "native_explicit_criteria": "PASS",
+          "actual_readonly_inspection_report": "PASS",
+          "same_studio_worker_and_no_playback": "PASS",
+          "second_criteria_and_complete_scan": "PASS",
+          "unchanged_job_source_and_artifacts": "PASS",
+          "confirmed_native_and_worker_cleanup": "PASS"
+        },
+        "actual_saved_production": "PASS",
+        "actual_native_criteria": "PASS",
+        "actual_readonly_report": "PASS"
+      },
+      "optional_office": false,
+      "scenarios": {
+        "actual_completed_production": "PASS",
+        "actual_readonly_inspection_report": "PASS",
+        "confirmed_native_and_worker_cleanup": "PASS",
+        "invalid_criteria_no_admission": "PASS",
+        "native_explicit_criteria": "PASS",
+        "native_saved_job_selection": "PASS",
+        "same_studio_worker_and_no_playback": "PASS",
+        "second_criteria_and_complete_scan": "PASS",
+        "unchanged_job_source_and_artifacts": "PASS"
+      }
+    },
+    {
+      "id": "word-ui",
+      "returncode": 0,
+      "exact_identity_after": "PASS",
+      "actual_status": "PASS",
+      "check_count": 128,
+      "required_fields": {
+        "schema": "carr-native-word-controls/1",
+        "status": "PASS",
+        "actual_native_word_controls": "PASS",
+        "actual_office": "NOT_RUN",
+        "external_word": "CONTROLLED_PROTOCOL_BOUNDARY",
+        "picker_answers": "CONTROLLED"
+      },
+      "optional_office": false
+    },
+    {
+      "id": "word-office",
+      "returncode": 0,
+      "exact_identity_after": "PASS",
+      "actual_status": "NOT_RUN",
+      "check_count": 0,
+      "required_fields": {
+        "schema": "carr-native-word-citations/2",
+        "status": "PASS",
+        "actual_office": "PASS",
+        "checks": 20,
+        "native_keyboard": "NOT_RUN",
+        "actual_nvda": "NOT_RUN"
+      },
+      "optional_office": true,
+      "not_run_reason": "Desktop Microsoft Word is not installed or registered."
+    },
+    {
+      "id": "research-merge",
+      "returncode": 0,
+      "exact_identity_after": "PASS",
+      "actual_status": "PASS",
+      "check_count": 12,
+      "native_checks": 318,
+      "required_fields": {
+        "schema": "carr-native-research-merge/1",
+        "result": "PASS",
+        "native_keyboard": "PASS",
+        "exact_research_graph": "PASS",
+        "whole_workspace_conflicts": "PASS",
+        "reviewed_omissions": "PASS",
+        "current_library_unchanged": "PASS",
+        "actual_cancel_and_owner_withdrawal": "PASS",
+        "unchanged_input_backups": "PASS",
+        "same_desktop_executor": "PASS"
+      },
+      "optional_office": false,
+      "fixed_checks": [
+        "actual_library_menu_and_exact_review",
+        "native_cancel_publishes_nothing",
+        "direct_delete_revokes_queued_confirmation",
+        "exact_choices_and_omissions_are_required",
+        "actual_final_report_matches_committed_result",
+        "right_conflict_preserves_graph_history_and_sources",
+        "completed_restore_is_held_by_the_existing_worker",
+        "late_committed_receipt_survives_dead_native_owner",
+        "left_conflict_preserves_its_complete_original_snapshot",
+        "both_full_input_backups_remain_byte_exact",
+        "one_existing_executor_and_exact_modal_lifetimes",
+        "all_owned_private_resources_are_released"
+      ]
+    }
+  ],
+  "source_config_blob": "1094b16fe3f201496ffd01913de5ced5baa42178",
+  "helper_blob": "29529724af1dea6c8bd0cfb83f990eaa8c82ee1c",
+  "full_helper_report_blob": "440b8e6486583d7a3d7b71bdaf6a64a4adabec0d",
+  "raw_native_log_blob": "8eae784b78f30bfa81161ff2065c053fb645ef7a",
+  "report_and_log_readback": "EXACT",
+  "artifacts": [
+    {
+      "id": 15259472195,
+      "name": "final-composition-syntax-6c7e02188dc0c4895cff17f69d75bcd61ee932a9",
+      "size_in_bytes": 101840,
+      "digest": "sha256:62c4c30987196652fa833a484b87e8e87a6652aeaff7a20bd4a29478dff371f5",
+      "workflow_run": {
+        "id": 46135090394,
+        "repository_id": 1341777614,
+        "head_repository_id": 1341777614,
+        "head_branch": "carr/final-scope-preflight-20261128",
+        "head_sha": "6c7e02188dc0c4895cff17f69d75bcd61ee932a9"
+      }
+    },
+    {
+      "id": 15259398171,
+      "name": "final-scope-native-6c7e02188dc0c4895cff17f69d75bcd61ee932a9",
+      "size_in_bytes": 229834,
+      "digest": "sha256:a83fa1a2e0325d6e8c5d4a3cf5577290f3687d1d01304d48c4207f145071ec64",
+      "workflow_run": {
+        "id": 46135090394,
+        "repository_id": 1341777614,
+        "head_repository_id": 1341777614,
+        "head_branch": "carr/final-scope-preflight-20261128",
+        "head_sha": "6c7e02188dc0c4895cff17f69d75bcd61ee932a9"
+      }
+    }
+  ],
+  "limits": [
+    "Actual composed preflight on exact 6c7 only; final 57bd requires its own complete seven workflows and twelve scale tiers.",
+    "No offline firewall qualification is claimed by this preflight; final main/V3 workflows retain their independent egress gates.",
+    "Actual Office is explicitly unavailable/NOT_RUN with zero checks. Word controls use the disclosed external protocol boundary.",
+    "Live output uses controlled PCM; silence uses disclosed Tone-to-actual-FFmpeg production. Physical output, voice quality, NVDA and real native pickers are unqualified.",
+    "Prior bdc3 preparation failure remains historical; ac76 only adds actual withdrawal/destruction acknowledgement and retains its original assertions and deadlines."
+  ]
+}

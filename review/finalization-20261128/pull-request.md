@@ -14,21 +14,33 @@ The current Resonance technical project requires the library, research, Reader, 
 - Adds accessible **Help/About component notices** from actual installed metadata and upstream text, plus bounded **redacted diagnostics** with local preview and explicit create-only export.
 - Records the **English-first Ukrainian/Slovak UI localization plan**. This is a plan for catalogues, fallback and acceptance; it does not claim translated UI catalogues have shipped.
 
-The implementation guides and requirement/evidence records are in [release readiness](https://github.com/Oleksii-debug/AudioTacticalFPS/blob/71ca92be691455d0ff51ed163b1d91749e5ae62e/carr-library/docs/V3_RELEASE_READINESS.md), [the README](https://github.com/Oleksii-debug/AudioTacticalFPS/blob/71ca92be691455d0ff51ed163b1d91749e5ae62e/carr-library/README.md) and [the measured scale guide](https://github.com/Oleksii-debug/AudioTacticalFPS/blob/71ca92be691455d0ff51ed163b1d91749e5ae62e/carr-library/docs/LARGE_LIBRARY_SCALE.md).
+The implementation guides and requirement/evidence records are in [release readiness](https://github.com/Oleksii-debug/AudioTacticalFPS/blob/57bd81ebabc0df2ffc4106c44b94805ee2da7588/carr-library/docs/V3_RELEASE_READINESS.md), [the README](https://github.com/Oleksii-debug/AudioTacticalFPS/blob/57bd81ebabc0df2ffc4106c44b94805ee2da7588/carr-library/README.md) and [the measured scale guide](https://github.com/Oleksii-debug/AudioTacticalFPS/blob/57bd81ebabc0df2ffc4106c44b94805ee2da7588/carr-library/docs/LARGE_LIBRARY_SCALE.md).
 
 ## Exact candidate and required acceptance
 
-The current PR head is `71ca92be691455d0ff51ed163b1d91749e5ae62e`, tree `73c43b7486974a7b301aa8c210c891b4d94ddb0d`. **It has actual main, V3 and Linux 2 GiB failures and must not merge.**
+The current PR head is **`57bd81ebabc0df2ffc4106c44b94805ee2da7588`**, tree **`b58326e5724c64eea195814ac198c4237720292c`**, published by normal expected-head update at **2026-11-28 10:44:21 UTC**. Its **1,567 files** were recursively verified for every path, type, mode and blob identity. All **910 canonical paths** remain. The 19 changed paths from predecessor 71ca contain the reviewed corrections below.
 
-The corrected source is prepared at **`57bd81ebabc0df2ffc4106c44b94805ee2da7588`**, tree **`b58326e5724c64eea195814ac198c4237720292c`**. It has **1,567 files**, 19 changed paths from the current PR head and all **910 canonical paths** retained. Two independent complete composition reviews bind every path, type, mode and blob: `ef655edb386aec113d8f4d1ac1fd3d0619645eb4` and `3500259691cab4cac762b9e70006c4f577bb0b2f`. Exactly seven maintained workflows are present; temporary review workflows are excluded.
+Canonical input remains `e5c64a5245583f8f8b404a0f042f6ca438c24d7f`. Finalization `db8adbdc483a03c262885928c7ed214ca70bbaa7`, audio/agent `d0b2761dd22b33233b311d4800230fb47f5d3d8b` and root worker instructions were re-read from the complete canonical tree immediately before publication. Complete composition reviews: `ef655edb386aec113d8f4d1ac1fd3d0619645eb4` and `3500259691cab4cac762b9e70006c4f577bb0b2f`. Exactly seven maintained workflows are present; temporary review workflows are excluded.
 
-The canonical input remains `e5c64a5245583f8f8b404a0f042f6ca438c24d7f`. The technical contracts are finalization `db8adbdc483a03c262885928c7ed214ca70bbaa7` and audio/agent `d0b2761dd22b33233b311d4800230fb47f5d3d8b`.
+The complete preflight of these exact source bytes succeeded at `6c7e02188dc0c4895cff17f69d75bcd61ee932a9`, whose tree adds only the temporary preflight workflow. [Run 46135090394](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46135090394) completed at **10:43:20 UTC**: actual syntax and all eight native scope contracts passed their required guard. Seven native scopes are required; the additional actual-Office probe reported explicit NOT_RUN/0 because Office was absent. Native record `dfb2fee5171ec60c5f9a290d9662c40ca5e23186`, exact helper report `440b8e6486583d7a3d7b71bdaf6a64a4adabec0d`.
 
-The corrected source is undergoing its complete native preflight at `6c7e02188dc0c4895cff17f69d75bcd61ee932a9`, whose tree adds only the temporary preflight workflow to the exact prepared source. [Run 46135090394](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46135090394) was queued at **2026-11-28 10:36 UTC**. The prepared source has **not yet replaced the PR head**. It requires its own seven completed maintained workflows and all 12 actual scale tiers before merge; prior results do not transfer.
+**Final acceptance is still pending.** The following maintained workflows are admitted on exact **57bd** and must complete before merge. The preflight and prior-head results do not transfer runtime acceptance.
 
-### Current PR-head results
+| Required maintained workflow | Exact 57bd run | Status at admission |
+| --- | --- | --- |
+| CARR Windows integrated desktop | [46136589121](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46136589121) | Queued; standard/full installation, native/offline and source/installed gates required |
+| CARR V3 local studio and assistant | [46136589112](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46136589112) | Admitted; both portable and Windows jobs required |
+| Actual library corpus scale | [46136589122](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46136589122) | Pending behind the unchanged concurrency group; all 12 actual tiers and four largest backup rounds required |
+| CARR native Windows launch entry | [46136589124](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46136589124) | Queued; both MSVC and pinned Zig required |
+| CARR bibliography and import acceptance | [46136589151](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46136589151) | Queued |
+| Selected Calibre reading review | [46136582936](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46136582936) | Queued |
+| Selected legacy document and archive conversion review | [46136582933](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46136582933) | Queued; both Windows and Linux required |
 
-These are the actual outcomes on **71ca**, retained to explain the corrections. They are not acceptance of prepared **57bd**.
+Duplicate push runs for main/V3/launcher were automatically cancelled by the existing workflow concurrency; their surviving pull-request runs above own acceptance. No healthy job was manually cancelled.
+
+### Predecessor 71ca results retained for correction evidence
+
+These are the actual outcomes on predecessor **71ca**, retained to explain the corrections. They are not acceptance of current **57bd**.
 
 | Required workflow | Required scope | Actual outcome on 71ca |
 | --- | --- | --- |
@@ -53,7 +65,7 @@ These are the actual outcomes on **71ca**, retained to explain the corrections. 
 
 The prior composed preflight at `bdc3c6f1383f39e9c0b8e6f60c694a11a5fbb515` passed syntax, About and diagnostics, then failed at the speech-preparation assertion for direct window destruction. Later scopes were not reached. A bounded read-only capture verified the original artifact's exact size and SHA-256 and decoded the saved stderr; evidence `03aa9e9e6a335263af60dd78a2cbf3f2de7638e6`, [46132889609](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46132889609).
 
-The assertion combined native-peer deletion and unchanged document state, so that failure alone does not identify which operand failed. The independently reviewed probe correction retains both assertions, additionally checks withdrawal and unchanged content before releasing the genuine worker result, and waits within the **same existing deadline** for the exact peer's recorded destruction as well as worker delivery. Product behavior, native launch ownership and scenario bounds are unchanged. The helper now emits bounded failure diagnostics while retaining complete saved stdout/stderr and final integrity checks. Review `4b1fd670cb77b00047981d10402981a7c155ed40`; actual repeated native acceptance remains pending in [46135090394](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46135090394).
+The assertion combined native-peer deletion and unchanged document state, so that failure alone does not identify which operand failed. The independently reviewed probe correction retains both assertions, additionally checks withdrawal and unchanged content before releasing the genuine worker result, and waits within the **same existing deadline** for the exact peer's recorded destruction as well as worker delivery. Product behavior, native launch ownership and scenario bounds are unchanged. The helper now emits bounded failure diagnostics while retaining complete saved stdout/stderr and final integrity checks. Review `4b1fd670cb77b00047981d10402981a7c155ed40`. The actual repeated native preflight passed: About 19, diagnostics 141, preparation 325, live A–B/sleep 126, silence 98 with all nine scenarios, Word controls 128, optional actual Office NOT_RUN/0, and research merge all 12 fixed criteria with 318 actual assertions. Every source/installed identity check passed. Final main/V3 execution remains independently required on 57bd.
 
 The shared helper retains all eight scope contracts: seven required native controls and an additional optional actual-Office probe. It binds the expected head, complete source/installed Python inventories, exact probe/config/oracle files and all **22** selected runtime/notice assets before and after every outcome. Office absence is accepted only as explicit NOT_RUN with zero checks and a reason. Full final main/V3 acceptance also requires their existing offline controls.
 
@@ -65,7 +77,7 @@ The first six tiers have decoded API timing, memory and disk evidence in `e9c905
 
 Linux 2 GiB failed the retained zero-rewrite assertion on its second complete-scope query; it did not report timeout or out-of-memory. Evidence `0a45062daebc3b76ed1c097a9cc2be427228839c`. Source review shows the prior caller allowance could admit a private index larger than its optional cache share. The failed index size/cache branch is not reported, so this is a source-supported explanation, not a measured branch observation.
 
-Prepared 57bd changes only the explicit matrix disk allowances: **8 GiB for 50,000 books and 16 GiB for 2 GiB sources**. Product cache partitions, source sizes, memory/import policies, timeouts, warm-index zero-rewrite assertion and complete traversal remain unchanged. Actual free-space admission remains mandatory; projected initial requirements are 37,225,549,000 and 71,072,502,272 bytes respectively. The updated profiles require real final execution. Independent review: `12747fa1dc3baa765faf07cbb29d1335e3b29983`.
+Current 57bd changes only the explicit matrix disk allowances: **8 GiB for 50,000 books and 16 GiB for 2 GiB sources**. Product cache partitions, source sizes, memory/import policies, timeouts, warm-index zero-rewrite assertion and complete traversal remain unchanged. Actual free-space admission remains mandatory; projected initial requirements are 37,225,549,000 and 71,072,502,272 bytes respectively. The updated profiles require real final execution. Independent review: `12747fa1dc3baa765faf07cbb29d1335e3b29983`.
 
 Earlier actual failures, raw logs and corrected component records remain in the [durable evidence branch](https://github.com/Oleksii-debug/AudioTacticalFPS/tree/carr/finalization-evidence-20261128/review/finalization-20261128). Queued or unreached work is never recorded as a pass.
 

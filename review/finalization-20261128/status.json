@@ -1,17 +1,19 @@
 {
-  "schema": "carr-finalization-continuation/19",
-  "observed_utc": "2026-11-28 10:39:00 UTC",
+  "schema": "carr-finalization-continuation/20",
+  "observed_utc": "2026-11-28 10:50:23 UTC",
   "repository": "Oleksii-debug/AudioTacticalFPS",
   "pr": 143,
   "current_pr": {
-    "head": "71ca92be691455d0ff51ed163b1d91749e5ae62e",
-    "tree": "73c43b7486974a7b301aa8c210c891b4d94ddb0d",
+    "head": "57bd81ebabc0df2ffc4106c44b94805ee2da7588",
+    "tree": "b58326e5724c64eea195814ac198c4237720292c",
     "files": 1567,
     "branch": "carr/canonical-integrity-finish-20261127",
     "base": "carr-library",
     "pr": 143,
+    "predecessor": "71ca92be691455d0ff51ed163b1d91749e5ae62e",
     "ref_readback": true,
-    "status": "ACTUAL_REQUIRED_GATES_FAILED; MUST_NOT_MERGE"
+    "status": "PUBLISHED_REQUIRED_FINAL_GATES_PENDING",
+    "published_utc": "2026-11-28 10:44:21 UTC"
   },
   "current_head_may_merge": false,
   "canonical": "e5c64a5245583f8f8b404a0f042f6ca438c24d7f",
@@ -53,7 +55,7 @@
     ],
     "changes_from_pr": 19,
     "verified": true,
-    "status": "PREPARED_PENDING_COHERENT_NATIVE_AND_REQUIRED_FINAL_GATES",
+    "status": "PUBLISHED_REQUIRED_FINAL_GATES_PENDING",
     "source_reviews": {
       "native_prep": "4b1fd670cb77b00047981d10402981a7c155ed40",
       "scale": "12747fa1dc3baa765faf07cbb29d1335e3b29983"
@@ -61,7 +63,7 @@
     "product_and_packaging_unchanged_from_11589": true,
     "source_composition_review": "3500259691cab4cac762b9e70006c4f577bb0b2f",
     "preceding_source_composition_review": "ef655edb386aec113d8f4d1ac1fd3d0619645eb4",
-    "published_to_pr": false
+    "published_to_pr": true
   },
   "active_preflight": {
     "head": "6c7e02188dc0c4895cff17f69d75bcd61ee932a9",
@@ -75,9 +77,24 @@
     "candidate": "57bd81ebabc0df2ffc4106c44b94805ee2da7588",
     "ref_readback": true,
     "verified": true,
-    "status": "QUEUED; NO_RUNTIME_PASS",
+    "status": "COMPLETED_SUCCESS",
     "run": 46135090394,
-    "observed": "2026-11-28 10:36:07 UTC"
+    "native_evidence": "dfb2fee5171ec60c5f9a290d9662c40ca5e23186",
+    "native_report": "440b8e6486583d7a3d7b71bdaf6a64a4adabec0d",
+    "native_raw": "8eae784b78f30bfa81161ff2065c053fb645ef7a",
+    "syntax_evidence": "4f549034411867e20a8ad50a755d3fdb21217e2e",
+    "syntax_raw": "3878a78790a4db8e57dbe50231ea074cb6b50286",
+    "completed": "2026-11-28T10:43:20Z",
+    "required_native_scopes": 7,
+    "actual_office": {
+      "status": "NOT_RUN",
+      "checks": 0,
+      "reason": "Desktop Microsoft Word is not installed or registered."
+    },
+    "python_files": 426,
+    "package_assets": 22,
+    "exact_identity_after_all": "PASS",
+    "offline_firewall": "NOT_ASSERTED_IN_PREFLIGHT; REQUIRED_IN_FINAL_MAIN_V3"
   },
   "completed_syntax": {
     "head": "2de5ee3d4e6e373ab8562f52e6fa8f4abe5d0380",
@@ -129,7 +146,7 @@
       "source_review": "4b1fd670cb77b00047981d10402981a7c155ed40",
       "probe": "ac76d8f4f73dc33a4d15042540537c509386af8b",
       "helper": "29529724af1dea6c8bd0cfb83f990eaa8c82ee1c",
-      "status": "SOURCE_APPROVED_AND_IN_57BD; RUNTIME_PENDING",
+      "status": "COMPOSED_NATIVE_PREFLIGHT_PASS_325_ASSERTIONS; FINAL_MAIN_V3_PENDING",
       "preserved": "Same deadlines, genuine held result, original final state/replay assertions, product and native launch ownership."
     },
     "scale_caller_policies": {
@@ -142,6 +159,10 @@
       "product_changed": false,
       "guards_relaxed": false,
       "causality": "Source-supported cache share mismatch; failed index size and cache branch are not observed."
+    },
+    "diagnostic_helper": {
+      "sha": "29529724af1dea6c8bd0cfb83f990eaa8c82ee1c",
+      "status": "COMPOSED_NATIVE_PREFLIGHT_PASS"
     }
   },
   "original71ca_gates": {
@@ -225,17 +246,18 @@
     }
   },
   "next": [
-    "Complete actual syntax and all eight native contracts on 6c7. Seven are required; actual Office permits only strict NOT_RUN with zero checks and reason.",
-    "Retain all current old-head completed results without cancelling healthy capacity jobs.",
-    "After coherent native acceptance, fresh-read canonical/spec/PR refs, verify all final tree entries and publish 57bd by expected-SHA normal update.",
-    "Complete all seven maintained workflows and every actual 12-tier capacity outcome on exact final head, including four largest backup/verify/fresh-restore cases.",
-    "Record final evidence and PR status without changing tested source; merge PR143 with exact expected head only after all required acceptance."
+    "Complete both exact57bd V3 jobs and final main Windows standard/full bundle, native, offline and source/installed acceptance.",
+    "Complete exact57bd launcher in both toolchains, bibliography, Calibre and both legacy OS jobs.",
+    "Retain original71ca capacity completion and failed saved-report evidence without manually cancelling healthy jobs.",
+    "Complete all12 actual exact57bd scale jobs after original concurrency group releases, including all4 largest backup/verify/fresh-restore rounds; measure actual saved reports.",
+    "If a concrete final gate fails, retain its exact evidence, apply a reviewed correction and repeat the required exact-final acceptance.",
+    "After all required exact-head outcomes succeed, refresh canonical/spec/PR refs, record final evidence/PR status without source changes, and merge PR143 with expected head."
   ],
   "owners": {
-    "reader_review": "6c7 full native preflight and final V3/native gates",
-    "import_recovery_review": "Bounded spec completeness audit, then final launcher/bibliography/legacy gates",
-    "release_audit": "Old capacity and failure metrics, then final 12 actual tiers",
-    "root": "Final composition/publication, main/Calibre, evidence/PR and merge"
+    "reader_review": "Final57bd V3 source and Windows/native/offline gates",
+    "import_recovery_review": "Final57bd launcher, bibliography and both legacy gates; bounded requirement review",
+    "release_audit": "Original71ca remaining capacity and failed reports; final57bd all12 actual tiers",
+    "root": "Final57bd main and Calibre; evidence, PR and exact-head merge"
   },
   "limits": {
     "private_models": "SEPARATE_QUALIFICATION",
@@ -247,8 +269,98 @@
   },
   "constraints": {
     "local_executor": "DISCONNECTED; do not retry",
-    "candidate_store": "phasefinish_final_candidate19_map is 57bd; phasefinish_final_feature_selection remains 71ca",
+    "candidate_store": "phasefinish_final_candidate19_map is now PUBLISHED57bd; phasefinish_final_feature_selection remains historical71ca",
     "approval": "Completion and merge authorized; queued CI is not a stopping reason",
-    "source_evidence_branch": "71ca source snapshot retained; evidence-only mutations."
+    "source_evidence_branch": "Evidence branch retains historical71ca source snapshot; current_pr and final_gates identify actual57bd."
+  },
+  "final_gates": {
+    "head": "57bd81ebabc0df2ffc4106c44b94805ee2da7588",
+    "observed_at_admission": "2026-11-28T10:45:15Z",
+    "status": "PENDING",
+    "runs": [
+      {
+        "id": 46136589151,
+        "name": "CARR bibliography and import acceptance",
+        "path": ".github/workflows/carr-bibliography.yml",
+        "event": "pull_request",
+        "status": "queued",
+        "conclusion": null,
+        "head": "57bd81ebabc0df2ffc4106c44b94805ee2da7588"
+      },
+      {
+        "id": 46136589112,
+        "name": "CARR V3 local studio and assistant",
+        "path": ".github/workflows/carr-v3.yml",
+        "event": "pull_request",
+        "status": "queued",
+        "conclusion": null,
+        "head": "57bd81ebabc0df2ffc4106c44b94805ee2da7588"
+      },
+      {
+        "id": 46136589122,
+        "name": "Actual library corpus scale",
+        "path": ".github/workflows/carr-library-scale.yml",
+        "event": "pull_request",
+        "status": "pending",
+        "conclusion": null,
+        "head": "57bd81ebabc0df2ffc4106c44b94805ee2da7588"
+      },
+      {
+        "id": 46136589124,
+        "name": "CARR native Windows launch entry",
+        "path": ".github/workflows/carr-native-launcher.yml",
+        "event": "pull_request",
+        "status": "queued",
+        "conclusion": null,
+        "head": "57bd81ebabc0df2ffc4106c44b94805ee2da7588"
+      },
+      {
+        "id": 46136589121,
+        "name": "CARR Windows integrated desktop",
+        "path": ".github/workflows/carr-windows.yml",
+        "event": "pull_request",
+        "status": "queued",
+        "conclusion": null,
+        "head": "57bd81ebabc0df2ffc4106c44b94805ee2da7588"
+      },
+      {
+        "id": 46136582933,
+        "name": "Selected legacy document and archive conversion review",
+        "path": ".github/workflows/carr-legacy-reading-review.yml",
+        "event": "push",
+        "status": "queued",
+        "conclusion": null,
+        "head": "57bd81ebabc0df2ffc4106c44b94805ee2da7588"
+      },
+      {
+        "id": 46136582936,
+        "name": "Selected Calibre reading review",
+        "path": ".github/workflows/carr-calibre-reading-review.yml",
+        "event": "push",
+        "status": "queued",
+        "conclusion": null,
+        "head": "57bd81ebabc0df2ffc4106c44b94805ee2da7588"
+      }
+    ],
+    "capacity_admission": "87efbc37fa7339428ecd4bcf46eb7e0968cdad31",
+    "capacity_status": "PENDING_EXISTING_GROUP; ALL12_AND4_BACKUP_ROUNDS_REQUIRED",
+    "duplicate_push_runs": [
+      {
+        "id": 46136582931,
+        "name": "CARR native Windows launch entry",
+        "status": "AUTO_CANCELLED_BY_EXISTING_CONCURRENCY"
+      },
+      {
+        "id": 46136582937,
+        "name": "CARR Windows integrated desktop",
+        "status": "AUTO_CANCELLED_BY_EXISTING_CONCURRENCY"
+      },
+      {
+        "id": 46136582943,
+        "name": "CARR V3 local studio and assistant",
+        "status": "AUTO_CANCELLED_BY_EXISTING_CONCURRENCY"
+      }
+    ],
+    "manual_cancellations": 0
   }
 }

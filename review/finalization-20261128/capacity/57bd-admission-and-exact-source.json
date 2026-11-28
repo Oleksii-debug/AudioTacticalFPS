@@ -1,0 +1,157 @@
+{
+  "schema": "carr-actual-scale-run-admission/1",
+  "recorded_at": "2026-11-28 10:45:52 UTC",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "run": {
+    "id": 46136589122,
+    "event": "pull_request",
+    "head": "57bd81ebabc0df2ffc4106c44b94805ee2da7588",
+    "path": ".github/workflows/carr-library-scale.yml",
+    "status_at_observation": "pending",
+    "conclusion": null,
+    "created_at": "2026-11-28T10:44:27Z",
+    "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46136589122"
+  },
+  "source": {
+    "tree": "b58326e5724c64eea195814ac198c4237720292c",
+    "all_files": 1567,
+    "package_python_files": 426,
+    "maintained_workflows": 7,
+    "changes_from_original_head": [
+      {
+        "path": ".github/workflows/carr-library-scale.yml",
+        "before": "75994a6df89d8b1d38ce96a82e36f159eae32283",
+        "after": "a15383d04d22e6c4085cb5672dab74556fea372a"
+      },
+      {
+        "path": ".github/workflows/carr-v3.yml",
+        "before": "f659d18ab272b45cbab4eabdff2d2ac6f5acc951",
+        "after": "58756c7778f90484df7dbf563dfdf9f0b40f982b"
+      },
+      {
+        "path": ".github/workflows/carr-windows.yml",
+        "before": "0bf4159e7d70ee031ef3b2e873a84f87ddc006c2",
+        "after": "ffd99edb913e37f76c0cd7a8ad338b84538cd8a9"
+      },
+      {
+        "path": "carr-library/docs/AUDIO_SILENCE_INSPECTION.md",
+        "before": "049bdf6be0ff765e7f167daa266c389fe8aec8a1",
+        "after": "affe57cd4e4f2f88e1eb086f9f00ce0a2a85f741"
+      },
+      {
+        "path": "carr-library/docs/LARGE_LIBRARY_SCALE.md",
+        "before": "7884517a2fd9bfd70cb07900a12fe21ad69734a1",
+        "after": "ad9b0eddd196ffccddea31dfb8185395e04b3289"
+      },
+      {
+        "path": "carr-library/docs/V3_RELEASE_READINESS.md",
+        "before": "5ca4633735f04a0e4ae9d26eb9dfe8dd4236f444",
+        "after": "b87307627e45f9a5f39e1062e5cbc7998f832828"
+      },
+      {
+        "path": "carr-library/docs/WORD_DESKTOP_INTEGRATION.md",
+        "before": "b4cdee794040864e0efae8bd8084daa046896b80",
+        "after": "1c4ca4fc5275c92d5741e842b2c070b86a723bf4"
+      },
+      {
+        "path": "carr-library/packaging/build_windows_bundle.py",
+        "before": "5a9924c2ad0387dd180af8f3ba3c8668f226d379",
+        "after": "6e5cbea9d9b92ebc86ec129ebd1cd72bc369a971"
+      },
+      {
+        "path": "carr-library/packaging/refresh_private_bundle.py",
+        "before": "07a3e62a1975d961d24e55eccc63befe0bcb56f3",
+        "after": "a0ada7add5d2b10c820579463bb1bef99a9e5c54"
+      },
+      {
+        "path": "carr-library/scripts/run_final_scope_native.py",
+        "before": "b3beaa992d508f42672fdfa5cd15c5cb96f04af7",
+        "after": "29529724af1dea6c8bd0cfb83f990eaa8c82ee1c"
+      },
+      {
+        "path": "carr-library/scripts/windows_speech_preparation_smoke.py",
+        "before": "7f468b9454e22fa021848b05fd1c4aaa96bf1542",
+        "after": "ac76d8f4f73dc33a4d15042540537c509386af8b"
+      },
+      {
+        "path": "carr-library/src/carr_library/ingest/pipeline.py",
+        "before": "8d27e0e3d52e323325f139f870a2fc6e6b58152e",
+        "after": "cf6ffa2cece1bfaa47a76d230934f93d69dea17e"
+      },
+      {
+        "path": "carr-library/src/carr_library/ingest/worker.py",
+        "before": "4b78e411e37c3b5e68fd6496cb72448e8fcb0b4f",
+        "after": "63f5d2ef09c584d94f0be761b6c264b31f568802"
+      },
+      {
+        "path": "carr-library/tests/e2e/test_import_files_cancellation.py",
+        "before": "423143a9a994d35839ac6342e57f525f11ff3984",
+        "after": "6e1b58a0fcecc2b83c7b941dc07a80a973a52c2d"
+      },
+      {
+        "path": "carr-library/tests/operations/test_ocr_admission.py",
+        "before": "8ca4090c270fe337d26283a66f409c96a5763d79",
+        "after": "0eb4b0f9d144c002700a5708ebc188f1b018d4e8"
+      },
+      {
+        "path": "carr-library/tests/packaging/test_preparation_notice_closure.py",
+        "before": "d5065ef28e8ded417a535b25d8a8ad7215fc4f95",
+        "after": "72ba5770af6fd355189fff990716c679b178943c"
+      },
+      {
+        "path": "carr-library/tests/packaging/test_refresh_private_bundle_review.py",
+        "before": "2fa8627fc3f803335ebafb97d4e4a74b1ac4b339",
+        "after": "796bf728f42157721ff7754ff0577f3ab1c584d4"
+      },
+      {
+        "path": "carr-library/tests/packaging/test_windows_bundle.py",
+        "before": "d97961759a7e0e60458469317202539131686aa0",
+        "after": "35bfe2d17d47c4ed6e2039121fff36450f765fdc"
+      },
+      {
+        "path": "carr-library/tests/ui/test_desktop_handlers.py",
+        "before": "6b2473037fbc2fe9af35559845e6cb74408488c3",
+        "after": "6ef37550a8463a125de82e1f0628244d5e0e1d17"
+      }
+    ],
+    "bindings": {
+      ".github/workflows/carr-library-scale.yml": "a15383d04d22e6c4085cb5672dab74556fea372a",
+      "carr-library/scripts/benchmark_library_scale.py": "81e569b33a6acc4a64f3ee04176598487f9efc07",
+      "carr-library/scripts/benchmark_library_catalog.py": "5c674cac4b02237c8cf65122fbc58dca397ed3d9",
+      "carr-library/scripts/benchmark_library_backup.py": "17d8ae5ae97ab57fe5ede1ea46a6f22b385e2b56"
+    }
+  },
+  "approved_disk_policy_map": "12747fa1dc3baa765faf07cbb29d1335e3b29983",
+  "declared_matrix": {
+    "operating_systems": [
+      "ubuntu-24.04",
+      "windows-2022"
+    ],
+    "tiers": [
+      "books-1000",
+      "books-10000",
+      "books-50000",
+      "text-65m",
+      "text-129m",
+      "text-2g"
+    ],
+    "total_jobs": 12,
+    "required_backup_tiers": [
+      "books-50000",
+      "text-2g"
+    ],
+    "required_backup_jobs": 4,
+    "search_disk_mib": {
+      "books_50000": 8192,
+      "text_2g": 16384,
+      "others": 4096
+    }
+  },
+  "qualification": "NOT_RUN",
+  "scope": "Admission and immutable source binding only. All twelve jobs and four largest-tier backup/verify/fresh-restore results must execute on this exact head; no component or prior-head PASS is transferred.",
+  "prior_run": {
+    "id": 46124999025,
+    "head": "71ca92be691455d0ff51ed163b1d91749e5ae62e",
+    "ownership": "Keep every active job and outcome; no manual cancellation."
+  }
+}
