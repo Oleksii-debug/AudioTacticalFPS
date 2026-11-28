@@ -178,6 +178,20 @@ from a process that has not confirmed shutdown. The reservation and exact
 temporary audio remain retained until every causal native cleanup owner is
 quiet, including when the reader window has already closed.
 
+## Selected progress voice
+
+**Use voice for progress...** keeps the explicitly selected voice and the
+existing notification worker. A heavy selected provider now uses the same
+library resource policy as Read and Save WAV. Waiting shares the notification's
+existing 30-second deadline; synthesis retains its 20-second and 2 MiB limits.
+The built-in basic voice routes keep their existing admission behavior.
+
+Cancelling a queued notification prevents late playback. If its native process
+has not confirmed shutdown, the exact temporary audio, active registry use and
+notification serialization remain retained until every causal owner is quiet.
+A failed playback close still retains its uncertain player and audio. No other
+voice, output device or progress mode is selected automatically.
+
 ## Shared operation view
 
 ```python

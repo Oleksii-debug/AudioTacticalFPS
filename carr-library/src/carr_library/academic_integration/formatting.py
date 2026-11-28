@@ -7,6 +7,7 @@ This module never downloads an engine, a style, a locale or a reference.
 """
 from __future__ import annotations
 
+from contextlib import ExitStack
 from dataclasses import dataclass
 from hashlib import sha256
 from html import escape
@@ -16,13 +17,14 @@ import os
 from pathlib import Path
 import re
 import sys
-import signal
-import subprocess
 import tempfile
 import time
 from typing import Callable, Iterable, Mapping, Sequence
 
 from lxml import etree
+
+from ..audio.cleanup import retained_context
+from ..audio.process import owned_process
 
 _ROOT = Path(__file__).resolve().parent
 _CSL = '{http://purl.org/net/xbiblio/csl}'
@@ -601,7 +603,7 @@ def _run(payload: dict, *, node_path: Path | str | None, cancelled: Callable[[],
     env = {k: v for k, v in os.environ.items() if k in (
         'SYSTEMROOT', 'SystemRoot', 'WINDIR', 'TEMP', 'TMP', 'TMPDIR',
         'LANG', 'LC_ALL', 'HOME', 'USERPROFILE')}
-    with tempfile.TemporaryDirectory(prefix='carr-citations-') as directory:
+    with retained_context(tempfile.TemporaryDirectory(prefix='carr-citations-')) as directory:
         directory = Path(directory)
         env.update(TEMP=str(directory), TMP=str(directory), TMPDIR=str(directory))
         if node_path is None:
@@ -645,15 +647,20 @@ def _run(payload: dict, *, node_path: Path | str | None, cancelled: Callable[[],
             raise CitationCancelled('Citation formatting was cancelled.')
         (directory / 'input.json').write_bytes(raw)
         output_path, error_path = directory / 'output.json', directory / 'error.txt'
-        with (directory / 'input.json').open('rb') as source, output_path.open('wb') as output, error_path.open('wb') as errors:
-            try:
-                process = subprocess.Popen(command, stdin=source, stdout=output, stderr=errors,
-                    cwd=directory, env=env, shell=False, start_new_session=os.name != 'nt',
-                    creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0) if os.name == 'nt' else 0)
-            except OSError as exc:
-                raise CitationError('The selected local citation runtime could not be started.') from exc
-            deadline = time.monotonic() + timeout
-            try:
+        with retained_context(ExitStack()) as streams:
+            source = streams.enter_context((directory / 'input.json').open('rb'))
+            output = streams.enter_context(output_path.open('wb'))
+            errors = streams.enter_context(error_path.open('wb'))
+            # Keep this adapter's fixed file protocol and limits. The existing
+            # process owner also drains a venv redirector's native descendants
+            # before these streams or their private staging can be released.
+            with ExitStack() as worker:
+                try:
+                    process = worker.enter_context(owned_process(command, stdin=source,
+                        stdout=output, stderr=errors, cwd=directory, env=env, shell=False))
+                except OSError as exc:
+                    raise CitationError('The selected local citation runtime could not be started.') from exc
+                deadline = time.monotonic() + timeout
                 while process.poll() is None:
                     if cancelled and cancelled():
                         raise CitationCancelled('Citation formatting was cancelled.')
@@ -662,16 +669,6 @@ def _run(payload: dict, *, node_path: Path | str | None, cancelled: Callable[[],
                     if output_path.stat().st_size > _MAX_BYTES or error_path.stat().st_size > 1_000_000:
                         raise CitationError('The local citation processor exceeded its output budget.')
                     time.sleep(0.025)
-            finally:
-                if process.poll() is None:
-                    if os.name != 'nt':
-                        try:
-                            os.killpg(process.pid, signal.SIGKILL)
-                        except ProcessLookupError:
-                            pass
-                    else:
-                        process.kill()
-                    process.wait(timeout=5)
             if cancelled and cancelled():
                 raise CitationCancelled('Citation formatting was cancelled.')
             if output_path.stat().st_size > _MAX_BYTES or error_path.stat().st_size > 1_000_000:

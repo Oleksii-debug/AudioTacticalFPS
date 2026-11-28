@@ -233,6 +233,70 @@ def run_native(options, report):
             check('explicit Stop leaves the same player silent', pump(
                 lambda: reader.reader_player.state == 'stopped' and not reader.reader_edit_host.busy()))
 
+        def seek_paused(reader, entered, seconds):
+            player, host = reader.reader_player, reader.reader_edit_host
+            path, session = player.path, player.session_generation
+            duration, narration_count = player.duration_seconds, len(calls)
+            reading = host.capture().document.to_dict()
+            armed, accepted, failures = [True], [], []
+            deadline = time.monotonic() + 5
+
+            def fill():
+                if not armed[0]:
+                    return
+                entry = None
+                try:
+                    choices = [window for window in wx.GetTopLevelWindows()
+                               if bool(window) and isinstance(window, wx.TextEntryDialog)
+                               and window.GetParent() is reader and window.IsModal()
+                               and window.GetTitle() == 'Seek playback' and window.IsShown()]
+                    if not choices:
+                        if time.monotonic() < deadline:
+                            wx.CallLater(20, fill)
+                            return
+                        raise TimeoutError('The existing native Seek playback entry did not open.')
+                    if len(choices) != 1:
+                        raise AssertionError('The native Seek dialog is ambiguous.')
+                    entry = choices[0]
+                    fields = [child for child in entry.GetChildren() if isinstance(child, wx.TextCtrl)]
+                    if len(fields) != 1:
+                        raise AssertionError('The existing Seek entry must have one native text field.')
+                    prompt = ' '.join(child.GetLabel() for child in entry.GetChildren()
+                                      if isinstance(child, wx.StaticText))
+                    check('native Seek labels seconds and 0%/100% before ' + entered,
+                          'seconds' in prompt and '0%' in prompt and '100%' in prompt)
+                    entry.Raise()
+                    fields[0].SetFocus()
+                    if not pump(lambda: wx.Window.FindFocus() == fields[0], timeout=3):
+                        raise AssertionError('The native Seek text field did not receive focus.')
+                    key(ord('A'), wx.MOD_CONTROL)
+                    if not simulator.Text(entered.encode('ascii')):
+                        raise RuntimeError('Native Seek character input is unavailable.')
+                    gui.Yield()
+                    check('native Seek receives the exact typed value ' + entered,
+                          fields[0].GetValue() == entered)
+                    accepted.append(entered)
+                    key(wx.WXK_RETURN)
+                except BaseException as exc:
+                    failures.append(exc)
+                    if entry is not None and bool(entry) and entry.IsModal():
+                        entry.EndModal(wx.ID_CANCEL)
+
+            wx.CallLater(20, fill)
+            try:
+                press(find(reader, 'Seek to time or percentage'))
+            finally:
+                armed[0] = False
+            if failures:
+                raise failures[0]
+            check('native Seek ' + entered + ' uses the same measured recording and remains paused',
+                  accepted == [entered] and player.state == 'paused'
+                  and abs(player.position_seconds - seconds) <= 1 / 16000
+                  and player.path == path and player.session_generation == session
+                  and player.duration_seconds == duration and len(calls) == narration_count
+                  and player.output_device is not None and player.output_device.identity == selected.identity
+                  and host.capture().document.to_dict() == reading)
+
         def blocked_navigation(reader, mutation):
             host, navigation = reader.reader_edit_host, reader.reader_navigation
             entered, release = threading.Event(), threading.Event()
@@ -300,6 +364,23 @@ def run_native(options, report):
                 check('current ' + unit + ' leaves source and reading history unchanged',
                       host.capture().document.to_dict() == original_document)
                 stop(reader)
+
+            # Pause a fresh explicit render before writing further receipts, so
+            # the two-second fixture does not impose a human reaction-time race.
+            host.select(position, position)
+            prior = len(calls)
+            press(reader.reader_unit_buttons['word'])
+            if not pump(lambda: len(calls) == prior + 1 and not host.busy()
+                        and player.state == 'playing'):
+                raise AssertionError('The explicit native Seek recording did not start.')
+            key(wx.WXK_F7)
+            check('native Seek starts from an explicitly paused recording',
+                  pump(lambda: player.state == 'paused' and not host.busy())
+                  and calls[-1]['text'] == 'Ім’я')
+            seek_paused(reader, '50%', 1.0)
+            seek_paused(reader, '100%', 2.0)
+            seek_paused(reader, '0.25', .25)
+            stop(reader)
 
             host.select(position, position)
             prior = len(calls)

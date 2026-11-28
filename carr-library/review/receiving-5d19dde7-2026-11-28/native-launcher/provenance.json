@@ -1,0 +1,43 @@
+{
+  "schema": "carr.native-receiving-observation/1",
+  "head": "5d19dde77aca6a257ee601c1bc49b8504c342cee",
+  "jobs": [
+    {
+      "compiler": "zig",
+      "run_id": 46098474602,
+      "job_id": 140835230230,
+      "head": "5d19dde77aca6a257ee601c1bc49b8504c342cee",
+      "started_at": "2026-11-28T02:35:07Z",
+      "completed_at": "2026-11-28T02:36:31Z",
+      "status": "PASS",
+      "checks": 9,
+      "launcher_sha256": "58e3de03d9d09520833841bbc72f698f5b924631e0490f41d8b73dc73da53cf7",
+      "decoded_log": {
+        "sha256": "56495a3281eefd277eeb2cc09fa130c81c757a1a02bbbdd7fac9fc79480c7499",
+        "bytes": 30904
+      }
+    },
+    {
+      "compiler": "msvc",
+      "run_id": 46098474602,
+      "job_id": 140835230636,
+      "head": "5d19dde77aca6a257ee601c1bc49b8504c342cee",
+      "started_at": "2026-11-28T02:41:08Z",
+      "completed_at": "2026-11-28T02:41:36Z",
+      "status": "PASS",
+      "checks": 9,
+      "launcher_sha256": "d02013f8ab6b1de4eddb851dac83846454fe037fe858d0f2a03a22be9f8e364b",
+      "decoded_log": {
+        "sha256": "a3c485e47480bc775dd0ac97dc901a1c39b263a8630248b6a81cbfeee7f9a8e4",
+        "bytes": 34199
+      }
+    }
+  ],
+  "extraction": "Build and probe JSON objects parsed from terminal job logs after stripping their timestamp prefixes. Each log prints each object twice; both copies were required to match exactly. These are decoded log extractions, not byte-identical original artifact members.",
+  "limits": [
+    "Both actual native compilers and nine launcher checks passed; the probe explicitly uses a synthetic child.",
+    "Actual Python installation is verified by a separate installation gate, not these native launcher probes.",
+    "The PE and probes explicitly retain unsigned/NVDA/authenticode/actual-Python-installation limitations.",
+    "No aggregate, human accessibility, same-source successor or distribution qualification transfer."
+  ]
+}

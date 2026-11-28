@@ -2,6 +2,7 @@
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from tempfile import TemporaryDirectory
+import math
 import threading
 from uuid import uuid4
 
@@ -202,7 +203,8 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
     row = wx.BoxSizer(wx.HORIZONTAL)
     playback_button = wx.Button(dialog, label='Playback controls...')
     playback_button.SetName('Playback volume, skips, speed and pitch')
-    seek = wx.Button(dialog, label='Seek to &time')
+    seek = wx.Button(dialog, label='Seek to &time / percentage')
+    seek.SetName('Seek to time or percentage')
     cleanup = wx.Button(dialog, label='Normalize s&paces')
     close = wx.Button(dialog, wx.ID_CANCEL, 'C&lose')
     for control in (playback_button, seek, cleanup, close):
@@ -634,17 +636,60 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
 
     def seek_audio(event=None):
         try:
-            if last_audio is None:
+            playback_guard()
+            if dialog_destroyed or close_requested or busy or cancel.is_set() or not dialog.IsShown():
+                raise ValueError('Open an idle reader before seeking within its recording.')
+            sync_document()
+            if last_audio is None or last_reading_audio is None:
                 raise ValueError('Read text once before seeking within its recording.')
-            with wx.TextEntryDialog(dialog, f'Seconds from 0 to {player.duration_seconds:.1f}',
-                                    'Seek playback', str(round(player.position_seconds, 1))) as entry:
-                if entry.ShowModal() == wx.ID_OK:
-                    seconds = float(entry.GetValue())
-                    def sought():
-                        player.seek(seconds)
-                        report(f'Playback at {player.position_seconds:.1f} seconds.'
-                               + (' Position is approximate on this playback backend.' if player.position_is_approximate else ''))
-                    start_playback(sought)
+            generation, session = playback_generation, player.session_generation
+            audio, binding = last_audio, last_reading_audio
+            reading, signature = document, document._signature()
+            path, duration = player.path, player.duration_seconds
+            if (path != audio or binding.path != path or binding.document is not reading
+                    or binding.signature != signature or not math.isfinite(duration) or duration <= 0
+                    or binding.duration_seconds != duration):
+                raise ValueError('The current recording does not match this reading copy. Read it again.')
+
+            def checked():
+                playback_guard()
+                if (dialog_destroyed or close_requested or busy or cancel.is_set()
+                        or generation != playback_generation or session != player.session_generation
+                        or audio is not last_audio or binding is not last_reading_audio
+                        or path != player.path or duration != player.duration_seconds
+                        or not dialog.IsShown()):
+                    raise ValueError('The recording or reader session changed. Reopen Seek playback.')
+                sync_document()
+                if document is not reading or document._signature() != signature:
+                    raise ValueError('The reading copy changed. Read it again before seeking.')
+
+            with wx.TextEntryDialog(dialog,
+                    f'Enter seconds from 0 to {duration:.1f}, or a percentage from 0% to 100% '
+                    '(for example, 50%). This position is within the current recording.',
+                    'Seek playback', str(round(player.position_seconds, 1))) as entry:
+                if entry.ShowModal() != wx.ID_OK:
+                    return
+                checked()
+                value = entry.GetValue().strip()
+                percentage = value.endswith('%')
+                try:
+                    if not value or len(value) > 64:
+                        raise ValueError
+                    amount = float(value[:-1].strip() if percentage else value)
+                except ValueError:
+                    raise ValueError('Enter seconds or a percentage such as 50%.') from None
+                maximum = 100.0 if percentage else duration
+                if not math.isfinite(amount) or not 0 <= amount <= maximum:
+                    raise ValueError('Choose a finite position within 0% to 100% of this recording.'
+                                     if percentage else f'Choose finite seconds from 0 to {duration:.1f}.')
+                seconds = duration * (amount / 100.0) if percentage else amount
+
+                def sought():
+                    checked()
+                    player.seek(seconds)
+                    report(f'Playback at {player.position_seconds:.1f} seconds.'
+                           + (' Position is approximate on this playback backend.' if player.position_is_approximate else ''))
+                start_playback(sought)
         except Exception as exc:
             report(str(exc), focus=True)
 

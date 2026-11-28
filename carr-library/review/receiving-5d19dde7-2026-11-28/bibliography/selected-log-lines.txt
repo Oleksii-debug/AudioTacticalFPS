@@ -1,0 +1,106 @@
+2026-11-28T02:37:07.9294617Z {"payload_files": 490, "project_name": "universal-research-library", "project_version": "0.2.0.dev2", "required_runtime_files": 395, "source_commit": "5d19dde77aca6a257ee601c1bc49b8504c342cee", "source_tree": "fc6db9d062815bf1a4d35f435cf526fd3076913a", "wheel_sha256": "77ed4cfb97b11852a6d8ebf0b8e9a5c9350d3b77cf448c7511b2b9adcf85d302"}
+2026-11-28T02:37:11.6829833Z {"python": "3.11.9 (tags/v3.11.9:de54cf5, Apr  2 2024, 10:12:12) [MSC v.1938 64 bit (AMD64)]", "windows": "Windows-10-10.0.20348-SP0", "sqlite": "3.45.1", "wx": "4.2.4 msw (phoenix) wxWidgets 3.2.8"}
+2026-11-28T02:37:12.2368451Z PASS: isolated installed CPython 3.11 x64 is running
+2026-11-28T02:37:12.2371736Z PASS: all feature modules come from this environment site-packages
+2026-11-28T02:37:12.2374361Z PASS: wx uses native Windows controls
+2026-11-28T02:37:12.2378220Z PASS: the pinned bibliography and native dependencies are installed
+2026-11-28T02:37:13.0283083Z PASS: BibTeX preview resolves safe macros and Unicode without importing
+2026-11-28T02:37:13.1097714Z PASS: native BibTeX review starts with no selected imports
+2026-11-28T02:37:13.1099874Z PASS: native BibTeX details expose key provenance and unsupported metadata
+2026-11-28T02:37:13.2422057Z PASS: Space selects exactly the intended native import row
+2026-11-28T02:37:13.2425128Z PASS: native action button is keyboard reachable
+2026-11-28T02:37:13.3871045Z PASS: native BibTeX import keeps an application identity and source key provenance
+2026-11-28T02:37:13.4628860Z PASS: citation controls have explicit accessible names and read-only results
+2026-11-28T02:37:13.4629692Z PASS: copy and export require a completed preview
+2026-11-28T02:37:13.5857911Z PASS: real Tab traverses from citation style to reference scope
+2026-11-28T02:37:13.7275957Z PASS: real Shift+Tab returns from reference scope to citation style
+2026-11-28T02:37:13.7277269Z PASS: native action button is keyboard reachable
+2026-11-28T02:37:13.8680746Z PASS: async formatting disables changing options while keeping Close available
+2026-11-28T02:37:13.9304431Z PASS: real formatting executes outside the native UI thread
+2026-11-28T02:37:13.9306177Z PASS: completed preview is readable, focused and enables publication actions
+2026-11-28T02:37:13.9308823Z PASS: selected-reference preview preserves literal names and excludes other records
+2026-11-28T02:37:13.9309918Z PASS: native action button is keyboard reachable
+2026-11-28T02:37:14.0717463Z PASS: native bibliography button copies exactly the current formatted text
+2026-11-28T02:37:14.0719434Z PASS: native action button is keyboard reachable
+2026-11-28T02:37:14.2118942Z PASS: native citation button copies exactly the current citation examples
+2026-11-28T02:37:14.2757931Z PASS: native action button is keyboard reachable
+2026-11-28T02:37:14.4154732Z PASS: changed metadata prevents native clipboard replacement and focuses the reason
+2026-11-28T02:37:14.4174719Z PASS: changed metadata also prevents service export
+2026-11-28T02:37:14.4175550Z PASS: rejected stale export leaves no output
+2026-11-28T02:37:14.6964196Z PASS: native action button is keyboard reachable
+2026-11-28T02:37:14.8375120Z PASS: async formatting disables changing options while keeping Close available
+2026-11-28T02:37:14.8685372Z PASS: real formatting executes outside the native UI thread
+2026-11-28T02:37:14.8686208Z PASS: completed preview is readable, focused and enables publication actions
+2026-11-28T02:37:14.8687068Z PASS: all-active scope excludes archived and foreign references and private notes
+2026-11-28T02:37:14.8714529Z PASS: explicit personal names format while protected corporate names remain literal
+2026-11-28T02:37:14.8715572Z PASS: a preview cannot be copied through another library controller
+2026-11-28T02:37:14.8899220Z PASS: installed service exports exact UTF-8 plain text
+2026-11-28T02:37:14.8942184Z PASS: create-only export refuses an existing destination
+2026-11-28T02:37:14.8943089Z PASS: refused create-only export preserves the existing bytes
+2026-11-28T02:37:15.0097107Z PASS: installed service exports inert self-contained HTML
+2026-11-28T02:37:15.2272722Z PASS: installed service exports an editable Word bibliography
+2026-11-28T02:37:15.2273593Z PASS: Word bibliography contains no external relationships
+2026-11-28T02:37:15.2302496Z PASS: cancelled export reports cancellation
+2026-11-28T02:37:15.2303313Z PASS: cancelled export creates no destination
+2026-11-28T02:37:15.2309076Z PASS: native action button is keyboard reachable
+2026-11-28T02:37:15.2755104Z PASS: native custom-style action requests its explicit local picker
+2026-11-28T02:37:15.3689026Z PASS: real local style loading captures exact bytes and updates the native selector
+2026-11-28T02:37:15.3690262Z PASS: native action button is keyboard reachable
+2026-11-28T02:37:15.5095137Z PASS: async formatting disables changing options while keeping Close available
+2026-11-28T02:37:15.5096135Z PASS: real formatting executes outside the native UI thread
+2026-11-28T02:37:15.5099988Z PASS: completed preview is readable, focused and enables publication actions
+2026-11-28T02:37:15.5101126Z PASS: native preview uses the actual custom CSL engine and both active references
+2026-11-28T02:37:15.5968724Z PASS: custom export preserves the captured style after its file changes
+2026-11-28T02:37:15.5969514Z PASS: native action button is keyboard reachable
+2026-11-28T02:37:15.6349182Z PASS: native custom-style action requests its explicit local picker
+2026-11-28T02:37:15.7290606Z PASS: native custom-style load failure preserves the valid snapshot and preview
+2026-11-28T02:37:15.7292061Z PASS: the controlled file choices have both been disposed
+2026-11-28T02:37:16.1507024Z PASS: native keyboard selection returns from the custom style to Harvard
+2026-11-28T02:37:16.1790089Z PASS: native action button is keyboard reachable
+2026-11-28T02:37:16.3077391Z PASS: async formatting disables changing options while keeping Close available
+2026-11-28T02:37:16.3078818Z PASS: real formatting executes outside the native UI thread
+2026-11-28T02:37:16.3079759Z PASS: async validation failure is focused and leaves no publishable preview
+2026-11-28T02:37:16.3364694Z PASS: native action button is keyboard reachable
+2026-11-28T02:37:16.4639595Z PASS: async formatting disables changing options while keeping Close available
+2026-11-28T02:37:16.4950141Z PASS: real formatting executes outside the native UI thread
+2026-11-28T02:37:16.4951196Z PASS: completed preview is readable, focused and enables publication actions
+2026-11-28T02:37:16.5269792Z PASS: native action button is keyboard reachable
+2026-11-28T02:37:16.8398329Z PASS: Escape closes the native dialog and cancels its queued real worker job
+2026-11-28T02:37:16.8399402Z PASS: a cancelled callback cannot publish a preview after the window closes
+2026-11-28T02:37:16.8482389Z PASS: bibliography work preserves retained originals and exact saved source evidence
+2026-11-28T02:37:16.8483225Z PASS: all bibliography operations stayed offline
+2026-11-28T02:37:16.8618284Z {"checks": 69, "custom_style_file_choice": "controlled path only", "installed_modules": {"carr_library.citations.bibliography_workbench": "e883418be3a296f2c4d73def6974aef12d9b6e77e44734df059f5503cab6c19a", "carr_library.citations.csl": "4ce75efbb2348ad9ea4238809651c9a2549f5d4b3d9b4699784cd1c04e4c54f6", "carr_library.research.bibtex_import": "6f34dce2e1c32dbfb877d0367fc4035b25e2686c2e271c5884301243a051999a", "carr_library.ui.academic_library_dialog": "763a7e75b329f77e475d250c3c115992228435480b57ad386b541c8c99cca38b", "carr_library.ui.citation_styles_dialog": "6f79ce0ded275dfdfd0725db3c34d19bf0018c51b1859050f6768f88efc8f26c"}, "installer": "NOT_RUN", "manual_keyboard": "NOT_RUN", "native_clipboard": "PASS", "native_custom_style": "PASS", "native_file_pickers": "NOT_RUN", "native_keyboard": "PASS", "nvda": "NOT_RUN", "platform": "Windows-10-10.0.20348-SP0", "python": "3.11.9", "result": "PASS", "service_exports": ["text", "html", "docx"], "style": "harvard", "wx": "4.2.4 msw (phoenix) wxWidgets 3.2.8"}
+2026-11-28T02:37:19.5442355Z PASS: tests/research/test_bibtex_import.py: junit_passed=68, failed=0, skipped=0, pytest_exit=0
+2026-11-28T02:39:25.9460060Z PASS: tests/research/test_academic_library.py: junit_passed=94, failed=0, skipped=0, pytest_exit=0
+2026-11-28T02:39:30.9604609Z PASS: tests/research/test_csl_author_boundaries.py: junit_passed=20, failed=0, skipped=0, pytest_exit=0
+2026-11-28T02:40:38.1838494Z PASS: tests/citations/test_csl.py: junit_passed=79, failed=0, skipped=0, pytest_exit=0
+2026-11-28T02:40:40.2401223Z PASS: tests/citations/test_custom_csl.py: junit_passed=132, failed=0, skipped=0, pytest_exit=0
+2026-11-28T02:42:23.9671979Z PASS: tests/citations/test_bibliography_workbench.py: junit_passed=19, failed=0, skipped=0, pytest_exit=0
+2026-11-28T02:42:26.1536032Z PASS: tests/citations/test_custom_workbench.py: junit_passed=20, failed=0, skipped=0, pytest_exit=0
+2026-11-28T02:42:26.8200568Z PASS: tests/ui/test_citation_styles_jobs.py: junit_passed=31, failed=0, skipped=0, pytest_exit=0
+2026-11-28T02:42:35.6869438Z PASS: tests/ui/test_academic_library_dialog.py: junit_passed=63, failed=0, skipped=0, pytest_exit=0
+2026-11-28T02:42:36.5602327Z PASS: tests/ui/test_academic_actions.py: junit_passed=39, failed=0, skipped=0, pytest_exit=0
+2026-11-28T02:42:52.7730726Z PASS: tests/ui/test_academic_export_handler.py: junit_passed=39, failed=0, skipped=0, pytest_exit=0
+2026-11-28T02:42:57.0744826Z PASS: tests/catalog/test_bibliography.py: junit_passed=39, failed=0, skipped=0, pytest_exit=0
+2026-11-28T02:42:57.5084322Z PASS: tests/catalog/test_archive_portability.py: junit_passed=54, failed=0, skipped=0, pytest_exit=0
+2026-11-28T02:42:57.8670362Z PASS: tests/catalog/test_intake_portability.py: junit_passed=16, failed=0, skipped=0, pytest_exit=0
+2026-11-28T02:42:58.2877241Z PASS: tests/catalog/test_reference_exchange.py: junit_passed=64, failed=0, skipped=0, pytest_exit=0
+2026-11-28T02:43:10.6715705Z PASS: tests/ingest/test_import_replay_identity.py: junit_passed=22, failed=0, skipped=0, pytest_exit=0
+2026-11-28T02:43:13.4262617Z PASS: tests/ingest/test_txt_replay_registration.py: junit_passed=4, failed=0, skipped=0, pytest_exit=0
+2026-11-28T02:43:24.2771355Z PASS: tests/reader/test_export_no_clobber.py: junit_passed=35, failed=0, skipped=0, pytest_exit=0
+2026-11-28T02:43:24.7970667Z PASS: tests/reader/test_export_reconciliation.py: junit_passed=20, failed=0, skipped=0, pytest_exit=0
+2026-11-28T02:43:25.4837704Z PASS: tests/reader/test_file_export.py: junit_passed=54, failed=0, skipped=0, pytest_exit=0
+2026-11-28T02:43:26.1434897Z PASS: tests/reader/test_binary_file_export.py: junit_passed=35, failed=0, skipped=0, pytest_exit=0
+2026-11-28T02:43:28.9703091Z PASS: tests/reader/test_academic_documents.py: junit_passed=41, failed=0, skipped=0, pytest_exit=0
+2026-11-28T02:43:29.3138099Z PASS: tests/reader/test_bibliographic_locators.py: junit_passed=6, failed=0, skipped=0, pytest_exit=0
+2026-11-28T02:43:29.6972437Z PASS: tests/reader/test_evidence_export.py: junit_passed=40, failed=0, skipped=0, pytest_exit=0
+2026-11-28T02:43:40.0997309Z PASS: tests/storage/test_academic_migration.py: junit_passed=32, failed=0, skipped=0, pytest_exit=0
+2026-11-28T02:43:42.5917801Z PASS: tests/e2e/test_academic_workflow.py: junit_passed=6, failed=0, skipped=0, pytest_exit=0
+2026-11-28T02:43:45.7314623Z PASS: tests/e2e/test_academic_workflows.py: junit_passed=4, failed=0, skipped=0, pytest_exit=0
+2026-11-28T02:43:52.5075955Z PASS: tests/e2e/test_academic_document_export.py: junit_passed=10, failed=0, skipped=0, pytest_exit=0
+2026-11-28T02:43:55.3972647Z PASS: tests/e2e/test_export_destination.py: junit_passed=6, failed=0, skipped=0, pytest_exit=0
+2026-11-28T02:43:55.4046849Z Required suites complete: 29; passed=29; failed=0
+2026-11-28T02:43:55.9956526Z SHA256 digest of uploaded artifact is df28b5555c943ff6194e609aa717ed39a7ca3e85b316f45aa6ea9824d81eb303
+2026-11-28T02:43:56.3137044Z Artifact bibliography-windows-5d19dde77aca6a257ee601c1bc49b8504c342cee successfully finalized. Artifact ID 15244223454
+2026-11-28T02:43:56.3138408Z Artifact bibliography-windows-5d19dde77aca6a257ee601c1bc49b8504c342cee has been successfully uploaded! Final size is 6659 bytes. Artifact ID is 15244223454
+2026-11-28T02:43:56.3144071Z Artifact download URL: https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46098474659/artifacts/15244223454

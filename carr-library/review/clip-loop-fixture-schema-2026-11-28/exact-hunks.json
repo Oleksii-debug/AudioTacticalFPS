@@ -1,0 +1,27 @@
+{
+  "path": "carr-library/tests/studio/test_clip_dialog.py",
+  "before": "7bc9ed69c4c6777eb3254dd9d0b75994075c3465",
+  "after": "5f46d0924be44798f15f5076a4811e04eab97dc9",
+  "hunks": [
+    {
+      "oldLine": 746,
+      "newLine": 746,
+      "contextBefore": [
+        "    preview.write_bytes(raw)",
+        "    cue = Cue('loop-clip', str(original), duration=.25)",
+        "    scene = Scene('loop-scene', 'Loop scene', (), cues=(cue,))"
+      ],
+      "removed": [
+        "    project = Project('loop-project', 'Loop project', (), (scene,))"
+      ],
+      "added": [
+        "    project = Project('loop-project', 'Loop project', (), (scene,), schema=2)"
+      ],
+      "contextAfter": [
+        "    dialog.project = project",
+        "    dialog._scene = lambda: dialog.project.scenes[0]",
+        "    dialog._clip = lambda: dialog._scene().cues[0]"
+      ]
+    }
+  ]
+}

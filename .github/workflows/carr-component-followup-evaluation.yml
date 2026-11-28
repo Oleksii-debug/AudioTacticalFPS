@@ -132,6 +132,7 @@ jobs:
         if: ${{ !cancelled() && matrix.mode == 'source' && steps.inventory.outcome == 'success' && (runner.os != 'Windows' || (steps.audio.outcome == 'success' && steps.ocr.outcome == 'success')) }}
         run: |
           $suites = @(
+            'tests/academic_integration/test_formatting.py',
             'tests/assistant/test_local_planning.py',
             'tests/assistant/test_state_io.py',
             'tests/catalog/test_archive_portability.py',
@@ -171,6 +172,11 @@ jobs:
             'tests/e2e/test_import_worker_publication.py',
             'tests/ui/test_operations_policy.py',
             'tests/speech/test_synthesis_admission.py',
+            'tests/ui/test_reader_playback.py',
+            'tests/speech/test_progress_speech.py',
+            'tests/ui/test_operation_progress.py',
+            'tests/ui/test_progress_media_quiet.py',
+            'tests/ui/test_studio_progress_isolation.py',
             'tests/speech/test_registered_studio_voices.py',
             'tests/audio/test_model_voices.py',
             'tests/storage/test_backup_book_plan_bindings.py',
@@ -216,6 +222,7 @@ jobs:
           python -I -B -c "from pathlib import Path; import carr_library; path=Path(carr_library.__file__).resolve(); assert not path.is_relative_to(Path('src').resolve()), path; print(path)"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $suites = @(
+            'tests/academic_integration/test_formatting.py',
             'tests/assistant/test_local_planning.py',
             'tests/assistant/test_state_io.py',
             'tests/catalog/test_archive_portability.py',
@@ -255,6 +262,11 @@ jobs:
             'tests/e2e/test_import_worker_publication.py',
             'tests/ui/test_operations_policy.py',
             'tests/speech/test_synthesis_admission.py',
+            'tests/ui/test_reader_playback.py',
+            'tests/speech/test_progress_speech.py',
+            'tests/ui/test_operation_progress.py',
+            'tests/ui/test_progress_media_quiet.py',
+            'tests/ui/test_studio_progress_isolation.py',
             'tests/speech/test_registered_studio_voices.py',
             'tests/audio/test_model_voices.py',
             'tests/storage/test_backup_book_plan_bindings.py',

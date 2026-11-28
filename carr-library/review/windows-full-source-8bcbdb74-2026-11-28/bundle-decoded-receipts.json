@@ -1,0 +1,530 @@
+{
+  "run": 46093366008,
+  "head": "8bcbdb74328d7f6bb71ea8987cb5305064b8eb0e",
+  "scope": "Selected JSON records reconstructed from completed decoded log; exact archived receipt members are separate evidence.",
+  "receipts": [
+    {
+      "decoded_log_line": 7873,
+      "value": {
+        "status": "PASS",
+        "checks": [
+          "original import",
+          "scoped search",
+          "exact quotation",
+          "workspace isolation",
+          "saved research",
+          "reopen persistence",
+          "academic reading list",
+          "bibliography export",
+          "backup and restore"
+        ],
+        "native_gui": "NOT_RUN",
+        "windows_nvda": "NOT_RUN"
+      }
+    },
+    {
+      "decoded_log_line": 8148,
+      "value": {
+        "result": "PASS",
+        "checks": [
+          "publication UI comes from installed package",
+          "real native Windows widgets",
+          "exact bundled executable: ffmpeg",
+          "sealed executable bytes: ffmpeg",
+          "exact bundled executable: ffprobe",
+          "sealed executable bytes: ffprobe",
+          "actual FFmpeg produced a completed Studio fixture",
+          "publication is available in the installed Studio menu",
+          "real native main loop is active",
+          "export controls have native accessible names",
+          "native Space down: &Load jobs / receipts",
+          "native Space up: &Load jobs / receipts",
+          "completed job is listed without implicit selection",
+          "native Space down: &Export EPUB3",
+          "native Space up: &Export EPUB3",
+          "native export completed with a durable receipt",
+          "shared progress completes only after publication verification",
+          "native completion focuses readable publication status",
+          "exact script and measured line overlays are retained",
+          "embedded audio is MP3 with an actual byte identity",
+          "native Space down: &Verify receipt",
+          "native Space up: &Verify receipt",
+          "native explicit receipt verification succeeds",
+          "native Space down: &Export EPUB3",
+          "native Space up: &Export EPUB3",
+          "native duplicate export cannot overwrite completed bytes",
+          "native Space down: &Close",
+          "native Space up: &Close",
+          "native keyboard close completes",
+          "synchronized reading is available in the same Studio menu",
+          "native Space down: &Load verified publication",
+          "native Space up: &Load verified publication",
+          "native reader captured and decoded the exact publication",
+          "loading the native synchronized reader never autoplays",
+          "chapter and utterance choices have native accessible names",
+          "native Space down: &Next interval",
+          "native Space up: &Next interval",
+          "native next interval preserves measured navigation without autoplay",
+          "native Space down: Previous &interval",
+          "native Space up: Previous &interval",
+          "native previous interval returns to the original text",
+          "native chapter End key down",
+          "native chapter End key up",
+          "chapter keyboard navigation retains exact original media interval",
+          "native Space down: &Stop",
+          "native Space up: &Stop",
+          "native Space down: &Close",
+          "native Space up: &Close",
+          "reader close removes decoded private audio after confirmed stop"
+        ],
+        "audio": "Synthetic PCM tones through actual FFmpeg",
+        "audio_runtime": {
+          "ffmpeg": {
+            "path": "D:\\a\\_temp\\carr-bundle-ci\\complete bundle\\audio-runtime\\bin\\ffmpeg.exe",
+            "sha256": "3ab4a9c404504ebff6662d6a48661db952f88ee7fb7d5949a711cad7a763b2cf"
+          },
+          "ffprobe": {
+            "path": "D:\\a\\_temp\\carr-bundle-ci\\complete bundle\\audio-runtime\\bin\\ffprobe.exe",
+            "sha256": "ff181a5b52664aae7a9f673c3a718440706b33511e8a3e38064ff4f21f1a7bed"
+          }
+        },
+        "native_keyboard": "PASS",
+        "synchronized_reader_navigation": "PASS",
+        "audio_device_playback": "NOT_RUN",
+        "epubcheck": "NOT_RUN",
+        "reader_interoperability": "NOT_RUN",
+        "manual_keyboard": "NOT_RUN",
+        "nvda": "NOT_RUN"
+      }
+    },
+    {
+      "decoded_log_line": 8220,
+      "value": {
+        "schema": 1,
+        "status": "PASS",
+        "epub_specification": "3.3",
+        "validator_version": "5.3.0",
+        "validator_archive_sha256": "6c07e68584b2e2ce2f89fe06e1246dfead3eb36b46b340e7d93524f29dcff6c5",
+        "publisher_module_sha256": "1e02894475549e77811cf158198ef5ade632396ea57f071e306d9f89f20e303b",
+        "audio_binaries": {
+          "ffmpeg": "D:\\a\\_temp\\carr-bundle-ci\\complete bundle\\audio-runtime\\bin\\ffmpeg.exe",
+          "ffprobe": "D:\\a\\_temp\\carr-bundle-ci\\complete bundle\\audio-runtime\\bin\\ffprobe.exe"
+        },
+        "audio_sha256": {
+          "ffmpeg": "3ab4a9c404504ebff6662d6a48661db952f88ee7fb7d5949a711cad7a763b2cf",
+          "ffprobe": "ff181a5b52664aae7a9f673c3a718440706b33511e8a3e38064ff4f21f1a7bed"
+        },
+        "publications": [
+          {
+            "file": "narrated-from-wav.epub",
+            "sha256": "2c989b87edd6f2f32064d4494b333cab759d73795a37f488df8ae321607fce22",
+            "checker_version": "5.3.0",
+            "exit_code": 0,
+            "counts": {
+              "nFatal": 0,
+              "nError": 0,
+              "nWarning": 0,
+              "nUsage": 0
+            },
+            "expected_valid": true,
+            "messages": []
+          },
+          {
+            "file": "reused-job-mp3.epub",
+            "sha256": "2ec2077e4aab83d26258955ad0ce01998b5ba2e5567339dc0c8c9cafa57de86f",
+            "checker_version": "5.3.0",
+            "exit_code": 0,
+            "counts": {
+              "nFatal": 0,
+              "nError": 0,
+              "nWarning": 0,
+              "nUsage": 0
+            },
+            "expected_valid": true,
+            "messages": []
+          },
+          {
+            "file": "audio-only.epub",
+            "sha256": "e9bd4690082845ab73820a306cae3d468cd227dff57ba76e8386927361182547",
+            "checker_version": "5.3.0",
+            "exit_code": 0,
+            "counts": {
+              "nFatal": 0,
+              "nError": 0,
+              "nWarning": 0,
+              "nUsage": 0
+            },
+            "expected_valid": true,
+            "messages": []
+          },
+          {
+            "file": "primary-reading-copy.epub",
+            "sha256": "8e1bc028f7cac6bdf5beb21d0e28cde959ec72352e54f985de777d19397ee37a",
+            "checker_version": "5.3.0",
+            "exit_code": 0,
+            "counts": {
+              "nFatal": 0,
+              "nError": 0,
+              "nWarning": 0,
+              "nUsage": 0
+            },
+            "expected_valid": true,
+            "messages": []
+          }
+        ],
+        "deliberately_invalid_rejected": {
+          "file": "deliberately-invalid.epub",
+          "sha256": "694b8b745e012da79c9a1dded21fb61e00716c7aac6e15200d1cd4e38af2782f",
+          "checker_version": "5.3.0",
+          "exit_code": 1,
+          "counts": {
+            "nFatal": 0,
+            "nError": 1,
+            "nWarning": 0,
+            "nUsage": 0
+          },
+          "expected_valid": false,
+          "messages": [
+            {
+              "ID": "PKG-007",
+              "severity": "ERROR",
+              "message": "Mimetype file should only contain the string \"application/epub+zip\" and should not be compressed.",
+              "additionalLocations": 0,
+              "locations": [
+                {
+                  "url": {
+                    "hierarchical": true,
+                    "opaque": false
+                  },
+                  "path": "/C:/Users/runneradmin/AppData/Local/Temp/resonance-epubcheck-x287j9r2/deliberately-invalid.epub",
+                  "line": -1,
+                  "column": -1,
+                  "context": null
+                }
+              ],
+              "suggestion": null
+            }
+          ]
+        },
+        "audio_fixture": "Synthetic PCM tones through actual FFmpeg",
+        "reader_interoperability": "NOT_RUN",
+        "nvda": "NOT_RUN",
+        "wcag_conformance": "NOT_CLAIMED"
+      }
+    },
+    {
+      "decoded_log_line": 8332,
+      "value": {
+        "schema": 1,
+        "status": "PASS",
+        "publications": [
+          {
+            "schema": 1,
+            "status": "PASS",
+            "publication_sha256": "50ec7ad42a8e0b933505c0b32d0f32bc1fe85d9a0fcaca7fdd45fa40129be74e",
+            "publisher_module_sha256": "1e02894475549e77811cf158198ef5ade632396ea57f071e306d9f89f20e303b",
+            "daisy_module_sha256": "74fcd3064f7eb3f0faa1952d264e1cb9b52fd74d62cfbbffef836f6c97057e34",
+            "lxml_version": [
+              6,
+              1,
+              3,
+              0
+            ],
+            "libxml_version": [
+              2,
+              11,
+              9
+            ],
+            "schema_sha256": {
+              "SMIL10.dtd": "2d99e59884b8e43870aafebc7510a8dc58a4b65cbe30096dcde1574c92f8e786",
+              "xhtml-lat1.ent": "3da1daad08f93b8aff7a32d5447f94853d517561d9c7d0c7bc3ee5c002d12a38",
+              "xhtml-special.ent": "7f9518026c59ccee47a02ed74e43f8946d92207d438a7f540a0f3c28f05fa27e",
+              "xhtml-symbol.ent": "a6cd0f9c59e488b8c8e2de80c31c6811f316a3919cd9a0725b5390a8fc785d61",
+              "xhtml1-transitional.dtd": "28905cd059167bfa1a5866053799d55fd335c0717920a7048de400c8a32b9d93"
+            },
+            "documents": [
+              {
+                "file": "ncc.html",
+                "dtd_valid": true
+              },
+              {
+                "file": "content.html",
+                "dtd_valid": true
+              },
+              {
+                "file": "source.html",
+                "dtd_valid": true
+              },
+              {
+                "file": "book.smil",
+                "dtd_valid": true
+              }
+            ],
+            "invalid_xhtml_rejected": true,
+            "original_script_sha256": "5caff6883682071d272fb27018f877d0cad5c6cf112983f228b66ee6f3a353ad",
+            "full_daisy_rule_conformance": "NOT_RUN",
+            "reader_interoperability": "NOT_RUN",
+            "nvda": "NOT_RUN",
+            "case": "narrated-from-wav"
+          },
+          {
+            "schema": 1,
+            "status": "PASS",
+            "publication_sha256": "4157a5d815940cd9b63332fe8371f82bae6ccbe1b438a5c94b78203436109c81",
+            "publisher_module_sha256": "1e02894475549e77811cf158198ef5ade632396ea57f071e306d9f89f20e303b",
+            "daisy_module_sha256": "74fcd3064f7eb3f0faa1952d264e1cb9b52fd74d62cfbbffef836f6c97057e34",
+            "lxml_version": [
+              6,
+              1,
+              3,
+              0
+            ],
+            "libxml_version": [
+              2,
+              11,
+              9
+            ],
+            "schema_sha256": {
+              "SMIL10.dtd": "2d99e59884b8e43870aafebc7510a8dc58a4b65cbe30096dcde1574c92f8e786",
+              "xhtml-lat1.ent": "3da1daad08f93b8aff7a32d5447f94853d517561d9c7d0c7bc3ee5c002d12a38",
+              "xhtml-special.ent": "7f9518026c59ccee47a02ed74e43f8946d92207d438a7f540a0f3c28f05fa27e",
+              "xhtml-symbol.ent": "a6cd0f9c59e488b8c8e2de80c31c6811f316a3919cd9a0725b5390a8fc785d61",
+              "xhtml1-transitional.dtd": "28905cd059167bfa1a5866053799d55fd335c0717920a7048de400c8a32b9d93"
+            },
+            "documents": [
+              {
+                "file": "ncc.html",
+                "dtd_valid": true
+              },
+              {
+                "file": "content.html",
+                "dtd_valid": true
+              },
+              {
+                "file": "source.html",
+                "dtd_valid": true
+              },
+              {
+                "file": "book.smil",
+                "dtd_valid": true
+              }
+            ],
+            "invalid_xhtml_rejected": true,
+            "original_script_sha256": "5caff6883682071d272fb27018f877d0cad5c6cf112983f228b66ee6f3a353ad",
+            "full_daisy_rule_conformance": "NOT_RUN",
+            "reader_interoperability": "NOT_RUN",
+            "nvda": "NOT_RUN",
+            "case": "reused-job-mp3"
+          },
+          {
+            "schema": 1,
+            "status": "PASS",
+            "publication_sha256": "bba098c9817d411c7407efff7211baa27189dbc21124afba9a67b1521a59d4ac",
+            "publisher_module_sha256": "1e02894475549e77811cf158198ef5ade632396ea57f071e306d9f89f20e303b",
+            "daisy_module_sha256": "74fcd3064f7eb3f0faa1952d264e1cb9b52fd74d62cfbbffef836f6c97057e34",
+            "lxml_version": [
+              6,
+              1,
+              3,
+              0
+            ],
+            "libxml_version": [
+              2,
+              11,
+              9
+            ],
+            "schema_sha256": {
+              "SMIL10.dtd": "2d99e59884b8e43870aafebc7510a8dc58a4b65cbe30096dcde1574c92f8e786",
+              "xhtml-lat1.ent": "3da1daad08f93b8aff7a32d5447f94853d517561d9c7d0c7bc3ee5c002d12a38",
+              "xhtml-special.ent": "7f9518026c59ccee47a02ed74e43f8946d92207d438a7f540a0f3c28f05fa27e",
+              "xhtml-symbol.ent": "a6cd0f9c59e488b8c8e2de80c31c6811f316a3919cd9a0725b5390a8fc785d61",
+              "xhtml1-transitional.dtd": "28905cd059167bfa1a5866053799d55fd335c0717920a7048de400c8a32b9d93"
+            },
+            "documents": [
+              {
+                "file": "ncc.html",
+                "dtd_valid": true
+              },
+              {
+                "file": "content.html",
+                "dtd_valid": true
+              },
+              {
+                "file": "source.html",
+                "dtd_valid": true
+              },
+              {
+                "file": "book.smil",
+                "dtd_valid": true
+              }
+            ],
+            "invalid_xhtml_rejected": true,
+            "original_script_sha256": "e61dd242bd1531000f28a48d6b03d4b57d80630d9557023ca2f2590b3b09bdde",
+            "full_daisy_rule_conformance": "NOT_RUN",
+            "reader_interoperability": "NOT_RUN",
+            "nvda": "NOT_RUN",
+            "case": "untranscribed-retained-clip"
+          }
+        ],
+        "audio_binaries": {
+          "ffmpeg": {
+            "path": "D:\\a\\_temp\\carr-bundle-ci\\complete bundle\\audio-runtime\\bin\\ffmpeg.exe",
+            "sha256": "3ab4a9c404504ebff6662d6a48661db952f88ee7fb7d5949a711cad7a763b2cf"
+          },
+          "ffprobe": {
+            "path": "D:\\a\\_temp\\carr-bundle-ci\\complete bundle\\audio-runtime\\bin\\ffprobe.exe",
+            "sha256": "ff181a5b52664aae7a9f673c3a718440706b33511e8a3e38064ff4f21f1a7bed"
+          }
+        },
+        "installed_required": true,
+        "audio_fixture": "Synthetic PCM tones through actual canonical Studio and FFmpeg",
+        "publisher_module_sha256": "1e02894475549e77811cf158198ef5ade632396ea57f071e306d9f89f20e303b",
+        "daisy_module_sha256": "74fcd3064f7eb3f0faa1952d264e1cb9b52fd74d62cfbbffef836f6c97057e34",
+        "full_daisy_rule_conformance": "NOT_RUN",
+        "reader_interoperability": "NOT_RUN",
+        "speech_quality": "NOT_RUN",
+        "nvda": "NOT_RUN"
+      }
+    },
+    {
+      "decoded_log_line": 8736,
+      "value": {
+        "status": "PASS",
+        "checks": [
+          "named native studio controls",
+          "unsaved draft recovery",
+          "Ctrl+S handler saves a revision",
+          "three native voice assignments",
+          "background speech and music production",
+          "actual chapter/subtitle/stem files",
+          "original script unchanged",
+          "native source reading copy preserves exact CRLF and treats directives as text",
+          "reviewed assistant plan executes actual selected-library search",
+          "literal quotation and retained source remain unchanged"
+        ],
+        "nvda": "NOT_RUN",
+        "audible_playback": "NOT_CLAIMED",
+        "external_services": "NOT_USED"
+      }
+    },
+    {
+      "decoded_log_line": 8737,
+      "value": {
+        "status": "PASS",
+        "platform": "Windows",
+        "wx_version": "4.2.4 msw (phoenix) wxWidgets 3.2.8",
+        "checks": [
+          "effects entry in the native Audio Studio menu",
+          "named native controls",
+          "initial readable status focus",
+          "native forward keyboard traversal",
+          "ordered preset and explicit move",
+          "bypass retained",
+          "native numeric parameter dialog and return focus",
+          "asynchronous conversion and cancellable focus",
+          "real verified local FLAC output",
+          "unchanged source bytes and unsaved parent note",
+          "completed status focus"
+        ],
+        "frames": 24000,
+        "sample_rate": 24000,
+        "source": "synthetic local PCM",
+        "audio_engine": "actual local FFmpeg",
+        "manual_nvda": "NOT_RUN"
+      }
+    },
+    {
+      "decoded_log_line": 8738,
+      "value": {
+        "status": "PASS",
+        "checks": [
+          "named native controls save pinned installation metadata and select the declared profile language",
+          "native reset detaches the registration without deleting external assets"
+        ],
+        "failures": [],
+        "model_inference": "NOT_RUN",
+        "nvda_speech": "NOT_RUN"
+      }
+    },
+    {
+      "decoded_log_line": 8762,
+      "value": {
+        "status": "PASS",
+        "checks": [
+          "delivery controls load from installed wheel",
+          "native Windows controls active",
+          "license and update actions share the native command registry",
+          "status has a readable native name and read-only style",
+          "native Escape closes the dialog",
+          "native status accepts keyboard focus",
+          "native Tab reaches a named action",
+          "native button event handled: Refresh local status",
+          "local license status is presented",
+          "native button event handled: Refresh local status",
+          "expiry is visible without hiding user data",
+          "native button event handled: Import signed license...",
+          "offline import updates verified local view",
+          "native button event handled: Check for updates...",
+          "offer needs separate download and install",
+          "native button event handled: Download selected update...",
+          "prepared package permits explicit backup/install review",
+          "native button event handled: Inspect update recovery",
+          "recovery invalidates prior install approval",
+          "native button event handled: Check for updates...",
+          "closing a running request requests cancellation and retains dialog",
+          "cancelled provider detail is redacted",
+          "saved research remains unchanged after license/update operations"
+        ],
+        "count": 23,
+        "provider": "synthetic",
+        "cryptographic_acceptance": "NOT_RUN",
+        "nvda": "NOT_RUN",
+        "manual_keyboard": "NOT_RUN"
+      }
+    },
+    {
+      "decoded_log_line": 8778,
+      "value": {
+        "status": "FAILED",
+        "checks": [
+          "installed exact source: carr_library.speech.player",
+          "installed exact source: carr_library.ui.reader_playback",
+          "installed exact source: carr_library.ui.speech_dialog",
+          "real Windows native widgets",
+          "native named reader control: Mark A at current position",
+          "native named reader control: Mark B at current position",
+          "native named reader control: Set A/B times...",
+          "native named reader control: Enable A/B repeat",
+          "native named reader control: Clear A/B",
+          "native named reader control: Sleep timer...",
+          "native named reader control: Repeat and sleep status",
+          "native named reader control: A/B repeat and sleep timer status",
+          "actual installed Windows MCI transport"
+        ],
+        "fixture": "synthetic PCM16 tone",
+        "actual_winmm": false,
+        "actual_native_keys": false,
+        "nvda": "NOT_RUN",
+        "human_listening": "NOT_RUN",
+        "voice_inference": "NOT_RUN",
+        "independent_deadline_seconds": 180,
+        "wave_output": {
+          "device_count": 0,
+          "devices": [],
+          "inventory_truncated": false,
+          "fixture": {
+            "sample_rate": 16000,
+            "channels": 1,
+            "bits_per_sample": 16
+          },
+          "format_query_result": 2,
+          "format_query_message": "A device ID has been used that is out of range for your system.",
+          "mci_326_message": "No wave device is installed that can play files in the current format. To install a wave device, go to Control Panel, click Printers and Other Hardware, and then click Add Hardware.",
+          "scope": "Read-only endpoint and format query; actual MCI playback remains required."
+        },
+        "failure": "Traceback (most recent call last):\n  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_reader_controls_smoke.py\", line 407, in _run_probe\n    raise AssertionError('\\n'.join(failures))\nAssertionError: Traceback (most recent call last):\n  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_reader_controls_smoke.py\", line 143, in guarded\n    callback()\n  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_reader_controls_smoke.py\", line 157, in tick\n    done()\n  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_reader_controls_smoke.py\", line 323, in begin_playback\n    play_when_quiet((frame.operation_progress,), lambda: player.play(active['source']),\n  File \"D:\\a\\_temp\\carr-bundle-ci\\complete bundle\\.venv\\Lib\\site-packages\\carr_library\\speech\\progress_speech.py\", line 325, in play_when_quiet\n    attempt()\n  File \"D:\\a\\_temp\\carr-bundle-ci\\complete bundle\\.venv\\Lib\\site-packages\\carr_library\\speech\\progress_speech.py\", line 323, in attempt\n    on_error(exc)\n  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_reader_controls_smoke.py\", line 325, in <lambda>\n    on_error=lambda error: (_ for _ in ()).throw(error))\n                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_reader_controls_smoke.py\", line 325, in <genexpr>\n    on_error=lambda error: (_ for _ in ()).throw(error))\n  File \"D:\\a\\_temp\\carr-bundle-ci\\complete bundle\\.venv\\Lib\\site-packages\\carr_library\\speech\\progress_speech.py\", line 311, in attempt\n    start()\n  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_reader_controls_smoke.py\", line 323, in <lambda>\n    play_when_quiet((frame.operation_progress,), lambda: player.play(active['source']),\n                                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"D:\\a\\_temp\\carr-bundle-ci\\complete bundle\\.venv\\Lib\\site-packages\\carr_library\\speech\\player.py\", line 582, in play\n    self._replace_recording(path, start_seconds=start_seconds)\n  File \"D:\\a\\_temp\\carr-bundle-ci\\complete bundle\\.venv\\Lib\\site-packages\\carr_library\\speech\\player.py\", line 578, in _replace_recording\n    self._start(target, start_seconds=start_seconds)\n  File \"D:\\a\\_temp\\carr-bundle-ci\\complete bundle\\.venv\\Lib\\site-packages\\carr_library\\speech\\player.py\", line 539, in _start\n    self._mci_open(transport)\n  File \"D:\\a\\_temp\\carr-bundle-ci\\complete bundle\\.venv\\Lib\\site-packages\\carr_library\\speech\\player.py\", line 423, in _mci_open\n    raise RuntimeError(f'Windows audio device rejected the operation (MCI {code}).')\nRuntimeError: Windows audio device rejected the operation (MCI 326).\n\n",
+        "count": 13
+      }
+    }
+  ]
+}

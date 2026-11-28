@@ -39,7 +39,81 @@ application archive excludes the separately set up audio runtime. No eligible
 delivery wheel, final private archive, signed installer or whole-platform
 completion is claimed by this checkpoint.
 
-## Current receiving gate corrections — 2026-11-28
+## Current receiving follow-up and exact execution — 2026-11-28
+
+This source follow-up is based on `5d19dde77aca6a257ee601c1bc49b8504c342cee`.
+Its exact source and evidence paths are recorded by the
+[follow-up composition manifest](../review/receiving-final-followup-composition-2026-11-28.json).
+The predecessor's [48-path composition](../review/receiving-final-features-composition-2026-11-28.json)
+contains 380 application Python modules, Studio clip repeat through the existing
+player, bounded redacted operation details, and resource admission for heavy
+Reader **Read** and **Save WAV** requests. Fresh source, voice and settings are
+checked on the owner thread after waiting; cancellation reaches canonical
+identity work, PCM validation and final WAV hashing.
+
+The current follow-up completes the same admission/lifetime route for heavy
+selected-voice progress notifications, adds seconds-or-percentage Seek on the
+current measured reader recording, and repairs citation-worker family cleanup.
+Progress resources, locks, selected voice registries and temporary audio remain
+retained until every causal native owner is quiet; basic built-in reading keeps
+its existing route. Seek rejects stale modal and queued actions after Stop,
+Close, source/tab/recording/session changes, and retains the same player, quiet
+policy and A/B restrictions. Citation formatting keeps its existing command,
+CSL authority, file protocol and 0.1-second timeout test while retaining streams
+and staging through actual descendant cleanup.
+
+The clip-loop test fixture now explicitly uses the existing schema 2 required by
+its clip duration. No production schema or loop assertion was relaxed. Focused
+source/installed selections include the added progress, reader transport and
+actual citation-family regressions. Only the two whole-selection compatibility
+CI steps receive ten minutes instead of five: the exact predecessor was still
+passing tests at the aggregate cutoff. Its twenty-minute job budget, all 39
+selectors, individual product/test deadlines and native checks are unchanged.
+
+These additions have independent source reviews; **this follow-up's execution is
+NOT_RUN until its own immutable CI head completes**. They do not inherit
+predecessor execution or establish whole-platform completion.
+
+### Exact predecessor 5d19dde7 observations
+
+All rows below belong only to `5d19dde77aca6a257ee601c1bc49b8504c342cee`.
+Evidence is retained under [the exact-head review directory](../review/receiving-5d19dde7-2026-11-28/).
+Counts overlap across selections and must not be summed into a unique product total.
+
+| Exact scope | Observed execution | Remaining boundary |
+| --- | --- | --- |
+| Reader voice/admission controls | All four Linux/Windows source/installed modes passed 483 cases each with no failures or skips. Both Windows modes passed 80 native voice-option checks. All 380 Python module identities matched. | This precedes the progress-speech and percentage-Seek follow-up; manual NVDA, listening and actual engine quality remain separate. |
+| Standard installation | Both OS selections passed 345 source and 345 installed cases plus 22 installed subtests. Actual Windows Install/Repair/Uninstall passed all 12 checks and preserved the external library. | Private unsigned setup; current follow-up and publisher signing require their own qualification. |
+| Native launcher | Actual MSVC and pinned Zig builds each passed nine native checks. | These checks use the declared synthetic child fixture; actual full Python installation, publisher signature and manual NVDA are separate. |
+| Supplied-worker bridge | Linux passed 823 cases across 27 modules; Windows passed 826 cases across 28 modules and nine native controls. No failures or skips. | The real isolated child protocol uses an explicitly synthetic model; real Whisper inference and acoustic quality are NOT_RUN. |
+| Bibliography | 29 strict source modules passed 1,092 cases; the installed native review passed 69 checks. | This precedes the later citation-family repair and does not substitute for its exact-head execution or an actual Word deployment. |
+| Updated components | Linux source and installed each passed 2,567 cases and encountered 24 loop-fixture setup errors; installed also passed 12 subtests. Windows source passed 2,564 cases and the same 24 setup errors. | The one-line schema fixture correction is source-reviewed in this follow-up; no component aggregate PASS is inferred. Windows installed was still pending when this section was prepared. |
+| Canonical compatibility | 34 of 39 source modules completed with 983 passing cases and no failures before the five-minute CI cutoff; installed stopped at 79% without a final case verdict. All seven later native steps passed separately. | Both aggregate selections remain incomplete, requiring the bounded CI capacity correction and new execution. |
+| Selected capture | Source and installed native recording-control receipts each passed 65 checks; process ownership passed 15 checks. Actual selected DirectShow capture failed. Read-only diagnostics found four WinMM formats supported but all opens failed, and exact-endpoint shared WASAPI Initialize returned 0x80070005. | No capture acceptance. Current-user microphone Deny was observed alongside desktop/machine Allow; exclusive causality is not established. No policy, consent, default-device or endpoint selection was changed. |
+| Full Windows and V3 | Both exact-head workflows were still running when these source-reviewed changes were prepared. | Their final logs must be reconciled separately. No final wheel/archive or full aggregate PASS is claimed. |
+
+### Retained predecessor 8bcbdb74 failures
+
+The completed full Windows source selection at
+`8bcbdb74328d7f6bb71ea8987cb5305064b8eb0e` ran 444 selectors:
+11,316 cases passed, four failed, none skipped. Three failures were the
+Windows virtual-environment early-EOF fixture corrected in 5d19; the fourth
+exposed citation timeout cleanup being masked by WinError32 on `error.txt`.
+The exact remaining native handle holder was not measured by that old log.
+The current repair uses the existing process-family owner and retained-context
+implementation and adds real descendant-file lifetime checks; it does not
+weaken the original timeout assertion.
+
+That predecessor's bundled reader failed with zero output devices/MCI326 before
+the later 350-selector installed pytest invocation, which therefore remained
+NOT_RUN. Its separate focused twelve-check installation success is retained
+without transferring it into the failed full bundle. The final old source
+receipt and inventory remain under
+[windows-full-source-8bcbdb74](../review/windows-full-source-8bcbdb74-2026-11-28/).
+Earlier exact scoped evidence is also retained in
+[evidence update 02](https://github.com/Oleksii-debug/AudioTacticalFPS/blob/2a369156909ea8c307b28148e1fe01ea9fc21501/carr-library/review/receiving-8bcbdb74-2026-11-28/evidence-update-02.json).
+
+## Historical receiving gate correction composition — 2026-11-28
 
 The successor of `17c581015fc1ca6f3294f4cce1fe894f33a843cd` repairs
 six observed receiving failures: the native launcher's bounded path copy now

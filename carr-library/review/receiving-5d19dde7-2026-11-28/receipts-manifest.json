@@ -1,0 +1,86 @@
+{
+  "schema": "carr-reviewed-ci-text-manifest/1",
+  "head_sha": "5d19dde77aca6a257ee601c1bc49b8504c342cee",
+  "created_utc_date": "2026-11-28",
+  "scope": "Completed Windows standard lifecycle and ordinary bibliography observations; independent source review of two reconciliation aggregate CI step limits.",
+  "provenance": "Hashes below cover these newly serialized log-derived evidence files. They do not purport to be the hashes of original artifact members.",
+  "files": [
+    {
+      "path": "carr-library/review/receiving-5d19dde7-2026-11-28/standard-windows/selected-log-lines.txt",
+      "bytes": 9243,
+      "sha256": "7fd473f5d48d3baf812e7ebbd126b7e5cffeef08fa5c681f3818d6247b5ec0fb"
+    },
+    {
+      "path": "carr-library/review/receiving-5d19dde7-2026-11-28/bibliography/selected-log-lines.txt",
+      "bytes": 12595,
+      "sha256": "2c7c19361f7bc208f3ef0ac5d743f14bd4972fa39abebc3a0a8fd8cc14277192"
+    },
+    {
+      "path": "carr-library/review/receiving-5d19dde7-2026-11-28/standard-windows/qualification.json",
+      "bytes": 8996,
+      "sha256": "14a1083e02efd1f7018c8ae5f9d5420c3395cc3313bf943da1e15e0fdc91b365"
+    },
+    {
+      "path": "carr-library/review/receiving-5d19dde7-2026-11-28/standard-windows/source-installed-python-inventory.log-extracted.json",
+      "bytes": 56058,
+      "sha256": "b2fa544ee8813133ffca29d52cd7767cb7d614590418758034064d5886e239e1"
+    },
+    {
+      "path": "carr-library/review/receiving-5d19dde7-2026-11-28/standard-windows/native-standard-result.log-extracted.json",
+      "bytes": 944,
+      "sha256": "f89d8f8e572f6af8e581ad19fa404ff3b7130ceed8341c4747f2e67cb5f85501"
+    },
+    {
+      "path": "carr-library/review/receiving-5d19dde7-2026-11-28/standard-windows/setup-build.log-extracted.json",
+      "bytes": 1728,
+      "sha256": "586943bc60ddf597b124ede0380c369c3dcb6eb1ea8e253c2a40601b4ac54016"
+    },
+    {
+      "path": "carr-library/review/receiving-5d19dde7-2026-11-28/bibliography/qualification.json",
+      "bytes": 9795,
+      "sha256": "7578d1accd6e27cc470d0fb4360289dbf70f11b0b42d03bb90924e0e467a7f35"
+    },
+    {
+      "path": "carr-library/review/receiving-5d19dde7-2026-11-28/bibliography/native-result.log-extracted.json",
+      "bytes": 1015,
+      "sha256": "d73a2078c6dbfed4f8c786fac5aa55a7cb97bc54a85dbbd347a0053deb7d40f0"
+    },
+    {
+      "path": "carr-library/review/receiving-5d19dde7-2026-11-28/bibliography/wheel-source-proof.log-extracted.json",
+      "bytes": 337,
+      "sha256": "cf1165302c28f3f6cbbd3cc73ebc3a5ef12ccc04c0c9429a57bddd233b190e01"
+    },
+    {
+      "path": "carr-library/review/receiving-5d19dde7-2026-11-28/standard-windows/provenance.json",
+      "bytes": 8624,
+      "sha256": "7d8f9f2cc0405c15d60dd855bea787da9096bf6dcf56b277e9fa72e869c0d7cc"
+    },
+    {
+      "path": "carr-library/review/receiving-5d19dde7-2026-11-28/bibliography/provenance.json",
+      "bytes": 8578,
+      "sha256": "831b1ac61baa39284e4c4408e7f482487c156759bf77974d1ea73632969b4150"
+    },
+    {
+      "path": "carr-library/review/receiving-5d19dde7-2026-11-28/reconciliation-aggregate-capacity-peer-review.json",
+      "bytes": 4944,
+      "sha256": "5ece379a298acd5f72278de62f7b9a5367c0c72b1c8af0d571454051eaea0dff"
+    }
+  ],
+  "original_artifacts": [
+    {
+      "run_id": 46098476106,
+      "artifact_id": 15244403636,
+      "size_bytes": 140474,
+      "api_and_upload_sha256": "49f0cee4786b88cdc90d42d24fd6502f6db0983bbdf4425da2d62e02eb0b1b1a",
+      "downloaded": false
+    },
+    {
+      "run_id": 46098474659,
+      "artifact_id": 15244223454,
+      "size_bytes": 6659,
+      "api_and_upload_sha256": "df28b5555c943ff6194e609aa717ed39a7ca3e85b316f45aa6ea9824d81eb303",
+      "downloaded": false
+    }
+  ],
+  "product_refs_or_workflows_changed": false
+}

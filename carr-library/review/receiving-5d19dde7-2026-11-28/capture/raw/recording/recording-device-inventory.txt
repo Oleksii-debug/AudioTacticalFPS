@@ -1,0 +1,15 @@
+{
+  "status": "PASS",
+  "actual_directshow_capture": false,
+  "actual_mci_output": false,
+  "physical_microphone": "NOT_RUN",
+  "human_listening": "NOT_RUN",
+  "nvda": "NOT_RUN",
+  "devices": [
+    {
+      "id": "16f894e0a8ead76c884b0ed2ff8177b13f9c4b09587887875dff4711fec755ad",
+      "name": "CABLE Output (VB-Audio Virtual Cable)"
+    }
+  ],
+  "scope": "device inventory only; no capture opened"
+}

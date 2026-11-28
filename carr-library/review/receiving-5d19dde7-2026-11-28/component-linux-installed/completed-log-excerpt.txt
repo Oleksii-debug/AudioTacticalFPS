@@ -1,0 +1,27 @@
+Completed exact-head job; timestamps/ANSI stripped from decoded terminal log; no original artifact-member-byte claim.
+ERROR tests/studio/test_clip_dialog.py::test_clip_loop_requires_an_explicit_initial_preview - ValueError: Edited clip timing and microphone tracks require project schema 2.
+ERROR tests/studio/test_clip_dialog.py::test_clip_loop_uses_actual_player_repeat_and_quiet_admission[False] - ValueError: Edited clip timing and microphone tracks require project schema 2.
+ERROR tests/studio/test_clip_dialog.py::test_clip_loop_uses_actual_player_repeat_and_quiet_admission[True] - ValueError: Edited clip timing and microphone tracks require project schema 2.
+ERROR tests/studio/test_clip_dialog.py::test_clip_natural_end_can_be_explicitly_looped_but_stop_revokes_it - ValueError: Edited clip timing and microphone tracks require project schema 2.
+ERROR tests/studio/test_clip_dialog.py::test_clip_stop_revokes_the_first_queued_preview[rendering] - ValueError: Edited clip timing and microphone tracks require project schema 2.
+ERROR tests/studio/test_clip_dialog.py::test_clip_stop_revokes_the_first_queued_preview[waiting-for-quiet] - ValueError: Edited clip timing and microphone tracks require project schema 2.
+ERROR tests/studio/test_clip_dialog.py::test_clip_loop_rechecks_the_exact_selection_before_queued_restart[project] - ValueError: Edited clip timing and microphone tracks require project schema 2.
+ERROR tests/studio/test_clip_dialog.py::test_clip_loop_rechecks_the_exact_selection_before_queued_restart[clip] - ValueError: Edited clip timing and microphone tracks require project schema 2.
+ERROR tests/studio/test_clip_dialog.py::test_clip_loop_rechecks_the_exact_selection_before_queued_restart[library] - ValueError: Edited clip timing and microphone tracks require project schema 2.
+ERROR tests/studio/test_clip_dialog.py::test_clip_loop_rechecks_the_exact_selection_before_queued_restart[player-session] - ValueError: Edited clip timing and microphone tracks require project schema 2.
+ERROR tests/studio/test_clip_dialog.py::test_clip_loop_rechecks_the_exact_selection_before_queued_restart[cancel] - ValueError: Edited clip timing and microphone tracks require project schema 2.
+ERROR tests/studio/test_clip_dialog.py::test_clip_changed_preview_pcm_is_refused_by_actual_player_before_restart - ValueError: Edited clip timing and microphone tracks require project schema 2.
+ERROR tests/studio/test_clip_dialog.py::test_clip_stop_or_close_revokes_deferred_repeat_and_quiet_hold[stop] - ValueError: Edited clip timing and microphone tracks require project schema 2.
+ERROR tests/studio/test_clip_dialog.py::test_clip_stop_or_close_revokes_deferred_repeat_and_quiet_hold[close] - ValueError: Edited clip timing and microphone tracks require project schema 2.
+ERROR tests/studio/test_clip_dialog.py::test_clip_failed_device_close_keeps_owner_but_disarms_loop - ValueError: Edited clip timing and microphone tracks require project schema 2.
+ERROR tests/studio/test_clip_dialog.py::test_clip_destroy_revokes_repeat_before_retained_worker_cleanup[False] - ValueError: Edited clip timing and microphone tracks require project schema 2.
+ERROR tests/studio/test_clip_dialog.py::test_clip_destroy_revokes_repeat_before_retained_worker_cleanup[True] - ValueError: Edited clip timing and microphone tracks require project schema 2.
+ERROR tests/studio/test_clip_dialog.py::test_clip_host_finalizer_revokes_timer_work_without_worker_wx_calls - ValueError: Edited clip timing and microphone tracks require project schema 2.
+ERROR tests/studio/test_clip_dialog.py::test_clip_timer_start_refusal_cannot_arm_an_unobserved_loop - ValueError: Edited clip timing and microphone tracks require project schema 2.
+ERROR tests/studio/test_clip_dialog.py::test_clip_normal_timer_stop_error_still_closes_native_audio_and_stays_visible - ValueError: Edited clip timing and microphone tracks require project schema 2.
+ERROR tests/studio/test_clip_dialog.py::test_clip_queued_loop_events_after_close_never_observe_or_touch_retained_player[close-enable_loop] - ValueError: Edited clip timing and microphone tracks require project schema 2.
+ERROR tests/studio/test_clip_dialog.py::test_clip_queued_loop_events_after_close_never_observe_or_touch_retained_player[close-disable_loop] - ValueError: Edited clip timing and microphone tracks require project schema 2.
+ERROR tests/studio/test_clip_dialog.py::test_clip_queued_loop_events_after_close_never_observe_or_touch_retained_player[destroy-enable_loop] - ValueError: Edited clip timing and microphone tracks require project schema 2.
+ERROR tests/studio/test_clip_dialog.py::test_clip_queued_loop_events_after_close_never_observe_or_touch_retained_player[destroy-disable_loop] - ValueError: Edited clip timing and microphone tracks require project schema 2.
+2567 passed, 24 errors, 12 subtests passed in 274.42s (0:04:34)
+##[error]Process completed with exit code 1.

@@ -822,3 +822,363 @@ def test_late_output_review_after_forced_close_never_uses_destroyed_widgets(outp
     dialog.driver = drive
     dialog.show()
     assert callbacks[-1] == 'cancelled'
+
+
+# Seek runs the installed reader's actual nested callbacks with a real PCM file
+# and WavePlayer. Only native widgets/device calls are modeled here; the native
+# navigation probe separately drives the same dialog on the reviewed endpoint.
+@pytest.fixture
+def reader_seek(tmp_path, monkeypatch):
+    import ast
+    from hashlib import sha256
+    import math
+    from pathlib import Path
+    import threading
+    import wave
+
+    from carr_library.speech import ReadingDocument
+    from carr_library.speech.focus import ReadingAudio
+    from carr_library.speech import player as player_module
+    from carr_library.speech.player import WavePlayer
+    from carr_library.speech.progress_speech import play_when_quiet
+    from carr_library.ui import speech_dialog
+
+    path = tmp_path / 'reviewed seek PCM.wav'
+    with wave.open(str(path), 'wb') as stream:
+        stream.setparams((1, 2, 8000, 0, 'NONE', 'uncompressed'))
+        stream.writeframes(b'\0\0' * 16000)
+    original = path.read_bytes()
+    reading = ReadingDocument('Original words remain unchanged.', title='Seek fixture')
+    signature = reading._signature()
+    result = SimpleNamespace(path=path, frames=16000, sample_rate=8000,
+        text_sha256=sha256(reading.text.encode('utf-8')).hexdigest())
+    binding = ReadingAudio.from_render(reading, signature, 0, len(reading.text), reading.text, result)
+
+    clock = SimpleNamespace(value=100.0)
+    native = SimpleNamespace(commands=[], mode='stopped', offset=0.0, started=100.0, end=2.0)
+    def send(command):
+        native.commands.append(command)
+        words = command.split()
+        operation = words[0]
+        if operation == 'play':
+            native.offset = int(words[words.index('from') + 1]) / 1000
+            native.end = int(words[words.index('to') + 1]) / 1000 if 'to' in words else 2.0
+            native.started, native.mode = clock.value, 'playing'
+        elif operation == 'status':
+            if native.mode == 'playing':
+                position = min(native.end, native.offset + clock.value - native.started)
+                if position == native.end:
+                    native.offset, native.mode = position, 'stopped'
+            else:
+                position = native.offset
+            return native.mode if words[-1] == 'mode' else str(round(position * 1000))
+        elif operation == 'pause':
+            native.offset += clock.value - native.started
+            native.mode = 'paused'
+        elif operation == 'resume':
+            native.started, native.mode = clock.value, 'playing'
+        elif operation in ('stop', 'close'):
+            native.mode = 'stopped'
+        return ''
+    monkeypatch.setattr(player_module, 'os', SimpleNamespace(name='nt'))
+    # This fixture models MCI's protocol, independently of temporary path length.
+    # Actual long-path routing remains covered by the unmodified waveOut suite.
+    monkeypatch.setattr(player_module, '_mci_filename_supported', lambda value: True)
+    player = WavePlayer(clock=lambda: clock.value)
+    monkeypatch.setattr(player, '_mci', send)
+    monkeypatch.setattr(player, '_mci_open',
+        lambda value: send(f'open "{value}" type waveaudio alias {player._alias}'))
+    player.play(path)
+    assert player.duration_seconds == 2.0
+
+    pending, holds, reports = [], [], []
+    class Progress:
+        # OperationProgress is identity-hashable; real quiet admission deduplicates it.
+        ready, refreshes = True, 0
+    progress = Progress()
+    def hold_audio():
+        class Hold:
+            closed = False
+            @property
+            def ready(self):
+                return progress.ready
+            def close(self):
+                self.closed = True
+        hold = Hold()
+        holds.append(hold)
+        return hold
+    def refresh():
+        progress.refreshes += 1
+    progress.hold_audio, progress.refresh_audio_state = hold_audio, refresh
+    def schedule(milliseconds, callback):
+        assert milliseconds == 25
+        pending.append(callback)
+
+    owner = SimpleNamespace(shown=True, destroyed=False, checks=0)
+    def is_shown():
+        assert not owner.destroyed, 'A revoked native owner was queried.'
+        owner.checks += 1
+        return owner.shown
+    owner.IsShown = is_shown
+    text = SimpleNamespace(value=reading.text, destroyed=False, reads=0)
+    def get_text():
+        assert not text.destroyed, 'A revoked reading editor was queried.'
+        text.reads += 1
+        return text.value
+    text.GetValue = get_text
+    status = SimpleNamespace(ChangeValue=reports.append, SetFocus=lambda: None)
+    source_status = SimpleNamespace(ChangeValue=lambda message: None)
+    scope = SimpleNamespace(allowed=True, checks=0)
+    def source_guard():
+        scope.checks += 1
+        if not scope.allowed:
+            raise ValueError('Retained source authority was revoked.')
+    library = SimpleNamespace(root=tmp_path)
+    parent = SimpleNamespace(library=library, _closing=False)
+    entry = SimpleNamespace(value='50%', answer=1, opened=0, closed=0, reads=0,
+                            destroyed=False, hook=lambda: None, prompt='', default='')
+    class Entry:
+        def __init__(self, actual_owner, prompt, title, default):
+            assert actual_owner is owner and title == 'Seek playback'
+            entry.prompt, entry.default = prompt, default
+            entry.opened += 1
+        def __enter__(self):
+            return self
+        def __exit__(self, *error):
+            entry.closed += 1
+        def ShowModal(self):
+            entry.hook()
+            return entry.answer
+        def GetValue(self):
+            assert not entry.destroyed, 'A closed modal value was queried.'
+            entry.reads += 1
+            return entry.value
+    wx = SimpleNamespace(TextEntryDialog=Entry, ID_OK=1, CallLater=schedule)
+    values = dict(parent=parent, reader_library=library, reader_root=tmp_path, source_guard=source_guard,
+        alive=True, dialog_destroyed=False, close_requested=False, busy=False, cancel=threading.Event(),
+        playback_generation=0, player=player, last_audio=path, last_reading_audio=binding,
+        document=reading, dialog=owner, dialog_id=91, editor=text, source_status=source_status,
+        recovery_notice='', progress=progress, status=status, wx=wx)
+    source = Path(speech_dialog.__file__)
+    window = next(node for node in ast.parse(source.read_text(encoding='utf-8')).body
+                  if isinstance(node, ast.FunctionDef) and node.name == 'show_speech_reader')
+    names = {'report', 'playback_guard', 'sync_document', 'start_playback', 'seek_audio',
+             'stop_audio', 'pause_audio', 'owner_destroyed'}
+    definitions = [node for node in window.body
+                   if isinstance(node, ast.FunctionDef) and node.name in names]
+    assert {node.name for node in definitions} == names
+    # Keep the real callbacks and mutable closure cells, including Stop/Destroy.
+    setters = ('document', 'last_audio', 'last_reading_audio', 'playback_generation',
+               'alive', 'busy', 'close_requested')
+    helper = 'def change(**changes):\n    nonlocal ' + ', '.join(setters) + '\n'
+    helper += '    assert set(changes) <= ' + repr(set(setters)) + '\n'
+    for name in setters:
+        helper += f"    if {name!r} in changes:\n        {name} = changes[{name!r}]\n"
+    helper += '\ndef current():\n    return {' + ', '.join(repr(name) + ': ' + name for name in values) + '}\n'
+    factory = ast.parse('def build(' + ', '.join(values) + '):\n    pass\n')
+    factory.body[0].body = definitions + ast.parse(helper).body + ast.parse(
+        'return SimpleNamespace(' + ', '.join(name + '=' + name for name in sorted(names))
+        + ', change=change, current=current)').body
+    namespace = dict(math=math, Path=Path, SimpleNamespace=SimpleNamespace, play_when_quiet=play_when_quiet)
+    exec(compile(ast.fix_missing_locations(factory), str(source), 'exec'), namespace)
+    callbacks = namespace['build'](**values)
+    fixture = SimpleNamespace(callbacks=callbacks, player=player, path=path, original=original,
+        reading=reading, binding=binding, native=native, clock=clock, entry=entry, owner=owner,
+        text=text, parent=parent, library=library, scope=scope, progress=progress,
+        pending=pending, holds=holds, reports=reports, mutated=False,
+        starts=lambda: sum(command.startswith('play ') for command in native.commands))
+    yield fixture
+    callbacks.change(alive=False)
+    progress.ready = True
+    while pending:
+        pending.pop(0)()
+    player.close()
+    assert all(hold.closed for hold in holds)
+    if not fixture.mutated:
+        assert path.read_bytes() == original
+
+
+@pytest.mark.parametrize(('entered', 'position'), [
+    ('0%', 0), ('25%', .5), ('50%', 1), ('100%', 2), (' 62.5 % ', 1.25),
+    ('1.25', 1.25), ('0', 0),
+])
+def test_reader_seek_measures_percentages_and_keeps_seconds_and_pause(reader_seek, entered, position):
+    value = reader_seek
+    assert value.player.pause()
+    initial_starts = value.starts()
+    value.entry.value = entered
+    value.callbacks.seek_audio()
+    assert value.entry.opened == value.entry.closed == value.entry.reads == 1
+    assert '0% to 100%' in value.entry.prompt and 'seconds' in value.entry.prompt
+    assert value.player.position_seconds == pytest.approx(position)
+    assert value.player.state == 'paused' and value.starts() == initial_starts
+    assert value.player.path == value.path and value.player.duration_seconds == 2
+    assert value.reading._signature() == value.binding.signature
+    assert value.progress.refreshes == 1 and all(hold.closed for hold in value.holds)
+    assert value.reports[-1].startswith('Playback at ')
+
+
+def test_reader_seek_waits_for_existing_quiet_policy_before_same_player_restart(reader_seek):
+    value = reader_seek
+    value.progress.ready = False
+    value.entry.value = '50%'
+    value.callbacks.seek_audio()
+    assert value.starts() == 1 and len(value.pending) == 1
+    assert len(value.holds) == 1 and not value.holds[0].closed
+    value.progress.ready = True
+    value.pending.pop(0)()
+    assert value.starts() == 2 and value.player.position_seconds == 1
+    assert value.player.state == 'playing' and value.holds[0].closed
+    assert any(command.endswith('from 1000') for command in value.native.commands)
+
+
+@pytest.mark.parametrize('entered', [
+    '-1%', '100.001%', 'nan%', 'inf%', '1e309%', '%', '50%%',
+    '-.001', '2.001', 'nan', 'inf', '', '1' * 65,
+])
+def test_reader_seek_rejects_invalid_or_unbounded_input_before_admission(reader_seek, entered):
+    value = reader_seek
+    before = (value.player.session_generation, value.player.position_seconds, value.starts())
+    value.entry.value = entered
+    value.callbacks.seek_audio()
+    assert (value.player.session_generation, value.player.position_seconds, value.starts()) == before
+    assert not value.holds and not value.pending
+    assert value.entry.opened == value.entry.closed == 1 and value.reports
+    assert not value.reports[-1].startswith('Playback at ')
+
+
+@pytest.mark.parametrize('missing', ['audio', 'binding', 'different-binding-path', 'different-duration'])
+def test_reader_seek_requires_the_actual_rendered_recording_before_opening(reader_seek, missing):
+    from dataclasses import replace
+    value = reader_seek
+    if missing == 'audio':
+        value.callbacks.change(last_audio=None)
+    elif missing == 'binding':
+        value.callbacks.change(last_reading_audio=None)
+    elif missing == 'different-binding-path':
+        value.callbacks.change(last_reading_audio=replace(value.binding, path=value.path.with_name('not-read.wav')))
+    else:
+        value.callbacks.change(last_reading_audio=replace(value.binding, frames=value.binding.frames + 1))
+    value.callbacks.seek_audio()
+    assert not value.entry.opened and not value.holds and value.starts() == 1
+    assert value.reports and not value.reports[-1].startswith('Playback at ')
+
+
+@pytest.mark.parametrize('phase', ['modal', 'quiet'])
+@pytest.mark.parametrize('mutation', [
+    'stop-then-clear-cancel', 'external-stop', 'new-render', 'binding-replacement',
+    'same-text-tab', 'reading-edit', 'source-revoked', 'library-changed',
+    'duration-changed', 'hidden-close', 'destroy',
+])
+def test_reader_seek_cannot_target_a_changed_recording_or_reader(reader_seek, phase, mutation):
+    from dataclasses import replace
+    from carr_library.speech import ReadingDocument
+    value = reader_seek
+    value.player.pause()
+    changed = {}
+    def mutate():
+        if mutation == 'stop-then-clear-cancel':
+            value.callbacks.stop_audio()
+            value.callbacks.current()['cancel'].clear()
+        elif mutation == 'external-stop':
+            value.player.stop()
+        elif mutation == 'new-render':
+            replacement = value.path.with_name('replacement PCM.wav')
+            replacement.write_bytes(value.original)
+            value.player.play(replacement, start_seconds=.25)
+            value.player.pause()
+            value.callbacks.change(last_audio=replacement,
+                last_reading_audio=replace(value.binding, path=replacement))
+        elif mutation == 'binding-replacement':
+            value.callbacks.change(last_reading_audio=replace(value.binding))
+        elif mutation == 'same-text-tab':
+            replacement = ReadingDocument(value.reading.text, title=value.reading.title)
+            assert replacement._signature() == value.reading._signature()
+            value.callbacks.change(document=replacement)
+        elif mutation == 'reading-edit':
+            value.text.value = value.reading.text + ' A new reading-only edit.'
+        elif mutation == 'source-revoked':
+            value.scope.allowed = False
+        elif mutation == 'library-changed':
+            value.parent.library = SimpleNamespace(root=value.library.root)
+        elif mutation == 'duration-changed':
+            value.player.duration_seconds += .125
+        elif mutation == 'hidden-close':
+            value.owner.shown = False
+        else:
+            skipped = []
+            value.callbacks.owner_destroyed(SimpleNamespace(GetId=lambda: 91, Skip=lambda: skipped.append(True)))
+            assert skipped == [True]
+            value.owner.destroyed = value.text.destroyed = value.entry.destroyed = True
+        changed.update(path=value.player.path, position=value.player.position_seconds,
+                       session=value.player.session_generation, starts=value.starts())
+    if phase == 'modal':
+        value.entry.hook = mutate
+        value.callbacks.seek_audio()
+        assert value.entry.reads == 0
+    else:
+        value.progress.ready = False
+        value.callbacks.seek_audio()
+        assert len(value.pending) == 1 and value.entry.reads == 1
+        mutate()
+        value.progress.ready = True
+        value.pending.pop(0)()
+    assert value.player.path == changed['path']
+    assert value.player.position_seconds == changed['position']
+    assert value.player.session_generation == changed['session']
+    assert value.starts() == changed['starts']
+    assert not value.pending and all(hold.closed for hold in value.holds)
+    assert value.path.read_bytes() == value.original
+    assert value.reading.source_text == 'Original words remain unchanged.'
+    assert not any(message.startswith('Playback at ') for message in value.reports)
+
+
+def test_reader_seek_preserves_existing_pcm_identity_refusal_after_quiet_wait(reader_seek):
+    value = reader_seek
+    value.progress.ready = False
+    value.callbacks.seek_audio()
+    assert len(value.pending) == 1 and value.starts() == 1
+    value.path.write_bytes(value.original + b'changed-after-review')
+    value.mutated = True
+    value.progress.ready = True
+    value.pending.pop(0)()
+    assert value.starts() == 1 and value.player.state == 'stopped'
+    assert value.holds[0].closed and not value.pending
+    assert 'original recording changed' in value.reports[-1]
+    assert value.reading.source_text == 'Original words remain unchanged.'
+
+
+@pytest.mark.parametrize(('entered', 'accepted'), [('25%', True), ('75%', False)])
+def test_reader_seek_retains_same_player_ab_range_policy(reader_seek, entered, accepted):
+    value = reader_seek
+    value.player.pause()
+    value.player.set_ab_loop(.2, .8)
+    value.player.enable_repeat()
+    before = value.player.position_seconds
+    starts = value.starts()
+    value.entry.value = entered
+    value.callbacks.seek_audio()
+    assert value.player.ab_loop == (.2, .8) and value.player.repeat_enabled
+    assert value.player.state == 'paused' and value.starts() == starts
+    assert value.player.position_seconds == (.5 if accepted else before)
+    if accepted:
+        assert value.reports[-1].startswith('Playback at ')
+    else:
+        assert 'Disable A/B' in value.reports[-1]
+
+
+def test_reader_seek_cancelled_modal_never_reads_input_or_schedules_audio(reader_seek):
+    value = reader_seek
+    value.entry.answer = 0
+    value.entry.destroyed = True
+    value.callbacks.seek_audio()
+    assert value.entry.opened == value.entry.closed == 1 and value.entry.reads == 0
+    assert not value.holds and not value.pending and value.starts() == 1
+
+
+def test_reader_seek_rechecks_source_authority_before_even_opening_modal(reader_seek):
+    value = reader_seek
+    value.scope.allowed = False
+    value.callbacks.seek_audio()
+    assert not value.entry.opened and not value.holds and value.starts() == 1
+    assert 'source authority' in value.reports[-1]

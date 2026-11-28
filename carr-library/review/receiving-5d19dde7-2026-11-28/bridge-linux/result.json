@@ -1,0 +1,215 @@
+{
+  "schema": "carr.exact-job-observation/1",
+  "head": "5d19dde77aca6a257ee601c1bc49b8504c342cee",
+  "run_id": 46098474655,
+  "job_id": 140835230448,
+  "scope": "Supplied transcription bridge and adjacent source contracts / Linux",
+  "status": "PASS",
+  "source": "Completed GitHub job log fetched after terminal success",
+  "decoded_log": {
+    "sha256": "e9f28fee920aa12bc27502fd0cc532c3475178b76f7b26a382a9c736202e8ffa",
+    "bytes": 94161
+  },
+  "started_at": "2026-11-28T02:34:13Z",
+  "completed_at": "2026-11-28T02:35:57Z",
+  "suites": 27,
+  "passed": 823,
+  "failed": 0,
+  "skipped": 0,
+  "rows": [
+    {
+      "selector": "tests/assistant/test_transcription_workflow.py",
+      "passed": 24,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "selector": "tests/transcription/test_supplied_worker_bridge.py",
+      "passed": 91,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "selector": "tests/storage/test_transcription_recovery.py",
+      "passed": 11,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "selector": "tests/storage/test_import_publication_backup.py",
+      "passed": 11,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "selector": "tests/ui/test_progress_job_review.py",
+      "passed": 45,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "selector": "tests/transcription/test_protocol_routing.py",
+      "passed": 20,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "selector": "tests/transcription/test_owned_admission.py",
+      "passed": 4,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "selector": "tests/transcription/test_protocol_fixture.py",
+      "passed": 9,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "selector": "tests/transcription/test_runtime_admission.py",
+      "passed": 13,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "selector": "tests/transcription/test_runtime_inventory.py",
+      "passed": 172,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "selector": "tests/storage/test_asr_additional_profile.py",
+      "passed": 11,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "selector": "tests/storage/test_state_json_reader.py",
+      "passed": 63,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "selector": "tests/transcription/test_control_reads.py",
+      "passed": 33,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "selector": "tests/transcription/test_service.py",
+      "passed": 28,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "selector": "tests/transcription/test_admission_boundaries.py",
+      "passed": 14,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "selector": "tests/transcription/test_restore.py",
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "selector": "tests/e2e/test_transcription_cli.py",
+      "passed": 3,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "selector": "tests/storage/test_transcription_backup.py",
+      "passed": 143,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "selector": "tests/storage/test_transcription_composite_backup.py",
+      "passed": 10,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "selector": "tests/operations/test_resources.py",
+      "passed": 46,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "selector": "tests/operations/test_facade.py",
+      "passed": 23,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "selector": "tests/operations/test_transcription_views.py",
+      "passed": 3,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "selector": "tests/e2e/test_operations_cli.py",
+      "passed": 4,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "selector": "tests/storage/test_atomic_state_publication.py",
+      "passed": 7,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "selector": "tests/audio/test_audio_process.py",
+      "passed": 12,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "selector": "tests/audio/test_process_deadline.py",
+      "passed": 21,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "selector": "tests/operations_posix/test_fork_ownership.py",
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    }
+  ],
+  "limits": [
+    "Source-only selection; no installed completeness claim.",
+    "Real isolated child protocol runs with the existing deliberately synthetic model; no real Whisper/model inference or acoustic quality claim.",
+    "No NVDA/native Windows or whole-candidate acceptance inference."
+  ]
+}

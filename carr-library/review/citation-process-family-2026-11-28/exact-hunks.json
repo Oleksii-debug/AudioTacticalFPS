@@ -1,0 +1,540 @@
+{
+  "base": {
+    "commit": "5d19dde77aca6a257ee601c1bc49b8504c342cee",
+    "tree": "fc6db9d062815bf1a4d35f435cf526fd3076913a"
+  },
+  "files": [
+    {
+      "path": "carr-library/src/carr_library/academic_integration/formatting.py",
+      "before": "1efe0803a14101797d203f80b384b87e7bbd4fec",
+      "after": "798560a96e409047dd36a6f77e1ca6a864c5ccc1",
+      "before_sha256": "a03e3f837f45e1d0561619ef0fbec113a8991861d7fd712ff60b1f6f41689780",
+      "after_sha256": "344f1b31286a23cbb6379dbbaf51cbe7e6883fe9588b4341ae9e76435f64cb90",
+      "hunks": [
+        {
+          "oldLine": 10,
+          "newLine": 10,
+          "contextBefore": [
+            "\"\"\"",
+            "from __future__ import annotations",
+            ""
+          ],
+          "removed": [],
+          "added": [
+            "from contextlib import ExitStack"
+          ],
+          "contextAfter": [
+            "from dataclasses import dataclass",
+            "from hashlib import sha256",
+            "from html import escape"
+          ]
+        },
+        {
+          "oldLine": 19,
+          "newLine": 20,
+          "contextBefore": [
+            "from pathlib import Path",
+            "import re",
+            "import sys"
+          ],
+          "removed": [
+            "import signal",
+            "import subprocess"
+          ],
+          "added": [],
+          "contextAfter": [
+            "import tempfile",
+            "import time",
+            "from typing import Callable, Iterable, Mapping, Sequence"
+          ]
+        },
+        {
+          "oldLine": 27,
+          "newLine": 26,
+          "contextBefore": [
+            "",
+            "from lxml import etree",
+            ""
+          ],
+          "removed": [],
+          "added": [
+            "from ..audio.cleanup import retained_context",
+            "from ..audio.process import owned_process",
+            ""
+          ],
+          "contextAfter": [
+            "_ROOT = Path(__file__).resolve().parent",
+            "_CSL = '{http://purl.org/net/xbiblio/csl}'",
+            "_MAX_BYTES = 16_000_000"
+          ]
+        },
+        {
+          "oldLine": 604,
+          "newLine": 606,
+          "contextBefore": [
+            "    env = {k: v for k, v in os.environ.items() if k in (",
+            "        'SYSTEMROOT', 'SystemRoot', 'WINDIR', 'TEMP', 'TMP', 'TMPDIR',",
+            "        'LANG', 'LC_ALL', 'HOME', 'USERPROFILE')}"
+          ],
+          "removed": [
+            "    with tempfile.TemporaryDirectory(prefix='carr-citations-') as directory:"
+          ],
+          "added": [
+            "    with retained_context(tempfile.TemporaryDirectory(prefix='carr-citations-')) as directory:"
+          ],
+          "contextAfter": [
+            "        directory = Path(directory)",
+            "        env.update(TEMP=str(directory), TMP=str(directory), TMPDIR=str(directory))",
+            "        if node_path is None:"
+          ]
+        },
+        {
+          "oldLine": 648,
+          "newLine": 650,
+          "contextBefore": [
+            "            raise CitationCancelled('Citation formatting was cancelled.')",
+            "        (directory / 'input.json').write_bytes(raw)",
+            "        output_path, error_path = directory / 'output.json', directory / 'error.txt'"
+          ],
+          "removed": [
+            "        with (directory / 'input.json').open('rb') as source, output_path.open('wb') as output, error_path.open('wb') as errors:",
+            "            try:",
+            "                process = subprocess.Popen(command, stdin=source, stdout=output, stderr=errors,",
+            "                    cwd=directory, env=env, shell=False, start_new_session=os.name != 'nt',",
+            "                    creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0) if os.name == 'nt' else 0)",
+            "            except OSError as exc:",
+            "                raise CitationError('The selected local citation runtime could not be started.') from exc",
+            "            deadline = time.monotonic() + timeout",
+            "            try:"
+          ],
+          "added": [
+            "        with retained_context(ExitStack()) as streams:",
+            "            source = streams.enter_context((directory / 'input.json').open('rb'))",
+            "            output = streams.enter_context(output_path.open('wb'))",
+            "            errors = streams.enter_context(error_path.open('wb'))",
+            "            # Keep this adapter's fixed file protocol and limits. The existing",
+            "            # process owner also drains a venv redirector's native descendants",
+            "            # before these streams or their private staging can be released.",
+            "            with ExitStack() as worker:",
+            "                try:",
+            "                    process = worker.enter_context(owned_process(command, stdin=source,",
+            "                        stdout=output, stderr=errors, cwd=directory, env=env, shell=False))",
+            "                except OSError as exc:",
+            "                    raise CitationError('The selected local citation runtime could not be started.') from exc",
+            "                deadline = time.monotonic() + timeout"
+          ],
+          "contextAfter": [
+            "                while process.poll() is None:",
+            "                    if cancelled and cancelled():",
+            "                        raise CitationCancelled('Citation formatting was cancelled.')"
+          ]
+        },
+        {
+          "oldLine": 665,
+          "newLine": 672,
+          "contextBefore": [
+            "                    if output_path.stat().st_size > _MAX_BYTES or error_path.stat().st_size > 1_000_000:",
+            "                        raise CitationError('The local citation processor exceeded its output budget.')",
+            "                    time.sleep(0.025)"
+          ],
+          "removed": [
+            "            finally:",
+            "                if process.poll() is None:",
+            "                    if os.name != 'nt':",
+            "                        try:",
+            "                            os.killpg(process.pid, signal.SIGKILL)",
+            "                        except ProcessLookupError:",
+            "                            pass",
+            "                    else:",
+            "                        process.kill()",
+            "                    process.wait(timeout=5)"
+          ],
+          "added": [],
+          "contextAfter": [
+            "            if cancelled and cancelled():",
+            "                raise CitationCancelled('Citation formatting was cancelled.')",
+            "            if output_path.stat().st_size > _MAX_BYTES or error_path.stat().st_size > 1_000_000:"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "carr-library/tests/academic_integration/test_formatting.py",
+      "before": "08bb9228fa52781a39b203549fdaed51f5288c55",
+      "after": "349f32097e93164e07fbbe978392d955c596a596",
+      "before_sha256": "b70218f25d9b594c84f61bb39e10025c5a1786dd08c663983affd533ac1decba",
+      "after_sha256": "2c46cf4fcc08cb6118ad35cdc08a8b61f1bbf6856088ed00e8e690e3317d0bdd",
+      "hunks": [
+        {
+          "oldLine": 2,
+          "newLine": 2,
+          "contextBefore": [
+            "\"\"\"Actual pinned CSL engine checks. Soundness is not inferred from stub strings.\"\"\""
+          ],
+          "removed": [],
+          "added": [
+            "from contextlib import contextmanager"
+          ],
+          "contextAfter": [
+            "from copy import deepcopy",
+            "from hashlib import sha256",
+            "import json"
+          ]
+        },
+        {
+          "oldLine": 209,
+          "newLine": 210,
+          "contextBefore": [
+            "",
+            "def test_actual_worker_cancels_after_launch(references, monkeypatch):",
+            "    processes = []"
+          ],
+          "removed": [
+            "    original = formatting.subprocess.Popen"
+          ],
+          "added": [
+            "    original = formatting.owned_process",
+            "    @contextmanager"
+          ],
+          "contextAfter": [
+            "    def launch(*args, **kwargs):",
+            "        process = original(*args, **kwargs)",
+            "        processes.append(process)"
+          ]
+        },
+        {
+          "oldLine": 211,
+          "newLine": 213,
+          "contextBefore": [
+            "    processes = []",
+            "    original = formatting.subprocess.Popen",
+            "    def launch(*args, **kwargs):"
+          ],
+          "removed": [
+            "        process = original(*args, **kwargs)",
+            "        processes.append(process)",
+            "        return process",
+            "    monkeypatch.setattr(formatting.subprocess, 'Popen', launch)"
+          ],
+          "added": [
+            "        with original(*args, **kwargs) as process:",
+            "            processes.append(process)",
+            "            yield process",
+            "    monkeypatch.setattr(formatting, 'owned_process', launch)"
+          ],
+          "contextAfter": [
+            "    with pytest.raises(CitationCancelled):",
+            "        render_citations(references, cancelled=lambda: bool(processes))",
+            "    assert len(processes) == 1 and processes[0].poll() is not None"
+          ]
+        },
+        {
+          "oldLine": 258,
+          "newLine": 260,
+          "contextBefore": [
+            "    monkeypatch.setattr(formatting, '_ROOT', bundle)",
+            "    def forbidden(*args, **kwargs):",
+            "        pytest.fail('An altered processor reached process creation.')"
+          ],
+          "removed": [
+            "    monkeypatch.setattr(formatting.subprocess, 'Popen', forbidden)"
+          ],
+          "added": [
+            "    monkeypatch.setattr(formatting, 'owned_process', forbidden)"
+          ],
+          "contextAfter": [
+            "    with pytest.raises(CitationError, match='integrity'):",
+            "        render_citations(references)",
+            ""
+          ]
+        },
+        {
+          "oldLine": 302,
+          "newLine": 304,
+          "contextBefore": [
+            "        returncode = 0",
+            "        def poll(self):",
+            "            return 0"
+          ],
+          "removed": [],
+          "added": [
+            "    @contextmanager"
+          ],
+          "contextAfter": [
+            "    def launch(command, **kwargs):",
+            "        calls.append(command)",
+            "        stage = Path(kwargs['cwd'])"
+          ]
+        },
+        {
+          "oldLine": 313,
+          "newLine": 316,
+          "contextBefore": [
+            "        assert (stage / 'csl_worker.cjs').read_bytes() == (formatting._ROOT / 'csl_worker.cjs').read_bytes()",
+            "        kwargs['stdout'].write(json.dumps(raw_result).encode('utf-8'))",
+            "        kwargs['stdout'].flush()"
+          ],
+          "removed": [
+            "        return Complete()"
+          ],
+          "added": [
+            "        yield Complete()"
+          ],
+          "contextAfter": [
+            "    monkeypatch.setenv('NODE_OPTIONS', '--require=unreviewed.cjs')",
+            "    monkeypatch.setenv('NODE_PATH', str(tmp_path))",
+            "    monkeypatch.setattr(formatting.subprocess, 'Popen', launch)"
+          ]
+        },
+        {
+          "oldLine": 316,
+          "newLine": 319,
+          "contextBefore": [
+            "        return Complete()",
+            "    monkeypatch.setenv('NODE_OPTIONS', '--require=unreviewed.cjs')",
+            "    monkeypatch.setenv('NODE_PATH', str(tmp_path))"
+          ],
+          "removed": [
+            "    monkeypatch.setattr(formatting.subprocess, 'Popen', launch)"
+          ],
+          "added": [
+            "    monkeypatch.setattr(formatting, 'owned_process', launch)"
+          ],
+          "contextAfter": [
+            "    result = render_citations(references, node_path=binary)",
+            "    runtime = result.interchange['runtime']",
+            "    assert runtime['name'] == 'Node.js' and runtime['mode'] == 'explicit compatibility'"
+          ]
+        },
+        {
+          "oldLine": 330,
+          "newLine": 333,
+          "contextBefore": [
+            "    with pytest.raises(CitationError):",
+            "        formatting._decode_result(raw)",
+            ""
+          ],
+          "removed": [],
+          "added": [
+            "",
+            "",
+            "@contextmanager",
+            "def _citation_member_exit_probe(process, pid):",
+            "    \"\"\"Keep an independent native identity for a real owned descendant.\"\"\"",
+            "    import os",
+            "    if os.name == 'nt':",
+            "        import ctypes",
+            "        from ctypes import wintypes",
+            "        kernel = ctypes.WinDLL('kernel32', use_last_error=True)",
+            "        kernel.OpenProcess.argtypes = [wintypes.DWORD, wintypes.BOOL, wintypes.DWORD]",
+            "        kernel.OpenProcess.restype = wintypes.HANDLE",
+            "        kernel.IsProcessInJob.argtypes = [wintypes.HANDLE, wintypes.HANDLE,",
+            "                                         ctypes.POINTER(wintypes.BOOL)]",
+            "        kernel.IsProcessInJob.restype = wintypes.BOOL",
+            "        kernel.WaitForSingleObject.argtypes = [wintypes.HANDLE, wintypes.DWORD]",
+            "        kernel.WaitForSingleObject.restype = wintypes.DWORD",
+            "        kernel.CloseHandle.argtypes = [wintypes.HANDLE]",
+            "        kernel.CloseHandle.restype = wintypes.BOOL",
+            "        handle = kernel.OpenProcess(0x100000 | 0x1000, False, pid)",
+            "        assert handle, ctypes.WinError(ctypes.get_last_error())",
+            "        try:",
+            "            belongs = wintypes.BOOL()",
+            "            assert kernel.IsProcessInJob(handle, process._carr_job.handle,",
+            "                                         ctypes.byref(belongs))",
+            "            assert belongs.value",
+            "            def exited():",
+            "                result = kernel.WaitForSingleObject(handle, 0)",
+            "                assert result in (0, 258), ctypes.WinError(ctypes.get_last_error())",
+            "                return result == 0",
+            "            yield exited",
+            "        finally:",
+            "            assert kernel.CloseHandle(handle)",
+            "    else:",
+            "        import select",
+            "        assert os.getpgid(pid) == process.pid",
+            "        descriptor = os.pidfd_open(pid, 0)",
+            "        try:",
+            "            yield lambda: bool(select.select([descriptor], [], [], 0)[0])",
+            "        finally:",
+            "            os.close(descriptor)",
+            "",
+            "",
+            "_CITATION_FILE_HOLDER = r'''",
+            "import json, os, sys, time",
+            "from pathlib import Path",
+            "# The descendant both inherits the diagnostic stream and keeps another actual",
+            "# file handle open. Its PID is published only after those handles are live.",
+            "with Path('error.txt').open('ab') as held:",
+            "    held.write(b'Synthetic citation descendant retains diagnostics.\\n')",
+            "    held.flush()",
+            "    ready = Path(sys.argv[1])",
+            "    pending = ready.with_suffix('.pending')",
+            "    pending.write_text(json.dumps({'pid': os.getpid(), 'parent': os.getppid()}),",
+            "                       encoding='utf-8')",
+            "    os.replace(pending, ready)",
+            "    time.sleep(60)",
+            "'''",
+            "",
+            "",
+            "def _citation_family_worker(original, *, complete):",
+            "    body = 'exec(' + repr(original) + ')' if complete else 'time.sleep(60)'",
+            "    return (",
+            "        'import subprocess, sys, time\\n'",
+            "        'subprocess.Popen([sys.executable, \"-I\", \"-B\", \"-c\", ' +",
+            "        repr(_CITATION_FILE_HOLDER) + ', \"descendant-ready.json\"], '",
+            "        'stdin=sys.stdin, stdout=sys.stdout, stderr=sys.stderr)\\n' + body + '\\n')",
+            "",
+            "",
+            "def _citation_ready(path):",
+            "    deadline = time.monotonic() + 10",
+            "    while not path.exists():",
+            "        assert time.monotonic() < deadline, 'The real citation file holder did not become ready.'",
+            "        time.sleep(.01)",
+            "    marker = json.loads(path.read_text(encoding='utf-8'))",
+            "    assert type(marker['pid']) is int and marker['pid'] > 0",
+            "    return marker['pid']",
+            "",
+            "",
+            "@pytest.mark.parametrize('outcome', ['complete', 'timeout', 'cancel'])",
+            "def test_actual_citation_family_stops_before_streams_and_stage_are_released(",
+            "        references, monkeypatch, outcome):",
+            "    \"\"\"Real QuickJS success or real child interruption, never an engine-output stub.\"\"\"",
+            "    from contextlib import ExitStack",
+            "    original_owner, original_worker = formatting.owned_process, formatting._QUICKJS_WORKER",
+            "    monkeypatch.setattr(formatting, '_QUICKJS_WORKER',",
+            "                        _citation_family_worker(original_worker, complete=outcome == 'complete'))",
+            "    observed = {}",
+            "    with ExitStack() as witnesses:",
+            "        @contextmanager",
+            "        def owner(command, **options):",
+            "            with original_owner(command, **options) as child:",
+            "                stage = Path(options['cwd'])",
+            "                pid = _citation_ready(stage / 'descendant-ready.json')",
+            "                exited = witnesses.enter_context(_citation_member_exit_probe(child, pid))",
+            "                assert not exited()",
+            "                observed.update(child=child, stage=stage, exited=exited,",
+            "                                streams=tuple(options[name] for name in ('stdin', 'stdout', 'stderr')),",
+            "                                entered=time.monotonic())",
+            "                yield child",
+            "        monkeypatch.setattr(formatting, 'owned_process', owner)",
+            "        cancelled = lambda: outcome == 'cancel' and bool(observed)",
+            "        if outcome == 'complete':",
+            "            result = render_citations(references, cancelled=cancelled)",
+            "            assert result.bibliography[0].reference_id == 'book-doe'",
+            "            assert result.interchange['runtime']['binding'] == 'quickjs-ng'",
+            "        elif outcome == 'timeout':",
+            "            with pytest.raises(CitationError, match='time budget'):",
+            "                render_citations(references, timeout=.1, cancelled=cancelled)",
+            "            assert time.monotonic() - observed['entered'] < 3",
+            "        else:",
+            "            with pytest.raises(CitationCancelled):",
+            "                render_citations(references, cancelled=cancelled)",
+            "        assert observed['child'].returncode is not None",
+            "        assert observed['exited'](), 'The exact inherited-file holder must have exited.'",
+            "        assert all(stream.closed for stream in observed['streams'])",
+            "        assert not observed['stage'].exists()",
+            "",
+            "",
+            "@pytest.mark.parametrize('masked', [False, True], ids=['direct-pending', 'cancel-masks-pending'])",
+            "@pytest.mark.parametrize('first', [0, 1], ids=['primary-first', 'secondary-first'])",
+            "def test_citation_pending_families_retain_exact_streams_and_stage_until_all_quiet(",
+            "        references, monkeypatch, masked, first):",
+            "    from contextlib import ExitStack",
+            "    import sys",
+            "    import threading",
+            "    from carr_library.audio import process as native",
+            "    from carr_library.audio.cleanup import AudioCleanupPending, _pending_owners",
+            "",
+            "    original_owner, actual_stop = formatting.owned_process, native._stop_owned",
+            "    children, allowed, observed, owners = [], {}, {}, ()",
+            "    notifications, notification_lock, finished = set(), threading.Lock(), threading.Event()",
+            "    def stop(child):",
+            "        return actual_stop(child) if allowed.get(child.pid, True) else False",
+            "    monkeypatch.setattr(native, '_stop_owned', stop)",
+            "    monkeypatch.setattr(formatting, '_QUICKJS_WORKER',",
+            "                        _citation_family_worker(formatting._QUICKJS_WORKER, complete=False))",
+            "",
+            "    def notified(identity):",
+            "        with notification_lock:",
+            "            notifications.add(identity)",
+            "            complete = len(notifications) == len(owners)",
+            "        if complete:",
+            "            finished.set()",
+            "",
+            "    with ExitStack() as witnesses:",
+            "        @contextmanager",
+            "        def owner(command, **options):",
+            "            try:",
+            "                with ExitStack() as families:",
+            "                    primary = families.enter_context(original_owner(command, **options))",
+            "                    children.append(primary)",
+            "                    allowed[primary.pid] = False",
+            "                    secondary = families.enter_context(original_owner(",
+            "                        [sys.executable, '-I', '-B', '-c', _CITATION_FILE_HOLDER,",
+            "                         'secondary-ready.json'], **options))",
+            "                    children.append(secondary)",
+            "                    allowed[secondary.pid] = False",
+            "                    stage = Path(options['cwd'])",
+            "                    exits = tuple(witnesses.enter_context(_citation_member_exit_probe(child,",
+            "                        _citation_ready(stage / name))) for child, name in (",
+            "                            (primary, 'descendant-ready.json'), (secondary, 'secondary-ready.json')))",
+            "                    assert all(not exited() for exited in exits)",
+            "                    observed.update(stage=stage, exits=exits,",
+            "                        streams=tuple(options[name] for name in ('stdin', 'stdout', 'stderr')))",
+            "                    yield primary",
+            "            except AudioCleanupPending as error:",
+            "                if masked:",
+            "                    raise CitationCancelled('A later citation cancellation retains both native owners.') from error",
+            "                raise",
+            "        monkeypatch.setattr(formatting, 'owned_process', owner)",
+            "        try:",
+            "            expected = CitationCancelled if masked else AudioCleanupPending",
+            "            with pytest.raises(expected) as failure:",
+            "                render_citations(references, cancelled=lambda: bool(observed))",
+            "            owners = _pending_owners(failure.value)",
+            "            assert len(owners) == 2 and all(not item.quiescent for item in owners)",
+            "            assert len(children) == 2 and all(child.poll() is None for child in children)",
+            "            assert observed['stage'].is_dir()",
+            "            assert all((observed['stage'] / name).is_file()",
+            "                       for name in ('input.json', 'output.json', 'error.txt'))",
+            "            assert all(not stream.closed for stream in observed['streams'])",
+            "            assert all(not exited() for exited in observed['exits'])",
+            "            assert (observed['stage'] / 'output.json').read_bytes() == b''",
+            "            # Register after the retained file/temp callbacks: this acknowledges",
+            "            # their completion, rather than assuming the earlier native event",
+            "            # already proves notification-driven stage removal.",
+            "            for item in owners:",
+            "                item.add_quiescent_callback(lambda identity=id(item): notified(identity))",
+            "            allowed[children[first].pid] = True",
+            "            deadline = time.monotonic() + 5",
+            "            while sum(item.quiescent for item in owners) != 1:",
+            "                assert time.monotonic() < deadline, 'The first actual citation family did not stop.'",
+            "                for item in owners:",
+            "                    item.close()",
+            "                time.sleep(.01)",
+            "            assert observed['exits'][first]() and not observed['exits'][1 - first]()",
+            "            assert observed['stage'].is_dir() and not finished.is_set()",
+            "            assert all(not stream.closed for stream in observed['streams'])",
+            "            allowed[children[1 - first].pid] = True",
+            "            for item in owners:",
+            "                item.close()",
+            "            assert finished.wait(5), 'Every retained citation cleanup callback must finish.'",
+            "            assert all(item.quiescent for item in owners)",
+            "            assert all(child.returncode is not None for child in children)",
+            "            assert all(exited() for exited in observed['exits'])",
+            "            assert all(stream.closed for stream in observed['streams'])",
+            "            assert not observed['stage'].exists()",
+            "        finally:",
+            "            for child in children:",
+            "                allowed[child.pid] = True",
+            "            for item in owners:",
+            "                item.close()",
+            "            for child in children:",
+            "                actual_stop(child)",
+            ""
+          ]
+        }
+      ]
+    }
+  ]
+}

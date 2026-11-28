@@ -743,7 +743,7 @@ def loop_preview(dialog, tmp_path, monkeypatch):
     preview.write_bytes(raw)
     cue = Cue('loop-clip', str(original), duration=.25)
     scene = Scene('loop-scene', 'Loop scene', (), cues=(cue,))
-    project = Project('loop-project', 'Loop project', (), (scene,))
+    project = Project('loop-project', 'Loop project', (), (scene,), schema=2)
     dialog.project = project
     dialog._scene = lambda: dialog.project.scenes[0]
     dialog._clip = lambda: dialog._scene().cues[0]

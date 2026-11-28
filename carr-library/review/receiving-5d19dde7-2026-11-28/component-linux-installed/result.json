@@ -1,0 +1,31 @@
+{
+  "schema": "carr-exact-component-observation/1",
+  "head": "5d19dde77aca6a257ee601c1bc49b8504c342cee",
+  "run_id": 46098479318,
+  "job_id": 140835247286,
+  "conclusion": "failure",
+  "started_at": "2026-11-28T02:55:41Z",
+  "completed_at": "2026-11-28T03:01:33Z",
+  "mode": "linux-installed",
+  "passed_cases": 2567,
+  "failed_assertions": 0,
+  "setup_errors": 24,
+  "skipped_cases": 0,
+  "passed_subtests": 12,
+  "selected_modules": 75,
+  "rows": null,
+  "failing_module": "tests/studio/test_clip_dialog.py",
+  "failure_kind": "New loop_preview fixture constructs default schema1 with duration; Project rejects edited timing before each of24 test bodies.",
+  "corrected_test_blob": "5f46d0924be44798f15f5076a4811e04eab97dc9",
+  "correction_execution": "NOT_RUN; separate successor",
+  "decoded_log": {
+    "sha256": "aa5b1967a74ee3f2e9a53b7f820335cfe80daedc0dee5d077278bcc34c84d16a",
+    "bytes": 278682
+  },
+  "thread_warning_found": false,
+  "limits": [
+    "No aggregate PASS; no claim that errored test bodies ran.",
+    "Modeled loop tests do not establish actual audio output or manual NVDA.",
+    "Source mode does not exercise the separate installed Windows virtual-environment test step."
+  ]
+}

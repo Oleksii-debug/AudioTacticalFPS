@@ -1,0 +1,61 @@
+PASS: descendant alive after its original leader exited
+PASS: owned cancellation waits for the actual descendant exit
+PASS: owned job and native pipes are closed after cancellation
+PASS: native assignment failure remains explicit
+PASS: unassigned suspended child is killed and waited before return
+PASS: concurrent owned launch reaches suspended assignment
+PASS: concurrent owned cancellation completes
+PASS: unrelated concurrent native process remains outside capture ownership
+Actual environment location may have moved due to redirects, links or junctions.
+  Requested location: "C:\Users\RUNNER~1\AppData\Local\Temp\carr-native-recording-process-qym6mdh_\short-worker-venv\Scripts\python.exe"
+  Actual location:    "C:\Users\runneradmin\AppData\Local\Temp\carr-native-recording-process-qym6mdh_\short-worker-venv\Scripts\python.exe"
+PASS: native short-worker venv is created without acquiring dependencies
+PASS: short venv worker preserves the explicitly selected environment
+PASS: short venv uses the real base interpreter behind its redirector
+PASS: short venv lifetime members and native streams finish before return
+PASS: nested-short venv worker preserves the explicitly selected environment
+PASS: nested-short venv uses the real base interpreter behind its redirector
+PASS: nested-short venv lifetime members and native streams finish before return
+{
+  "status": "PASS",
+  "checks": [
+    "descendant alive after its original leader exited",
+    "owned cancellation waits for the actual descendant exit",
+    "owned job and native pipes are closed after cancellation",
+    "native assignment failure remains explicit",
+    "unassigned suspended child is killed and waited before return",
+    "concurrent owned launch reaches suspended assignment",
+    "concurrent owned cancellation completes",
+    "unrelated concurrent native process remains outside capture ownership",
+    "native short-worker venv is created without acquiring dependencies",
+    "short venv worker preserves the explicitly selected environment",
+    "short venv uses the real base interpreter behind its redirector",
+    "short venv lifetime members and native streams finish before return",
+    "nested-short venv worker preserves the explicitly selected environment",
+    "nested-short venv uses the real base interpreter behind its redirector",
+    "nested-short venv lifetime members and native streams finish before return"
+  ],
+  "scope": "actual Windows owned process lifecycle",
+  "physical_microphone": "NOT_RUN",
+  "human_listening": "NOT_RUN",
+  "short_venv_workers": [
+    {
+      "prefix": "C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\carr-native-recording-process-qym6mdh_\\short-worker-venv",
+      "base_prefix": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64",
+      "executable": "C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\carr-native-recording-process-qym6mdh_\\short-worker-venv\\Scripts\\python.exe",
+      "base_executable": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\python.exe",
+      "native_image": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\python.exe",
+      "case": "short",
+      "lifetime_processes": 3
+    },
+    {
+      "prefix": "C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\carr-native-recording-process-qym6mdh_\\short-worker-venv",
+      "base_prefix": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64",
+      "executable": "C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\carr-native-recording-process-qym6mdh_\\short-worker-venv\\Scripts\\python.exe",
+      "base_executable": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\python.exe",
+      "native_image": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\python.exe",
+      "case": "nested-short",
+      "lifetime_processes": 5
+    }
+  ]
+}

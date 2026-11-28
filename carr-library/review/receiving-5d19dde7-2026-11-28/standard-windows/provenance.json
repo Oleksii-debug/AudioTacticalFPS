@@ -1,0 +1,280 @@
+{
+  "schema": "carr-decoded-ci-log-provenance/1",
+  "retrieved_utc_date": "2026-11-28",
+  "run": {
+    "id": 46098476106,
+    "name": "Resonance standard installation verification",
+    "head_sha": "5d19dde77aca6a257ee601c1bc49b8504c342cee",
+    "head_branch": "carr/standard-installation-evaluation-20261128",
+    "path": ".github/workflows/carr-standard-installation-evaluation.yml",
+    "event": "push",
+    "status": "completed",
+    "conclusion": "success",
+    "run_attempt": 1,
+    "created_at": "2026-11-28T02:31:13Z",
+    "updated_at": "2026-11-28T02:51:31Z",
+    "run_started_at": "2026-11-28T02:31:13Z",
+    "html_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46098476106"
+  },
+  "job": {
+    "id": 140835235429,
+    "run_id": 46098476106,
+    "run_attempt": 1,
+    "head_sha": "5d19dde77aca6a257ee601c1bc49b8504c342cee",
+    "name": "Standard installation / windows-2022 / source and installed",
+    "status": "completed",
+    "conclusion": "success",
+    "started_at": "2026-11-28T02:42:27Z",
+    "completed_at": "2026-11-28T02:51:31Z",
+    "html_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46098476106/job/140835235429",
+    "steps": [
+      {
+        "name": "Set up job",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 1,
+        "started_at": "2026-11-28T02:42:28Z",
+        "completed_at": "2026-11-28T02:42:29Z"
+      },
+      {
+        "name": "Preserve exact committed source bytes",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 2,
+        "started_at": "2026-11-28T02:42:29Z",
+        "completed_at": "2026-11-28T02:42:30Z"
+      },
+      {
+        "name": "Check out the exact triggering commit",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 3,
+        "started_at": "2026-11-28T02:42:30Z",
+        "completed_at": "2026-11-28T02:42:39Z"
+      },
+      {
+        "name": "Set up native x64 CPython",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 4,
+        "started_at": "2026-11-28T02:42:39Z",
+        "completed_at": "2026-11-28T02:42:39Z"
+      },
+      {
+        "name": "Build and install the exact event wheel with existing dependency pins",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 5,
+        "started_at": "2026-11-28T02:42:39Z",
+        "completed_at": "2026-11-28T02:43:26Z"
+      },
+      {
+        "name": "Prove complete source wheel and installed Python identity",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 6,
+        "started_at": "2026-11-28T02:43:26Z",
+        "completed_at": "2026-11-28T02:43:27Z"
+      },
+      {
+        "name": "Require source standard installation and existing launcher contracts",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 7,
+        "started_at": "2026-11-28T02:43:27Z",
+        "completed_at": "2026-11-28T02:44:16Z"
+      },
+      {
+        "name": "Require the same contracts from the installed wheel",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 8,
+        "started_at": "2026-11-28T02:44:16Z",
+        "completed_at": "2026-11-28T02:45:22Z"
+      },
+      {
+        "name": "Acquire the existing pinned compiler, original Python and native DLL runtime",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 9,
+        "started_at": "2026-11-28T02:45:22Z",
+        "completed_at": "2026-11-28T02:46:00Z"
+      },
+      {
+        "name": "Build one exact current core bundle and its standard setup",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 10,
+        "started_at": "2026-11-28T02:46:00Z",
+        "completed_at": "2026-11-28T02:48:20Z"
+      },
+      {
+        "name": "Require actual native standard Install Repair and Uninstall",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 11,
+        "started_at": "2026-11-28T02:48:20Z",
+        "completed_at": "2026-11-28T02:51:22Z"
+      },
+      {
+        "name": "Preserve public text receipts and exact source evidence",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 12,
+        "started_at": "2026-11-28T02:51:22Z",
+        "completed_at": "2026-11-28T02:51:24Z"
+      },
+      {
+        "name": "Post Set up native x64 CPython",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 23,
+        "started_at": "2026-11-28T02:51:24Z",
+        "completed_at": "2026-11-28T02:51:24Z"
+      },
+      {
+        "name": "Post Check out the exact triggering commit",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 24,
+        "started_at": "2026-11-28T02:51:24Z",
+        "completed_at": "2026-11-28T02:51:26Z"
+      },
+      {
+        "name": "Complete job",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 25,
+        "started_at": "2026-11-28T02:51:26Z",
+        "completed_at": "2026-11-28T02:51:26Z"
+      }
+    ]
+  },
+  "artifact_api_metadata": {
+    "id": 15244403636,
+    "node_id": "MDg6QXJ0aWZhY3QxNTI0NDQwMzYzNg==",
+    "name": "carr-standard-installation-windows-2022-5d19dde77aca6a257ee601c1bc49b8504c342cee-1",
+    "size_in_bytes": 140474,
+    "url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15244403636",
+    "archive_download_url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15244403636/zip",
+    "expired": false,
+    "digest": "sha256:49f0cee4786b88cdc90d42d24fd6502f6db0983bbdf4425da2d62e02eb0b1b1a",
+    "created_at": "2026-11-28T02:51:24Z",
+    "updated_at": "2026-11-28T02:51:24Z",
+    "expires_at": "2026-12-05T02:51:22Z",
+    "workflow_run": {
+      "id": 46098476106,
+      "repository_id": 1341777614,
+      "head_repository_id": 1341777614,
+      "head_branch": "carr/standard-installation-evaluation-20261128",
+      "head_sha": "5d19dde77aca6a257ee601c1bc49b8504c342cee"
+    }
+  },
+  "log_tool": "github_fetch_workflow_job_logs",
+  "log_requested_only_after_terminal": true,
+  "decoded_log": {
+    "line_ranges": [
+      [
+        1328,
+        1328
+      ],
+      [
+        1453,
+        1453
+      ],
+      [
+        1465,
+        1465
+      ],
+      [
+        1476,
+        1476
+      ],
+      [
+        1488,
+        1488
+      ],
+      [
+        1499,
+        1499
+      ],
+      [
+        1510,
+        1510
+      ],
+      [
+        1521,
+        1521
+      ],
+      [
+        1532,
+        1532
+      ],
+      [
+        1543,
+        1543
+      ],
+      [
+        1554,
+        1554
+      ],
+      [
+        1559,
+        1560
+      ],
+      [
+        1618,
+        1619
+      ],
+      [
+        1877,
+        1898
+      ],
+      [
+        1921,
+        1953
+      ],
+      [
+        2010,
+        2034
+      ],
+      [
+        2078,
+        2078
+      ],
+      [
+        2080,
+        2082
+      ]
+    ],
+    "original_decoded_log_characters": 315020,
+    "original_decoded_log_sha256": "6b580a51ecc4cae5a08237d1bf364ddedc0a8ba763e39ffb6d03c5a2aff0caa5",
+    "selected_lines": 99,
+    "selected_log_sha256": "7fd473f5d48d3baf812e7ebbd126b7e5cffeef08fa5c681f3818d6247b5ec0fb"
+  },
+  "extraction": {
+    "kind": "Decoded terminal job-log output, not downloaded artifact bytes",
+    "selected_log_lines": "Non-contiguous exact timestamped lines in original order, joined with CRLF; omitted line ranges are explicit.",
+    "json_files": "Timestamp prefixes removed, multi-line JSON joined with LF, one trailing LF added. Setup output also removes the adjacent compiler prefix recorded below.",
+    "files": [
+      {
+        "file": "source-installed-python-inventory.log-extracted.json",
+        "first_line": 1397,
+        "last_line": 1397
+      },
+      {
+        "file": "native-standard-result.log-extracted.json",
+        "first_line": 2010,
+        "last_line": 2033
+      },
+      {
+        "file": "setup-build.log-extracted.json",
+        "first_line": 1921,
+        "last_line": 1953,
+        "extra_prefix_removed": "Preprocessing"
+      }
+    ]
+  },
+  "artifact_identity_check": "The API artifact ID/name/size/run/head/digest agree with the upload messages in the completed job log. Artifact ZIP bytes and individual original member hashes were not downloaded or recomputed.",
+  "retention_note": "These evidence files are bounded public CI text and synthetic native observations; no setup executable, runtime bundle, model, private reference audio, account secret or artifact payload was copied."
+}

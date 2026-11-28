@@ -1,0 +1,148 @@
+PASS: exact module source: carr_library.audio.process
+PASS: exact module source: carr_library.audio.recording
+PASS: exact module source: carr_library.ui.recording_dialog
+PASS: explicit local FFmpeg executable
+PASS: selected executable hash retained
+PASS: opening the dialog does not discover or capture
+PASS: recording progress has a native accessible gauge
+PASS: native retake waits for a selected original
+PASS: Pause and Resume never start capture from idle
+PASS: native monitoring is unchecked by default
+PASS: native monitoring requires an explicit output selection
+PASS: native output discovery stays an explicit separate action
+PASS: native focus reaches Refresh microphones
+PASS: native key dispatch: Refresh microphones
+PASS: single discovered input is not automatically selected
+PASS: Start remains disabled until explicit selection
+PASS: native focus reaches Microphone device (explicit selection required)
+PASS: native key dispatch: Microphone device (explicit selection required)
+PASS: native focus reaches Dry monitoring during capture (off by default)
+PASS: native key dispatch: Dry monitoring during capture (off by default)
+PASS: native enabling monitoring blocks Start without a selected output
+PASS: native focus reaches Dry monitoring during capture (off by default)
+PASS: native key dispatch: Dry monitoring during capture (off by default)
+PASS: native disabling monitoring restores ordinary capture without fallback
+PASS: native focus reaches Start recording
+PASS: native key dispatch: Start recording
+PASS: actual FFmpeg reports recorded PCM while UI remains responsive
+PASS: recording holds shared quiet even during progress queries
+PASS: progress query stays keyboard accessible during capture
+PASS: native focus reaches Current operation progress
+PASS: native key dispatch: Current operation progress
+PASS: explicit query is readable inside the actual modal dialog
+PASS: native focus reaches Pause recording
+PASS: native key dispatch: Pause recording
+PASS: Pause acknowledges the real FFmpeg tree exit before Resume is enabled
+PASS: Pause retains the same worker, quiet hold and shared device lease
+PASS: paused input remains reserved by the shared resource broker
+PASS: paused wall time never appends PCM or opens another input
+PASS: native focus reaches Resume recording
+PASS: native key dispatch: Resume recording
+PASS: explicit Resume uses the same take and the next real owned segment
+PASS: native focus reaches Stop and save recording
+PASS: native key dispatch: Stop and save recording
+PASS: Stop finalizes and verifies an actual retained recording
+PASS: Stop reports retained completion
+PASS: saved pause joins match both actual PCM segments exactly
+PASS: native retake targets the displayed saved original
+PASS: native focus reaches Record retake of selected recording
+PASS: native key dispatch: Record retake of selected recording
+PASS: native focus reaches Stop and save recording
+PASS: native key dispatch: Stop and save recording
+PASS: retake preserves the previous verified original
+PASS: native focus reaches Start recording
+PASS: native key dispatch: Start recording
+PASS: native focus reaches Cancel unfinished recording
+PASS: native key dispatch: Cancel unfinished recording
+PASS: Cancel removes unfinished audio and preserves both originals
+PASS: Cancel is announced distinctly
+PASS: native focus reaches Start recording
+PASS: native key dispatch: Start recording
+PASS: native focus reaches Stop and save recording
+PASS: native key dispatch: Stop and save recording
+PASS: native recording owner window actually destroyed
+PASS: Escape closes only after active capture cleanup
+PASS: closing preserves exactly the verified originals
+{
+  "status": "PASS",
+  "checks": [
+    "exact module source: carr_library.audio.process",
+    "exact module source: carr_library.audio.recording",
+    "exact module source: carr_library.ui.recording_dialog",
+    "explicit local FFmpeg executable",
+    "selected executable hash retained",
+    "opening the dialog does not discover or capture",
+    "recording progress has a native accessible gauge",
+    "native retake waits for a selected original",
+    "Pause and Resume never start capture from idle",
+    "native monitoring is unchecked by default",
+    "native monitoring requires an explicit output selection",
+    "native output discovery stays an explicit separate action",
+    "native focus reaches Refresh microphones",
+    "native key dispatch: Refresh microphones",
+    "single discovered input is not automatically selected",
+    "Start remains disabled until explicit selection",
+    "native focus reaches Microphone device (explicit selection required)",
+    "native key dispatch: Microphone device (explicit selection required)",
+    "native focus reaches Dry monitoring during capture (off by default)",
+    "native key dispatch: Dry monitoring during capture (off by default)",
+    "native enabling monitoring blocks Start without a selected output",
+    "native focus reaches Dry monitoring during capture (off by default)",
+    "native key dispatch: Dry monitoring during capture (off by default)",
+    "native disabling monitoring restores ordinary capture without fallback",
+    "native focus reaches Start recording",
+    "native key dispatch: Start recording",
+    "actual FFmpeg reports recorded PCM while UI remains responsive",
+    "recording holds shared quiet even during progress queries",
+    "progress query stays keyboard accessible during capture",
+    "native focus reaches Current operation progress",
+    "native key dispatch: Current operation progress",
+    "explicit query is readable inside the actual modal dialog",
+    "native focus reaches Pause recording",
+    "native key dispatch: Pause recording",
+    "Pause acknowledges the real FFmpeg tree exit before Resume is enabled",
+    "Pause retains the same worker, quiet hold and shared device lease",
+    "paused input remains reserved by the shared resource broker",
+    "paused wall time never appends PCM or opens another input",
+    "native focus reaches Resume recording",
+    "native key dispatch: Resume recording",
+    "explicit Resume uses the same take and the next real owned segment",
+    "native focus reaches Stop and save recording",
+    "native key dispatch: Stop and save recording",
+    "Stop finalizes and verifies an actual retained recording",
+    "Stop reports retained completion",
+    "saved pause joins match both actual PCM segments exactly",
+    "native retake targets the displayed saved original",
+    "native focus reaches Record retake of selected recording",
+    "native key dispatch: Record retake of selected recording",
+    "native focus reaches Stop and save recording",
+    "native key dispatch: Stop and save recording",
+    "retake preserves the previous verified original",
+    "native focus reaches Start recording",
+    "native key dispatch: Start recording",
+    "native focus reaches Cancel unfinished recording",
+    "native key dispatch: Cancel unfinished recording",
+    "Cancel removes unfinished audio and preserves both originals",
+    "Cancel is announced distinctly",
+    "native focus reaches Start recording",
+    "native key dispatch: Start recording",
+    "native focus reaches Stop and save recording",
+    "native key dispatch: Stop and save recording",
+    "native recording owner window actually destroyed",
+    "Escape closes only after active capture cleanup",
+    "closing preserves exactly the verified originals"
+  ],
+  "audio_runtime": {
+    "ffmpeg": {
+      "path": "D:\\a\\_temp\\carr-audio-runtime\\bin\\ffmpeg.exe",
+      "sha256": "3ab4a9c404504ebff6662d6a48661db952f88ee7fb7d5949a711cad7a763b2cf"
+    }
+  },
+  "actual_native_keys": true,
+  "actual_ffmpeg_synthetic_capture": true,
+  "physical_microphone": "NOT_RUN",
+  "human_listening": "NOT_RUN",
+  "nvda": "NOT_RUN",
+  "live_monitoring": "NOT_RUN",
+  "independent_deadline_seconds": 110
+}

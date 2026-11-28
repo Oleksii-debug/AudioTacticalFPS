@@ -1,0 +1,88 @@
+Completed job 140835247197, run46098479318, head5d19dde77aca6a257ee601c1bc49b8504c342cee.
+Bounded verbatim decoded-job excerpt; timestamps retained. Not an archived artifact byte claim.
+Fetched decoded log UTF-8 SHA256: 9cb17a277ccd43266b3aecbee52b146dbf2e3dac0be62174ae67db53cc060a49
+
+2026-11-28T02:43:56.3466473Z ____ ERROR at setup of test_clip_loop_requires_an_explicit_initial_preview _____
+2026-11-28T02:43:56.3495357Z 
+2026-11-28T02:43:56.3496479Z dialog = <carr_library.ui._clips_probe.ClipDialog object at 0x7f64a2668bd0>
+2026-11-28T02:43:56.3526401Z tmp_path = PosixPath('/tmp/carr-ci-ycz8mqt1/pytest/test_clip_loop_requires_an_exp0')
+2026-11-28T02:43:56.3556134Z monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7f64a272d6d0>
+2026-11-28T02:43:56.3575734Z 
+2026-11-28T02:43:56.3586214Z     @pytest.fixture
+2026-11-28T02:43:56.3614276Z     def loop_preview(dialog, tmp_path, monkeypatch):
+2026-11-28T02:43:56.3621035Z         """Real WavePlayer policy and PCM reads; only native MCI calls are modeled."""
+2026-11-28T02:43:56.3621749Z         import wave
+2026-11-28T02:43:56.3622223Z         from carr_library.speech import player as player_module
+2026-11-28T02:43:56.3622892Z     
+2026-11-28T02:43:56.3623260Z         original = tmp_path / 'original-loop.wav'
+2026-11-28T02:43:56.3623871Z         preview = tmp_path / 'clip-preview-loop.wav'
+2026-11-28T02:43:56.3624496Z         with wave.open(str(original), 'wb') as output:
+2026-11-28T02:43:56.3625289Z             output.setparams((1, 2, 8000, 0, 'NONE', 'not compressed'))
+2026-11-28T02:43:56.3625943Z             output.writeframes(b'\xe8\x03' * 2000)
+2026-11-28T02:43:56.3626445Z         raw = original.read_bytes()
+2026-11-28T02:43:56.3626851Z         preview.write_bytes(raw)
+2026-11-28T02:43:56.3627307Z         cue = Cue('loop-clip', str(original), duration=.25)
+2026-11-28T02:43:56.3627962Z         scene = Scene('loop-scene', 'Loop scene', (), cues=(cue,))
+2026-11-28T02:43:56.3628611Z >       project = Project('loop-project', 'Loop project', (), (scene,))
+2026-11-28T02:43:56.3629223Z                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2026-11-28T02:43:56.3629562Z 
+2026-11-28T02:43:56.3629741Z tests/studio/test_clip_dialog.py:746: 
+2026-11-28T02:43:56.3630270Z _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+2026-11-28T02:43:56.3630781Z <string>:13: in __init__
+2026-11-28T02:43:56.3631124Z     ???
+2026-11-28T02:43:56.3631502Z _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+2026-11-28T02:43:56.3631859Z 
+2026-11-28T02:43:56.3632974Z self = Project(id='loop-project', title='Loop project', roles=(), scenes=(Scene(id='loop-scene', title='Loop scene', lines=()...um_duration=0, effects=()),), original_script='', mode='faithful', sample_rate=24000, revision=1, schema=1, effects=())
+2026-11-28T02:43:56.3634265Z 
+2026-11-28T02:43:56.3634416Z     def __post_init__(self):
+2026-11-28T02:43:56.3634786Z         _id(self.id)
+2026-11-28T02:43:56.3635282Z         _text(self.title, 'project title', 512)
+2026-11-28T02:43:56.3635877Z         _text(self.original_script, 'original script', 16_000_000, True)
+2026-11-28T02:43:56.3636818Z         if self.schema not in (1, 2, 3) or type(self.schema) is not int or type(self.revision) is not int or self.revision < 1:
+2026-11-28T02:43:56.3637719Z             raise ValueError('Unsupported project schema or revision.')
+2026-11-28T02:43:56.3638273Z         if self.mode not in ('faithful', 'authored'):
+2026-11-28T02:43:56.3638953Z             raise ValueError('Choose faithful narration or explicitly authored production.')
+2026-11-28T02:43:56.3639602Z         if self.sample_rate not in (16000, 22050, 24000, 44100, 48000):
+2026-11-28T02:43:56.3640555Z             raise ValueError('Unsupported master sample rate.')
+2026-11-28T02:43:56.3641268Z         if not isinstance(self.roles, tuple) or not all(isinstance(x, Role) for x in self.roles):
+2026-11-28T02:43:56.3641961Z             raise ValueError('Project roles must be typed.')
+2026-11-28T02:43:56.3642718Z         if not isinstance(self.scenes, tuple) or not self.scenes or not all(isinstance(x, Scene) for x in self.scenes):
+2026-11-28T02:43:56.3643480Z             raise ValueError('Project needs typed scenes.')
+2026-11-28T02:43:56.3643959Z         roles = {role.id for role in self.roles}
+2026-11-28T02:43:56.3644750Z         if len(roles) != len(self.roles) or len({s.id for s in self.scenes}) != len(self.scenes):
+2026-11-28T02:43:56.3646265Z             raise ValueError('Duplicate role or scene ID.')
+2026-11-28T02:43:56.3646960Z         if any(line.role not in roles for scene in self.scenes for line in scene.lines):
+2026-11-28T02:43:56.3647687Z             raise ValueError('A line uses an unknown role.')
+2026-11-28T02:43:56.3648299Z         if self.schema == 1 and any(cue.role == 'microphone' or cue.trim_start or
+2026-11-28T02:43:56.3649071Z                 cue.duration is not None or cue.fade_in or cue.fade_out or cue.title
+2026-11-28T02:43:56.3649763Z                 for scene in self.scenes for cue in scene.cues):
+2026-11-28T02:43:56.3650541Z >           raise ValueError('Edited clip timing and microphone tracks require project schema 2.')
+2026-11-28T02:43:56.3651436Z E           ValueError: Edited clip timing and microphone tracks require project schema 2.
+2026-11-28T02:43:56.3651903Z 
+2026-11-28T02:43:56.3652106Z src/carr_library/studio/project.py:270: ValueError
+
+2026-11-28T02:43:56.4240503Z ERROR tests/studio/test_clip_dialog.py::test_clip_loop_requires_an_explicit_initial_preview - ValueError: Edited clip timing and microphone tracks require project schema 2.
+2026-11-28T02:43:56.4241329Z ERROR tests/studio/test_clip_dialog.py::test_clip_loop_uses_actual_player_repeat_and_quiet_admission[False] - ValueError: Edited clip timing and microphone tracks require project schema 2.
+2026-11-28T02:43:56.4242124Z ERROR tests/studio/test_clip_dialog.py::test_clip_loop_uses_actual_player_repeat_and_quiet_admission[True] - ValueError: Edited clip timing and microphone tracks require project schema 2.
+2026-11-28T02:43:56.4242903Z ERROR tests/studio/test_clip_dialog.py::test_clip_natural_end_can_be_explicitly_looped_but_stop_revokes_it - ValueError: Edited clip timing and microphone tracks require project schema 2.
+2026-11-28T02:43:56.4243636Z ERROR tests/studio/test_clip_dialog.py::test_clip_stop_revokes_the_first_queued_preview[rendering] - ValueError: Edited clip timing and microphone tracks require project schema 2.
+2026-11-28T02:43:56.4244451Z ERROR tests/studio/test_clip_dialog.py::test_clip_stop_revokes_the_first_queued_preview[waiting-for-quiet] - ValueError: Edited clip timing and microphone tracks require project schema 2.
+2026-11-28T02:43:56.4245479Z ERROR tests/studio/test_clip_dialog.py::test_clip_loop_rechecks_the_exact_selection_before_queued_restart[project] - ValueError: Edited clip timing and microphone tracks require project schema 2.
+2026-11-28T02:43:56.4246469Z ERROR tests/studio/test_clip_dialog.py::test_clip_loop_rechecks_the_exact_selection_before_queued_restart[clip] - ValueError: Edited clip timing and microphone tracks require project schema 2.
+2026-11-28T02:43:56.4247320Z ERROR tests/studio/test_clip_dialog.py::test_clip_loop_rechecks_the_exact_selection_before_queued_restart[library] - ValueError: Edited clip timing and microphone tracks require project schema 2.
+2026-11-28T02:43:56.4248207Z ERROR tests/studio/test_clip_dialog.py::test_clip_loop_rechecks_the_exact_selection_before_queued_restart[player-session] - ValueError: Edited clip timing and microphone tracks require project schema 2.
+2026-11-28T02:43:56.4249136Z ERROR tests/studio/test_clip_dialog.py::test_clip_loop_rechecks_the_exact_selection_before_queued_restart[cancel] - ValueError: Edited clip timing and microphone tracks require project schema 2.
+2026-11-28T02:43:56.4249960Z ERROR tests/studio/test_clip_dialog.py::test_clip_changed_preview_pcm_is_refused_by_actual_player_before_restart - ValueError: Edited clip timing and microphone tracks require project schema 2.
+2026-11-28T02:43:56.4250738Z ERROR tests/studio/test_clip_dialog.py::test_clip_stop_or_close_revokes_deferred_repeat_and_quiet_hold[stop] - ValueError: Edited clip timing and microphone tracks require project schema 2.
+2026-11-28T02:43:56.4251527Z ERROR tests/studio/test_clip_dialog.py::test_clip_stop_or_close_revokes_deferred_repeat_and_quiet_hold[close] - ValueError: Edited clip timing and microphone tracks require project schema 2.
+2026-11-28T02:43:56.4252287Z ERROR tests/studio/test_clip_dialog.py::test_clip_failed_device_close_keeps_owner_but_disarms_loop - ValueError: Edited clip timing and microphone tracks require project schema 2.
+2026-11-28T02:43:56.4253094Z ERROR tests/studio/test_clip_dialog.py::test_clip_destroy_revokes_repeat_before_retained_worker_cleanup[False] - ValueError: Edited clip timing and microphone tracks require project schema 2.
+2026-11-28T02:43:56.4253904Z ERROR tests/studio/test_clip_dialog.py::test_clip_destroy_revokes_repeat_before_retained_worker_cleanup[True] - ValueError: Edited clip timing and microphone tracks require project schema 2.
+2026-11-28T02:43:56.4254697Z ERROR tests/studio/test_clip_dialog.py::test_clip_host_finalizer_revokes_timer_work_without_worker_wx_calls - ValueError: Edited clip timing and microphone tracks require project schema 2.
+2026-11-28T02:43:56.4255648Z ERROR tests/studio/test_clip_dialog.py::test_clip_timer_start_refusal_cannot_arm_an_unobserved_loop - ValueError: Edited clip timing and microphone tracks require project schema 2.
+2026-11-28T02:43:56.4256506Z ERROR tests/studio/test_clip_dialog.py::test_clip_normal_timer_stop_error_still_closes_native_audio_and_stays_visible - ValueError: Edited clip timing and microphone tracks require project schema 2.
+2026-11-28T02:43:56.4257477Z ERROR tests/studio/test_clip_dialog.py::test_clip_queued_loop_events_after_close_never_observe_or_touch_retained_player[close-enable_loop] - ValueError: Edited clip timing and microphone tracks require project schema 2.
+2026-11-28T02:43:56.4258451Z ERROR tests/studio/test_clip_dialog.py::test_clip_queued_loop_events_after_close_never_observe_or_touch_retained_player[close-disable_loop] - ValueError: Edited clip timing and microphone tracks require project schema 2.
+2026-11-28T02:43:56.4259815Z ERROR tests/studio/test_clip_dialog.py::test_clip_queued_loop_events_after_close_never_observe_or_touch_retained_player[destroy-enable_loop] - ValueError: Edited clip timing and microphone tracks require project schema 2.
+2026-11-28T02:43:56.4260790Z ERROR tests/studio/test_clip_dialog.py::test_clip_queued_loop_events_after_close_never_observe_or_touch_retained_player[destroy-disable_loop] - ValueError: Edited clip timing and microphone tracks require project schema 2.
+2026-11-28T02:43:56.4261012Z ======================== 30 passed, 24 errors in 2.01s =========================
