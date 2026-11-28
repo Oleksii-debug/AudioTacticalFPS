@@ -50,9 +50,56 @@ jobs:
       - name: Select this runner's fresh measured profile path
         run: |
           python -I -B -X utf8 - <<'PY'
+          import json
           import os
           from pathlib import Path
-          path = Path(os.environ["RUNNER_TEMP"]) / ("carr-actual-library-" + os.environ["CARR_SCALE_TIER"])
+          import shutil
+          import stat
+          import tempfile
+
+          def directory(path):
+              info = path.lstat()
+              assert stat.S_ISDIR(info.st_mode) and not stat.S_ISLNK(info.st_mode), path
+              assert not int(getattr(info, "st_file_attributes", 0)) & 0x400, path
+              return [info.st_dev, info.st_ino, info.st_mode, int(getattr(info, "st_file_attributes", 0))]
+
+          observations = []
+          for label, raw in (("RUNNER_TEMP", os.environ["RUNNER_TEMP"]),
+                             ("python_tempfile", tempfile.gettempdir())):
+              spelling = Path(raw).absolute()
+              for parent in reversed(spelling.parents):
+                  directory(parent)
+              before = directory(spelling)
+              selected = spelling.resolve(strict=True)
+              assert directory(selected) == before
+              usage = shutil.disk_usage(selected)
+              assert directory(spelling) == directory(selected) == before
+              observations.append({"name": label, "supplied_path": str(spelling),
+                  "canonical_path": str(selected), "identity": before,
+                  "free_bytes": usage.free, "total_bytes": usage.total})
+          chosen = max(observations, key=lambda item: item["free_bytes"])
+          selected = Path(chosen["canonical_path"])
+          assert directory(selected) == chosen["identity"]
+          tier = os.environ["CARR_SCALE_TIER"]
+          assert tier in {"books-1000", "books-10000", "books-50000",
+                          "text-65m", "text-129m", "text-2g"}
+          # Exclusive new parent; the generator still creates a nonexisting child.
+          private = Path(tempfile.mkdtemp(prefix="carr-scale-" + tier + "-", dir=selected))
+          private_identity = directory(private)
+          assert directory(selected) == chosen["identity"]
+          path = private / "fixture"
+          assert not os.path.lexists(path) and "\n" not in str(path) and "\r" not in str(path)
+          report = {"observed_roots": observations, "selected_root": chosen,
+              "private_parent": str(private), "private_parent_identity": private_identity,
+              "fixture": str(path),
+              "selection": "larger measured free space among two known runner temporary roots",
+              "resource_admission": "NOT_YET_RUN; generator, import and backup keep their own preflight"}
+          out = Path("ci-library-corpus")
+          out.mkdir(exist_ok=True)
+          with (out / "runner-capacity.json").open("x", encoding="utf-8", newline="\n") as stream:
+              json.dump(report, stream, ensure_ascii=False, sort_keys=True)
+              stream.write("\n")
+          print("CARR_RUNNER_TEMP_CAPACITY " + json.dumps(report, ensure_ascii=False, sort_keys=True), flush=True)
           with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8", newline="\n") as stream:
               stream.write("CARR_SCALE_DIR=" + str(path) + "\n")
           PY

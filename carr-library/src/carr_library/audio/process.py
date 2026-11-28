@@ -404,6 +404,20 @@ def run_process(args, *, budget=None, cancelled=lambda: False,
                     except FileNotFoundError:
                         continue
                     raise AudioError('Audio worker staging directory changed while being inspected.') from None
+                except PermissionError as exc:
+                    # Windows can report access denied while a native worker
+                    # removes its own directory. Only an independent current
+                    # ENOENT proves that race; any extant/denied/unknown path
+                    # retains the original failure.
+                    if os.name != 'nt' or getattr(exc, 'winerror', None) != 5:
+                        raise
+                    try:
+                        path.lstat()
+                    except FileNotFoundError:
+                        continue
+                    except OSError:
+                        raise exc
+                    raise
                 continue
             if not stat.S_ISREG(info.st_mode):
                 raise AudioError('Audio worker output is not a regular file.')
