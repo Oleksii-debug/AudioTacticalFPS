@@ -277,10 +277,11 @@ def search_snapshot(db, workspace, allowed, query, ranker, *, limit=100,
     if not allowed:
         return []
     placeholders = ','.join('?' for _ in allowed)
-    from .search.paging import checked_page_ids
+    from .search.paging import PAGED_ACTIVE_SOURCE, checked_page_ids
     page_clause, page_parameters = checked_page_ids(page_ids)
+    source = PAGED_ACTIVE_SOURCE if page_ids is not None else 'active_page'
     cursor = db.execute('SELECT id,workspace,edition,revision,asset,ordinal,physical,printed,'
-                        'verified,raw,digest FROM active_page WHERE workspace=? AND edition IN ('
+                        'verified,raw,digest FROM ' + source + ' WHERE workspace=? AND edition IN ('
                         + placeholders + ')' + page_clause + ' ORDER BY edition,ordinal,id',
                         (workspace, *allowed, *page_parameters))
     passages, metadata = [], {}

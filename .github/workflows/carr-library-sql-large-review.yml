@@ -1,4 +1,4 @@
-name: Actual 512 MiB source growth with scoped SQL
+name: Actual corrected 512 MiB Windows source growth
 on:
   push:
     branches: [carr/library-sql-large-review-20261128]
@@ -16,7 +16,7 @@ jobs:
       fail-fast: false
       max-parallel: 4
       matrix:
-        os: [ubuntu-24.04, windows-2022]
+        os: [windows-2022]
         tier:
           - {name: text-512m, books: 0, bytes: 536871085, segments: 250, spool_mib: 4096}
     runs-on: ${{ matrix.os }}
@@ -270,6 +270,18 @@ jobs:
               write("collected-evidence.json", captured)
           
           
+          def policy():
+              saved = read(FIXTURE / "benchmark" / "state.json")
+              budget = saved["import_budget"]
+              assert budget["source_bytes"] == 536871085, budget
+              assert budget["temporary_bytes"] == 671088813, budget
+              assert budget["seconds"] == 600, budget
+              assert budget["memory_bytes"] == 1024 * 1024**2, budget
+              assert saved["books"] == 1 and saved["segments"] == 250
+              write("unchanged-policy.json", budget)
+              print("CARR_UNCHANGED_SCRATCH_POLICY " + json.dumps(budget, sort_keys=True), flush=True)
+          
+          
           def finish():
               before, after = read(OUT / "installed-before.json"), identity()
               for key in ("inventory", "package_sha256", "origins", "scripts", "executable", "commit"):
@@ -289,7 +301,7 @@ jobs:
                                             "physical_or_human_quality": "NOT_ASSESSED"})
                       raise SystemExit(2)
               phases = json.loads(os.environ["CARR_SCALE_PHASE_OUTCOMES"])
-              assert set(phases) == {"generate", "initialize", "interruption", "resume", "catalog", "search", "collect"}
+              assert set(phases) == {"generate", "initialize", "policy", "interruption", "resume", "catalog", "search", "collect"}
               incomplete = {name: value for name, value in phases.items() if value != "success"}
               if incomplete:
                   write("outcome.json", {"status": "FAILED" if "failure" in incomplete.values() else "INCOMPLETE",
@@ -320,6 +332,7 @@ jobs:
               measured = result["search"]
               admitted = read_phase(OUT / "initialize.jsonl")
               saved = read(FIXTURE / "benchmark" / "state.json")
+              assert saved["import_budget"] == read(OUT / "unchanged-policy.json")
               assert (measured["search_memory_allowance_bytes"]
                       == admitted["search_memory_bytes"] == saved["search_memory_bytes"])
               if int(os.environ["CARR_SCALE_BYTES"]) > 0:
@@ -351,6 +364,7 @@ jobs:
                   "catalog_seconds": result["catalog"]["elapsed_seconds"],
                   "search_seconds": measured["elapsed_seconds"],
                   "search_memory_allowance_bytes": measured["search_memory_allowance_bytes"],
+                  "import_budget": saved["import_budget"],
                   "instrumentation": "NONE; actual public scenario wall times",
                   "comparison": "No timing ratio to cProfile-inclusive baseline is claimed.",
                   "literal_page_latency": measured["literal_page_latency"],
@@ -369,6 +383,8 @@ jobs:
           mode = sys.argv[1]
           if mode == "before":
               write("installed-before.json", identity())
+          elif mode == "policy":
+              policy()
           elif mode == "collect":
               collect()
           elif mode == "finish":
@@ -396,6 +412,10 @@ jobs:
             search_memory_args=(--search-memory-mib 1024)
           fi
           python -I -B -X utf8 scripts/benchmark_library_catalog.py init "$CARR_SCALE_DIR" --memory-mib 1024 --search-disk-mib "$CARR_SCALE_SPOOL_MIB" --reserve-mib 1024 --page-files 1000 --slice-items 1000 --slice-seconds 600 --steps 1001 --foreign-libraries 21 "${search_memory_args[@]}" > ci-library-large-text-growth/initialize.jsonl
+      - name: Confirm the original source and temporary policy before corrected execution
+        id: policy
+        timeout-minutes: 5
+        run: python -I -B -X utf8 ci-library-large-text-growth/check.py policy
       - name: Interrupt the actual coordinator after one committed and quiescent publication
         id: interruption
         timeout-minutes: 35
@@ -427,7 +447,7 @@ jobs:
       - name: Require complete exact counts and unchanged installed bytes
         if: always()
         env:
-          CARR_SCALE_PHASE_OUTCOMES: '{"generate":"${{ steps.generate.outcome }}","initialize":"${{ steps.initialize.outcome }}","interruption":"${{ steps.interruption.outcome }}","resume":"${{ steps.resume.outcome }}","catalog":"${{ steps.catalog.outcome }}","search":"${{ steps.search.outcome }}","collect":"${{ steps.collect.outcome }}"}'
+          CARR_SCALE_PHASE_OUTCOMES: '{"generate":"${{ steps.generate.outcome }}","initialize":"${{ steps.initialize.outcome }}","policy":"${{ steps.policy.outcome }}","interruption":"${{ steps.interruption.outcome }}","resume":"${{ steps.resume.outcome }}","catalog":"${{ steps.catalog.outcome }}","search":"${{ steps.search.outcome }}","collect":"${{ steps.collect.outcome }}"}'
         run: python -I -B -X utf8 ci-library-large-text-growth/check.py finish
       - name: Preserve selected dependency identity
         if: always()

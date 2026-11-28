@@ -377,7 +377,32 @@ class Storage:
         for row in self.db.execute('SELECT raw,digest FROM page'):
             if sha256(row[0].encode()).hexdigest()!=row[1]:
                 raise ValueError('raw digest mismatch')
-        if self.db.execute('SELECT id,raw FROM active_page EXCEPT SELECT id,raw FROM indexed').fetchone() or self.db.execute('SELECT id,raw FROM indexed EXCEPT SELECT id,raw FROM active_page').fetchone():
+        # Probe unique IDs without materializing a second raw-text index.
+        # Unary + preserves EXCEPT's no-affinity comparison; IS handles NULL.
+        if self.db.execute("""
+            SELECT 1 FROM active a
+            CROSS JOIN revision r
+            CROSS JOIN page p
+            WHERE r.id=a.revision
+              AND r.workspace=a.workspace AND r.edition=a.edition
+              AND p.revision=r.id
+              AND NOT EXISTS (
+                  SELECT 1 FROM indexed i WHERE i.id=p.id
+                    AND (+i.raw COLLATE BINARY) IS (+p.raw COLLATE BINARY)
+              )
+            LIMIT 1
+        """).fetchone() or self.db.execute("""
+            SELECT 1 FROM indexed i WHERE NOT EXISTS (
+                SELECT 1 FROM page p
+                CROSS JOIN revision r
+                CROSS JOIN active a
+                WHERE p.id=i.id AND r.id=p.revision
+                  AND a.workspace=r.workspace AND a.edition=r.edition
+                  AND a.revision=r.id
+                  AND (+p.raw COLLATE BINARY) IS (+i.raw COLLATE BINARY)
+            )
+            LIMIT 1
+        """).fetchone():
             raise ValueError('active index content mismatch')
         self.db.execute("INSERT INTO page_fts(page_fts,rank) VALUES('integrity-check',1)")
         if self.schema_version >= 3:
