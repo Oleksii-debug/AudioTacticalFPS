@@ -1,0 +1,27 @@
+{
+  "schema": 1,
+  "scope": "read one immutable public JUnit XML member as bounded text, without parsing, extraction, imports, or execution",
+  "source_run": 46098474617,
+  "source_head": "5d19dde77aca6a257ee601c1bc49b8504c342cee",
+  "artifact": {
+    "id": 15246270861,
+    "bytes": 323873,
+    "sha256": "439f806508f05a9a49a233add106b8749cc4b4fe79b94ab1d5498d7b73ade388"
+  },
+  "member": {
+    "path": "full-bundle-workflows.xml",
+    "inventory_bytes": 210449,
+    "max_raw_bytes": 262144
+  },
+  "reason": "Full bundle pytest recorded 1339 passes and one failure before its diagnostic observer hit CP1252 UnicodeEncodeError; read original JUnit to identify that failure instead of inferring.",
+  "preserved": [
+    "API authorization only on api.github.com",
+    "signed redirect exact host allowlist and no forwarded authorization",
+    "immutable artifact size/digest/run/head/branch verification",
+    "ZIP inventory/path/type/compression/size guards",
+    "2 MiB output bound",
+    "no application execution",
+    "no private assets"
+  ],
+  "acceptance": "NOT_ASSESSED"
+}

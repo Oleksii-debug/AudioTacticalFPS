@@ -18,7 +18,7 @@ RUN = 46098474617
 HEAD = "5d19dde77aca6a257ee601c1bc49b8504c342cee"
 BRANCH = "carr/ci-endpoint-evaluation-20261127"
 SOURCES = (
-    ("bundle", 15246270861, 323873,
+    ("junit", 15246270861, 323873,
      "439f806508f05a9a49a233add106b8749cc4b4fe79b94ab1d5498d7b73ade388",
      "carr-windows-pre-source-" + HEAD + "-1"),
 )
@@ -123,6 +123,9 @@ def line(kind, value):
 
 
 def wanted(name, mode):
+    # Admit only this already inventoried public JUnit text; never parse or execute it.
+    if mode == "junit":
+        return name == "full-bundle-workflows.xml"
     # Standard setup admits only these exact public receipt paths.
     if mode == "standard":
         return name in STANDARD_RECEIPTS
@@ -262,7 +265,9 @@ def main():
                     **info, "complete_text": complete, "text": snippet}))
                 # Preserve exact bytes for small failure receipts or console
                 # transcripts; longer logs are explicitly partial excerpts.
-                if len(member) <= 32 * 1024:
+                if (len(member) <= 32 * 1024
+                        or (mode == "junit" and name == "full-bundle-workflows.xml"
+                            and len(member) <= 256 * 1024)):
                     for index, start in enumerate(range(0, len(member), 3072)):
                         emit(line("CARR_WINDOWS_BYTES", {
                             "artifact": identity, "path": name, "part": index,
