@@ -1,0 +1,688 @@
+{
+  "schema": "carr-terminal-main-receiving/1",
+  "status": "RECEIVED",
+  "application_head": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7",
+  "run": {
+    "id": 46111581939,
+    "job": 140876083779,
+    "event": "pull_request",
+    "branch": "carr/v3-integrated-final-dbbb-20261126",
+    "attempt": 1,
+    "status": "completed",
+    "conclusion": "failure",
+    "created_at": "2026-11-28T05:19:31Z",
+    "updated_at": "2026-11-28T06:47:10Z",
+    "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46111581939"
+  },
+  "checkout": {
+    "exact_head": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7",
+    "evidence": "The completed log contains actions/checkout ref, git checkout and git log -1 output for this exact application head."
+  },
+  "original_decoded_log": {
+    "file": "job-log.txt",
+    "characters": 1440805,
+    "utf8_bytes": 1440935,
+    "sha256": "caa3a3bc2cd86912528ab8aa7f671a98fc34198d422ce431ec5512f2c080a190",
+    "retention": "Entire tool-decoded completed job log, unchanged."
+  },
+  "source": {
+    "modules": 450,
+    "unique": 450,
+    "declared": 450,
+    "exact_multiset": true,
+    "exact_order": false,
+    "passed_modules": 449,
+    "failed_modules": [
+      {
+        "status": "FAIL",
+        "suite": "tests/ui/test_word_citations.py",
+        "passed": 14,
+        "failed": 5,
+        "skipped": 0,
+        "pytest_exit": 1
+      }
+    ],
+    "passed": 11750,
+    "failed": 5,
+    "skipped": 0,
+    "summary": "Required suites complete: 450; passed=449; failed=1",
+    "selector_comparison": "Exact unique selector multiset and cardinality, including bootstrap/semantic_compat/test_probe.py. Completion order is not declaration order because ci_check uses --jobs 2.",
+    "declared_inventory_file": "required-source-suites.json",
+    "module_verdicts_file": "source-module-verdicts.json",
+    "selected_actual_results": [
+      {
+        "status": "FAIL",
+        "suite": "tests/ui/test_word_citations.py",
+        "passed": 14,
+        "failed": 5,
+        "skipped": 0,
+        "pytest_exit": 1
+      },
+      {
+        "status": "PASS",
+        "suite": "tests/audio/test_silence_inspection.py",
+        "passed": 41,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "suite": "tests/studio/test_silence_inspection.py",
+        "passed": 19,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "suite": "tests/studio/test_book_silence.py",
+        "passed": 16,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "suite": "tests/ui/test_studio_silence_inspection.py",
+        "passed": 65,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "suite": "tests/studio/test_director_silence.py",
+        "passed": 16,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "suite": "tests/audio/test_process_deadline.py",
+        "passed": 21,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "suite": "tests/academic_integration/test_formatting.py",
+        "passed": 39,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "suite": "tests/operations/test_resources.py",
+        "passed": 46,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      }
+    ],
+    "failed_module_count": 1
+  },
+  "step_outcomes": [
+    {
+      "number": 1,
+      "name": "Set up job",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "number": 2,
+      "name": "Check out the exact event commit",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "number": 3,
+      "name": "Set up native x64 CPython",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "number": 4,
+      "name": "Install the actual desktop package in a fresh environment",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "number": 5,
+      "name": "Start existing Windows audio services and record actual endpoint capability",
+      "status": "completed",
+      "conclusion": "failure"
+    },
+    {
+      "number": 6,
+      "name": "Preserve early audio endpoint diagnostics",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "number": 7,
+      "name": "Locate installed Microsoft x64 launcher tools",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "number": 8,
+      "name": "Compile the private native launch entry from this source",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "number": 9,
+      "name": "Execute the actual native launcher process contract",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "number": 10,
+      "name": "Prepare the exact reviewed private Windows audio runtime",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "number": 11,
+      "name": "Check the installed application through its self-test entrypoint",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "number": 12,
+      "name": "Require locale-independent backup and real process cancellation regressions",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "number": 13,
+      "name": "Check the installed offline OCR catalogue and console entrypoint",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "number": 14,
+      "name": "Exercise the installed native OCR catalogue and model manager",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "number": 15,
+      "name": "Exercise native academic references and reading controls",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "number": 16,
+      "name": "Exercise native keyboard preferences and installed OCR selection",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "number": 17,
+      "name": "Exercise the installed native command palette",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "number": 18,
+      "name": "Prepare the pinned EPUB conformance checker",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "number": 19,
+      "name": "Prepare the exact official offline DAISY validation schemas",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "number": 20,
+      "name": "Require source and installed actual DAISY publication structure",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "number": 21,
+      "name": "Verify actual native publication controls and EPUB conformance",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "number": 22,
+      "name": "Compile actual Windows SDK WinMM layout evidence",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "number": 23,
+      "name": "Verify actual installed Windows SAPI speech and native preview",
+      "status": "completed",
+      "conclusion": "failure"
+    },
+    {
+      "number": 24,
+      "name": "Require actual Windows capture process ownership",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "number": 25,
+      "name": "Require source and installed native recording controls",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "number": 26,
+      "name": "Require measured capture from the explicitly reviewed virtual input",
+      "status": "completed",
+      "conclusion": "skipped"
+    },
+    {
+      "number": 27,
+      "name": "Diagnose only the failed explicitly selected capture input",
+      "status": "completed",
+      "conclusion": "skipped"
+    },
+    {
+      "number": 28,
+      "name": "Preserve initial native playback and recording diagnostics",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "number": 29,
+      "name": "Exercise native audio studio and provider settings",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "number": 30,
+      "name": "Verify explicit provider policy and local planner using local HTTP fixtures",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "number": 31,
+      "name": "Retain core-only fallback and offline startup coverage",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "number": 32,
+      "name": "Match production dependencies before required source suites",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "number": 33,
+      "name": "Prepare the pinned public font required by unchanged OCR fixtures",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "number": 34,
+      "name": "Prepare the verified OCR engine before its required source regression",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "number": 35,
+      "name": "Exercise actual managed OCR and ordered choices with Unicode Windows paths",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "number": 36,
+      "name": "Require exact source and installed OCR and result-page controls",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "number": 37,
+      "name": "Require actual reading preparation from source and installed package",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "number": 38,
+      "name": "Require native voice preferences and fresh inventory review",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "number": 39,
+      "name": "Require native Word review and current-reader assistant controls",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "number": 40,
+      "name": "Require native reviewed recording-to-reference package controls",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "number": 41,
+      "name": "Require native encrypted portable snapshot review and restore",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "number": 42,
+      "name": "Require native streamed UTF-8 source intake",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "number": 43,
+      "name": "Require native protected voice-profile review and transfer",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "number": 44,
+      "name": "Require native scoped ranked and federated result continuation",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "number": 45,
+      "name": "Record required integrated source-suite inventory",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "number": 46,
+      "name": "Exercise native Import Center and durable batch workflow",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "number": 47,
+      "name": "Exercise installed measured progress and real busy-time keys",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "number": 48,
+      "name": "Require source and installed native desktop and production controls",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "number": 49,
+      "name": "Require installed native scene clip controls and measured PCM effects",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "number": 50,
+      "name": "Require source and installed native reading tabs and visual focus",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "number": 51,
+      "name": "Require source and installed reader editing, spelling, appearance and output controls",
+      "status": "completed",
+      "conclusion": "skipped"
+    },
+    {
+      "number": 52,
+      "name": "Exercise native supplied-worker transcription controls",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "number": 53,
+      "name": "Exercise native reader, translation, voice setup and delivery lifecycle",
+      "status": "completed",
+      "conclusion": "failure"
+    },
+    {
+      "number": 54,
+      "name": "Exercise native extended-document imports and exact retained reading",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "number": 55,
+      "name": "Exercise native wx startup and source-opening events",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "number": 56,
+      "name": "Exercise native saved-evidence page selection and note recovery",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "number": 57,
+      "name": "Exercise native reference metadata review and historical outline export",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "number": 58,
+      "name": "Exercise native research-notebook search and keyboard actions",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "number": 59,
+      "name": "Exercise native EPUB section navigation and image descriptions",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "number": 60,
+      "name": "Exercise native library reports and academic exports",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "number": 61,
+      "name": "Exercise native EPUB contents and exact chapter search",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "number": 62,
+      "name": "Exercise native full-source reader and page bookmarks",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "number": 63,
+      "name": "Exercise native catalog reports and source comparison export",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "number": 64,
+      "name": "Exercise native advanced query builder and exact-source actions",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "number": 65,
+      "name": "Prepare the pinned local model through the existing upstream verifier",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "number": 66,
+      "name": "Build, install and exercise the complete bundle with runtime egress blocked",
+      "status": "completed",
+      "conclusion": "failure"
+    },
+    {
+      "number": 67,
+      "name": "Build pinned standard setup and execute actual install, repair and uninstall",
+      "status": "completed",
+      "conclusion": "skipped"
+    },
+    {
+      "number": 68,
+      "name": "Require the retained bundle local proposal through actual loopback HTTP",
+      "status": "completed",
+      "conclusion": "skipped"
+    },
+    {
+      "number": 69,
+      "name": "Preserve completed native and bundle diagnostics before source inventory",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "number": 70,
+      "name": "Run required workflows against the complete pinned runtime",
+      "status": "completed",
+      "conclusion": "failure"
+    },
+    {
+      "number": 71,
+      "name": "Retain the exact wheel only after the full Windows aggregate succeeds",
+      "status": "completed",
+      "conclusion": "skipped"
+    },
+    {
+      "number": 72,
+      "name": "Preserve exact-commit runtime and test evidence",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "number": 143,
+      "name": "Post Set up native x64 CPython",
+      "status": "completed",
+      "conclusion": "skipped"
+    },
+    {
+      "number": 144,
+      "name": "Post Check out the exact event commit",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "number": 145,
+      "name": "Complete job",
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "artifacts": [
+    {
+      "id": 15252163118,
+      "name": "carr-windows-9812b4654176dc58ed0066dae7b056ea54ee49c9-1",
+      "bytes": 204811,
+      "digest": "sha256:0e33cd90a62990cf7508f0d21cf1d6773f6a5f82a1159fe2d0707cf4139dab14",
+      "expired": false,
+      "created_at": "2026-11-28T06:47:04Z",
+      "updated_at": "2026-11-28T06:47:04Z"
+    },
+    {
+      "id": 15250782757,
+      "name": "carr-windows-pre-source-2dfc5d32558c722ba05068dfff9ebb19eeae52f7-1",
+      "bytes": 181496,
+      "digest": "sha256:805100c11d6ac046d9bba4a8b805a401e6008e7ff4071c2ff42830dd6f2f6a83",
+      "expired": false,
+      "created_at": "2026-11-28T05:46:51Z",
+      "updated_at": "2026-11-28T05:46:51Z"
+    },
+    {
+      "id": 15250100924,
+      "name": "carr-windows-audio-endpoint-2dfc5d32558c722ba05068dfff9ebb19eeae52f7-1",
+      "bytes": 1002,
+      "digest": "sha256:8703750710482dd8842f8398ff4b063757bd55975f578bfe46896c00d6f9231a",
+      "expired": false,
+      "created_at": "2026-11-28T05:30:13Z",
+      "updated_at": "2026-11-28T05:30:13Z"
+    },
+    {
+      "id": 15249888869,
+      "name": "carr-windows-recording-2dfc5d32558c722ba05068dfff9ebb19eeae52f7-1",
+      "bytes": 8809,
+      "digest": "sha256:a38e0ad0dbbf89052846ca57f0ea6c27ba4c15052df100ba0009670a94567851",
+      "expired": false,
+      "created_at": "2026-11-28T05:33:00Z",
+      "updated_at": "2026-11-28T05:33:00Z"
+    }
+  ],
+  "native_reader_receipts_in_log": [
+    {
+      "log_line": 5946,
+      "status": "FAILED",
+      "checks": 13,
+      "wave_output": {
+        "device_count": 0,
+        "devices": [],
+        "inventory_truncated": false,
+        "fixture": {
+          "sample_rate": 16000,
+          "channels": 1,
+          "bits_per_sample": 16
+        },
+        "format_query_result": 2,
+        "format_query_message": "A device ID has been used that is out of range for your system.",
+        "mci_326_message": "No wave device is installed that can play files in the current format. To install a wave device, go to Control Panel, click Printers and Other Hardware, and then click Add Hardware.",
+        "scope": "Read-only endpoint and format query; actual MCI playback remains required."
+      },
+      "failure": "Traceback (most recent call last):\n  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_reader_controls_smoke.py\", line 407, in _run_probe\n    raise AssertionError('\\n'.join(failures))\nAssertionError: Traceback (most recent call last):\n  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_reader_controls_smoke.py\", line 143, in guarded\n    callback()\n  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_reader_controls_smoke.py\", line 157, in tick\n    done()\n  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_reader_controls_smoke.py\", line 323, in begin_playback\n    play_when_quiet((frame.operation_progress,), lambda: player.play(active['source']),\n  File \"D:\\a\\_temp\\carr-windows-python\\Lib\\site-packages\\carr_library\\speech\\progress_speech.py\", line 343, in play_when_quiet\n    attempt()\n  File \"D:\\a\\_temp\\carr-windows-python\\Lib\\site-packages\\carr_library\\speech\\progress_speech.py\", line 341, in attempt\n    on_error(exc)\n  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_reader_controls_smoke.py\", line 325, in <lambda>\n    on_error=lambda error: (_ for _ in ()).throw(error))\n                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_reader_controls_smoke.py\", line 325, in <genexpr>\n    on_error=lambda error: (_ for _ in ()).throw(error))\n  File \"D:\\a\\_temp\\carr-windows-python\\Lib\\site-packages\\carr_library\\speech\\progress_speech.py\", line 329, in attempt\n    start()\n  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_reader_controls_smoke.py\", line 323, in <lambda>\n    play_when_quiet((frame.operation_progress,), lambda: player.play(active['source']),\n                                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"D:\\a\\_temp\\carr-windows-python\\Lib\\site-packages\\carr_library\\speech\\player.py\", line 582, in play\n    self._replace_recording(path, start_seconds=start_seconds)\n  File \"D:\\a\\_temp\\carr-windows-python\\Lib\\site-packages\\carr_library\\speech\\player.py\", line 578, in _replace_recording\n    self._start(target, start_seconds=start_seconds)\n  File \"D:\\a\\_temp\\carr-windows-python\\Lib\\site-packages\\carr_library\\speech\\player.py\", line 539, in _start\n    self._mci_open(transport)\n  File \"D:\\a\\_temp\\carr-windows-python\\Lib\\site-packages\\carr_library\\speech\\player.py\", line 423, in _mci_open\n    raise RuntimeError(f'Windows audio device rejected the operation (MCI {code}).')\nRuntimeError: Windows audio device rejected the operation (MCI 326).\n\n",
+      "scope": "Actual functional native controls with synthetic PCM; no perceptual/NVDA qualification."
+    },
+    {
+      "log_line": 8807,
+      "status": "FAILED",
+      "checks": 13,
+      "wave_output": {
+        "device_count": 0,
+        "devices": [],
+        "inventory_truncated": false,
+        "fixture": {
+          "sample_rate": 16000,
+          "channels": 1,
+          "bits_per_sample": 16
+        },
+        "format_query_result": 2,
+        "format_query_message": "A device ID has been used that is out of range for your system.",
+        "mci_326_message": "No wave device is installed that can play files in the current format. To install a wave device, go to Control Panel, click Printers and Other Hardware, and then click Add Hardware.",
+        "scope": "Read-only endpoint and format query; actual MCI playback remains required."
+      },
+      "failure": "Traceback (most recent call last):\n  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_reader_controls_smoke.py\", line 407, in _run_probe\n    raise AssertionError('\\n'.join(failures))\nAssertionError: Traceback (most recent call last):\n  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_reader_controls_smoke.py\", line 143, in guarded\n    callback()\n  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_reader_controls_smoke.py\", line 157, in tick\n    done()\n  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_reader_controls_smoke.py\", line 323, in begin_playback\n    play_when_quiet((frame.operation_progress,), lambda: player.play(active['source']),\n  File \"D:\\a\\_temp\\carr-bundle-ci\\complete bundle\\.venv\\Lib\\site-packages\\carr_library\\speech\\progress_speech.py\", line 343, in play_when_quiet\n    attempt()\n  File \"D:\\a\\_temp\\carr-bundle-ci\\complete bundle\\.venv\\Lib\\site-packages\\carr_library\\speech\\progress_speech.py\", line 341, in attempt\n    on_error(exc)\n  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_reader_controls_smoke.py\", line 325, in <lambda>\n    on_error=lambda error: (_ for _ in ()).throw(error))\n                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_reader_controls_smoke.py\", line 325, in <genexpr>\n    on_error=lambda error: (_ for _ in ()).throw(error))\n  File \"D:\\a\\_temp\\carr-bundle-ci\\complete bundle\\.venv\\Lib\\site-packages\\carr_library\\speech\\progress_speech.py\", line 329, in attempt\n    start()\n  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_reader_controls_smoke.py\", line 323, in <lambda>\n    play_when_quiet((frame.operation_progress,), lambda: player.play(active['source']),\n                                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"D:\\a\\_temp\\carr-bundle-ci\\complete bundle\\.venv\\Lib\\site-packages\\carr_library\\speech\\player.py\", line 582, in play\n    self._replace_recording(path, start_seconds=start_seconds)\n  File \"D:\\a\\_temp\\carr-bundle-ci\\complete bundle\\.venv\\Lib\\site-packages\\carr_library\\speech\\player.py\", line 578, in _replace_recording\n    self._start(target, start_seconds=start_seconds)\n  File \"D:\\a\\_temp\\carr-bundle-ci\\complete bundle\\.venv\\Lib\\site-packages\\carr_library\\speech\\player.py\", line 539, in _start\n    self._mci_open(transport)\n  File \"D:\\a\\_temp\\carr-bundle-ci\\complete bundle\\.venv\\Lib\\site-packages\\carr_library\\speech\\player.py\", line 423, in _mci_open\n    raise RuntimeError(f'Windows audio device rejected the operation (MCI {code}).')\nRuntimeError: Windows audio device rejected the operation (MCI 326).\n\n",
+      "scope": "Actual functional native controls with synthetic PCM; no perceptual/NVDA qualification."
+    }
+  ],
+  "overall_qualification": "FAILED",
+  "limitations": [
+    "A passing source subset does not promote the complete MAIN aggregate.",
+    "No artifact bytes are claimed verified from API metadata alone; the separately pinned guarded helper proofs retain verified archive/member bytes.",
+    "Main standard-installation and retained-loopback phases were skipped after the prior full-bundle failure. Separate focused standard results are not substituted here.",
+    "No skip/xfail or product deadline was relaxed. Every declared source selector has an actual strict verdict.",
+    "The receipt records the tested head and event only; results are not transferred to another candidate."
+  ],
+  "word_failure": {
+    "module": "tests/ui/test_word_citations.py",
+    "passed": 14,
+    "failed": 5,
+    "seconds": 128.06,
+    "trace_file": "word-trace.txt",
+    "observed_boundary": "previewed() receives actions.plan=None after frame.finish(); the recorded error callback text is blank.",
+    "cases": [
+      "tests/ui/test_word_citations.py::test_modal_return_cannot_clear_revoked_approval_before_dispatch[cancel]",
+      "tests/ui/test_word_citations.py::test_modal_return_cannot_clear_revoked_approval_before_dispatch[dialog-close]",
+      "tests/ui/test_word_citations.py::test_modal_return_cannot_clear_revoked_approval_before_dispatch[desktop-close]",
+      "tests/ui/test_word_citations.py::test_declined_confirmation_never_submits_a_word_write[no]",
+      "tests/ui/test_word_citations.py::test_declined_confirmation_never_submits_a_word_write[non-boolean]"
+    ],
+    "pending_correction": "The separately reviewed and focused-tested Word fixture waits for a terminal Future before delivering a product callback; it is not part of this tested head."
+  },
+  "artifact_name_note": "The final artifact name includes PR event merge SHA 9812b4654176dc58ed0066dae7b056ea54ee49c9. The actual checkout, run head and this source result remain 2dfc5d32558c722ba05068dfff9ebb19eeae52f7; the naming values are not conflated.",
+  "capture": "Guarded selected capture/access steps were skipped for this PR event. No capture access cause is inferred for this event."
+}

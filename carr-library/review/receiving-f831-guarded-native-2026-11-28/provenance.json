@@ -1,0 +1,468 @@
+{
+  "schema": "carr-guarded-native-receipts/1",
+  "status": "RECEIVED",
+  "application_head": "f8311d17fa960448b350cb739b5a90584c30c74b",
+  "run": 46105047646,
+  "job": 140855804552,
+  "event": "push",
+  "branch": "carr/ci-endpoint-evaluation-20261127",
+  "attempt": 1,
+  "reader": {
+    "run": 46114303310,
+    "job": 140884537025,
+    "head": "eb75379fd63c44c084718c936b9b93af03c16c34",
+    "script_blob": "b349f42abf756a6c76457f0baa2b168341645029",
+    "status": "success",
+    "prior_raw_log_blob": "b9f4d3768270e1ba13a021515ab2736ec1c70202"
+  },
+  "archives": [
+    {
+      "id": 15250473998,
+      "name": "carr-windows-pre-source-f8311d17fa960448b350cb739b5a90584c30c74b-1",
+      "bytes": 474065,
+      "sha256": "f8182f7a63281cb87e40f342634f777e4918379e2bf872c1bc70e830af833461",
+      "created_at": "2026-11-28T05:51:40Z",
+      "updated_at": "2026-11-28T05:51:40Z",
+      "run": 46105047646,
+      "head": "f8311d17fa960448b350cb739b5a90584c30c74b",
+      "mode": "main"
+    },
+    {
+      "id": 15247522107,
+      "name": "carr-windows-audio-endpoint-f8311d17fa960448b350cb739b5a90584c30c74b-1",
+      "bytes": 3944,
+      "sha256": "97970c8ba69449eebe1e9802855c558e78fc8b7ec689bb1dbe23c9be518e5cb6",
+      "created_at": "2026-11-28T04:09:01Z",
+      "updated_at": "2026-11-28T04:09:01Z",
+      "run": 46105047646,
+      "head": "f8311d17fa960448b350cb739b5a90584c30c74b",
+      "mode": "endpoint"
+    },
+    {
+      "id": 15247404007,
+      "name": "carr-windows-recording-f8311d17fa960448b350cb739b5a90584c30c74b-1",
+      "bytes": 16773,
+      "sha256": "3e8ef34ab26753159095572a934ca6b2147d361cdc819ae3ebe73a48b8e26250",
+      "created_at": "2026-11-28T04:11:42Z",
+      "updated_at": "2026-11-28T04:11:42Z",
+      "run": 46105047646,
+      "head": "f8311d17fa960448b350cb739b5a90584c30c74b",
+      "mode": "recording"
+    }
+  ],
+  "members": [
+    {
+      "path": "full-bundle-reader-controls.txt",
+      "bytes": 12389,
+      "sha256": "4585a6bd56854f3b2c8fa764f323494ec74a9a2e44ad86d2a8e17e919870fce4",
+      "archives": [
+        15250473998
+      ],
+      "raw_original_bytes": true
+    },
+    {
+      "path": "installed-reader-navigation.json",
+      "bytes": 6218,
+      "sha256": "1f79a4c266eed5a63fa340cec06b4384f1b8a90b5178d8bc4a691b4ff370145e",
+      "archives": [
+        15250473998
+      ],
+      "raw_original_bytes": true
+    },
+    {
+      "path": "installed-scene-clip-editor.txt",
+      "bytes": 16016,
+      "sha256": "9fc332b984e8d1a20664c708d94ddf6a15029e1dc0f018d8ee7836ee16e7c4a5",
+      "archives": [
+        15250473998
+      ],
+      "raw_original_bytes": true
+    },
+    {
+      "path": "recording-access-diagnostic.json",
+      "bytes": 10216,
+      "sha256": "0e9fa034f26f7581326f4054af75ace383194f1b5742232cc65230766b78d78c",
+      "archives": [
+        15250473998,
+        15247404007
+      ],
+      "raw_original_bytes": true
+    },
+    {
+      "path": "source-reader-navigation.json",
+      "bytes": 6288,
+      "sha256": "e583e9ab58f3c2122fc04dfade347516c92b3b90a417d46b75a5a19446de47b0",
+      "archives": [
+        15250473998
+      ],
+      "raw_original_bytes": true
+    },
+    {
+      "path": "native-recording-device.json",
+      "bytes": 2773,
+      "sha256": "0ff96480cf4bdfa7d9511a72fa5ccfdc46f6bb55a1df9897cceaec09c59098b0",
+      "archives": [
+        15247404007
+      ],
+      "raw_original_bytes": true
+    }
+  ],
+  "observed": {
+    "source_navigation": {
+      "status": "PASS",
+      "checks": 50,
+      "source_commit": "f8311d17fa960448b350cb739b5a90584c30c74b",
+      "output_identity": "ba53ad803943752b9ddab6979a36f70df8ec74f4fbd659dfc62dfe4e6f9d4baa",
+      "synthetic_narrations": 6,
+      "seek_checks": [
+        "native Seek starts from an explicitly paused recording",
+        "native Seek labels seconds and 0%/100% before 50%",
+        "native Seek receives the exact typed value 50%",
+        "native Seek 50% uses the same measured recording and remains paused",
+        "native Seek labels seconds and 0%/100% before 100%",
+        "native Seek receives the exact typed value 100%",
+        "native Seek 100% uses the same measured recording and remains paused",
+        "native Seek labels seconds and 0%/100% before 0.25",
+        "native Seek receives the exact typed value 0.25",
+        "native Seek 0.25 uses the same measured recording and remains paused"
+      ]
+    },
+    "installed_navigation": {
+      "status": "PASS",
+      "checks": 50,
+      "source_commit": "f8311d17fa960448b350cb739b5a90584c30c74b",
+      "output_identity": "ba53ad803943752b9ddab6979a36f70df8ec74f4fbd659dfc62dfe4e6f9d4baa",
+      "synthetic_narrations": 6,
+      "seek_checks": [
+        "native Seek starts from an explicitly paused recording",
+        "native Seek labels seconds and 0%/100% before 50%",
+        "native Seek receives the exact typed value 50%",
+        "native Seek 50% uses the same measured recording and remains paused",
+        "native Seek labels seconds and 0%/100% before 100%",
+        "native Seek receives the exact typed value 100%",
+        "native Seek 100% uses the same measured recording and remains paused",
+        "native Seek labels seconds and 0%/100% before 0.25",
+        "native Seek receives the exact typed value 0.25",
+        "native Seek 0.25 uses the same measured recording and remains paused"
+      ]
+    },
+    "installed_scene_clip": {
+      "status": "PASS",
+      "checks": 158,
+      "loop_preview": {
+        "status": "PASS",
+        "reason": null,
+        "acoustic_listening": "NOT_RUN",
+        "physical_output_device": "NOT_RUN",
+        "completed_repeats": 2,
+        "output_index": 1,
+        "output_identity": "ba53ad803943752b9ddab6979a36f70df8ec74f4fbd659dfc62dfe4e6f9d4baa",
+        "preview_sha256": "192579ff15b8f022cb65896c1072987035c8947fd0175af69cb99f17af29a4e0",
+        "module_sha256": {
+          "carr_library.ui.studio_clips": "8679b7c7ed987e0484392fb9d33f728e52d413b8949a441cc4b85135bd5dd85e",
+          "carr_library.studio.clips": "21814cbe3bb6c5b54c5df1a2491c30339c3595dc44ef66a9c8551b5f723cd85e",
+          "carr_library.speech.player": "2d945ee142981f15cf3009c0db90cccb8583ee71500236d0d248992a8fd608d4",
+          "carr_library.speech.output_devices": "ec0dfdd7082f05d3edde73157db59770f57c19e334ba18dd43c45ed3efa888c5",
+          "carr_library.speech.progress_speech": "20461dafc294c67ce28137ae818189d710356bb9fa9a7493e85752d0352f3393",
+          "carr_library.speech._wave_output": "190e7f289268a42db84cfb89e073c6d6cb2deb32ffb27cc63fe366a39fe71664"
+        },
+        "native_keyboard": "PASS",
+        "fixture": "synthetic retained PCM with saved clip effects"
+      }
+    },
+    "full_bundle_reader_controls": {
+      "status": "PASS",
+      "checks": 108,
+      "actual_winmm": true,
+      "actual_native_keys": true,
+      "device_count": 2,
+      "format_query_result": 0
+    },
+    "capture": {
+      "status": "FAILED",
+      "diagnostic_status": "DIAGNOSED",
+      "source_commit": "f8311d17fa960448b350cb739b5a90584c30c74b",
+      "selected_device": {
+        "id": "28525c701269cc738b26d79261d745ad618cfd7632426ea8ad71bae0bc3d803d",
+        "name": "CABLE Output (VB-Audio Virtual Cable)",
+        "alternative": "@device_cm_{33D9A762-90C8-11D0-BD43-00A0C911CE86}\\wave_{12FD858A-A856-4526-9B3B-BE8076007F75}"
+      },
+      "wasapi": {
+        "scope": "exact selected native input only",
+        "capture_started": false,
+        "buffers_requested": false,
+        "shared_mode": true,
+        "property_changes": false,
+        "device_fallback": false,
+        "calls": [
+          {
+            "operation": "waveIn.endpoint.before.size",
+            "mmresult": 0
+          },
+          {
+            "operation": "waveIn.endpoint.before.value",
+            "mmresult": 0
+          },
+          {
+            "operation": "CoCreateInstance.IMMDeviceEnumerator",
+            "hresult": "0x00000000"
+          },
+          {
+            "operation": "IMMDeviceEnumerator.GetDevice",
+            "hresult": "0x00000000"
+          },
+          {
+            "operation": "IMMDevice.GetState.before",
+            "hresult": "0x00000000"
+          },
+          {
+            "operation": "QueryInterface.IMMEndpoint",
+            "hresult": "0x00000000"
+          },
+          {
+            "operation": "IMMEndpoint.GetDataFlow",
+            "hresult": "0x00000000"
+          },
+          {
+            "operation": "IMMDevice.Activate.IAudioClient",
+            "hresult": "0x00000000"
+          },
+          {
+            "operation": "IAudioClient.GetDevicePeriod",
+            "hresult": "0x00000000"
+          },
+          {
+            "operation": "IAudioClient.GetMixFormat",
+            "hresult": "0x00000000"
+          },
+          {
+            "operation": "waveIn.endpoint.pre_initialize.size",
+            "mmresult": 0
+          },
+          {
+            "operation": "waveIn.endpoint.pre_initialize.value",
+            "mmresult": 0
+          },
+          {
+            "operation": "IAudioClient.Initialize.shared",
+            "hresult": "0x80070005"
+          },
+          {
+            "operation": "IMMDevice.GetState.after",
+            "hresult": "0x00000000"
+          },
+          {
+            "operation": "waveIn.endpoint.after.size",
+            "mmresult": 0
+          },
+          {
+            "operation": "waveIn.endpoint.after.value",
+            "mmresult": 0
+          }
+        ],
+        "endpoint_id": "{0.0.1.00000000}.{12fd858a-a856-4526-9b3b-be8076007f75}",
+        "state_before": 1,
+        "data_flow": 1,
+        "device_period_100ns": {
+          "default": 100000,
+          "minimum": 30000
+        },
+        "mix_format": {
+          "tag": 65534,
+          "channels": 2,
+          "rate": 48000,
+          "bits": 32,
+          "block_align": 8,
+          "average_bytes_per_second": 384000,
+          "extra_bytes": 22
+        },
+        "stream_initialized": false,
+        "state_after": 1,
+        "endpoint_unchanged": true
+      },
+      "wave_in_trials": [
+        {
+          "rate": 44100,
+          "channels": 1,
+          "bits": 16,
+          "operation": "query",
+          "direct": false,
+          "result": 0,
+          "error": "The specified command was carried out."
+        },
+        {
+          "rate": 44100,
+          "channels": 1,
+          "bits": 16,
+          "operation": "query",
+          "direct": true,
+          "result": 0,
+          "error": "The specified command was carried out."
+        },
+        {
+          "rate": 44100,
+          "channels": 1,
+          "bits": 16,
+          "operation": "open-without-buffers",
+          "direct": false,
+          "result": 1,
+          "error": "Undefined external error."
+        },
+        {
+          "rate": 44100,
+          "channels": 2,
+          "bits": 16,
+          "operation": "query",
+          "direct": false,
+          "result": 0,
+          "error": "The specified command was carried out."
+        },
+        {
+          "rate": 44100,
+          "channels": 2,
+          "bits": 16,
+          "operation": "query",
+          "direct": true,
+          "result": 0,
+          "error": "The specified command was carried out."
+        },
+        {
+          "rate": 44100,
+          "channels": 2,
+          "bits": 16,
+          "operation": "open-without-buffers",
+          "direct": false,
+          "result": 1,
+          "error": "Undefined external error."
+        },
+        {
+          "rate": 48000,
+          "channels": 1,
+          "bits": 16,
+          "operation": "query",
+          "direct": false,
+          "result": 0,
+          "error": "The specified command was carried out."
+        },
+        {
+          "rate": 48000,
+          "channels": 1,
+          "bits": 16,
+          "operation": "query",
+          "direct": true,
+          "result": 0,
+          "error": "The specified command was carried out."
+        },
+        {
+          "rate": 48000,
+          "channels": 1,
+          "bits": 16,
+          "operation": "open-without-buffers",
+          "direct": false,
+          "result": 1,
+          "error": "Undefined external error."
+        },
+        {
+          "rate": 48000,
+          "channels": 2,
+          "bits": 16,
+          "operation": "query",
+          "direct": false,
+          "result": 0,
+          "error": "The specified command was carried out."
+        },
+        {
+          "rate": 48000,
+          "channels": 2,
+          "bits": 16,
+          "operation": "query",
+          "direct": true,
+          "result": 0,
+          "error": "The specified command was carried out."
+        },
+        {
+          "rate": 48000,
+          "channels": 2,
+          "bits": 16,
+          "operation": "open-without-buffers",
+          "direct": false,
+          "result": 1,
+          "error": "Undefined external error."
+        }
+      ],
+      "access_settings": [
+        {
+          "label": "current-user",
+          "key": "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\CapabilityAccessManager\\ConsentStore\\microphone",
+          "value_name": "Value",
+          "registry_type": 1,
+          "value": "Deny"
+        },
+        {
+          "label": "current-user-desktop",
+          "key": "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\CapabilityAccessManager\\ConsentStore\\microphone\\NonPackaged",
+          "value_name": "Value",
+          "registry_type": 1,
+          "value": "Allow"
+        },
+        {
+          "label": "machine",
+          "key": "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\CapabilityAccessManager\\ConsentStore\\microphone",
+          "value_name": "Value",
+          "registry_type": 1,
+          "value": "Allow"
+        },
+        {
+          "label": "machine-desktop",
+          "key": "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\CapabilityAccessManager\\ConsentStore\\microphone\\NonPackaged",
+          "value_name": "Value",
+          "state": "NOT_CONFIGURED_AT_THIS_KEY"
+        },
+        {
+          "label": "machine-policy",
+          "key": "SOFTWARE\\Policies\\Microsoft\\Windows\\AppPrivacy",
+          "value_name": "LetAppsAccessMicrophone",
+          "state": "NOT_CONFIGURED_AT_THIS_KEY"
+        },
+        {
+          "label": "machine-policy",
+          "key": "SOFTWARE\\Policies\\Microsoft\\Windows\\AppPrivacy",
+          "value_name": "LetDesktopAppsAccessMicrophone",
+          "state": "NOT_CONFIGURED_AT_THIS_KEY"
+        },
+        {
+          "label": "machine-policy",
+          "key": "SOFTWARE\\Policies\\Microsoft\\Windows\\AppPrivacy",
+          "value_name": "LetAppsAccessMicrophone_ForceAllowUnsigned",
+          "state": "NOT_CONFIGURED_AT_THIS_KEY"
+        },
+        {
+          "label": "machine-policy",
+          "key": "SOFTWARE\\Policies\\Microsoft\\Windows\\AppPrivacy",
+          "value_name": "LetAppsAccessMicrophone_ForceDenyUnsigned",
+          "state": "NOT_CONFIGURED_AT_THIS_KEY"
+        },
+        {
+          "label": "remote-session-policy",
+          "key": "SOFTWARE\\Policies\\Microsoft\\Windows NT\\Terminal Services",
+          "value_name": "fDisableAudioCapture",
+          "state": "NOT_CONFIGURED_AT_THIS_KEY"
+        },
+        {
+          "label": "remote-session-policy",
+          "key": "SOFTWARE\\Policies\\Microsoft\\Windows NT\\Terminal Services",
+          "value_name": "fDisableAudio",
+          "state": "NOT_CONFIGURED_AT_THIS_KEY"
+        }
+      ]
+    }
+  },
+  "limitations": [
+    "These are actual receipts from the exact f831 guarded push, not results for another head or event.",
+    "The enclosing MAIN source job was still running when these completed immutable pre-source artifacts were read; no running-job log was fetched.",
+    "The full-bundle aggregate remains FAILED: 9078 passed and 2 failed in its separate original resource-spawn entry tests.",
+    "Native functional controls use synthetic PCM. Human listening, NVDA, perceptual speech quality and physical microphone qualification remain NOT_RUN.",
+    "The selected capture failed. Read-only diagnostic values establish observed calls and policy state, not a proven causal attribution or permission to alter OS policy.",
+    "All original raw text bytes were recovered from bounded helper base64 records and independently checked against member size and SHA-256; no private binary was read or uploaded."
+  ]
+}

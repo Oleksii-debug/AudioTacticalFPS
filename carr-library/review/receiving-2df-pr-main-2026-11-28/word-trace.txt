@@ -1,0 +1,165 @@
+============================= 18 passed in 5.30s ==============================
+..                      [100%]
+
+================================== FAILURES ===================================
+___ test_modal_return_cannot_clear_revoked_approval_before_dispatch[cancel] ___
+
+ready = ((<carr_library.application.LibraryApp object at 0x0000018FC56C1F90>, '2854fb268e844c8284a380d5f7d52c84', 'b302a661074...s object at 0x0000018FC606D890>, ['Captured the named open Word document. Choose a change and prepare a preview.', ''])
+change = 'cancel'
+
+    @pytest.mark.parametrize("change", ["cancel", "close", "frame-close", "library", "scope", "options"],
+                             ids=["cancel", "dialog-close", "desktop-close", "library-changed", "scope-changed", "preview-invalidated"])
+    def test_modal_return_cannot_clear_revoked_approval_before_dispatch(ready, change):
+        values, app, frame, bridge, actions, reports = ready
+>       plan = previewed(ready)
+               ^^^^^^^^^^^^^^^^
+
+tests\ui\test_word_citations.py:131: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+ready = ((<carr_library.application.LibraryApp object at 0x0000018FC56C1F90>, '2854fb268e844c8284a380d5f7d52c84', 'b302a661074...s object at 0x0000018FC606D890>, ['Captured the named open Word document. Choose a change and prepare a preview.', ''])
+
+    def previewed(ready):
+        values, app, frame, bridge, actions, reports = ready
+        captured(ready)
+        assert actions.preview(dict(operation="insert", reference_ids=(values[4].id,)))
+        frame.finish()
+>       assert actions.plan is not None, reports
+E       AssertionError: ['Captured the named open Word document. Choose a change and prepare a preview.', '']
+E       assert None is not None
+E        +  where None = <carr_library.ui.word_citations.WordActions object at 0x0000018FC606D890>.plan
+
+tests\ui\test_word_citations.py:102: AssertionError
+_ test_modal_return_cannot_clear_revoked_approval_before_dispatch[dialog-close] _
+
+ready = ((<carr_library.application.LibraryApp object at 0x0000018FC6007910>, '4f211af3519241748bed97e26c1d43d2', 'b354bb879cb...s object at 0x0000018FC6007D10>, ['Captured the named open Word document. Choose a change and prepare a preview.', ''])
+change = 'close'
+
+    @pytest.mark.parametrize("change", ["cancel", "close", "frame-close", "library", "scope", "options"],
+                             ids=["cancel", "dialog-close", "desktop-close", "library-changed", "scope-changed", "preview-invalidated"])
+    def test_modal_return_cannot_clear_revoked_approval_before_dispatch(ready, change):
+        values, app, frame, bridge, actions, reports = ready
+>       plan = previewed(ready)
+               ^^^^^^^^^^^^^^^^
+
+tests\ui\test_word_citations.py:131: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+ready = ((<carr_library.application.LibraryApp object at 0x0000018FC6007910>, '4f211af3519241748bed97e26c1d43d2', 'b354bb879cb...s object at 0x0000018FC6007D10>, ['Captured the named open Word document. Choose a change and prepare a preview.', ''])
+
+    def previewed(ready):
+        values, app, frame, bridge, actions, reports = ready
+        captured(ready)
+        assert actions.preview(dict(operation="insert", reference_ids=(values[4].id,)))
+        frame.finish()
+>       assert actions.plan is not None, reports
+E       AssertionError: ['Captured the named open Word document. Choose a change and prepare a preview.', '']
+E       assert None is not None
+E        +  where None = <carr_library.ui.word_citations.WordActions object at 0x0000018FC6007D10>.plan
+
+tests\ui\test_word_citations.py:102: AssertionError
+_ test_modal_return_cannot_clear_revoked_approval_before_dispatch[desktop-close] _
+
+ready = ((<carr_library.application.LibraryApp object at 0x0000018FC604ADD0>, 'e1a0cc76368f4a1bab03c5dadf3dd928', '702e0e886df...s object at 0x0000018FC604BA90>, ['Captured the named open Word document. Choose a change and prepare a preview.', ''])
+change = 'frame-close'
+
+    @pytest.mark.parametrize("change", ["cancel", "close", "frame-close", "library", "scope", "options"],
+                             ids=["cancel", "dialog-close", "desktop-close", "library-changed", "scope-changed", "preview-invalidated"])
+    def test_modal_return_cannot_clear_revoked_approval_before_dispatch(ready, change):
+        values, app, frame, bridge, actions, reports = ready
+>       plan = previewed(ready)
+               ^^^^^^^^^^^^^^^^
+
+tests\ui\test_word_citations.py:131: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+ready = ((<carr_library.application.LibraryApp object at 0x0000018FC604ADD0>, 'e1a0cc76368f4a1bab03c5dadf3dd928', '702e0e886df...s object at 0x0000018FC604BA90>, ['Captured the named open Word document. Choose a change and prepare a preview.', ''])
+
+    def previewed(ready):
+        values, app, frame, bridge, actions, reports = ready
+        captured(ready)
+        assert actions.preview(dict(operation="insert", reference_ids=(values[4].id,)))
+        frame.finish()
+>       assert actions.plan is not None, reports
+E       AssertionError: ['Captured the named open Word document. Choose a change and prepare a preview.', '']
+E       assert None is not None
+E        +  where None = <carr_library.ui.word_citations.WordActions object at 0x0000018FC604BA90>.plan
+
+tests\ui\test_word_citations.py:102: AssertionError
+__________ test_declined_confirmation_never_submits_a_word_write[no] __________
+
+ready = ((<carr_library.application.LibraryApp object at 0x0000018FC6114450>, '2602b544953544af8c6801bbafcecfce', '2d986bcb6a9...s object at 0x0000018FC6115B10>, ['Captured the named open Word document. Choose a change and prepare a preview.', ''])
+answer = False
+
+    @pytest.mark.parametrize("answer", [False, None, 1], ids=["no", "closed-confirmation", "non-boolean"])
+    def test_declined_confirmation_never_submits_a_word_write(ready, answer):
+        values, app, frame, bridge, actions, reports = ready
+>       plan = previewed(ready)
+               ^^^^^^^^^^^^^^^^
+
+tests\ui\test_word_citations.py:158: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+ready = ((<carr_library.application.LibraryApp object at 0x0000018FC6114450>, '2602b544953544af8c6801bbafcecfce', '2d986bcb6a9...s object at 0x0000018FC6115B10>, ['Captured the named open Word document. Choose a change and prepare a preview.', ''])
+
+    def previewed(ready):
+        values, app, frame, bridge, actions, reports = ready
+        captured(ready)
+        assert actions.preview(dict(operation="insert", reference_ids=(values[4].id,)))
+        frame.finish()
+>       assert actions.plan is not None, reports
+E       AssertionError: ['Captured the named open Word document. Choose a change and prepare a preview.', '']
+E       assert None is not None
+E        +  where None = <carr_library.ui.word_citations.WordActions object at 0x0000018FC6115B10>.plan
+
+tests\ui\test_word_citations.py:102: AssertionError
+_____ test_declined_confirmation_never_submits_a_word_write[non-boolean] ______
+
+ready = ((<carr_library.application.LibraryApp object at 0x0000018FC5584B50>, '443a08f5300e470a8a1bc9dc7e1aa382', '5bfd7b580cc...s object at 0x0000018FC5577010>, ['Captured the named open Word document. Choose a change and prepare a preview.', ''])
+answer = 1
+
+    @pytest.mark.parametrize("answer", [False, None, 1], ids=["no", "closed-confirmation", "non-boolean"])
+    def test_declined_confirmation_never_submits_a_word_write(ready, answer):
+        values, app, frame, bridge, actions, reports = ready
+>       plan = previewed(ready)
+               ^^^^^^^^^^^^^^^^
+
+tests\ui\test_word_citations.py:158: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+ready = ((<carr_library.application.LibraryApp object at 0x0000018FC5584B50>, '443a08f5300e470a8a1bc9dc7e1aa382', '5bfd7b580cc...s object at 0x0000018FC5577010>, ['Captured the named open Word document. Choose a change and prepare a preview.', ''])
+
+    def previewed(ready):
+        values, app, frame, bridge, actions, reports = ready
+        captured(ready)
+        assert actions.preview(dict(operation="insert", reference_ids=(values[4].id,)))
+        frame.finish()
+>       assert actions.plan is not None, reports
+E       AssertionError: ['Captured the named open Word document. Choose a change and prepare a preview.', '']
+E       assert None is not None
+E        +  where None = <carr_library.ui.word_citations.WordActions object at 0x0000018FC5577010>.plan
+
+tests\ui\test_word_citations.py:102: AssertionError
+- generated xml file: C:\Users\RUNNER~1\AppData\Local\Temp\carr-ci-sirfvvwk\junit.xml -
+=========================== short test summary info ===========================
+FAILED tests/ui/test_word_citations.py::test_modal_return_cannot_clear_revoked_approval_before_dispatch[cancel] - AssertionError: ['Captured the named open Word document. Choose a change and prepare a preview.', '']
+assert None is not None
+ +  where None = <carr_library.ui.word_citations.WordActions object at 0x0000018FC606D890>.plan
+FAILED tests/ui/test_word_citations.py::test_modal_return_cannot_clear_revoked_approval_before_dispatch[dialog-close] - AssertionError: ['Captured the named open Word document. Choose a change and prepare a preview.', '']
+assert None is not None
+ +  where None = <carr_library.ui.word_citations.WordActions object at 0x0000018FC6007D10>.plan
+FAILED tests/ui/test_word_citations.py::test_modal_return_cannot_clear_revoked_approval_before_dispatch[desktop-close] - AssertionError: ['Captured the named open Word document. Choose a change and prepare a preview.', '']
+assert None is not None
+ +  where None = <carr_library.ui.word_citations.WordActions object at 0x0000018FC604BA90>.plan
+FAILED tests/ui/test_word_citations.py::test_declined_confirmation_never_submits_a_word_write[no] - AssertionError: ['Captured the named open Word document. Choose a change and prepare a preview.', '']
+assert None is not None
+ +  where None = <carr_library.ui.word_citations.WordActions object at 0x0000018FC6115B10>.plan
+FAILED tests/ui/test_word_citations.py::test_declined_confirmation_never_submits_a_word_write[non-boolean] - AssertionError: ['Captured the named open Word document. Choose a change and prepare a preview.', '']
+assert None is not None
+ +  where None = <carr_library.ui.word_citations.WordActions object at 0x0000018FC5577010>.plan
+================== 5 failed, 14 passed in 128.06s (0:02:08) ===================
+PASS: tests/assistant/test_player_tools.py: junit_passed=18, failed=0, skipped=0, pytest_exit=0
+FAIL: tests/ui/test_word_citations.py: junit_passed=14, failed=5, skipped=0, pytest_exit=1
+============================= test session starts =============================
+============================= test session starts =============================
+platform win32 -- Python 3.11.9, pytest-9.0.2, pluggy-1.7.0

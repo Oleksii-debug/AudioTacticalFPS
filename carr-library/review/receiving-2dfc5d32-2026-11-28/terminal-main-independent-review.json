@@ -1,0 +1,84 @@
+{
+  "logs": [
+    {
+      "source": "f831",
+      "log": {
+        "sha256": "eb9e81fca23ddd8bbb128ae7cd916af70665136222b5ef8cbcb77b6af8865c61",
+        "bytes": 1981754
+      },
+      "extracted_verdicts": 454,
+      "source_verdicts": 445,
+      "selectors_exact": true,
+      "counts": {
+        "passed": 11521,
+        "failed": 0,
+        "skipped": 0
+      },
+      "failed_modules": []
+    },
+    {
+      "source": "2df",
+      "log": {
+        "sha256": "caa3a3bc2cd86912528ab8aa7f671a98fc34198d422ce431ec5512f2c080a190",
+        "bytes": 1440935
+      },
+      "extracted_verdicts": 459,
+      "source_verdicts": 450,
+      "selectors_exact": true,
+      "counts": {
+        "passed": 11750,
+        "failed": 5,
+        "skipped": 0
+      },
+      "failed_modules": [
+        {
+          "status": "FAIL",
+          "suite": "tests/ui/test_word_citations.py",
+          "passed": 14,
+          "failed": 5,
+          "skipped": 0,
+          "pytest_exit": 1
+        }
+      ]
+    }
+  ],
+  "raw_members": [
+    {
+      "path": "full-bundle-reader-controls.txt",
+      "sha256": "4585a6bd56854f3b2c8fa764f323494ec74a9a2e44ad86d2a8e17e919870fce4",
+      "bytes": 12389,
+      "checked": true
+    },
+    {
+      "path": "installed-reader-navigation.json",
+      "sha256": "1f79a4c266eed5a63fa340cec06b4384f1b8a90b5178d8bc4a691b4ff370145e",
+      "bytes": 6218,
+      "checked": true
+    },
+    {
+      "path": "installed-scene-clip-editor.txt",
+      "sha256": "9fc332b984e8d1a20664c708d94ddf6a15029e1dc0f018d8ee7836ee16e7c4a5",
+      "bytes": 16016,
+      "checked": true
+    },
+    {
+      "path": "recording-access-diagnostic.json",
+      "sha256": "0e9fa034f26f7581326f4054af75ace383194f1b5742232cc65230766b78d78c",
+      "bytes": 10216,
+      "checked": true
+    },
+    {
+      "path": "source-reader-navigation.json",
+      "sha256": "e583e9ab58f3c2122fc04dfade347516c92b3b90a417d46b75a5a19446de47b0",
+      "bytes": 6288,
+      "checked": true
+    },
+    {
+      "path": "native-recording-device.json",
+      "sha256": "0ff96480cf4bdfa7d9511a72fa5ccfdc46f6bb55a1df9897cceaec09c59098b0",
+      "bytes": 2773,
+      "checked": true
+    }
+  ],
+  "qualification_transfer": false
+}

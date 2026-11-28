@@ -221,6 +221,30 @@
       "job": 140876054297,
       "kind": "Terminal Windows source components: 88 modules / 3,217 passed, zero failures/skips; native document formats 27 source / 28 installed checks; full current 383-module byte-map identity.",
       "qualification": "carr-library/review/component-2dfc5d32-2026-11-28/windows-source-receipt.json"
+    },
+    {
+      "tested_source": "f8311d17fa960448b350cb739b5a90584c30c74b",
+      "sparse_tree": "072daebdc389031c7ce0e535a71ee2c0ac8d3967",
+      "run": 46105047646,
+      "job": 140855804552,
+      "kind": "Historical terminal guarded MAIN: all 445 source selectors / 11,521 passed, zero failures/skips; complete aggregate failed at selected capture and two full-bundle spawn-entry cases.",
+      "qualification": "carr-library/review/receiving-f831-push-main-2026-11-28/provenance.json"
+    },
+    {
+      "tested_source": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7",
+      "sparse_tree": "000905097fc65122cf1f469708c3dbf933c651c0",
+      "run": 46111581939,
+      "job": 140876083779,
+      "kind": "Terminal PR MAIN at actual 2df checkout: all 450 selectors executed, 11,750 passed / five Word UI fixture failures, zero skips. Separate PR missing-output-device failures retained; historical Word exception cause remains unproven.",
+      "qualification": "carr-library/review/receiving-2df-pr-main-2026-11-28/provenance.json"
+    },
+    {
+      "tested_source": "f8311d17fa960448b350cb739b5a90584c30c74b",
+      "sparse_tree": "aeaae93eea67f6c4aa40ed9949802c27558c22a0",
+      "run": 46105047646,
+      "job": 140855804552,
+      "kind": "Historical exact original native receipts: source/installed navigation 50 checks each, clip editor 158 including two actual output repeats, bundled Reader 108. Selected capture FAILED with stable endpoint and read-only access diagnostic; original six member byte digests independently verified.",
+      "qualification": "carr-library/review/receiving-f831-guarded-native-2026-11-28/provenance.json"
     }
   ],
   "candidate_runs": {
@@ -240,7 +264,7 @@
     "pr_bridge": 46111581953,
     "push_integration_bridge": 46111575068
   },
-  "execution": "All four ordinary native/bibliography/bridge/canonical runs, all eight Reader/component modes, and both standard-installation jobs succeeded at this candidate. Full current MAIN and V3 remain active. Selected capture failed as recorded; no aggregate release or final wheel is qualified.",
+  "execution": "All four ordinary native/bibliography/bridge/canonical runs, all eight Reader/component modes, and both standard-installation jobs succeeded at 2df. Exact PR MAIN is terminal FAILED: five Word fixture cases and independent missing output-device failures. Guarded MAIN plus guarded/PR V3 remain active at this checkpoint. Selected guarded capture has failed; no full release or final wheel is qualified.",
   "ci_trigger_review": "Evidence branch name is outside every current workflow push branch filter. Workflow files and all application blobs are unchanged.",
   "private_artifacts": "Only public source review, metadata, decoded logs and synthetic test evidence; no private model, recordings, runtime binaries or credentials.",
   "diagnostic_runs": [
@@ -304,5 +328,49 @@
     "blob": "eec6c02cdb9977808f3fdb5712c1a5ce6e1956ba",
     "sparse_tree": "c110deb8bfc0331cac7cfe8c2f1f943a528517e6",
     "scope": "All eight exact 2df Reader/component modes; individual receipts retain counts, origins, native limits and actual job times."
-  }
+  },
+  "terminal_main_update": {
+    "source": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7",
+    "pr_main": {
+      "run": 46111581939,
+      "job": 140876083779,
+      "status": "FAILED",
+      "source_selectors": 450,
+      "source_passed": 11750,
+      "source_failed": 5,
+      "source_skipped": 0,
+      "only_failed_source_module": "tests/ui/test_word_citations.py",
+      "observed": "Word preview returned no plan after the old fixture delivered a blank error callback; the historical exception type is unproven.",
+      "pr_endpoint": "Zero output devices, format query 2 and MCI 326; guarded capture steps did not run for this PR event."
+    },
+    "guarded_main": {
+      "run": 46111569593,
+      "job": 140876044080,
+      "status": "IN_PROGRESS"
+    },
+    "guarded_v3": {
+      "run": 46111569577,
+      "job": 140876044023,
+      "status": "IN_PROGRESS"
+    },
+    "pr_v3": {
+      "run": 46111581947,
+      "job": 140876083849,
+      "status": "IN_PROGRESS"
+    }
+  },
+  "next_source_correction": {
+    "head": "943f585659c55481046266338f428e4a1043a9bd",
+    "tree": "86b1ee1a4a859917f11571e8dc9d5a1ded704b5c",
+    "status": "SOURCE_REVIEWED; targeted receiving dispatched; no execution qualification transferred",
+    "changes": "Two timestamp-preserving packaging copies with real child-import controls; corrected Word callback completion fixture; one-line MAIN stdin-to-command transport correction with focused actual CORE bundle spawn diagnostic.",
+    "composition": "carr-library/review/windows-receiving-correction-composition-2026-11-28.json",
+    "stage1": {
+      "word": 46118770338,
+      "standard": 46118771937,
+      "bundle_spawn": 46119011105
+    },
+    "application_package_byte_identical": true
+  },
+  "root_terminal_review": "carr-library/review/receiving-2dfc5d32-2026-11-28/terminal-main-independent-review.json"
 }
