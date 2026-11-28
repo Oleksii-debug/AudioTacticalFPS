@@ -1,0 +1,26 @@
+{
+  "schema": "carr-final-scale-artifact-selection/1",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "target": "71ca92be691455d0ff51ed163b1d91749e5ae62e",
+  "run_id": 46124999025,
+  "artifacts": [
+    {
+      "job_id": 140917529783,
+      "artifact_id": 15257866744,
+      "tier": "books-10000",
+      "os": "ubuntu-24.04",
+      "conclusion": "success",
+      "size_in_bytes": 17004201,
+      "sha256": "7df7550af4fd90d9fb21a02eda46e61204fee3b0594dfd4262c2d605b0045cdd"
+    },
+    {
+      "job_id": 140917529730,
+      "artifact_id": 15258103267,
+      "tier": "books-10000",
+      "os": "windows-2022",
+      "conclusion": "success",
+      "size_in_bytes": 17003987,
+      "sha256": "ff9bd0d1924b436ccfb374746b487c6090261efad680c1c8ef2a8914c93ad140"
+    }
+  ]
+}
