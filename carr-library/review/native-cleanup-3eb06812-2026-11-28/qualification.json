@@ -1,0 +1,131 @@
+{
+  "schema": "carr-process-cleanup-receiving/1",
+  "head": "3eb0681239e3862393780351716c12206df563cb",
+  "tree": "adf3f4d3e3de9e8d2201dd4f4f84a31c4a5679b8",
+  "run_id": 46123559273,
+  "job_id": 140913075714,
+  "event": "push",
+  "branch": "carr/process-cleanup-evaluation-20261128",
+  "run_attempt": 1,
+  "status": "FAIL",
+  "started_at": "2026-11-28T08:13:21Z",
+  "completed_at": "2026-11-28T08:16:07Z",
+  "source": {
+    "required_suites": 6,
+    "completed_suites": 6,
+    "passed_suites": 5,
+    "failed_suites": 1,
+    "passed": 230,
+    "failed": 2,
+    "skipped": 0,
+    "case_total": 232,
+    "module_passes": [
+      {
+        "suite": "tests/audio/test_audio_process.py",
+        "passed": 27,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "suite": "tests/audio/test_recording_windows_process.py",
+        "passed": 74,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "suite": "tests/conversion/test_conversion_ownership.py",
+        "passed": 15,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "suite": "tests/audio/test_process_deadline.py",
+        "passed": 23,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "suite": "tests/transcription/test_supplied_worker_bridge.py",
+        "passed": 91,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      }
+    ]
+  },
+  "installed": {
+    "case_total": 232,
+    "passed": 230,
+    "failed": 2,
+    "skipped": 0,
+    "pytest_seconds": 57.51,
+    "strict_gate": "FAIL"
+  },
+  "failing_nodes": [
+    "tests/audio_windows/test_membership_fence.py::test_real_late_job_objects_require_retained_native_handles_and_exit[normal-return]",
+    "tests/audio_windows/test_membership_fence.py::test_real_late_job_objects_require_retained_native_handles_and_exit[original-source-error]"
+  ],
+  "failure": {
+    "both_modes": "line148 expected _shutdown_total == original snapshot total +2; observed 6 ==(2+2)",
+    "actual_original_total": 2,
+    "actual_final_total": 6,
+    "assumed_increment": 2,
+    "previous_assertions_reached": [
+      "exact original caller error preserved in its case",
+      "leader returncode observed",
+      "Job and completion port closed",
+      "leader signaled",
+      "retained member map empty"
+    ],
+    "subsequent_native_assertions": "NOT_RUN after the failing count assertion",
+    "cause": "NOT_PROVEN; no process-launch-cardinality explanation is inferred from these counters"
+  },
+  "identity": {
+    "status": "EXACT",
+    "python_modules": 383,
+    "runtime_rows_sha256": "50f3388651152a3c45c40fd5bf8882e3e4cfff56328ea82355bb29afa9d6a2b7",
+    "reference_blob": "4ad5d5d7f2eaad2c5ffcaca4489199eedc97450b",
+    "actual_windows_process": {
+      "bytes": 25124,
+      "path": "carr_library/audio/windows_process.py",
+      "sha256": "2169a92d98c9786f093b0d6bec3e5ee8152679e599fe99803049500280b4710a"
+    },
+    "package_files": 476,
+    "wheel": {
+      "payload_files": 493,
+      "project_name": "universal-research-library",
+      "project_version": "0.2.0.dev2",
+      "required_runtime_files": 398,
+      "source_commit": "3eb0681239e3862393780351716c12206df563cb",
+      "source_tree": "adf3f4d3e3de9e8d2201dd4f4f84a31c4a5679b8",
+      "wheel_sha256": "b380c3eeec393fd0ed6987e02d6d44792a4ef4bf03980aa1431a2adbb5fadc94"
+    }
+  },
+  "log": {
+    "sha256": "2406788940ffc67cd8fd5508be8724e66a02fc1069f00b8ee5c0aca429a80235",
+    "bytes": 319775
+  },
+  "source_trace": {
+    "sha256": "446362693000877999ca809ee9efafa8616012c271a511ab34d76272c940c7f9",
+    "bytes": 12592
+  },
+  "artifact_metadata": [
+    {
+      "id": 15255432673,
+      "name": "carr-process-cleanup-windows-2022-3eb0681239e3862393780351716c12206df563cb-1",
+      "size_in_bytes": 33887,
+      "digest": "sha256:f40b352d0a9b930a6437491d9a817abe9b04771ded0e9984c96b0f8fd19a41cc",
+      "expired": false
+    }
+  ],
+  "limits": [
+    "Only this exact 3eb source and installed selection was executed.",
+    "No qualification transfer to later corrections.",
+    "The uploaded artifact is identified by API digest/size; its archive contents were not downloaded here.",
+    "No private-engine/model, NVDA, release or whole-platform qualification."
+  ]
+}

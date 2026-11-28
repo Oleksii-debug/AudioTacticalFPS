@@ -1,0 +1,40 @@
+{
+  "schema": "carr-root-native-fixture-review/1",
+  "base_head": "3eb0681239e3862393780351716c12206df563cb",
+  "base_tree": "adf3f4d3e3de9e8d2201dd4f4f84a31c4a5679b8",
+  "status": "SOURCE_REVIEWED_RUNTIME_NOT_RUN",
+  "native_fixture_before": "b62e446d118cad9e546cf80d5762ec4d6e5b523d",
+  "native_fixture_after": "b6b98a72967045d539180fd40be5e31db0626361",
+  "prior_failure": {
+    "run": 46123559273,
+    "job": 140913075714,
+    "source": {
+      "passed": 230,
+      "failed": 2
+    },
+    "installed": {
+      "passed": 230,
+      "failed": 2
+    },
+    "log": {
+      "sha256": "2406788940ffc67cd8fd5508be8724e66a02fc1069f00b8ee5c0aca429a80235",
+      "bytes": 319775
+    },
+    "cause": "The fixture asserted two OS Job objects for two requested children; actual totals were2 to6. Additional image identities were not emitted by that trial.",
+    "subsequent_native_assertions": "NOT_RUN after count failure"
+  },
+  "root_review": [
+    "Independent successful native Job completion messages record actual positive identities before the owner consumes them.",
+    "Separate direct native lifetime accounting supplies before/after totals; expected growth is not obtained from the implementation's retained-set length.",
+    "Exactly two requested actors publish their PIDs under the unchanged deadline.",
+    "Every added identity must have an actual retained handle independently checked by GetProcessId, IsProcessInJob and a bounded image query.",
+    "Original caller error, owner-specific delegation, terminate/signal/close ordering and 5/30-second bounds remain. All added handles receive the same exit-before-close assertions.",
+    "Only the native test and review/evidence paths change. Production383Python identity and all workflow/test selection gates remain byte-identical to3eb."
+  ],
+  "peer": "voice_reading: CLEAR on b6b98a72; source-only.",
+  "limits": [
+    "Do not infer extra process image subtype before actual emitted proof.",
+    "No runtime PASS or full platform qualification transfers to this correction.",
+    "No deadlines, minimum cases, product guards or OS policy changed."
+  ]
+}

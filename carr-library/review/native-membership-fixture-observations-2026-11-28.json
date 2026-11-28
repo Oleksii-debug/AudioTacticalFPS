@@ -1,0 +1,86 @@
+{
+  "schema": "carr-native-membership-fixture-review/1",
+  "status": "SOURCE_REVIEWED_NOT_RUN",
+  "base_commit": "3eb0681239e3862393780351716c12206df563cb",
+  "base_tree": "adf3f4d3e3de9e8d2201dd4f4f84a31c4a5679b8",
+  "source_test_tree": "c70b84017ec8b451d5b9fe0ab92b1aa8acab9aa5",
+  "path": "carr-library/tests/audio_windows/test_membership_fence.py",
+  "preimage_blob": "b62e446d118cad9e546cf80d5762ec4d6e5b523d",
+  "after_blob": "b6b98a72967045d539180fd40be5e31db0626361",
+  "after_utf8_bytes": 13061,
+  "after_sha256": "133c7bab55a60876c8b216381669e04ef0649eb58bc9f45b9241aabc9f2a6d91",
+  "actual_failure": {
+    "run_id": 46123559273,
+    "job_id": 140913075714,
+    "head": "3eb0681239e3862393780351716c12206df563cb",
+    "evidence_tree": "4d81159aa36fee16141c3e2f13ec4a120f81b64f",
+    "trace_blob": "d5abe837cef147e96fbf494b701a8461f7bbff80",
+    "full_decoded_log_blob": "1683e1457c8acc5250bfaf77e99c7cc3c381f7b0",
+    "modes": [
+      "source",
+      "installed"
+    ],
+    "native_cases_per_mode": 2,
+    "native_failures_per_mode": 2,
+    "observation": "The old fixture's global lifetime assertion saw total6 against original2+two requested actors. Earlier leader-return, closed Job/port, and empty retained-members assertions passed; later per-handle/order assertions were not reached.",
+    "historical_extra_object_images": "NOT_OBSERVED",
+    "bootstrap_or_helper_subtype": "NOT_PROVEN",
+    "distinct_scope": "230 portable cases passed in each mode. This is no new native-case PASS claim."
+  },
+  "diagnosis": "Exactly two Popen requests do not independently establish how many native Job process objects exist. The fixture's global '+2' oracle was contradicted by actual accounting; the production guard was not shown to fail in these runs.",
+  "correction": [
+    "Keep exactly two requested actors and positively read each actual PID from an atomically published readiness marker.",
+    "Observe only successful native JOB_OBJECT_MSG_NEW_PROCESS replies through an owner-local delegate installed before the first original retention. Failure return fields and LastError remain untouched.",
+    "Read native accounting directly before/after late creation, independently of the owner's saved shutdown totals and member sets.",
+    "Require complete positive-notice count coverage, exact verified retained handles for all added identities, and direct GetProcessId/IsProcessInJob/image queries before termination.",
+    "Compare final membership with the independent observations. Retain original two-actor checks and extend signal-before-close and member-before-Job ordering to every added handle.",
+    "Emit bounded synthetic native observations after confirmed cleanup, outside the original deadline."
+  ],
+  "preserved": {
+    "native_cases": 2,
+    "source_error_identity": true,
+    "requested_popen_actors": 2,
+    "shutdown_seconds": 5,
+    "child_sleep_seconds": 30,
+    "owned_process": true,
+    "retained_temporary_directory": true,
+    "foreign_jobs_delegated_unchanged": true,
+    "member_exit_proofs": true,
+    "job_port_close_order": true,
+    "production_changes": 0,
+    "modeled_74_cases_unchanged": true,
+    "new_process_enumerator": false,
+    "changed_limits_or_termination_calls": false
+  },
+  "verification": {
+    "full_readback": "EXACT",
+    "inverse": "EXACT",
+    "execution": "NOT_RUN",
+    "peers": [
+      {
+        "agent": "root",
+        "scope": "Native observer, accounting and existing owner ABI/error path",
+        "verdict": "CLEAR_SOURCE_ONLY"
+      },
+      {
+        "agent": "voice_reading",
+        "scope": "Actual readiness, independent proof, selected-owner lifetime and original assertions",
+        "verdict": "CLEAR_SOURCE_ONLY"
+      }
+    ]
+  },
+  "primary_sources": [
+    "https://learn.microsoft.com/en-us/windows/win32/api/winnt/ns-winnt-jobobject_basic_accounting_information",
+    "https://learn.microsoft.com/en-us/windows/win32/api/winnt/ns-winnt-jobobject_associate_completion_port",
+    "https://learn.microsoft.com/en-us/windows/win32/api/ioapiset/nf-ioapiset-getqueuedcompletionstatus",
+    "https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-getprocessid",
+    "https://learn.microsoft.com/en-us/windows/win32/api/jobapi/nf-jobapi-isprocessinjob",
+    "https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-queryfullprocessimagenamew"
+  ],
+  "limits": [
+    "The next actual native run must establish added image identities; no redirector or console-helper type is inferred from old counts.",
+    "No source or installed result is transferred from prior modes or candidates.",
+    "No production fence, owner, handle access mask, cleanup deadline, or broader receiving gate changes."
+  ],
+  "ref_changes": false
+}
