@@ -14,13 +14,19 @@ import urllib.request
 import zipfile
 
 REPOSITORY = "Oleksii-debug/AudioTacticalFPS"
-RUN = 46098474617
-HEAD = "5d19dde77aca6a257ee601c1bc49b8504c342cee"
+RUN = 46103182988
+HEAD = "10e3be93156c7d5a2a9d75cc67ed98dd600d4a9b"
 BRANCH = "carr/ci-endpoint-evaluation-20261127"
 SOURCES = (
-    ("junit", 15246270861, 323873,
-     "439f806508f05a9a49a233add106b8749cc4b4fe79b94ab1d5498d7b73ade388",
+    ("main", 15247277543, 324087,
+     "3b67d07e32140ac060ff4e6b3b9414f9b3c8f79f8ee364cea644945b49d8c097",
      "carr-windows-pre-source-" + HEAD + "-1"),
+    ("recording", 15246148009, 16765,
+     "0fddda1b2cfa683277364246e796cf8b4671bc6a31c2d0ed4ff93b83b1a66f63",
+     "carr-windows-recording-" + HEAD + "-1"),
+    ("endpoint", 15246751161, 3945,
+     "85e25f2103a6b6c55999933f8861da2c02fa1628cf9b6f3978cd677d020e78d8",
+     "carr-windows-audio-endpoint-" + HEAD + "-1"),
 )
 MAX_MEMBERS = 512
 MAX_MEMBER_BYTES = 4 * 1024 * 1024
@@ -50,6 +56,8 @@ STANDARD_RECEIPTS = frozenset((
 ))
 MAIN_RECEIPTS = frozenset((
     "installed-scene-clip-editor.txt",
+    "source-reader-navigation.json",
+    "installed-reader-navigation.json",
     "native-delivery-lifecycle.txt",
     "native-reader-controls.json",
     "native-reader-controls.txt",
