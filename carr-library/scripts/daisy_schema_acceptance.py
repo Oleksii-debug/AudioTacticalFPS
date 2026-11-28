@@ -31,7 +31,11 @@ def validate(publication, schemas):
         def resolve(self, url, public_id, context):
             parsed = urlparse(url)
             name = Path(parsed.path).name
+            # libxml2 uses local file URIs for nested DTD resources. Admit
+            # only these two spellings of already pinned, canonical paths.
             allowed = {str(path) for path in paths.values()} | {
+                uri for path in paths.values()
+                for uri in (path.as_uri(), path.as_uri().replace('file:///', 'file:/', 1))} | {
                 'http://www.w3.org/TR/xhtml1/DTD/' + name for name in paths if name != 'SMIL10.dtd'} | {
                 'http://www.w3.org/TR/REC-SMIL/SMIL10.dtd'}
             if url not in allowed or name not in paths:
