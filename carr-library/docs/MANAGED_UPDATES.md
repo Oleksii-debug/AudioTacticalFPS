@@ -8,10 +8,12 @@ Replacing only `app` cannot update or recover that complete installation.
 `security.managed_installation.ManagedUpdateTransaction` uses the existing
 offline TUF client, complete-library backup, protected Windows vault anchor and
 shared owned-process runner. It does not configure a publisher, trust root,
-endpoint, renewal policy or signing key. The normal client review dialog still
-prepares a verified package; applying it requires an external idle maintenance
-host outside the program directory. That host must be supplied by the explicit
-installation integration and must not stop an unrelated application or job.
+endpoint, renewal policy or signing key. The configured client now checks a signed offline repository or one explicitly
+configured HTTPS site, reviews and downloads its exact target, and hands Apply
+to an external maintenance runtime after the idle desktop accepts normal Close.
+The runtime can be prepared from the independently pinned installed distribution
+through the existing offline installer. It stays outside the replaceable program,
+research library and recovery directories. It never stops an unrelated process.
 
 ## Captured transaction
 
@@ -151,3 +153,157 @@ is not reconstructed as observed evidence. The selected historical correction
 accepts and type-checks those fields without filtering the sealed manifest.
 The current A-to-B pair still must pass every mandatory native phase with
 independently checked source, wheel, launcher, setup and bundle identities.
+
+
+## Configured Check, Download and Apply
+
+No endpoint, signing key, publisher root or protected anchor is selected by
+default. An unconfigured installation retains reading, saving, export, backup
+and recovery, and explains why Apply is unavailable. The owner configuration is
+a data-only JSON file selected with an independently obtained SHA256. Computing
+a checksum from an unknown file does not establish independent publisher trust.
+
+The Help command **Check for updates / Update** opens the existing signed-client
+status dialog. The user can select an offline TUF repository or check the one
+approved HTTPS site. The review shows product, channel, version, build, source
+commit, size, target SHA256 and signed release notes. Download or resume runs
+on the existing desktop worker and reports received bytes as unverified. It
+returns a package capability only after the complete signed target passes.
+Cancel current operation stops the owned transfer. A private partial prefix may
+be reused, but never becomes an approved package without full verification.
+
+HTTPS uses a fixed worker and the current owned process/Job mechanism. It
+requires certificate verification, ignores proxy environment settings, refuses
+redirects and foreign URL authority, bounds response framing and requires exact
+Range responses when resuming. A server that ignores Range can restart the
+private prefix. The existing TUF bootstrap, root rotation, metadata expiry,
+product/channel/schema/build rules, signed length and digest remain authoritative.
+
+Background checks are off by default. An explicit default-No checkbox review
+allows at most one metadata check per hour while idle. Consent is bound to the
+exact owner configuration digest. The timer borrows the same serial executor,
+does not move focus or open dialogs, and never downloads or applies. A new
+foreground operation, a changed library, Close or the finite 60-second background
+deadline cancels the attempt. License renewal remains a separate setting.
+
+### Prepare the external host
+
+An explicit **carr-managed-update-provision** recipe prepares an eligible standard
+installation's maintenance host. A must already contain this implementation,
+bundled Python and the existing hash-locked trusted-client dependencies.
+Preparation refuses missing dependencies instead of fetching or inventing them.
+
+The recipe has exactly these fields:
+
+| Field | Required value |
+| --- | --- |
+| schema, kind | Integer 1, string carr-managed-update-provision. |
+| runtime | New absolute root and new absolute external manifest file. |
+| installation | Existing standard installation root and existing recovery work on the same filesystem. |
+| library | Existing selected research-library path. |
+| source | Independently approved A bundle_sha256, owner_sha256, setup_sha256; these must match A's complete marker and ownership receipt. |
+| publisher | product, channel, base64 bootstrap, bootstrap_sha256, current_build, data_schema, max_package_bytes, max_unpacked_bytes, max_files: the existing UpdatePolicy fields. |
+| repository | endpoint (one HTTPS base URL ending in /, or null), exact relative target, tls_ca_pem (null for platform trust, or explicit PEM), timeout (integer 1–3600 seconds). |
+| anchor | Existing Windows vault reference, exact binding and profile_id. Provision independently; this path never creates or resets the protected anchor. |
+| close_timeout | Integer 1–300 seconds for the exact Close/installation-lease handoff. |
+| operation_timeout | Integer 60–7200 seconds. Required native cleanup and rollback keep ownership until settled. |
+| configuration | New external output file for the derived ready-host configuration. |
+
+Runtime, current program, work and library cannot overlap. The recipe and new
+receipts are outside all four. Existing destinations, symbolic links, reparse
+points, hardlinked payloads, changed ancestors and altered source hashes refuse.
+
+Only A's exact manifest-declared distribution and eight fixed maintenance helpers
+are copied. The active .venv, research data, private model/reference/voice and Node
+directories are not copied. The existing offline install_windows.py creates a
+new environment at its final external path inside an owned Windows process
+family. The complete new runtime is sealed; its manifest and configuration are
+published without replacing a competitor. A failed attempt remains at its owned
+destination for review and leaves A and the selected library in place.
+
+The configured desktop exposes **Prepare update host** with a default-No review.
+The packaged command performs the same operation:
+
+~~~powershell
+& 'C:\Apps\Resonance\app\ResearchLibrary.exe' prepare-update-host --recipe 'C:\OwnerPolicy\update-host-recipe.json' --recipe-sha256 '<independently supplied recipe SHA256>'
+~~~
+
+It returns the generated configuration path and digest without applying an
+update. Subsequent launches explicitly select that ready configuration:
+
+~~~powershell
+& 'C:\Apps\Resonance\app\ResearchLibrary.exe' --data-dir 'D:\Research\Library' --update-configuration 'C:\OwnerPolicy\prepared-update-host.json' --update-configuration-sha256 '<digest returned by verified preparation>'
+~~~
+
+For first interactive preparation, the same configuration arguments can select
+the approved recipe. The current controller switches to the generated
+configuration after successful preparation. Future launches use that generated
+file; replaying a recipe whose output already exists is refused.
+
+The generated kind is **carr-managed-update-host**. It retains the same
+installation/library/publisher/repository/anchor/deadline fields, removes source
+and configuration, and replaces runtime with root, external manifest, its exact
+sha256, relative python and relative maintenance. Normal preparation selects
+app/.venv/Scripts/python.exe and maintenance/maintenance.py.
+
+### Close, Apply and recovery ownership
+
+After a verified download, **Close application and apply this update** is a
+separate action with Cancel as default and optional restart unchecked.
+Preparation reverifies the exact signed release, copies only authenticated
+metadata and its target into a private offline repository, verifies the entire
+sealed runtime and starts one fixed supervisor. No installer or network child
+starts before COMMIT.
+
+READY means only that this exact supervisor, request and release are retained.
+The parent registers precommit cleanup on the existing DesktopExecutor. One
+ownership lock spans actual frame.Close() and durable COMMIT so queued Close
+cleanup cannot abort between them. Unsaved-work refusal or a stale review
+cancels and reaps the owned supervisor. No forced destruction substitutes for
+normal Close.
+
+The committed host waits for the actual existing exclusive installation lease.
+A PID, process name, sleep or apparently closed window does not substitute for
+that lease. The unchanged ManagedUpdateTransaction then owns the complete
+library backup, writer boundary, full-wrapper activation/health, protected
+anchor, final marker and any rollback/recovery.
+
+The UI records HANDED_OFF, not activation success. A possibly visible COMMIT
+with failed acknowledgment is HANDOFF_UNCERTAIN: parent cleanup must not kill a
+potentially committed owner. An absent decision expires without setup. The
+private handoff result.json and existing managed-activation.json report actual
+outcomes; a postcommit exception does not imply rollback.
+
+Explicit restart launches only the verified standard launcher whose marker
+identities still equal the completed transaction. It carries the exact library
+and ready configuration arguments and reports STARTED_NOT_QUALIFIED until the
+new application itself is observed.
+
+Recovery uses the same sealed environment and existing transaction:
+
+~~~powershell
+& 'C:\UpdateHost\app\.venv\Scripts\python.exe' -I -B -m carr_library.security.update_host --configuration 'C:\OwnerPolicy\prepared-update-host.json' --configuration-sha256 '<approved configuration SHA256>' --recover
+~~~
+
+This is application-update orchestration. Model/language packs, a schema
+migration, publisher-key change or owner-anchor change still need their separate
+explicit authority; an application target does not grant those permissions.
+
+### Additional regression boundary
+
+New portable inventory: handoff/transaction/real-lease 26, preparation 18,
+actual-handler/shared-executor 15, controller/configuration 14: 73 total.
+A separate 15-case suite uses real local TLS, official TUF and actual transfer
+children. It requires the explicit loopback gate and is not admitted through an
+all-network-denied runner.
+
+Portable setup/bootstrap/registry are explicitly controlled fixtures. TUF,
+filesystem identities, actual backups/rollback, native leases, child lifetime
+and shared executor are real where their cases state so. UI cases use the actual
+handler AST from the imported source or installed package with controlled native
+delivery. They do not establish native keyboard, new-host A-to-B activation,
+production TLS, Authenticode, publisher rollout or NVDA.
+
+The added source and isolated-installed suites and actual external-host Windows
+acceptance remain separately required. Historical managed-transaction success
+does not qualify this newly configured Apply route.

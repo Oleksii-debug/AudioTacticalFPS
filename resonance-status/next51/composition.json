@@ -1,0 +1,131 @@
+{
+  "schema": 1,
+  "status": "STATIC_NOT_RUN",
+  "base_commit": "13ba832807deeee4fe6a2e4d37d0cc39f9b7b6b8",
+  "feature_manifest": "90ee1f5e4d3f95d144d95c3db67dc39c3852ab69",
+  "changes": [
+    {
+      "path": "carr-library/src/carr_library/security/update_http_worker.py",
+      "before": null,
+      "sha": "d998af37e81fb047d1f5802a0162d93dd627f314"
+    },
+    {
+      "path": "carr-library/src/carr_library/security/update_transport.py",
+      "before": null,
+      "sha": "73d05451e7f15e4310ea1d2ed18e35355602ad87"
+    },
+    {
+      "path": "carr-library/src/carr_library/security/update_handoff.py",
+      "before": null,
+      "sha": "b987d3a67df7fd24eccd1808c6c46fe9d1a58570"
+    },
+    {
+      "path": "carr-library/src/carr_library/security/update_host.py",
+      "before": null,
+      "sha": "b00aa7e06bfc1f68080b64bc8d85174866f16f5b"
+    },
+    {
+      "path": "carr-library/src/carr_library/security/update_runtime.py",
+      "before": null,
+      "sha": "0f8b16912dcea56cf157f0d5d22a3afd6bef4960"
+    },
+    {
+      "path": "carr-library/src/carr_library/security/controller.py",
+      "before": "baf8e492f09bb8f9ca9d37e624ac60002f3bed1d",
+      "sha": "1d550366b08a00aed8b13af4923f47a9c94c5dde"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/trust_status.py",
+      "before": "d5e5be3bb25775e35923f1b91fbb39bb0ed11539",
+      "sha": "fa58a344dd6d601942876cc5b427315a2cc78aa2"
+    },
+    {
+      "path": "carr-library/src/carr_library/__main__.py",
+      "before": "99b3c98d5f60cfa6ba1074d74c32acc14250fd16",
+      "sha": "a1772425f4cd1b1d923ac06c96a71e75a2afdd72"
+    },
+    {
+      "path": "carr-library/tests/security/test_update_https.py",
+      "before": null,
+      "sha": "561bd843532445010fad409bc24c71c8ada6b0e1"
+    },
+    {
+      "path": "carr-library/tests/security/test_update_handoff.py",
+      "before": null,
+      "sha": "726ecf2e5aa158073a422bec79fbef85e088588f"
+    },
+    {
+      "path": "carr-library/tests/security/test_update_runtime.py",
+      "before": null,
+      "sha": "e1e424dfcb009adbc8a29fd44492092b090c8c9c"
+    },
+    {
+      "path": "carr-library/tests/security/test_update_ui.py",
+      "before": null,
+      "sha": "4b7c1e0b0d379654d769da667b11e453cb55a221"
+    },
+    {
+      "path": "carr-library/tests/security/test_update_controller_actions.py",
+      "before": null,
+      "sha": "1daad6582495e049952e9c36404214059453ada1"
+    },
+    {
+      "path": "carr-library/docs/MANAGED_UPDATES.md",
+      "before": "d55af41a8f6c4fb884eff0f53f7d7736c41ab25e",
+      "sha": "238b4bd2eccb9de8af38d934efb4392c9b982896"
+    },
+    {
+      "path": "carr-library/scripts/ci_configured_update_contracts.py",
+      "before": null,
+      "sha": "a4e69ba67036f2e41fb628f677cf5d15b249ae4f"
+    },
+    {
+      "path": ".github/workflows/carr-configured-update.yml",
+      "before": null,
+      "sha": "9a885ba877364c203c13a29e2180da011d018a9e"
+    },
+    {
+      "path": "carr-library/scripts/ci_capacity_contracts.py",
+      "before": "bec2f01383f120ba80952e0e962b621a77e64417",
+      "sha": "d5849508e7f0c3fcdaf811d98810610044cc237c",
+      "source_pin": {
+        "before": "99b3c98d5f60cfa6ba1074d74c32acc14250fd16",
+        "after": "a1772425f4cd1b1d923ac06c96a71e75a2afdd72"
+      }
+    },
+    {
+      "path": ".github/workflows/carr-next9-capacity.yml",
+      "before": "56940633a5318dd5194a07a15f064b63fbe5948a",
+      "sha": "fcab460375aaf6bbe806bfe232be20f5b210bb50",
+      "helper_pin": {
+        "before": "bec2f01383f120ba80952e0e962b621a77e64417",
+        "after": "d5849508e7f0c3fcdaf811d98810610044cc237c",
+        "count": 2
+      }
+    }
+  ],
+  "root_verification": {
+    "preimages": "all18exact",
+    "ordinary_suites": "26handoff+18provision+15UI+14controller=73source and73isolatedinstalled",
+    "pins": "53exactcurrentpins;31Linux/32Windows module origins;16actual fixture companions",
+    "external_host": "copies only pinned pristine A distribution and8fixed maintenance helpers; existing offline installer creates its own environment",
+    "activation": "only explicit normal desktop Close and sealed host COMMIT; unchanged actual managed transaction and rollback"
+  },
+  "final_static_peers": {
+    "runtime18": "root ACCEPTED_STATIC_NOT_RUN",
+    "https15": "canonical_regression ACCEPTED_STATIC_NOT_RUN",
+    "ui15": "locate_project ACCEPTED_STATIC_NOT_RUN",
+    "handoff26": "canonical_regression ACCEPTED_STATIC_NOT_RUN",
+    "controller14_and_ordinary_helper": "canonical_regression ACCEPTED_STATIC_NOT_RUN",
+    "ordinary_workflow": "locate_project ACCEPTED_STATIC_NOT_RUN"
+  },
+  "qualification": {
+    "ordinary73": "NOT_RUN",
+    "dedicated_https15": "NOT_RUN",
+    "configured_native_activation": "NOT_RUN",
+    "historical_native_gate": "Separate actual old-A to current-B transaction gate; does not qualify the new configured-host path",
+    "vendor_rollout": "NOT_RUN",
+    "release": "NOT_QUALIFIED"
+  },
+  "next_native_basis": "This immutable application candidate supplies the new updater in A. A later committed native probe will use this exact A and a distinct current B, with real compiled setup, explicit synthetic test TUF and actual owned host preparation/normal-Close/COMMIT. No user publisher endpoint, release signing key or installation is invented."
+}

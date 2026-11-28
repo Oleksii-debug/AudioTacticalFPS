@@ -53,7 +53,7 @@ PINS = {
     'packaging/source_wheel.py': '478de248451d59a44b35784eb808fb2974f0af67',
     'src/carr_library/backup_capacity.py': '1fd11ab8d3a2be5434e32bdcba65447c55730ad7',
     'src/carr_library/application.py': '82af31743ca5cc6557477f6492c08b912751f4a4',
-    'src/carr_library/__main__.py': '99b3c98d5f60cfa6ba1074d74c32acc14250fd16',
+    'src/carr_library/__main__.py': 'a1772425f4cd1b1d923ac06c96a71e75a2afdd72',
     'src/carr_library/library_backup.py': '30ed3b152fc1cd26b338200b270e73f2e193a3f9',
     'src/carr_library/pending_backup.py': 'b2c3fc3a52e9d2fef5c019196ef239381c519fc7',
     'src/carr_library/backup_sidecars.py': '5c2ec87913e8ad252dce9aa8cff7ccc22dca3525',

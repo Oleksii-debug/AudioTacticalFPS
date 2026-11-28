@@ -100,11 +100,18 @@ def main(argv=None):
     if arguments and arguments[0] in ('studio', 'assistant'):
         from .studio.cli import main as studio_main, assistant_main
         return (studio_main if arguments[0] == 'studio' else assistant_main)(arguments[1:])
+    if arguments and arguments[0] == 'prepare-update-host':
+        from .security.update_runtime import main as prepare_update_host_main
+        return prepare_update_host_main(arguments[1:])
     from . import __version__
     from .backup_capacity import LARGE_SOURCE_PROFILE
     parser = argparse.ArgumentParser(description='Resonance offline research library and audio workspace')
     parser.add_argument('--version', action='version', version=__version__)
     parser.add_argument('--data-dir', type=Path, help='Private persistent data directory')
+    parser.add_argument('--update-configuration', type=Path,
+                        help='Explicit owner update configuration or host-preparation recipe')
+    parser.add_argument('--update-configuration-sha256',
+                        help='Independently supplied SHA256 of the owner update configuration')
     parser.add_argument('--self-test', action='store_true', help='Check an isolated synthetic library and exit')
     parser.add_argument('--model-dir', type=Path, help='Verified local MiniLM model directory')
     parser.add_argument('--model-manifest', type=Path, help='Pinned model manifest outside the model directory')
@@ -160,6 +167,9 @@ def main(argv=None):
     parser.add_argument('--search-timeout', type=float, default=300,
                         help='Cooperative search allowance in seconds, at most 86400')
     args = parser.parse_args(argv)
+    if (args.update_configuration is None) != (args.update_configuration_sha256 is None):
+        parser.error('Supply both --update-configuration and its independent --update-configuration-sha256.')
+
     validate_arguments(parser, args)
     if args.backup_capacity is not None and not (args.backup or args.restore):
         parser.error('--backup-capacity requires --backup or --restore.')
@@ -302,6 +312,16 @@ def main(argv=None):
         from .preferences import remember_directory
         desktop = wx.App(False)
         frame = DesktopFrame(app, remember_data_dir=remember_directory)
+        if args.update_configuration is not None:
+            try:
+                from .security.controller import configured_update_controller
+                frame.trust_controller = configured_update_controller(args.update_configuration,
+                    args.update_configuration_sha256, app)
+                from .ui.trust_status import install_update_check_timer
+                install_update_check_timer(frame)
+            except (ValueError, RuntimeError, OSError, ImportError) as error:
+                frame.report('Updates are unavailable for this explicit configuration: ' + str(error)
+                             + '\nReading, saving, export, backup and recovery remain available.')
         frame.Show()
         desktop.MainLoop()
         return 0

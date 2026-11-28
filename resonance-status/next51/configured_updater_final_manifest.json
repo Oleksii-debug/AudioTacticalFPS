@@ -1,0 +1,440 @@
+{
+  "schema": 1,
+  "kind": "V3-18-configured-updater-component",
+  "status": "DRAFT_SOURCE_PEERS_PARTIAL_STATIC_NOT_RUN",
+  "execution": "NOT_RUN",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "files": [
+    {
+      "path": "carr-library/src/carr_library/security/update_http_worker.py",
+      "preimage": null,
+      "blob": "d998af37e81fb047d1f5802a0162d93dd627f314",
+      "exact_readback": true
+    },
+    {
+      "path": "carr-library/src/carr_library/security/update_transport.py",
+      "preimage": null,
+      "blob": "73d05451e7f15e4310ea1d2ed18e35355602ad87",
+      "exact_readback": true
+    },
+    {
+      "path": "carr-library/src/carr_library/security/update_handoff.py",
+      "preimage": null,
+      "blob": "b987d3a67df7fd24eccd1808c6c46fe9d1a58570",
+      "exact_readback": true
+    },
+    {
+      "path": "carr-library/src/carr_library/security/update_host.py",
+      "preimage": null,
+      "blob": "b00aa7e06bfc1f68080b64bc8d85174866f16f5b",
+      "exact_readback": true
+    },
+    {
+      "path": "carr-library/src/carr_library/security/update_runtime.py",
+      "preimage": null,
+      "blob": "0f8b16912dcea56cf157f0d5d22a3afd6bef4960",
+      "exact_readback": true
+    },
+    {
+      "path": "carr-library/src/carr_library/security/controller.py",
+      "preimage": "baf8e492f09bb8f9ca9d37e624ac60002f3bed1d",
+      "blob": "1d550366b08a00aed8b13af4923f47a9c94c5dde",
+      "exact_readback": true
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/trust_status.py",
+      "preimage": "d5e5be3bb25775e35923f1b91fbb39bb0ed11539",
+      "blob": "fa58a344dd6d601942876cc5b427315a2cc78aa2",
+      "exact_readback": true
+    },
+    {
+      "path": "carr-library/src/carr_library/__main__.py",
+      "preimage": "99b3c98d5f60cfa6ba1074d74c32acc14250fd16",
+      "blob": "a1772425f4cd1b1d923ac06c96a71e75a2afdd72",
+      "exact_readback": true
+    },
+    {
+      "path": "carr-library/tests/security/test_update_https.py",
+      "preimage": null,
+      "blob": "561bd843532445010fad409bc24c71c8ada6b0e1",
+      "exact_readback": true
+    },
+    {
+      "path": "carr-library/tests/security/test_update_handoff.py",
+      "preimage": null,
+      "blob": "726ecf2e5aa158073a422bec79fbef85e088588f",
+      "exact_readback": true
+    },
+    {
+      "path": "carr-library/tests/security/test_update_runtime.py",
+      "preimage": null,
+      "blob": "e1e424dfcb009adbc8a29fd44492092b090c8c9c",
+      "exact_readback": true
+    },
+    {
+      "path": "carr-library/tests/security/test_update_ui.py",
+      "preimage": null,
+      "blob": "4b7c1e0b0d379654d769da667b11e453cb55a221",
+      "exact_readback": true
+    },
+    {
+      "path": "carr-library/tests/security/test_update_controller_actions.py",
+      "preimage": null,
+      "blob": "1daad6582495e049952e9c36404214059453ada1",
+      "exact_readback": true
+    },
+    {
+      "path": "carr-library/docs/MANAGED_UPDATES.md",
+      "preimage": "d55af41a8f6c4fb884eff0f53f7d7736c41ab25e",
+      "blob": "238b4bd2eccb9de8af38d934efb4392c9b982896",
+      "exact_readback": true
+    }
+  ],
+  "contracts": [
+    {
+      "path": "carr-library/tests/security/test_update_handoff.py",
+      "sha": "726ecf2e5aa158073a422bec79fbef85e088588f",
+      "cases": 26,
+      "functions": [
+        "test_offline_handoff_reverifies_actual_signed_metadata_and_complete_target",
+        "test_exact_external_runtime_seal_refuses_every_unreviewed_payload_change",
+        "test_same_byte_runtime_root_replacement_never_reuses_owner_configuration",
+        "test_owner_configuration_changes_are_refused_before_launch",
+        "test_real_supervisor_ready_never_means_apply_and_cancel_reaps_it",
+        "test_wrong_supervisor_ready_identity_is_refused_and_actual_child_is_reaped",
+        "test_only_actual_close_boolean_can_commit_the_exact_owned_handoff",
+        "test_visible_commit_survives_postpublication_error_without_terminating_host",
+        "test_uncertain_commit_retains_fixed_host_without_falsely_claiming_activation",
+        "test_external_host_uses_actual_exclusive_lease_and_existing_complete_transaction",
+        "test_external_host_failure_retains_exact_existing_rollback_and_backup",
+        "test_external_host_recovery_finishes_already_committed_b_without_rollback",
+        "test_real_application_child_excludes_host_until_its_own_lease_is_released",
+        "test_runtime_manifest_survives_only_outside_every_managed_payload"
+      ],
+      "mode": "offline_source_and_installed"
+    },
+    {
+      "path": "carr-library/tests/security/test_update_runtime.py",
+      "sha": "e1e424dfcb009adbc8a29fd44492092b090c8c9c",
+      "cases": 18,
+      "functions": [
+        "test_preparation_copies_only_exact_distribution_then_seals_new_offline_host",
+        "test_wrong_independent_a_identity_is_refused_before_copy_or_child",
+        "test_changed_exact_distribution_source_never_starts_offline_installer",
+        "test_changed_fixed_helper_is_refused_before_import_or_copy",
+        "test_explicit_external_destination_cannot_overlap_or_replace_owned_material",
+        "test_cancellation_before_preparation_creates_no_runtime_or_receipts",
+        "test_offline_installer_failure_retains_owned_attempt_and_leaves_a_untouched",
+        "test_real_competing_publication_is_never_overwritten",
+        "test_visible_final_configuration_retains_truth_if_acknowledgment_fails"
+      ],
+      "mode": "offline_source_and_installed"
+    },
+    {
+      "path": "carr-library/tests/security/test_update_ui.py",
+      "sha": "4b7c1e0b0d379654d769da667b11e453cb55a221",
+      "cases": 15,
+      "functions": [
+        "test_actual_host_close_and_registered_finalizer_cannot_race_before_commit",
+        "test_native_close_veto_or_missing_closing_state_cancels_only_owned_handoff",
+        "test_late_callback_never_closes_changed_host_or_applies_after_cancel",
+        "test_real_host_shutdown_settles_prepared_helper_without_any_gui_callback",
+        "test_refused_shared_host_submission_creates_no_supervisor",
+        "test_close_between_preparation_and_cleanup_registration_reaps_real_helper",
+        "test_real_shared_progress_reports_received_bytes_without_premature_acceptance",
+        "test_same_byte_library_root_replacement_refuses_new_update_job_before_worker",
+        "test_uncertain_durable_commit_is_retained_through_actual_host_cleanup",
+        "test_consented_idle_check_uses_existing_worker_without_focus_download_or_close",
+        "test_idle_check_cooperatively_stops_for_new_foreground_work_on_same_worker",
+        "test_closed_host_stops_timer_and_drops_late_idle_completion_without_focus"
+      ],
+      "mode": "offline_source_and_installed"
+    },
+    {
+      "path": "carr-library/tests/security/test_update_controller_actions.py",
+      "sha": "1daad6582495e049952e9c36404214059453ada1",
+      "cases": 14,
+      "functions": [
+        "test_unconfigured_status_never_creates_update_authority_or_contacts_a_site",
+        "test_explicit_current_library_obtains_only_actual_tuf_package_capability",
+        "test_wrong_library_is_refused_before_creating_update_cache",
+        "test_stale_same_byte_directory_scope_refuses_before_client_or_handoff",
+        "test_background_update_setting_requires_typed_explicit_consent",
+        "test_background_consent_is_bound_to_exact_owner_configuration_and_manual_by_default",
+        "test_consent_for_another_configuration_never_enables_idle_network_checks",
+        "test_offline_only_configuration_cannot_enable_background_network",
+        "test_explicit_preparation_changes_only_this_controller_to_verified_apply_service",
+        "test_update_check_outage_preserves_unmanaged_reading_permission_and_no_apply"
+      ],
+      "mode": "offline_source_and_installed"
+    },
+    {
+      "path": "carr-library/tests/security/test_update_https.py",
+      "sha": "561bd843532445010fad409bc24c71c8ada6b0e1",
+      "cases": 15,
+      "functions": [
+        "test_real_tls_tuf_download_authenticates_exact_target_and_reuses_verified_cache",
+        "test_cancelled_real_transfer_retains_prefix_and_resumes_with_full_signed_verification",
+        "test_real_https_refuses_redirect_encoded_or_tampered_body_without_activating",
+        "test_actual_tls_certificate_is_required_before_any_signed_metadata",
+        "test_review_change_refuses_before_target_transfer_and_never_uses_alternate_site",
+        "test_parent_deadline_reaps_actual_tls_worker_and_preserves_unverified_prefix",
+        "test_network_configuration_is_explicit_and_cannot_supply_unsafe_url_authority"
+      ],
+      "mode": "dedicated_loopback_source_and_installed"
+    }
+  ],
+  "totals": {
+    "offline_portable": 73,
+    "dedicated_loopback": 15,
+    "new_cases": 88
+  },
+  "source_peers": {
+    "https_transport_and_15_tests": "Canonical ACCEPTED_STATIC_NOT_RUN d998/73d/561bd",
+    "ui_and_15_tests": "Locate ACCEPTED_STATIC_NOT_RUN fa58/4b7",
+    "runtime_provision_and_18_tests": "root ACCEPTED_STATIC_NOT_RUN 0f8b/e1e4",
+    "controller_and_14_tests": "pending final peer",
+    "handoff_host_and_26_tests": "Canonical ACCEPTED_STATIC_NOT_RUN b987/b00/726e"
+  },
+  "companions": {
+    "new_portable_files": "Stage all four new portable test modules together; UI imports controller-actions; controller imports runtime and handoff.",
+    "existing_test": "carr-library/tests/security/test_managed_installation.py @6bb9d65a1335c54a9af67b4038c62158b307486f",
+    "security_conftest": "existing tests/security/conftest.py contains actual TUF Repository and MemoryAnchor fixtures",
+    "existing_packaging_closure": [
+      "packaging/windows_installer/build_setup.py",
+      "packaging/windows_installer/create_update_target.py",
+      "packaging/windows_installer/maintenance.py",
+      "packaging/install_windows.py",
+      "all existing fixed build/maintenance helper imports required by test_managed_installation.py"
+    ],
+    "source_fixture_inputs": [
+      "src/carr_library/__main__.py",
+      "src/carr_library/installation_lease.py"
+    ],
+    "installed_ui_source": "importlib.util.find_spec('carr_library.ui.trust_status').origin; no checkout-relative source injection"
+  },
+  "main_hunks": [
+    {
+      "old_line": 103,
+      "new_line": 103,
+      "before": [],
+      "after": [
+        "    if arguments and arguments[0] == 'prepare-update-host':",
+        "        from .security.update_runtime import main as prepare_update_host_main",
+        "        return prepare_update_host_main(arguments[1:])"
+      ]
+    },
+    {
+      "old_line": 108,
+      "new_line": 111,
+      "before": [],
+      "after": [
+        "    parser.add_argument('--update-configuration', type=Path,",
+        "                        help='Explicit owner update configuration or host-preparation recipe')",
+        "    parser.add_argument('--update-configuration-sha256',",
+        "                        help='Independently supplied SHA256 of the owner update configuration')"
+      ]
+    },
+    {
+      "old_line": 163,
+      "new_line": 170,
+      "before": [],
+      "after": [
+        "    if (args.update_configuration is None) != (args.update_configuration_sha256 is None):",
+        "        parser.error('Supply both --update-configuration and its independent --update-configuration-sha256.')",
+        ""
+      ]
+    },
+    {
+      "old_line": 305,
+      "new_line": 315,
+      "before": [],
+      "after": [
+        "        if args.update_configuration is not None:",
+        "            try:",
+        "                from .security.controller import configured_update_controller",
+        "                frame.trust_controller = configured_update_controller(args.update_configuration,",
+        "                    args.update_configuration_sha256, app)",
+        "                from .ui.trust_status import install_update_check_timer",
+        "                install_update_check_timer(frame)",
+        "            except (ValueError, RuntimeError, OSError, ImportError) as error:",
+        "                frame.report('Updates are unavailable for this explicit configuration: ' + str(error)",
+        "                             + '\\nReading, saving, export, backup and recovery remain available.')"
+      ]
+    }
+  ],
+  "qualification": {
+    "native_host_A_to_B": "NOT_RUN; new acceptance probe being prepared",
+    "existing_managed_transaction_native": "retains prior independent gate; no transfer to new host",
+    "production_endpoint_keys_anchor": "EXTERNALLY_CONFIGURED; not invented or provisioned",
+    "vendor_rollout": "NOT_RUN",
+    "nvda": "NOT_RUN"
+  },
+  "no_ref_change": true,
+  "gate_inventory": {
+    "suites": {
+      "tests/security/test_update_handoff.py": 26,
+      "tests/security/test_update_runtime.py": 18,
+      "tests/security/test_update_ui.py": 15,
+      "tests/security/test_update_controller_actions.py": 14
+    },
+    "companions": [
+      "tests/security/__init__.py",
+      "tests/security/conftest.py",
+      "tests/security/test_managed_installation.py",
+      "packaging/windows_installer/build_setup.py",
+      "packaging/windows_installer/create_update_target.py",
+      "packaging/windows_installer/maintenance.py",
+      "packaging/windows_installer/setup.iss.in",
+      "packaging/create_delivery.py",
+      "packaging/install_windows.py",
+      "src/carr_library/__main__.py",
+      "src/carr_library/installation_lease.py",
+      "src/carr_library/managed_installation.py",
+      "src/carr_library/audio/windows_job.py",
+      "src/carr_library/audio/cleanup.py",
+      "src/carr_library/audio/models.py",
+      "src/carr_library/audio/process.py"
+    ],
+    "modules": [
+      "carr_library.security._files",
+      "carr_library.security.anchors",
+      "carr_library.security.boundary",
+      "carr_library.security.controller",
+      "carr_library.security.entitlements",
+      "carr_library.security.installation",
+      "carr_library.security.managed_installation",
+      "carr_library.security.refresh",
+      "carr_library.security.updates",
+      "carr_library.security.windows_registration",
+      "carr_library.security.update_http_worker",
+      "carr_library.security.update_transport",
+      "carr_library.security.update_handoff",
+      "carr_library.security.update_host",
+      "carr_library.security.update_runtime",
+      "carr_library.installation_lease",
+      "carr_library.managed_installation",
+      "carr_library.__main__",
+      "carr_library.delivery_contract",
+      "carr_library.application",
+      "carr_library.library_backup",
+      "carr_library.ui.worker_lifetime",
+      "carr_library.audio.models",
+      "carr_library.audio.process",
+      "carr_library.audio.windows_job",
+      "carr_library.audio.cleanup",
+      "carr_library.operations.broker",
+      "carr_library.operations._locks",
+      "carr_library.durable_state",
+      "carr_library.catalog.intake",
+      "bootstrap"
+    ],
+    "windows": [
+      "carr_library.security._files",
+      "carr_library.security.anchors",
+      "carr_library.security.boundary",
+      "carr_library.security.controller",
+      "carr_library.security.entitlements",
+      "carr_library.security.installation",
+      "carr_library.security.managed_installation",
+      "carr_library.security.refresh",
+      "carr_library.security.updates",
+      "carr_library.security.windows_registration",
+      "carr_library.security.update_http_worker",
+      "carr_library.security.update_transport",
+      "carr_library.security.update_handoff",
+      "carr_library.security.update_host",
+      "carr_library.security.update_runtime",
+      "carr_library.installation_lease",
+      "carr_library.managed_installation",
+      "carr_library.__main__",
+      "carr_library.delivery_contract",
+      "carr_library.application",
+      "carr_library.library_backup",
+      "carr_library.ui.worker_lifetime",
+      "carr_library.audio.models",
+      "carr_library.audio.process",
+      "carr_library.audio.windows_job",
+      "carr_library.audio.cleanup",
+      "carr_library.operations.broker",
+      "carr_library.operations._locks",
+      "carr_library.durable_state",
+      "carr_library.catalog.intake",
+      "bootstrap",
+      "carr_library.ui.trust_status"
+    ],
+    "pins": {
+      "tests/security/test_update_handoff.py": "726ecf2e5aa158073a422bec79fbef85e088588f",
+      "tests/security/test_update_runtime.py": "e1e424dfcb009adbc8a29fd44492092b090c8c9c",
+      "tests/security/test_update_ui.py": "4b7c1e0b0d379654d769da667b11e453cb55a221",
+      "tests/security/test_update_controller_actions.py": "1daad6582495e049952e9c36404214059453ada1",
+      "tests/security/__init__.py": "8b137891791fe96927ad78e64b0aad7bded08bdc",
+      "tests/security/conftest.py": "b8e01dcd3d4145e9e9c433fc177fadc0f3304e18",
+      "tests/security/test_managed_installation.py": "6bb9d65a1335c54a9af67b4038c62158b307486f",
+      "packaging/windows_installer/build_setup.py": "3c38afc75e22931090c0585dd5b6901c6c74087c",
+      "packaging/windows_installer/create_update_target.py": "347846c571030fb30ee809562985ab643c644b6b",
+      "packaging/windows_installer/maintenance.py": "76af3bf9a2be2c61b890094ecaa7142cc3d0c8a8",
+      "packaging/windows_installer/setup.iss.in": "18f9544ed3d26763f955f14ed8d984a8e2a2558e",
+      "packaging/create_delivery.py": "b9041dd6a09156458d4991a7a8635954f516d21f",
+      "packaging/install_windows.py": "e4c30a7600c7afdb6771d9ae58b1d16558df0eba",
+      "src/carr_library/__main__.py": "a1772425f4cd1b1d923ac06c96a71e75a2afdd72",
+      "src/carr_library/installation_lease.py": "0114cc74398d3846d64babf8eb8cf3996b46e99d",
+      "src/carr_library/managed_installation.py": "b68013ba422d40dc0daa5c9be68bd5447af2d0bf",
+      "src/carr_library/audio/windows_job.py": "27aeb47c39660ac74335d791e22e58b44058db3b",
+      "src/carr_library/audio/cleanup.py": "77d69f8406db93dc0ff6110b9597ad805bd92dc5",
+      "src/carr_library/audio/models.py": "35694ae7cb9ad00e6a37ee11e18cdf60c6b2d7f6",
+      "src/carr_library/audio/process.py": "480272d0224770f6b0ec9c8efc8e70d9aab42b0b",
+      "src/carr_library/security/_files.py": "eecd5c75f606741d3457ed8aef57f86556230538",
+      "src/carr_library/security/anchors.py": "2b821c8ec8b6a68a2a969f35b4d09d9d0f3d8b15",
+      "src/carr_library/security/boundary.py": "fcc03e8fd9eb754a1991925ce9711016ec14ea39",
+      "src/carr_library/security/controller.py": "1d550366b08a00aed8b13af4923f47a9c94c5dde",
+      "src/carr_library/security/entitlements.py": "9cd523f81580c04cff85024354a68c4d9967c32a",
+      "src/carr_library/security/installation.py": "35da4203d610a4eaa23dc51af65a430bfa9e4b00",
+      "src/carr_library/security/managed_installation.py": "2c203580e3ff0ea60da9262052e2cf9283632839",
+      "src/carr_library/security/refresh.py": "a3f8ace81f8e0b872e74246474f9adf4ab3fa69b",
+      "src/carr_library/security/updates.py": "d39fc6c7979ee198c8e84041aa4d3594b00c577c",
+      "src/carr_library/security/windows_registration.py": "26c0438eaeb094d67d6f4de2006785d059ffe9c4",
+      "src/carr_library/security/update_http_worker.py": "d998af37e81fb047d1f5802a0162d93dd627f314",
+      "src/carr_library/security/update_transport.py": "73d05451e7f15e4310ea1d2ed18e35355602ad87",
+      "src/carr_library/security/update_handoff.py": "b987d3a67df7fd24eccd1808c6c46fe9d1a58570",
+      "src/carr_library/security/update_host.py": "b00aa7e06bfc1f68080b64bc8d85174866f16f5b",
+      "src/carr_library/security/update_runtime.py": "0f8b16912dcea56cf157f0d5d22a3afd6bef4960",
+      "src/carr_library/delivery_contract.py": "90163967acd50760bf15e8a98b74e0bd76aa63f2",
+      "src/carr_library/application.py": "82af31743ca5cc6557477f6492c08b912751f4a4",
+      "src/carr_library/library_backup.py": "30ed3b152fc1cd26b338200b270e73f2e193a3f9",
+      "src/carr_library/ui/worker_lifetime.py": "ed62603159bc095724c3b240d4754f989141a2c9",
+      "src/carr_library/operations/broker.py": "107e1a600bb4bdf0f3edb7735ee5fcdb68d9fb36",
+      "src/carr_library/operations/_locks.py": "ae161b8483f84b2a4aa2f153b4b11b08f76b9693",
+      "src/carr_library/durable_state.py": "d2b95bde04aa72cdd21ee6b4f0092d3350f84fcb",
+      "src/carr_library/catalog/intake.py": "5a55fa8b1326a43ea2b6a4773f4072886e436031",
+      "bootstrap/__init__.py": "6981b7faa1cca8d29f37fe85751c110c693dae55",
+      "src/carr_library/ui/trust_status.py": "fa58a344dd6d601942876cc5b427315a2cc78aa2",
+      "tests/security/test_update_https.py": "561bd843532445010fad409bc24c71c8ada6b0e1",
+      "scripts/ci_check.py": "6ad3055cfcd7c6a1b1af8544ae462c5d51adb473",
+      "packaging/source_wheel.py": "478de248451d59a44b35784eb808fb2974f0af67",
+      "packaging/windows-cp311.lock": "8dad99c0ea80470b7253873aee78e08857affec6",
+      "packaging/windows-sync-cp311.lock": "cd9c18a24d7a7ac203d81cf6a8d82d8bcb8f8ab3",
+      "packaging/windows-sync-test-cp311.lock": "e3f6eda5976e867abe7267c04e0b867b1fd16f7a",
+      "packaging/linux-sync-core-cp311.lock": "08f945066be748972a10d5b0ce46480fff722959",
+      "packaging/trusted-client.lock": "6c4b48ac09572dc259d62d0d801057ab47c04583"
+    }
+  },
+  "focused_gate_draft": {
+    "helper": {
+      "path": "carr-library/scripts/ci_configured_update_contracts.py",
+      "blob": "a4e69ba67036f2e41fb628f677cf5d15b249ae4f"
+    },
+    "workflow": {
+      "path": ".github/workflows/carr-configured-update.yml",
+      "blob": "9a885ba877364c203c13a29e2180da011d018a9e"
+    },
+    "review": "pending bounded peers",
+    "source_child_seconds": 600,
+    "installed_child_seconds": 600,
+    "source_aggregate_seconds": 1500,
+    "source_jobs": 3,
+    "helper_minutes": 80,
+    "job_minutes": 120
+  },
+  "lineage_note": "Supersedes draft8f271a05: only handoff seal-survivability guard+four cases and matching docs; focused ordinary gate inventories now exact. HTTPS15 remains excluded from ordinary ci_check."
+}
