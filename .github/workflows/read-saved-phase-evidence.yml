@@ -30,11 +30,11 @@ jobs:
           import zipfile
 
           REPOSITORY = "Oleksii-debug/AudioTacticalFPS"
-          ARTIFACT_ID = 15240359643
-          SOURCE_RUN = 46087590271
-          SOURCE_HEAD = "7a445cfa0701465facc80fe5dee226ba628aa4d6"
-          ZIP_BYTES = 103353
-          ZIP_SHA256 = "0083a4a428ee17ed6b5149909c3960007f1f1c391bcaf43124ba7449a8fc2d3b"
+          ARTIFACT_ID = 15244469110
+          SOURCE_RUN = 46097465453
+          SOURCE_HEAD = "f1862e3c3edd4c0c7ce98d85e3ec8c9a7f5f3357"
+          ZIP_BYTES = 103668
+          ZIP_SHA256 = "9f10eeb90ec939c7035c33c9895c6a90b683cb7c3822c0a3e2df3f3031a142ab"
           MAX_MEMBERS = 128
           MAX_MEMBER_BYTES = 2 * 1024 * 1024
           MAX_TOTAL_BYTES = 16 * 1024 * 1024
