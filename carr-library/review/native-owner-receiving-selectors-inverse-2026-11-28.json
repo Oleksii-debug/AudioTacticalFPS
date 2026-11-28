@@ -1,0 +1,75 @@
+{
+  "schema": "carr-exact-line-inverse/1",
+  "line_indices": "zero based",
+  "application": "Verify after-blob identity, then apply each file's hunks in descending after_line order, replacing exact after lines with before lines.",
+  "files": [
+    {
+      "path": ".github/workflows/carr-windows.yml",
+      "before_blob": "8a2340458123a20fc5f050dfe5232c184fec1316",
+      "after_blob": "e6696ed7aa1fd1c4afc2b24d4b80ff0647fe61ce",
+      "hunks": [
+        {
+          "before_line": 716,
+          "after_line": 716,
+          "before": [],
+          "after": [
+            "            'tests/audio_windows/test_membership_fence.py',"
+          ]
+        },
+        {
+          "before_line": 1791,
+          "after_line": 1792,
+          "before": [],
+          "after": [
+            "                            'tests/audio_windows/test_membership_fence.py',"
+          ]
+        },
+        {
+          "before_line": 2017,
+          "after_line": 2019,
+          "before": [],
+          "after": [
+            "          & $python -I -B -c \"import json,xml.etree.ElementTree as E; cases=[c for c in E.parse('ci-results/full-bundle-workflows.xml').iter('testcase') if c.get('classname','').rsplit('.',1)[-1]=='test_membership_fence']; required={'test_real_late_job_objects_require_retained_native_handles_and_exit[normal-return]','test_real_late_job_objects_require_retained_native_handles_and_exit[original-source-error]'}; assert len(cases)==2 and {c.get('name') for c in cases}==required; assert all(c.find('failure') is None and c.find('error') is None and c.find('skipped') is None for c in cases); print(json.dumps(dict(status='PASS',native_job_membership_cases=2,case_names=sorted(required),native_signal_and_close='PASS',nvda='NOT_RUN')))\" | Tee-Object 'ci-results/full-bundle-job-membership.json'",
+            "          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }"
+          ]
+        }
+      ],
+      "full_inverse_verified": true
+    },
+    {
+      "path": ".github/workflows/carr-component-followup-evaluation.yml",
+      "before_blob": "40c95c79f99b1293877919759ca608e3593699e1",
+      "after_blob": "3a23611bb5829ef212736562204cde830316af7f",
+      "hunks": [
+        {
+          "before_line": 224,
+          "after_line": 224,
+          "before": [],
+          "after": [
+            "          if ($IsWindows) { $suites += 'tests/audio_windows/test_membership_fence.py' }"
+          ]
+        },
+        {
+          "before_line": 322,
+          "after_line": 323,
+          "before": [],
+          "after": [
+            "          if ($IsWindows) { $suites += 'tests/audio_windows/test_membership_fence.py' }"
+          ]
+        },
+        {
+          "before_line": 326,
+          "after_line": 328,
+          "before": [],
+          "after": [
+            "          if ($IsWindows) {",
+            "            python -I -B -c \"import json,xml.etree.ElementTree as E; cases=[c for c in E.parse('ci-component-results/installed.xml').iter('testcase') if c.get('classname','').rsplit('.',1)[-1]=='test_membership_fence']; required={'test_real_late_job_objects_require_retained_native_handles_and_exit[normal-return]','test_real_late_job_objects_require_retained_native_handles_and_exit[original-source-error]'}; assert len(cases)==2 and {c.get('name') for c in cases}==required; assert all(c.find('failure') is None and c.find('error') is None and c.find('skipped') is None for c in cases); print(json.dumps(dict(status='PASS',native_job_membership_cases=2,case_names=sorted(required),native_signal_and_close='PASS',nvda='NOT_RUN')))\" | Tee-Object 'ci-component-results/native-job-membership.json'",
+            "            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }",
+            "          }"
+          ]
+        }
+      ],
+      "full_inverse_verified": true
+    }
+  ]
+}

@@ -222,6 +222,7 @@ jobs:
             'tests/studio/test_measured_audio.py'
           )
           if (-not $IsWindows) { $suites += 'tests/storage_posix/test_state_backup_names.py' }
+          if ($IsWindows) { $suites += 'tests/audio_windows/test_membership_fence.py' }
           python -B scripts/ci_check.py --jobs 2 @suites 2>&1 | Tee-Object ci-component-results/source.txt
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Require installed updated components and adjacent contracts
@@ -320,10 +321,15 @@ jobs:
             'tests/studio/test_measured_audio.py'
           )
           if (-not $IsWindows) { $suites += 'tests/storage_posix/test_state_backup_names.py' }
+          if ($IsWindows) { $suites += 'tests/audio_windows/test_membership_fence.py' }
           python -I -B -m pytest -q -o addopts= -o pythonpath= -o xfail_strict=true --import-mode=importlib --junitxml=ci-component-results/installed.xml @suites 2>&1 | Tee-Object ci-component-results/installed.txt
           $testExit = $LASTEXITCODE
           python -I -B -c "import xml.etree.ElementTree as E; cases=list(E.parse('ci-component-results/installed.xml').getroot().iter('testcase')); assert cases and all(c.find('failure') is None and c.find('error') is None and c.find('skipped') is None for c in cases); print('INSTALLED_CASES_PASS',len(cases))"
           if ($testExit -ne 0 -or $LASTEXITCODE -ne 0) { exit 1 }
+          if ($IsWindows) {
+            python -I -B -c "import json,xml.etree.ElementTree as E; cases=[c for c in E.parse('ci-component-results/installed.xml').iter('testcase') if c.get('classname','').rsplit('.',1)[-1]=='test_membership_fence']; required={'test_real_late_job_objects_require_retained_native_handles_and_exit[normal-return]','test_real_late_job_objects_require_retained_native_handles_and_exit[original-source-error]'}; assert len(cases)==2 and {c.get('name') for c in cases}==required; assert all(c.find('failure') is None and c.find('error') is None and c.find('skipped') is None for c in cases); print(json.dumps(dict(status='PASS',native_job_membership_cases=2,case_names=sorted(required),native_signal_and_close='PASS',nvda='NOT_RUN')))" | Tee-Object 'ci-component-results/native-job-membership.json'
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
       - name: Require real Windows virtual-environment EOF and cleanup contracts
         if: ${{ !cancelled() && matrix.mode == 'installed' && runner.os == 'Windows' && steps.inventory.outcome == 'success' }}
         timeout-minutes: 5

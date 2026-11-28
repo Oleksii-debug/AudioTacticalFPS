@@ -1,0 +1,154 @@
+{
+  "schema": "carr-exact-line-inverse/1",
+  "path": "carr-library/tests/conversion/test_conversion_ownership.py",
+  "before_blob": "c80bb99e24c98088764f045048aa416633b64776",
+  "after_blob": "f97bd0aeed9a60a3b785a95b0d801601f49f21db",
+  "line_indices": "zero based",
+  "application": "After verifying the entire after-blob identity, apply hunks in descending after_line order, replacing exact after lines with before lines.",
+  "hunks": [
+    {
+      "before_line": 194,
+      "after_line": 194,
+      "before": [],
+      "after": [
+        "    _assert_actual_live_child_retention(tmp_path, monkeypatch, admitted, wrapper)",
+        "",
+        "",
+        "def _assert_actual_live_child_retention(tmp_path, monkeypatch, admitted, wrapper, *,",
+        "                                        before_launch=None, after_ready=None):"
+      ]
+    },
+    {
+      "before_line": 196,
+      "after_line": 201,
+      "before": [
+        "    stages, native, pending = [], [], []"
+      ],
+      "after": [
+        "    stages, native, pending, commands = [], [], [], []"
+      ]
+    },
+    {
+      "before_line": 198,
+      "after_line": 203,
+      "before": [],
+      "after": [
+        "    actual_start = process_module._start_process"
+      ]
+    },
+    {
+      "before_line": 199,
+      "after_line": 205,
+      "before": [],
+      "after": [
+        "    def start(args, **options):",
+        "        selected = bool(commands) and tuple(args) == commands[0]",
+        "        if selected:",
+        "            assert options['owned_tree'] is True and not native",
+        "        child = actual_start(args, **options)",
+        "        if selected:",
+        "            native.append(child)",
+        "        return child",
+        ""
+      ]
+    },
+    {
+      "before_line": 200,
+      "after_line": 215,
+      "before": [
+        "        if not native:",
+        "            native.append(process)"
+      ],
+      "after": [
+        "        # Other retained cleanup owners may retry in this same interpreter.",
+        "        # Delay only the exact child returned for this conversion's command.",
+        "        if not native or process is not native[0]:",
+        "            return actual_stop(process)"
+      ]
+    },
+    {
+      "before_line": 217,
+      "after_line": 234,
+      "before": [],
+      "after": [
+        "                if after_ready is not None and not cancel.is_set():",
+        "                    after_ready()"
+      ]
+    },
+    {
+      "before_line": 223,
+      "after_line": 242,
+      "before": [],
+      "after": [
+        "        command = [str(Path(sys.executable).absolute()), '-I', '-B', '-u', '-c',",
+        "                   _HELD_CHILD, str(snapshot), str(ready)]",
+        "        commands.append(tuple(command))"
+      ]
+    },
+    {
+      "before_line": 224,
+      "after_line": 246,
+      "before": [
+        "            return actual_run([str(Path(sys.executable).absolute()), '-I', '-B', '-u', '-c',",
+        "                               _HELD_CHILD, str(snapshot), str(ready)], **kwargs)"
+      ],
+      "after": [
+        "            if before_launch is not None:",
+        "                before_launch()",
+        "            return actual_run(command, **kwargs)"
+      ]
+    },
+    {
+      "before_line": 236,
+      "after_line": 259,
+      "before": [],
+      "after": [
+        "    monkeypatch.setattr(process_module, '_start_process', start)"
+      ]
+    },
+    {
+      "before_line": 292,
+      "after_line": 316,
+      "before": [],
+      "after": [
+        "",
+        "@pytest.mark.parametrize('phase', ['before-launch', 'after-ready'])",
+        "def test_conversion_cleanup_delay_leaves_a_distinct_owned_process_independent(",
+        "        tmp_path, monkeypatch, phase):",
+        "    import subprocess",
+        "    from carr_library.audio.cleanup import CleanupOwner",
+        "",
+        "    actual_stop = process_module._stop_owned",
+        "    with process_module.owned_process(",
+        "            [str(Path(sys.executable).absolute()), '-I', '-B', '-c', 'pass'],",
+        "            stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,",
+        "            stderr=subprocess.DEVNULL, shell=False) as other:",
+        "        owner = CleanupOwner(lambda: process_module._stop_owned(other))",
+        "        observed = []",
+        "        try:",
+        "            # Keep a real native owner after its leader exits, just as a retained",
+        "            # cleanup can be retried while another operation starts or cancels.",
+        "            assert other.wait(timeout=5) == 0",
+        "",
+        "            def close_other():",
+        "                assert not owner.quiescent",
+        "                assert owner.close() is True",
+        "                assert owner.quiescent",
+        "                observed.append(other)",
+        "",
+        "            _assert_actual_live_child_retention(",
+        "                tmp_path, monkeypatch, True, 'direct',",
+        "                before_launch=close_other if phase == 'before-launch' else None,",
+        "                after_ready=close_other if phase == 'after-ready' else None)",
+        "            assert observed == [other]",
+        "        finally:",
+        "            # Dispose this distinct owner if a regression assertion interrupts",
+        "            # the scenario. The existing outer owner retains any uncertain exit.",
+        "            if not owner.quiescent:",
+        "                actual_stop(other)",
+        ""
+      ]
+    }
+  ],
+  "full_inverse_verified": true
+}

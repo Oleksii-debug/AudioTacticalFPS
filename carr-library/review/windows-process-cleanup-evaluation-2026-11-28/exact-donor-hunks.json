@@ -1,0 +1,509 @@
+{
+  "schema": "carr-exact-line-hunks/1",
+  "source": ".github/workflows/carr-word-preview-evaluation.yml",
+  "source_blob": "9a017150e77c935deaeaa391e8d591985e591e2a",
+  "destination": ".github/workflows/carr-process-cleanup-evaluation.yml",
+  "destination_blob": "4397ba18980d23522560f38b79d11847a4221619",
+  "whole_inverse_exact": true,
+  "hunks": [
+    {
+      "oldLine": 1,
+      "newLine": 1,
+      "contextBefore": [],
+      "removed": [
+        "name: Resonance focused Word preview callback verification"
+      ],
+      "added": [
+        "name: Resonance focused Windows process cleanup verification"
+      ],
+      "contextAfter": [
+        "",
+        "# Additional diagnostic scope for the observed Word test-harness completion mismatch.",
+        "# Ordinary, full Windows, native Office, device, installer and release gates remain independent."
+      ]
+    },
+    {
+      "oldLine": 3,
+      "newLine": 3,
+      "contextBefore": [
+        "name: Resonance focused Word preview callback verification",
+        ""
+      ],
+      "removed": [
+        "# Additional diagnostic scope for the observed Word test-harness completion mismatch.",
+        "# Ordinary, full Windows, native Office, device, installer and release gates remain independent."
+      ],
+      "added": [
+        "# Focused receiving for the observed native family fence and cleanup-observer failures.",
+        "# This gate also checks the supplied worker stop protocol after actual startup.",
+        "# Ordinary full Windows, V3, device, installer and release gates remain independent."
+      ],
+      "contextAfter": [
+        "on:",
+        "  push:",
+        "    branches: [carr/word-preview-evaluation-20261128]"
+      ]
+    },
+    {
+      "oldLine": 7,
+      "newLine": 8,
+      "contextBefore": [
+        "# Ordinary, full Windows, native Office, device, installer and release gates remain independent.",
+        "on:",
+        "  push:"
+      ],
+      "removed": [
+        "    branches: [carr/word-preview-evaluation-20261128]"
+      ],
+      "added": [
+        "    branches: [carr/process-cleanup-evaluation-20261128]"
+      ],
+      "contextAfter": [
+        "    paths:",
+        "      - carr-library/**",
+        "      - .github/workflows/carr-word-preview-evaluation.yml"
+      ]
+    },
+    {
+      "oldLine": 10,
+      "newLine": 11,
+      "contextBefore": [
+        "    branches: [carr/word-preview-evaluation-20261128]",
+        "    paths:",
+        "      - carr-library/**"
+      ],
+      "removed": [
+        "      - .github/workflows/carr-word-preview-evaluation.yml"
+      ],
+      "added": [
+        "      - .github/workflows/carr-process-cleanup-evaluation.yml"
+      ],
+      "contextAfter": [
+        "",
+        "permissions:",
+        "  contents: read"
+      ]
+    },
+    {
+      "oldLine": 16,
+      "newLine": 17,
+      "contextBefore": [
+        "  contents: read",
+        "",
+        "concurrency:"
+      ],
+      "removed": [
+        "  group: carr-word-preview-${{ github.sha }}"
+      ],
+      "added": [
+        "  group: carr-process-cleanup-${{ github.sha }}"
+      ],
+      "contextAfter": [
+        "  cancel-in-progress: false",
+        "",
+        "jobs:"
+      ]
+    },
+    {
+      "oldLine": 20,
+      "newLine": 21,
+      "contextBefore": [
+        "  cancel-in-progress: false",
+        "",
+        "jobs:"
+      ],
+      "removed": [
+        "  word-preview:",
+        "    name: Word preview callbacks / ${{ matrix.os }} / source and installed"
+      ],
+      "added": [
+        "  process-cleanup:",
+        "    name: Process family cleanup / ${{ matrix.os }} / source and installed"
+      ],
+      "contextAfter": [
+        "    runs-on: ${{ matrix.os }}",
+        "    timeout-minutes: ${{ matrix.minutes }}",
+        "    strategy:"
+      ]
+    },
+    {
+      "oldLine": 71,
+      "newLine": 72,
+      "contextBefore": [
+        "        id: installed",
+        "        timeout-minutes: 8",
+        "        run: |"
+      ],
+      "removed": [
+        "          New-Item -ItemType Directory -Force ci-word-preview-results | Out-Null"
+      ],
+      "added": [
+        "          New-Item -ItemType Directory -Force ci-process-cleanup-results | Out-Null"
+      ],
+      "contextAfter": [
+        "          $sourceCommit = (git rev-parse HEAD).Trim()",
+        "          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }",
+        "          if ($sourceCommit -cne '${{ github.sha }}') { throw 'Checkout differs from the exact event head.' }"
+      ]
+    },
+    {
+      "oldLine": 75,
+      "newLine": 76,
+      "contextBefore": [
+        "          $sourceCommit = (git rev-parse HEAD).Trim()",
+        "          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }",
+        "          if ($sourceCommit -cne '${{ github.sha }}') { throw 'Checkout differs from the exact event head.' }"
+      ],
+      "removed": [
+        "          $sourceCommit | Set-Content ci-word-preview-results/tested-commit.txt",
+        "          $environment = Join-Path $env:RUNNER_TEMP 'carr-word-preview-python'",
+        "          $wheelDirectory = Join-Path $env:RUNNER_TEMP 'carr-word-preview-wheel'"
+      ],
+      "added": [
+        "          $sourceCommit | Set-Content ci-process-cleanup-results/tested-commit.txt",
+        "          $environment = Join-Path $env:RUNNER_TEMP 'carr-process-cleanup-python'",
+        "          $wheelDirectory = Join-Path $env:RUNNER_TEMP 'carr-process-cleanup-wheel'"
+      ],
+      "contextAfter": [
+        "          python -m venv $environment",
+        "          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }",
+        "          $python = Join-Path $environment $(if ($IsWindows) { 'Scripts/python.exe' } else { 'bin/python' })"
+      ]
+    },
+    {
+      "oldLine": 82,
+      "newLine": 83,
+      "contextBefore": [
+        "          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }",
+        "          $python = Join-Path $environment $(if ($IsWindows) { 'Scripts/python.exe' } else { 'bin/python' })",
+        "          \"CARR_PYTHON=$python\" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append"
+      ],
+      "removed": [
+        "          $dependencyFile = Join-Path $env:RUNNER_TEMP 'carr-word-preview-dependencies.txt'",
+        "          $verificationLock = Join-Path $env:RUNNER_TEMP 'carr-word-preview-verification.lock'"
+      ],
+      "added": [
+        "          $dependencyFile = Join-Path $env:RUNNER_TEMP 'carr-process-cleanup-dependencies.txt'",
+        "          $verificationLock = Join-Path $env:RUNNER_TEMP 'carr-process-cleanup-verification.lock'"
+      ],
+      "contextAfter": [
+        "          $pins = @'",
+        "          import hashlib, json, pathlib, re, sys",
+        "          lock = pathlib.Path('packaging/windows-cp311.lock')"
+      ]
+    },
+    {
+      "oldLine": 109,
+      "newLine": 110,
+      "contextBefore": [
+        "                         pytest='9.0.2',",
+        "                         build_support={'setuptools':'84.2.1','wheel':'0.48.0','zstandard':'0.25.0'},",
+        "                         verification_support=packaging[0].split()[0])"
+      ],
+      "removed": [
+        "          pathlib.Path('ci-word-preview-results/dependency-selection.json').write_text("
+      ],
+      "added": [
+        "          pathlib.Path('ci-process-cleanup-results/dependency-selection.json').write_text("
+      ],
+      "contextAfter": [
+        "              json.dumps(receipt, sort_keys=True, indent=2) + '\\n', encoding='utf-8')",
+        "          print(json.dumps(receipt, sort_keys=True))",
+        "          '@"
+      ]
+    },
+    {
+      "oldLine": 129,
+      "newLine": 130,
+      "contextBefore": [
+        "          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }",
+        "          $wheels = @(Get-ChildItem -LiteralPath $wheelDirectory -Filter '*.whl' -File)",
+        "          if ($wheels.Count -ne 1) { throw 'Expected exactly one application wheel.' }"
+      ],
+      "removed": [
+        "          & $python -I -B -X utf8 -c \"import json,os,runpy,sys; verify=runpy.run_path('packaging/source_wheel.py')['verify_application_wheel']; print(json.dumps(verify(sys.argv[1], '..', os.environ['GITHUB_SHA']),sort_keys=True))\" $wheels[0].FullName | Tee-Object ci-word-preview-results/wheel-identity.json"
+      ],
+      "added": [
+        "          & $python -I -B -X utf8 -c \"import json,os,runpy,sys; verify=runpy.run_path('packaging/source_wheel.py')['verify_application_wheel']; print(json.dumps(verify(sys.argv[1], '..', os.environ['GITHUB_SHA']),sort_keys=True))\" $wheels[0].FullName | Tee-Object ci-process-cleanup-results/wheel-identity.json"
+      ],
+      "contextAfter": [
+        "          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }",
+        "          & $python -m pip install --no-deps $wheels[0].FullName",
+        "          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }"
+      ]
+    },
+    {
+      "oldLine": 162,
+      "newLine": 163,
+      "contextBefore": [
+        "              assert source.stat().st_size == target.stat().st_size == len(data), name",
+        "              assert source.read_bytes() == target.read_bytes() == data, name",
+        "              rows.append(dict(path=name, bytes=len(data), sha256=hashlib.sha256(data).hexdigest()))"
+      ],
+      "removed": [
+        "          declared = json.loads(pathlib.Path('ci-word-preview-results/dependency-selection.json').read_text(encoding='utf-8'))"
+      ],
+      "added": [
+        "          declared = json.loads(pathlib.Path('ci-process-cleanup-results/dependency-selection.json').read_text(encoding='utf-8'))"
+      ],
+      "contextAfter": [
+        "          assert {name: metadata.version(name) for name in declared['pins']} == declared['pins']",
+        "          assert metadata.version('pytest') == declared['pytest']",
+        "          assert {name: metadata.version(name) for name in declared['build_support']} == declared['build_support']"
+      ]
+    },
+    {
+      "oldLine": 170,
+      "newLine": 171,
+      "contextBefore": [
+        "          assert metadata.version(support_name) == support_version",
+        "          if sys.platform == 'win32':",
+        "              assert metadata.version('wxPython') == '4.2.4'"
+      ],
+      "removed": [
+        "          suites = [\"tests/ui/test_word_citations.py\"]"
+      ],
+      "added": [
+        "          suites = [\"tests/audio/test_audio_process.py\",\"tests/audio/test_process_deadline.py\",\"tests/audio/test_recording_windows_process.py\",\"tests/conversion/test_conversion_ownership.py\",\"tests/transcription/test_supplied_worker_bridge.py\",\"tests/audio_windows/test_membership_fence.py\"]"
+      ],
+      "contextAfter": [
+        "          for name in suites:",
+        "              path = checkout / name",
+        "              assert path.is_file() and path.stat().st_size <= 2 * 1024 * 1024, name"
+      ]
+    },
+    {
+      "oldLine": 181,
+      "newLine": 182,
+      "contextBefore": [
+        "              source_package=str(checkout / 'src/carr_library'), python_files=rows,",
+        "              required_suites=suites, dependency_selection=declared), sort_keys=True))",
+        "          '@"
+      ],
+      "removed": [
+        "          & $env:CARR_PYTHON -I -B -X utf8 -c $inventory | Tee-Object ci-word-preview-results/source-installed-python-inventory.json"
+      ],
+      "added": [
+        "          & $env:CARR_PYTHON -I -B -X utf8 -c $inventory | Tee-Object ci-process-cleanup-results/source-installed-python-inventory.json"
+      ],
+      "contextAfter": [
+        "          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }",
+        "",
+        "      - name: Require the exact source Word preview callback contracts"
+      ]
+    },
+    {
+      "oldLine": 184,
+      "newLine": 185,
+      "contextBefore": [
+        "          & $env:CARR_PYTHON -I -B -X utf8 -c $inventory | Tee-Object ci-word-preview-results/source-installed-python-inventory.json",
+        "          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }",
+        ""
+      ],
+      "removed": [
+        "      - name: Require the exact source Word preview callback contracts"
+      ],
+      "added": [
+        "      - name: Require all six exact source cleanup contracts and both native cases"
+      ],
+      "contextAfter": [
+        "        if: ${{ !cancelled() && steps.inventory.outcome == 'success' }}",
+        "        timeout-minutes: 12",
+        "        run: |"
+      ]
+    },
+    {
+      "oldLine": 189,
+      "newLine": 190,
+      "contextBefore": [
+        "        timeout-minutes: 12",
+        "        run: |",
+        "          $suites = @("
+      ],
+      "removed": [
+        "            'tests/ui/test_word_citations.py'"
+      ],
+      "added": [
+        "            'tests/audio/test_audio_process.py'",
+        "            'tests/audio/test_process_deadline.py'",
+        "            'tests/audio/test_recording_windows_process.py'",
+        "            'tests/conversion/test_conversion_ownership.py'",
+        "            'tests/transcription/test_supplied_worker_bridge.py'",
+        "            'tests/audio_windows/test_membership_fence.py'"
+      ],
+      "contextAfter": [
+        "          )",
+        "          & $env:CARR_PYTHON -B -X utf8 scripts/ci_check.py --jobs 2 @suites 2>&1 | Tee-Object ci-word-preview-results/source-contracts.txt",
+        "          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }"
+      ]
+    },
+    {
+      "oldLine": 191,
+      "newLine": 197,
+      "contextBefore": [
+        "          $suites = @(",
+        "            'tests/ui/test_word_citations.py'",
+        "          )"
+      ],
+      "removed": [
+        "          & $env:CARR_PYTHON -B -X utf8 scripts/ci_check.py --jobs 2 @suites 2>&1 | Tee-Object ci-word-preview-results/source-contracts.txt"
+      ],
+      "added": [
+        "          & $env:CARR_PYTHON -B -X utf8 scripts/ci_check.py --jobs 2 @suites 2>&1 | Tee-Object ci-process-cleanup-results/source-contracts.txt",
+        "          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }",
+        "          $sourceVerdict = @'",
+        "          import json, pathlib, re",
+        "          expected = {\"tests/audio/test_audio_process.py\":27,\"tests/audio/test_process_deadline.py\":23,\"tests/audio/test_recording_windows_process.py\":74,\"tests/conversion/test_conversion_ownership.py\":15,\"tests/transcription/test_supplied_worker_bridge.py\":91,\"tests/audio_windows/test_membership_fence.py\":2}",
+        "          raw = pathlib.Path('ci-process-cleanup-results/source-contracts.txt').read_text(encoding='utf-8-sig')",
+        "          rows = re.findall(r'(?m)\\bPASS: ([^:\\r\\n]+): junit_passed=(\\d+), failed=0, skipped=0, pytest_exit=0\\s*$', raw)",
+        "          assert len(rows) == len(expected), rows",
+        "          actual = {name: int(count) for name, count in rows}",
+        "          assert actual == expected and sum(actual.values()) == 232, actual",
+        "          print(json.dumps(dict(status='PASS', mode='source', suites=actual,",
+        "              passed=sum(actual.values()), failed=0, skipped=0,",
+        "              actual_windows_membership_cases=actual['tests/audio_windows/test_membership_fence.py']), sort_keys=True))",
+        "          '@",
+        "          & $env:CARR_PYTHON -I -B -X utf8 -c $sourceVerdict | Tee-Object ci-process-cleanup-results/source-verdict.json"
+      ],
+      "contextAfter": [
+        "          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }",
+        "",
+        "      - name: Require the same contracts from the installed wheel"
+      ]
+    },
+    {
+      "oldLine": 199,
+      "newLine": 219,
+      "contextBefore": [
+        "        timeout-minutes: 12",
+        "        run: |",
+        "          $suites = @("
+      ],
+      "removed": [
+        "            'tests/ui/test_word_citations.py'"
+      ],
+      "added": [
+        "            'tests/audio/test_audio_process.py'",
+        "            'tests/audio/test_process_deadline.py'",
+        "            'tests/audio/test_recording_windows_process.py'",
+        "            'tests/conversion/test_conversion_ownership.py'",
+        "            'tests/transcription/test_supplied_worker_bridge.py'",
+        "            'tests/audio_windows/test_membership_fence.py'"
+      ],
+      "contextAfter": [
+        "          )",
+        "          # Reuse the unchanged existing offline and XFAIL/XPASS policy.",
+        "          # -I plus an empty pytest pythonpath prevent checkout import injection."
+      ]
+    },
+    {
+      "oldLine": 214,
+      "newLine": 239,
+      "contextBefore": [
+        "          assert isinstance(policy, str) and policy",
+        "          exec(compile(policy, 'scripts/ci_check.py:PYTEST_CHILD', 'exec'), {'__name__': '__main__'})",
+        "          '@"
+      ],
+      "removed": [
+        "          & $env:CARR_PYTHON -I -B -X utf8 -c $installedGate -q -o addopts= -o pythonpath= -o xfail_strict=true --import-mode=importlib --junitxml=ci-word-preview-results/installed.xml @suites 2>&1 | Tee-Object ci-word-preview-results/installed-contracts.txt"
+      ],
+      "added": [
+        "          & $env:CARR_PYTHON -I -B -X utf8 -c $installedGate -q -o addopts= -o pythonpath= -o xfail_strict=true --import-mode=importlib --junitxml=ci-process-cleanup-results/installed.xml @suites 2>&1 | Tee-Object ci-process-cleanup-results/installed-contracts.txt"
+      ],
+      "contextAfter": [
+        "          $testExit = $LASTEXITCODE",
+        "          & $env:CARR_PYTHON -I -B -X utf8 -c \"import xml.etree.ElementTree as E; cases=list(E.parse('ci-word-preview-results/installed.xml').getroot().iter('testcase')); assert cases and all(c.find('failure') is None and c.find('error') is None and c.find('skipped') is None for c in cases); print('INSTALLED_CASES_PASS',len(cases))\" 2>&1 | Tee-Object ci-word-preview-results/installed-verdict.txt",
+        "          if ($testExit -ne 0 -or $LASTEXITCODE -ne 0) { exit 1 }"
+      ]
+    },
+    {
+      "oldLine": 216,
+      "newLine": 241,
+      "contextBefore": [
+        "          '@",
+        "          & $env:CARR_PYTHON -I -B -X utf8 -c $installedGate -q -o addopts= -o pythonpath= -o xfail_strict=true --import-mode=importlib --junitxml=ci-word-preview-results/installed.xml @suites 2>&1 | Tee-Object ci-word-preview-results/installed-contracts.txt",
+        "          $testExit = $LASTEXITCODE"
+      ],
+      "removed": [
+        "          & $env:CARR_PYTHON -I -B -X utf8 -c \"import xml.etree.ElementTree as E; cases=list(E.parse('ci-word-preview-results/installed.xml').getroot().iter('testcase')); assert cases and all(c.find('failure') is None and c.find('error') is None and c.find('skipped') is None for c in cases); print('INSTALLED_CASES_PASS',len(cases))\" 2>&1 | Tee-Object ci-word-preview-results/installed-verdict.txt"
+      ],
+      "added": [
+        "          $installedVerdict = @'",
+        "          from collections import Counter",
+        "          import json, xml.etree.ElementTree as E",
+        "          expected = {\"test_audio_process\":27,\"test_process_deadline\":23,\"test_recording_windows_process\":74,\"test_conversion_ownership\":15,\"test_supplied_worker_bridge\":91,\"test_membership_fence\":2}",
+        "          cases = list(E.parse('ci-process-cleanup-results/installed.xml').getroot().iter('testcase'))",
+        "          assert cases and all(c.find('failure') is None and c.find('error') is None",
+        "                               and c.find('skipped') is None for c in cases)",
+        "          counts = Counter()",
+        "          native = []",
+        "          for case in cases:",
+        "              modules = set(case.get('classname', '').split('.')) & set(expected)",
+        "              assert len(modules) == 1, case.attrib",
+        "              module = modules.pop()",
+        "              counts[module] += 1",
+        "              if module == 'test_membership_fence':",
+        "                  native.append(case.get('name'))",
+        "          assert dict(counts) == expected and len(cases) == 232, dict(counts)",
+        "          assert len(native) == 2 and set(native) == {",
+        "              'test_real_late_job_objects_require_retained_native_handles_and_exit[normal-return]',",
+        "              'test_real_late_job_objects_require_retained_native_handles_and_exit[original-source-error]'}, native",
+        "          print(json.dumps(dict(status='PASS', mode='installed', suites=dict(counts),",
+        "              passed=len(cases), failed=0, skipped=0, actual_windows_membership_cases=native), sort_keys=True))",
+        "          '@",
+        "          & $env:CARR_PYTHON -I -B -X utf8 -c $installedVerdict 2>&1 | Tee-Object ci-process-cleanup-results/installed-verdict.txt"
+      ],
+      "contextAfter": [
+        "          if ($testExit -ne 0 -or $LASTEXITCODE -ne 0) { exit 1 }",
+        "",
+        "      - name: Preserve public text receipts and exact source evidence"
+      ]
+    },
+    {
+      "oldLine": 223,
+      "newLine": 271,
+      "contextBefore": [
+        "        if: ${{ always() }}",
+        "        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+        "        with:"
+      ],
+      "removed": [
+        "          name: carr-word-preview-${{ matrix.os }}-${{ github.sha }}-${{ github.run_attempt }}"
+      ],
+      "added": [
+        "          name: carr-process-cleanup-${{ matrix.os }}-${{ github.sha }}-${{ github.run_attempt }}"
+      ],
+      "contextAfter": [
+        "          path: |",
+        "            carr-library/ci-word-preview-results/**/*.json",
+        "            carr-library/ci-word-preview-results/**/*.txt"
+      ]
+    },
+    {
+      "oldLine": 225,
+      "newLine": 273,
+      "contextBefore": [
+        "        with:",
+        "          name: carr-word-preview-${{ matrix.os }}-${{ github.sha }}-${{ github.run_attempt }}",
+        "          path: |"
+      ],
+      "removed": [
+        "            carr-library/ci-word-preview-results/**/*.json",
+        "            carr-library/ci-word-preview-results/**/*.txt",
+        "            carr-library/ci-word-preview-results/**/*.log",
+        "            carr-library/ci-word-preview-results/**/*.xml"
+      ],
+      "added": [
+        "            carr-library/ci-process-cleanup-results/**/*.json",
+        "            carr-library/ci-process-cleanup-results/**/*.txt",
+        "            carr-library/ci-process-cleanup-results/**/*.log",
+        "            carr-library/ci-process-cleanup-results/**/*.xml"
+      ],
+      "contextAfter": [
+        "          if-no-files-found: error",
+        "          retention-days: 7",
+        ""
+      ]
+    }
+  ]
+}

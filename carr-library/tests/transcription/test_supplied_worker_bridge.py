@@ -431,8 +431,24 @@ def test_stop_flag_cancellation_and_explicit_resume(prepared):
     _, _, service, original, configure = prepared
     configure('pause-once')
     identity = service.submit([original])
-    started = time.monotonic()
-    stopped = service.run(identity, timeout=30, cancelled=lambda: time.monotonic() - started > .5)
+    # Admission is a separate cancellable phase. Start this worker-stop interval
+    # only after the real child has published its running status; missing startup
+    # or progress still fails within the unchanged 30-second execution budget.
+    started = None
+
+    def progress(done, total, phase):
+        nonlocal started
+        if phase == 'running' and started is None:
+            started = time.monotonic()
+
+    def cancelled():
+        return started is not None and time.monotonic() - started > .5
+
+    stopped = service.run(identity, timeout=30, cancelled=cancelled, progress=progress)
+    assert started is not None, 'The actual worker never acknowledged running.'
+    assert read_json(service._path(identity) / 'job_status.json')['state'] == 'stopped'
+    assert (service._path(identity) / 'continued').read_text(encoding='utf-8') == (
+        'completed files will be retained')
     assert stopped['status'] == 'stopped'
     assert service.get(identity)['sources'][0]['sha256'] == sha256(original.read_bytes()).hexdigest()
     resumed = service.run(identity, timeout=30)

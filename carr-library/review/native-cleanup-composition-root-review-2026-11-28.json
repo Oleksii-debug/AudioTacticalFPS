@@ -1,0 +1,302 @@
+{
+  "schema": "carr-native-cleanup-composition-review/1",
+  "status": "SOURCE_REVIEW_CLEAR; NOT_RUN",
+  "base_commit": "943f585659c55481046266338f428e4a1043a9bd",
+  "windows_fence": {
+    "status": "CLEAR at source; NOT_RUN",
+    "before_blob": "32c38bdf6b0a343644e86437fe00bf9b5a84da63",
+    "after_blob": "3c8286ecad9f7b22d04fe76e553c635fa63fb640",
+    "exact_three_hunk_inverse": true,
+    "old_modeled_prefix_characters": 42767,
+    "old_modeled_cases": 56,
+    "new_modeled_cases_planned": 18,
+    "new_native_cases_planned": 2,
+    "proof_rule": "Only bounded monotonic lifetime growth with complete preserved original proof, exact known lifetime coverage, positive notifications and each added identity still retained in a verified native handle. No empty inventory/zero active/PID-only history can satisfy new-object growth.",
+    "unchanged": [
+      "native membership validation",
+      "pre-termination inventory and admission-failure latch",
+      "leader and per-member signaled handle waits",
+      "active drain and final full exit coverage",
+      "job/port disposal ordering",
+      "five-second per-attempt shutdown deadline",
+      "4096 member and bounded notification limits"
+    ],
+    "historical_counter_state": "NOT_PROVEN: original refusal trace has no counts",
+    "required_execution": "All old/new modeled cases and both real Windows cases; no result inherited from 943."
+  },
+  "bridge": {
+    "test_blob": "be70c081eb7bc05a56aad01e32ee26aadeaf18cb",
+    "before_blob": "05c9c42af7914310c92d832dee7961f95ee43772",
+    "status": "SOURCE_REVIEW_CLEAR; NOT_RUN",
+    "old_assertion_raise_lines": 221,
+    "all_old_lines_ordered_preserved": true,
+    "additional_assertions": 3,
+    "wallclock_interval_seconds": 0.5,
+    "run_budget_seconds": 30,
+    "purpose": "Start worker-stop fixture timing only after positive real child running progress; retain independent pre-admission cancellation contract.",
+    "qualification_transfer": false
+  },
+  "focused_workflow": {
+    "workflow_blob": "4397ba18980d23522560f38b79d11847a4221619",
+    "status": "SOURCE_REVIEW_CLEAR; NOT_RUN",
+    "six_planned_module_counts": [
+      27,
+      23,
+      74,
+      15,
+      91,
+      2
+    ],
+    "planned_each_mode": 232,
+    "exact_native_case_names": [
+      "test_real_late_job_objects_require_retained_native_handles_and_exit[normal-return]",
+      "test_real_late_job_objects_require_retained_native_handles_and_exit[original-source-error]"
+    ],
+    "full_source_wheel_installed_inventory": true,
+    "source_ci_policy": "existing ci_check.py --jobs2 strict semantics",
+    "installed_ci_policy": "existing unchanged PYTEST_CHILD under -I -B -X utf8; checkout excluded",
+    "preserved_limits_minutes": {
+      "job": 35,
+      "build": 8,
+      "source": 12,
+      "installed": 12
+    },
+    "parser_regression": {
+      "actual_log_blob": "e8835f7326f62737ecf7146ee400520f01fd0db4",
+      "expected": 39,
+      "line_anchored": 34,
+      "word_boundary": 39
+    },
+    "qualification_transfer": false
+  },
+  "main_component_receiving": {
+    "schema": "carr-native-owner-receiving-selectors-review/1",
+    "status": "SOURCE_REVIEWED; NOT_RUN",
+    "base_commit": "943f585659c55481046266338f428e4a1043a9bd",
+    "native_selector": "tests/audio_windows/test_membership_fence.py",
+    "native_fixture_blob": "b62e446d118cad9e546cf80d5762ec4d6e5b523d",
+    "required_native_case_names": [
+      "test_real_late_job_objects_require_retained_native_handles_and_exit[normal-return]",
+      "test_real_late_job_objects_require_retained_native_handles_and_exit[original-source-error]"
+    ],
+    "changes": "Append the native Windows file to MAIN source/full-bundle selections and Windows-only source/installed component selections. After unchanged aggregate verdicts, require exactly the two native cases with no failure/error/skip.",
+    "preserved": "Every previous selector/command/assertion, original pytest exit handling, phase/job/product limit, admission/device/privacy guard and actual installed import/origin contract remains unchanged. No new runtime, device, model or private artifact dependency.",
+    "selector_counts": {
+      "MAIN_source": {
+        "old": 450,
+        "new": 451
+      },
+      "component_windows_each_mode": {
+        "old": 88,
+        "new": 89
+      },
+      "component_linux_each_mode": {
+        "old": 89,
+        "new": 89
+      }
+    },
+    "main_wrapper_data": {
+      "sha256": "956be472d91f663d097a8780c1c1eb5ac2696cff94b8c8c5252ba3c6d25a705b",
+      "bytes": 25118,
+      "utf16_units": 25118
+    },
+    "main_direct_command_entry": "Existing -I -B -c entry unchanged; exact wrapper data changes only by the added installed selector. The existing focused CORE checker extracts it dynamically and retains its command-size/source checks.",
+    "source_files": [
+      {
+        "path": ".github/workflows/carr-windows.yml",
+        "before_blob": "8a2340458123a20fc5f050dfe5232c184fec1316",
+        "after_blob": "e6696ed7aa1fd1c4afc2b24d4b80ff0647fe61ce",
+        "full_inverse_verified": true
+      },
+      {
+        "path": ".github/workflows/carr-component-followup-evaluation.yml",
+        "before_blob": "40c95c79f99b1293877919759ca608e3593699e1",
+        "after_blob": "3a23611bb5829ef212736562204cde830316af7f",
+        "full_inverse_verified": true
+      }
+    ],
+    "inverse": "native-owner-receiving-selectors-inverse-2026-11-28.json",
+    "peer_review": {
+      "reviewer": "locate_project",
+      "source_tree": "516de091add5d1b38f5b1963b29331c36d0d876d",
+      "verdict": "CLEAR",
+      "verified": "Exact inverses, both source/installed paths, Windows-only component guard, actual pytest classname suffix/parameter IDs, prior error propagation, existing runtime prerequisites."
+    },
+    "execution": "NOT_RUN; exact source receiving required at the next composed head."
+  },
+  "conversion": {
+    "schema": "carr-conversion-native-owner-scope-review/1",
+    "status": "SOURCE_REVIEWED; NOT_RUN",
+    "base_commit": "943f585659c55481046266338f428e4a1043a9bd",
+    "path": "carr-library/tests/conversion/test_conversion_ownership.py",
+    "before_blob": "c80bb99e24c98088764f045048aa416633b64776",
+    "after_blob": "f97bd0aeed9a60a3b785a95b0d801601f49f21db",
+    "source_only_tree": "4052d2370ee86c1e858a6aaf405e4b6d81042f01",
+    "before_utf8": {
+      "sha256": "7ee2c7eba7b2e83833a41c3fd407c4400974703a17a6098f8c70aee6bce4256e",
+      "bytes": 13237
+    },
+    "after_utf8": {
+      "sha256": "26ae20202b40c50707e950513c58f756a8c3a92116c0b1a1674c991eda0a508c",
+      "bytes": 15952
+    },
+    "observed_evidence": {
+      "tested_head": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7",
+      "run": 46111569577,
+      "job": 140876044023,
+      "trace_blob": "914b352c2a97d1b4ca970848c908bd60d27dba3e",
+      "observed": "Four retained-child variants failed after a preceding native membership-fence failure. Two selected process objects were already exited, two failed their callback completion wait. The test delays the first globally observed stop rather than selecting its own created process.",
+      "exclusive_historical_cause": "NOT_PROVEN; the separate native membership fence remains a product boundary under review."
+    },
+    "correction": "Register only the actual process returned for this conversion's unique complete child command. Delay that exact object; delegate every foreign process to the original native stop function. Reuse the original full scenario for two actual distinct-owner interleavings before launch and after ready.",
+    "preserved": {
+      "original_assert_or_raises_lines": 60,
+      "all_original_checks_preserved": true,
+      "original_test_functions": 6,
+      "all_original_test_names_preserved": true,
+      "additional_cases_planned": 2,
+      "product_changes": false,
+      "old_startup_timeout_seconds": 20,
+      "old_cleanup_timeout_seconds": 15,
+      "new_foreign_exit_timeout_seconds": 5,
+      "execution": "NOT_RUN"
+    },
+    "cases": {
+      "existing": 13,
+      "planned_additional": 2,
+      "planned_total": 15,
+      "execution": "NOT_RUN"
+    },
+    "scope": "Test fixture and two real-process regression scenarios only; no conversion/product/native cleanup behavior, original assertion or original deadline changed.",
+    "peer_review": {
+      "reviewer": "voice_reading",
+      "reviewed_tree": "4052d2370ee86c1e858a6aaf405e4b6d81042f01",
+      "reviewed_blob": "f97bd0aeed9a60a3b785a95b0d801601f49f21db",
+      "verdict": "CLEAR",
+      "verified": "Exact inverse, all60 original assertions/raises, unchanged20/15second bounds, actual selected-command registration, foreign delegation and retained cleanup on regression failure."
+    },
+    "inverse": "conversion-native-owner-scope-inverse-2026-11-28.json"
+  },
+  "reader": {
+    "schema": "carr-reader-cleanup-observer-review/1",
+    "status": "SOURCE_REVIEWED_NOT_RUN",
+    "base_head": "943f585659c55481046266338f428e4a1043a9bd",
+    "base_tree": "86b1ee1a4a859917f11571e8dc9d5a1ded704b5c",
+    "files": [
+      {
+        "path": "carr-library/tests/audio/test_process_deadline.py",
+        "before_git_blob": "a88f8ec1428db70dbd3643acd8b38baa7d78b750",
+        "after_git_blob": "ddab9096a8b622f8993f216f87c0fce3f33ecf58"
+      }
+    ],
+    "production_changes": 0,
+    "refs_changed": false,
+    "observed_failure": {
+      "head": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7",
+      "run_id": 46111569577,
+      "job_id": 140876044023,
+      "workflow_conclusion": "cancelled",
+      "full_job_log_git_blob": "06e3d7867a23ff7a1232fd95f892c443b644e315",
+      "full_job_log_utf8": {
+        "sha256": "fd365725e021d0fec7211b29cb75477c88035373f8ad782d86e2c39977c0a3f7",
+        "bytes": 354107
+      },
+      "reader_trace_git_blob": "7e0bb43c3f61ebcffaed60c42624efa1db8f1589",
+      "reader_trace_utf8": {
+        "sha256": "3862be48bcee884d257fac37ce939a1a72bad6d24a7a6bc9856bbf0b21017689",
+        "bytes": 8125
+      },
+      "nodes": [
+        {
+          "node": "tests/audio/test_process_deadline.py::test_pending_reader_completion_retains_stage_after_native_family_stops",
+          "assertion": "len(native_stops) == 1 and len(tracked.completed) == 2",
+          "actual_count": 33,
+          "printed_pid_prefix": 1868,
+          "printed_list_truncated": true,
+          "exact_child_attribution": "NOT_PROVEN from this trace"
+        },
+        {
+          "node": "tests/audio/test_process_deadline.py::test_failed_reader_pipe_close_remains_retryable_before_stage_release",
+          "assertion": "len(native_stops) == 1 and not stage.exists()",
+          "initial_stop_count_assertion": "PASS before release",
+          "actual_full_pid_list": [
+            5164,
+            1868
+          ],
+          "finding": "The observer subsequently recorded a distinct foreign process; the test-owned process identity does not change."
+        }
+      ]
+    },
+    "correction": [
+      "Both observers record only the exact process object registered by the existing observed fixture for this run.",
+      "Every process, including a foreign retained owner, is still delegated to the captured actual native stopper.",
+      "Original own-process exact-once assertions, pending reader/pipe checks, callback completion and retained-stage cleanup are unchanged."
+    ],
+    "regressions": {
+      "original_cases": 21,
+      "added_cases": 2,
+      "planned_total": 23,
+      "new_case": "test_reader_stop_observation_excludes_a_real_retained_foreign_owner",
+      "parameters": [
+        "pending-reader",
+        "failed-pipe-close"
+      ],
+      "mechanism": "Launch a distinct real native-owned family before requesting the observed fixture, retain it using the existing pending_cleanup owner, then complete it through the active test observer before evaluating the unchanged original scenario assertions.",
+      "actual_apis": [
+        "audio.process._start_process(owned_tree=True)",
+        "audio.cleanup.pending_cleanup",
+        "CleanupOwner.close",
+        "CleanupOwner.add_quiescent_callback through callbacks= argument"
+      ],
+      "positive_proof": [
+        "Foreign process alive before release",
+        "Exact foreign object differs from observed.children[0]",
+        "Native stop forwards foreign process",
+        "Real quiescence callback acknowledged",
+        "Foreign process exited and Windows job/port closed",
+        "Both original test bodies and all their original exact-once and retention assertions run"
+      ]
+    },
+    "preservation": {
+      "original_assertion_lines": 88,
+      "original_raises_lines": 16,
+      "original_timeout_wait_budget_lines": 24,
+      "all_original_assertions_raises_budgets_exact": true,
+      "inverse_exact": true
+    },
+    "review": {
+      "reviewer": "/root/audio_render",
+      "verdict": "CLEAR",
+      "tree": "aa4de1d8b7517bc49ecd2c574a879ef14615cf34",
+      "source_readback": "EXACT",
+      "execution": "NOT_RUN"
+    },
+    "limits": [
+      "This fixture correction neither clears nor hides the earlier real Windows membership-fence failure.",
+      "The earlier fence failure's numeric state and the first Reader failure's exact process attribution are not printed and remain unproven.",
+      "No worker timeout, fixture readiness budget, expected exception or cleanup assertion was weakened.",
+      "Full current source/installed regression execution is required after composition; earlier green runs are separate evidence."
+    ]
+  },
+  "v3": {
+    "status": "CLEAR at source; NOT_RUN",
+    "source_block_characters": 5787,
+    "setup_block_characters": 3335,
+    "old_native_prefix_and_upload_unchanged": true,
+    "source_phase_exact": true,
+    "setup_exact": true,
+    "both_job_timeouts_minutes": 110,
+    "no_needs_or_continue_on_error": true,
+    "per_phase_limits_unchanged": true,
+    "source_selectors_unchanged": true,
+    "native_assertions_unchanged": true,
+    "does_not_resolve_observed_native_or_fixture_failures": true
+  },
+  "readiness": {
+    "path": "carr-library/docs/V3_RELEASE_READINESS.md",
+    "addition_only": true,
+    "exact_inverse": true,
+    "prior_blob": "ff5d2878fb8c56c57e0be0c0de03c468af7f50a8"
+  },
+  "qualification_transfer": false
+}

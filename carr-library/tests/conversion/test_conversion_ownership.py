@@ -192,14 +192,31 @@ with source.open('rb') as stream:
     ids=['shared-direct', 'shared-cause', 'shared-context', 'shared-cancel', 'standalone-direct'])
 def test_actual_live_child_retains_snapshot_and_lease_until_confirmed_exit(
         tmp_path, monkeypatch, admitted, wrapper):
+    _assert_actual_live_child_retention(tmp_path, monkeypatch, admitted, wrapper)
+
+
+def _assert_actual_live_child_retention(tmp_path, monkeypatch, admitted, wrapper, *,
+                                        before_launch=None, after_ready=None):
     converter, source, original, outputs, broker = _case(tmp_path, admitted=admitted)
     allowed, cancel, callbacks_done = threading.Event(), threading.Event(), threading.Event()
-    stages, native, pending = [], [], []
+    stages, native, pending, commands = [], [], [], []
     actual_stop, actual_run = process_module._stop_owned, process_module.run_process
+    actual_start = process_module._start_process
+
+    def start(args, **options):
+        selected = bool(commands) and tuple(args) == commands[0]
+        if selected:
+            assert options['owned_tree'] is True and not native
+        child = actual_start(args, **options)
+        if selected:
+            native.append(child)
+        return child
 
     def temporarily_unconfirmed(process):
-        if not native:
-            native.append(process)
+        # Other retained cleanup owners may retry in this same interpreter.
+        # Delay only the exact child returned for this conversion's command.
+        if not native or process is not native[0]:
+            return actual_stop(process)
         assert native[0] is process
         if not allowed.is_set():
             raise RuntimeError('This exact child has not yet confirmed exit.')
@@ -215,15 +232,21 @@ def test_actual_live_child_retains_snapshot_and_lease_until_confirmed_exit(
 
         def stopped():
             if ready.exists():
+                if after_ready is not None and not cancel.is_set():
+                    after_ready()
                 cancel.set()
             elif time.monotonic() >= startup_deadline:
                 raise AssertionError('The actual child did not acknowledge its open snapshot.')
             return original_cancelled()
 
         kwargs['cancelled'] = stopped
+        command = [str(Path(sys.executable).absolute()), '-I', '-B', '-u', '-c',
+                   _HELD_CHILD, str(snapshot), str(ready)]
+        commands.append(tuple(command))
         try:
-            return actual_run([str(Path(sys.executable).absolute()), '-I', '-B', '-u', '-c',
-                               _HELD_CHILD, str(snapshot), str(ready)], **kwargs)
+            if before_launch is not None:
+                before_launch()
+            return actual_run(command, **kwargs)
         except AudioCleanupPending as error:
             pending.append(error.cleanup_owner)
             if wrapper == 'cause':
@@ -234,6 +257,7 @@ def test_actual_live_child_retains_snapshot_and_lease_until_confirmed_exit(
                 raise InterruptedError('Cancellation still owns an unconfirmed child.') from error
             raise
 
+    monkeypatch.setattr(process_module, '_start_process', start)
     monkeypatch.setattr(process_module, '_stop_owned', temporarily_unconfirmed)
     monkeypatch.setattr(service_module, 'run_process', held_parser)
     try:
@@ -289,3 +313,39 @@ def test_foreign_broker_declaration_is_rejected_before_creating_output(tmp_path,
     with pytest.raises(TypeError, match='shared resource broker'):
         ConversionService(output, input_roots=(tmp_path,), broker=broker)
     assert not output.exists()
+
+
+@pytest.mark.parametrize('phase', ['before-launch', 'after-ready'])
+def test_conversion_cleanup_delay_leaves_a_distinct_owned_process_independent(
+        tmp_path, monkeypatch, phase):
+    import subprocess
+    from carr_library.audio.cleanup import CleanupOwner
+
+    actual_stop = process_module._stop_owned
+    with process_module.owned_process(
+            [str(Path(sys.executable).absolute()), '-I', '-B', '-c', 'pass'],
+            stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL, shell=False) as other:
+        owner = CleanupOwner(lambda: process_module._stop_owned(other))
+        observed = []
+        try:
+            # Keep a real native owner after its leader exits, just as a retained
+            # cleanup can be retried while another operation starts or cancels.
+            assert other.wait(timeout=5) == 0
+
+            def close_other():
+                assert not owner.quiescent
+                assert owner.close() is True
+                assert owner.quiescent
+                observed.append(other)
+
+            _assert_actual_live_child_retention(
+                tmp_path, monkeypatch, True, 'direct',
+                before_launch=close_other if phase == 'before-launch' else None,
+                after_ready=close_other if phase == 'after-ready' else None)
+            assert observed == [other]
+        finally:
+            # Dispose this distinct owner if a regression assertion interrupts
+            # the scenario. The existing outer owner retains any uncertain exit.
+            if not owner.quiescent:
+                actual_stop(other)

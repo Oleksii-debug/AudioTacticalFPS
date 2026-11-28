@@ -1,0 +1,106 @@
+{
+  "schema": "carr-source-repair-review/1",
+  "base_commit": "943f585659c55481046266338f428e4a1043a9bd",
+  "base_tree": "86b1ee1a4a859917f11571e8dc9d5a1ded704b5c",
+  "change": {
+    "path": "carr-library/tests/transcription/test_supplied_worker_bridge.py",
+    "before_git_blob": "05c9c42af7914310c92d832dee7961f95ee43772",
+    "after_git_blob": "be70c081eb7bc05a56aad01e32ee26aadeaf18cb",
+    "before": {
+      "sha256": "9789eab3ef74b7ddeec55db43a4c445ea34cd3bbdc76552395606ffb5159c60b",
+      "bytes": 57710
+    },
+    "after": {
+      "sha256": "e4289f23bddcb9a904859aae19128ebadd705a6e8af772c8d70af8f560a7e32b",
+      "bytes": 58473
+    },
+    "scope": "one fixture timing hunk; no product edit"
+  },
+  "actual_failure": {
+    "run_id": 46119978409,
+    "job_id": 140902139186,
+    "job_conclusion": "failure",
+    "source_suites": 26,
+    "passed": 836,
+    "failed": 1,
+    "skipped": 0,
+    "module": "tests/transcription/test_supplied_worker_bridge.py",
+    "module_passed": 90,
+    "module_failed": 1,
+    "node": "test_stop_flag_cancellation_and_explicit_resume",
+    "exception": "ResourceCancelled: Resource admission was cancelled before publication.",
+    "observed_boundary": "ResourceBroker.reserve.__enter__, before the supplied worker run_process invocation",
+    "log": {
+      "sha256": "0f10a78264b09a47ce5e268630ba704fa7f93669f5db306dfbb6562c41f30d8e",
+      "bytes": 101633
+    },
+    "trace": {
+      "sha256": "ca386cfd755e97e42595201b0450327e845e856a42a0f94c087ca3c7ff2b1076",
+      "bytes": 8020
+    },
+    "ordinary_evidence_tree": "d996c8948e123efd58f23877981aebb9042213b2",
+    "ordinary_receipt_git_blob": "7bf5e9049886e2bef41cc0a27f229b167358c4f5",
+    "downstream_windows_handle_and_native_ui": "NOT_RUN; skipped after the source gate failure"
+  },
+  "source_contract": {
+    "service": {
+      "path": "carr-library/src/carr_library/transcription/__init__.py",
+      "git_blob": "ef3abb5069ad8c2d84362a5e7352c91bf2f356ba"
+    },
+    "broker": {
+      "path": "carr-library/src/carr_library/operations/broker.py",
+      "git_blob": "6a8854e18316521939848bd1719e9ab0484c0746"
+    },
+    "admission": "The existing broker raises ResourceCancelled when the callback becomes true before reservation publication. That product behavior remains unchanged.",
+    "worker_acknowledgement": "The existing synthetic child atomically publishes job_status.json with state=running before waiting for stop.flag. The current service removes prior status before launch, then reads that child-owned file from its active-process poll and forwards the observed phase.",
+    "correction": "Start the original .5-second interval at the first actual running notification, rather than before resource admission.",
+    "readiness_bound": "No readiness or execution deadline is enlarged. Both service.run timeout=30 calls remain. Missing worker progress reaches the existing30-second child failure path and cannot pass the new running assertion.",
+    "cooperative_stop": "Additional assertions require the actual worker's stopped status and continued marker before the original explicit resume."
+  },
+  "preservation": {
+    "inverse_exact": true,
+    "old_assertion_raises_lines": 221,
+    "new_assertion_raises_lines": 224,
+    "original_all_ordered": true,
+    "unchanged_original_case_count": 91,
+    "worker_timeout_seconds": 30,
+    "cancel_interval_seconds": 0.5,
+    "production_changes": 0,
+    "execution": "NOT_RUN"
+  },
+  "peer_review": {
+    "reviewer": "/root/audio_render",
+    "status": "CLEAR_SOURCE_ONLY",
+    "reviewed_after_git_blob": "be70c081eb7bc05a56aad01e32ee26aadeaf18cb",
+    "findings": "Exact single inverse restores the preimage; all221 old assert/raises lines and both30-second calls remain; phase notification is actual child-owned status, and the .5-second worker-stop interval is preserved."
+  },
+  "execution": {
+    "candidate": "NOT_RUN",
+    "case_count": 91,
+    "new_test_cases": 0,
+    "synthetic_protocol_only": true,
+    "production_changes": 0,
+    "source_head_pass_transfer": false,
+    "ref_mutations": 0
+  },
+  "evidence_files": [
+    {
+      "path": "carr-library/review/transcription-bridge-943f5856-2026-11-28/windows-job.log",
+      "git_blob": "482f064871d60d6baa573985fe8f53c1d400ff35",
+      "sha256": "0f10a78264b09a47ce5e268630ba704fa7f93669f5db306dfbb6562c41f30d8e",
+      "bytes": 101633
+    },
+    {
+      "path": "carr-library/review/transcription-bridge-943f5856-2026-11-28/windows-worker-stop-failure.txt",
+      "git_blob": "d317ed1699c05dc638cadea3008913e9ffbb8fac",
+      "sha256": "ca386cfd755e97e42595201b0450327e845e856a42a0f94c087ca3c7ff2b1076",
+      "bytes": 8020
+    },
+    {
+      "path": "carr-library/review/transcription-bridge-943f5856-2026-11-28/fixture-inverse.json",
+      "git_blob": "82b3d91139c611fc90e535abd970ee6dc451be04",
+      "sha256": "d643cfd5fe5c03bacd1235cc987b7c1d233f67b5b9613790d903e6aedd8e34ba",
+      "bytes": 1737
+    }
+  ]
+}

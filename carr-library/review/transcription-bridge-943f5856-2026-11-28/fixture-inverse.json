@@ -1,0 +1,24 @@
+{
+  "schema": "carr-review-exact-inverse/1",
+  "base_commit": "943f585659c55481046266338f428e4a1043a9bd",
+  "path": "carr-library/tests/transcription/test_supplied_worker_bridge.py",
+  "before": "05c9c42af7914310c92d832dee7961f95ee43772",
+  "after": "be70c081eb7bc05a56aad01e32ee26aadeaf18cb",
+  "hunks": [
+    {
+      "before": "    started = time.monotonic()\n    stopped = service.run(identity, timeout=30, cancelled=lambda: time.monotonic() - started > .5)\n",
+      "after": "    # Admission is a separate cancellable phase. Start this worker-stop interval\n    # only after the real child has published its running status; missing startup\n    # or progress still fails within the unchanged 30-second execution budget.\n    started = None\n\n    def progress(done, total, phase):\n        nonlocal started\n        if phase == 'running' and started is None:\n            started = time.monotonic()\n\n    def cancelled():\n        return started is not None and time.monotonic() - started > .5\n\n    stopped = service.run(identity, timeout=30, cancelled=cancelled, progress=progress)\n    assert started is not None, 'The actual worker never acknowledged running.'\n    assert read_json(service._path(identity) / 'job_status.json')['state'] == 'stopped'\n    assert (service._path(identity) / 'continued').read_text(encoding='utf-8') == (\n        'completed files will be retained')\n"
+    }
+  ],
+  "verification": {
+    "inverse_exact": true,
+    "old_assertion_raises_lines": 221,
+    "new_assertion_raises_lines": 224,
+    "original_all_ordered": true,
+    "unchanged_original_case_count": 91,
+    "worker_timeout_seconds": 30,
+    "cancel_interval_seconds": 0.5,
+    "production_changes": 0,
+    "execution": "NOT_RUN"
+  }
+}

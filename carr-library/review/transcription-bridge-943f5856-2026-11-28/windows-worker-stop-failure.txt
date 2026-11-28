@@ -1,0 +1,84 @@
+2026-11-28T07:21:32.7525012Z ================================== FAILURES ===================================
+2026-11-28T07:21:32.7525998Z _______________ test_stop_flag_cancellation_and_explicit_resume _______________
+2026-11-28T07:21:32.7526693Z 
+2026-11-28T07:21:32.7529960Z prepared = (<carr_library.application.LibraryApp object at 0x000001F7C202B190>, '0fa7d7f4aeac470ebf39e684b8a01fc4', <carr_library...nd1t/pytest/test_stop_flag_cancellation_an0/Лекція.wav'), <function prepared.<locals>.configure at 0x000001F7C206AC00>)
+2026-11-28T07:21:32.7531790Z 
+2026-11-28T07:21:32.7532100Z     def test_stop_flag_cancellation_and_explicit_resume(prepared):
+2026-11-28T07:21:32.7532760Z         _, _, service, original, configure = prepared
+2026-11-28T07:21:32.7533257Z         configure('pause-once')
+2026-11-28T07:21:32.7533710Z         identity = service.submit([original])
+2026-11-28T07:21:32.7534167Z         started = time.monotonic()
+2026-11-28T07:21:32.7534973Z >       stopped = service.run(identity, timeout=30, cancelled=lambda: time.monotonic() - started > .5)
+2026-11-28T07:21:32.7535977Z                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2026-11-28T07:21:32.7536435Z 
+2026-11-28T07:21:32.7536708Z tests\transcription\test_supplied_worker_bridge.py:435: 
+2026-11-28T07:21:32.7537373Z _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+2026-11-28T07:21:32.7539228Z src\carr_library\transcription\__init__.py:598: in run
+2026-11-28T07:21:32.7539837Z     with retained_context(broker.reserve(request,
+2026-11-28T07:21:32.7540599Z C:\hostedtoolcache\windows\Python\3.11.9\x64\Lib\contextlib.py:137: in __enter__
+2026-11-28T07:21:32.7541311Z     return next(self.gen)
+2026-11-28T07:21:32.7541642Z            ^^^^^^^^^^^^^^
+2026-11-28T07:21:32.7541940Z src\carr_library\transcription\ownership.py:27: in retained_context
+2026-11-28T07:21:32.7542301Z     value = stack.enter_context(context)
+2026-11-28T07:21:32.7542547Z             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2026-11-28T07:21:32.7542930Z C:\hostedtoolcache\windows\Python\3.11.9\x64\Lib\contextlib.py:517: in enter_context
+2026-11-28T07:21:32.7543345Z     result = _enter(cm)
+2026-11-28T07:21:32.7543689Z              ^^^^^^^^^^
+2026-11-28T07:21:32.7544152Z C:\hostedtoolcache\windows\Python\3.11.9\x64\Lib\contextlib.py:137: in __enter__
+2026-11-28T07:21:32.7544555Z     return next(self.gen)
+2026-11-28T07:21:32.7544763Z            ^^^^^^^^^^^^^^
+2026-11-28T07:21:32.7545011Z _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+2026-11-28T07:21:32.7545421Z 
+2026-11-28T07:21:32.7545675Z self = <carr_library.operations.broker.ResourceBroker object at 0x000001F7C1D35650>
+2026-11-28T07:21:32.7547048Z request = ResourceRequest(cpu_slots=1, memory_bytes=268435456, gpu_device=None, gpu_memory_bytes=0, disk_bytes=536870970, disk_p...cf842019454230bbfe04fbd7e9024a137ef91b935de39/jobs/ef6c93eb9e434160a5b6f97bc34e3185'), devices=(), additional_disks=())
+2026-11-28T07:21:32.7547956Z 
+2026-11-28T07:21:32.7548040Z     @contextmanager
+2026-11-28T07:21:32.7549132Z     def reserve(self, request, *, operation_id, cancelled=lambda: False, timeout=60, run_timeout=None):
+2026-11-28T07:21:32.7549747Z         if not isinstance(request, ResourceRequest) or not callable(cancelled):
+2026-11-28T07:21:32.7550290Z             raise TypeError('Admission requires a typed request and a cancellation callback.')
+2026-11-28T07:21:32.7550762Z         _token(operation_id, 'operation identity')
+2026-11-28T07:21:32.7551102Z         timeout = _seconds(timeout, 'Admission wait timeout')
+2026-11-28T07:21:32.7551510Z         run_timeout = _seconds(run_timeout, 'Execution timeout', allow_none=True)
+2026-11-28T07:21:32.7551887Z         if cancelled():
+2026-11-28T07:21:32.7552270Z             raise ResourceCancelled('Resource admission was cancelled before starting heavy work.')
+2026-11-28T07:21:32.7552714Z         disks, volumes = [], []
+2026-11-28T07:21:32.7552961Z         for incoming, amount in request.disks:
+2026-11-28T07:21:32.7553260Z             path = local_path(incoming, exists=True)
+2026-11-28T07:21:32.7553563Z             regular(path, directory=True)
+2026-11-28T07:21:32.7553835Z             disks.append((path, amount))
+2026-11-28T07:21:32.7554111Z             volumes.append(str(path.stat().st_dev))
+2026-11-28T07:21:32.7554390Z         if disks:
+2026-11-28T07:21:32.7554618Z             offset = int(request.disk_path is not None)
+2026-11-28T07:21:32.7555023Z             request = replace(request, disk_path=disks[0][0] if offset else None,
+2026-11-28T07:21:32.7555432Z                               additional_disks=tuple(disks[offset:]))
+2026-11-28T07:21:32.7555831Z         deadline, lease, attempted = time.monotonic() + timeout, None, False
+2026-11-28T07:21:32.7556190Z         while lease is None:
+2026-11-28T07:21:32.7556406Z             if cancelled():
+2026-11-28T07:21:32.7556756Z                 raise ResourceCancelled('Resource admission was cancelled while waiting.')
+2026-11-28T07:21:32.7557201Z             if attempted and time.monotonic() >= deadline:
+2026-11-28T07:21:32.7557731Z                 raise ResourceTimeout('Timed out waiting for shared resources; heavy work was not started.')
+2026-11-28T07:21:32.7558183Z             attempted = True
+2026-11-28T07:21:32.7558427Z             with self._gate(deadline, cancelled):
+2026-11-28T07:21:32.7558730Z                 limits, active = self.limits, self._active()
+2026-11-28T07:21:32.7559213Z                 if any(item['operation_id'] == operation_id for item in active):
+2026-11-28T07:21:32.7559712Z                     raise ResourceConflict('This operation already holds a resource reservation.')
+2026-11-28T07:21:32.7560194Z                 reason = self._reason(request, volumes, active, limits)
+2026-11-28T07:21:32.7560517Z                 if reason is None:
+2026-11-28T07:21:32.7560749Z                     identity = uuid4().hex
+2026-11-28T07:21:32.7561175Z                     record = {'schema': 'carr-resource-lease/1', 'id': identity, 'operation_id': operation_id,
+2026-11-28T07:21:32.7561771Z                               'owner_pid': os.getpid(), 'owner_token': _process_token(), 'created': time.time(),
+2026-11-28T07:21:32.7562252Z                               'request': request.to_dict(), 'disk_volumes': volumes}
+2026-11-28T07:21:32.7562649Z                     lock = NativeLock(self.leases_root / (identity + '.lock'))
+2026-11-28T07:21:32.7562981Z                     if not lock.acquire():
+2026-11-28T07:21:32.7563340Z                         raise ResourceConflict('Reservation identity is already locked.')
+2026-11-28T07:21:32.7563700Z                     try:
+2026-11-28T07:21:32.7563907Z                         if cancelled():
+2026-11-28T07:21:32.7564319Z >                           raise ResourceCancelled('Resource admission was cancelled before publication.')
+2026-11-28T07:21:32.7565027Z E                           carr_library.operations.models.ResourceCancelled: Resource admission was cancelled before publication.
+2026-11-28T07:21:32.7565481Z 
+2026-11-28T07:21:32.7565633Z src\carr_library\operations\broker.py:329: ResourceCancelled
+2026-11-28T07:21:32.7566202Z - generated xml file: C:\Users\RUNNER~1\AppData\Local\Temp\carr-ci-hwwund1t\junit.xml -
+2026-11-28T07:21:32.7566673Z =========================== short test summary info ===========================
+2026-11-28T07:21:32.7567653Z FAILED tests/transcription/test_supplied_worker_bridge.py::test_stop_flag_cancellation_and_explicit_resume - carr_library.operations.models.ResourceCancelled: Resource admission was cancelled before publication.
+2026-11-28T07:21:32.7568582Z ======================== 1 failed, 90 passed in 29.54s ========================
+2026-11-28T07:21:32.8247827Z FAIL: tests/transcription/test_supplied_worker_bridge.py: junit_passed=90, failed=1, skipped=0, pytest_exit=1

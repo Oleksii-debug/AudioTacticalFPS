@@ -1,0 +1,129 @@
+{
+  "schema": "carr-windows-member-proof-followup/1",
+  "status": "SOURCE_REVIEWED_NOT_RUN",
+  "base_commit": "943f585659c55481046266338f428e4a1043a9bd",
+  "base_tree": "86b1ee1a4a859917f11571e8dc9d5a1ded704b5c",
+  "source_test_tree": "6dfb88e4b4b092e10c8c6862e77fc0e1f49f51fc",
+  "changes": {
+    "modified": 2,
+    "added": 1,
+    "deleted": 0,
+    "application_python_modules": 383,
+    "application_modules_changed": 1,
+    "paths": [
+      {
+        "path": "carr-library/src/carr_library/audio/windows_process.py",
+        "sha": "3c8286ecad9f7b22d04fe76e553c635fa63fb640",
+        "chars": 25124,
+        "sha256": "2169a92d98c9786f093b0d6bec3e5ee8152679e599fe99803049500280b4710a"
+      },
+      {
+        "path": "carr-library/tests/audio/test_recording_windows_process.py",
+        "sha": "fd2042d641de42704a8e2c7869edc68170d4b1d2",
+        "chars": 56110,
+        "sha256": "9d73d6a87b59f8a209ad9792e4fe6c6f8e4bc210006b97e6c9ba714e5a66ada3"
+      },
+      {
+        "path": "carr-library/tests/audio_windows/test_membership_fence.py",
+        "sha": "b62e446d118cad9e546cf80d5762ec4d6e5b523d",
+        "chars": 7604,
+        "sha256": "88423232effc0f6a5a43ee0dd919239142bb5671189765783aca18288169c258"
+      }
+    ]
+  },
+  "trigger": {
+    "head": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7",
+    "run_id": 46111569577,
+    "job_id": 140876044023,
+    "node": "tests/audio/test_audio_process.py::test_reappeared_watched_object_does_not_turn_scan_error_into_absence[directory]",
+    "phases": [
+      "call",
+      "teardown"
+    ],
+    "trace_blob": "f16a0becd2d1ce013e729e708344e566f734af96",
+    "trace_tree": "1faf33708f89efa36b8fb0e8cb40eb2b911d6ae3",
+    "trace_characters": 36510,
+    "full_decoded_job_log_blob": "06e3d7867a23ff7a1232fd95f892c443b644e315",
+    "observed": "The intended FileNotFoundError occurs. Native owned cleanup then refuses at _check_membership_fence because current.total_processes differs from the admitted _shutdown_total; run_process retains ownership through AudioCleanupPending. Teardown reaches the same Job/fence.",
+    "not_observed": [
+      "Actual before/after lifetime counter values",
+      "Direction of counter change",
+      "Complete native handle or notification inventory",
+      "Proof that the new fully verified growth subcase caused this historical failure"
+    ],
+    "historical_specific_cause": "NOT_PROVEN"
+  },
+  "source_defect": "Current close already drains positive NEW_PROCESS notices and retains membership-verified native handles after termination, but the fence rejects every lifetime change even when all additional exact objects and the complete original lifetime proof are available.",
+  "rule": {
+    "initial_anchor": "The original known identity set is captured only by the existing first pre-termination inventory admission. No _admission_failure is cleared and no post-termination PID enumeration is introduced.",
+    "growth": "Admit only bounded monotonic growth from a complete preserved prior proof, exact current lifetime coverage, and additional identities each positively notified and still backed by a retained IsProcessInJob-verified native handle.",
+    "exit": "All existing leader and member signal waits, active-count drain and final per-member exit coverage execute unchanged. Partial wait/close failures retain the augmented proof and native handles for the existing cleanup owner.",
+    "refusals": [
+      "Empty inventory or zero active count alone",
+      "Positive notice plus OpenProcess ERROR_INVALID_PARAMETER only for newly added identities",
+      "Duplicates or recycled foreign PIDs",
+      "Missing original historical proof",
+      "Unknown extra lifetime count",
+      "Decreasing or over-cap lifetime counter",
+      "Native API/membership/wait/close failures"
+    ],
+    "diagnostics": "A refusal adds only fixed numeric counts; it does not log paths, command text, secrets or raw process handles."
+  },
+  "tests": {
+    "execution": "NOT_RUN",
+    "portable_selector": "tests/audio/test_recording_windows_process.py",
+    "existing_cases": 56,
+    "added_modeled_cases": 18,
+    "planned_portable_cases": 74,
+    "old_prefix_characters": 42767,
+    "old_prefix_bytes": 42767,
+    "native_selector": "tests/audio_windows/test_membership_fence.py",
+    "planned_actual_windows_cases": 2,
+    "native_prerequisites": "Actual Windows stdlib/ctypes and current carr_library owner; source or installed origin. No FFmpeg/OCR/model/output endpoint. The workflow must select this module only on Windows; no skip fallback.",
+    "native_boundary": "Actual Python children are created after the original native snapshot and before Terminate; positive completion notices retain real membership-verified handles. A private owner-only observer delegates every native call once unchanged and records successful native signal/close ordering. Normal return and original FileNotFoundError preservation are separate cases.",
+    "observer_scope": "Foreign and not-yet-registered Jobs delegate unchanged to the real _retain_members, preserving unrelated cleanup owners.",
+    "prior_assertions": "All56 existing modeled cases/assertions remain byte-for-byte; current real scandir family tests and all application budgets remain unchanged."
+  },
+  "bounded_reuse_review": {
+    "pr": 99,
+    "queried_commit": "325ccde85c7a8111465df4231ea97f573e4ec52d",
+    "resolved_tree": "45270d0d8494c13d1f95a8e052851881c944a36a",
+    "capture_process_blob": "58befa85aab2ca65ef3ea3f2b0c471587ab2d93a",
+    "windows_job_blob": "64953a31f6949c9f85ff5a2c6426f6126715e473",
+    "decision": "NO_ADOPTION",
+    "reason": "The donor uses an alternate per-PID terminate/re-enumerate owner with a different launch API and65,536 limit, without this current lifetime/notification proof contract. No compatible narrow fence delta was found; current owner, cap and stronger guards are retained."
+  },
+  "primary_api_sources": [
+    {
+      "url": "https://learn.microsoft.com/en-us/windows/win32/api/winnt/ns-winnt-jobobject_basic_accounting_information",
+      "fact": "TotalProcesses covers the job lifetime, including terminated processes and failed associations caused by a limit violation; ActiveProcesses alone is not a per-object signal proof."
+    },
+    {
+      "url": "https://learn.microsoft.com/en-us/windows/win32/api/winnt/ns-winnt-jobobject_associate_completion_port",
+      "fact": "Ordinary notifications are not guaranteed; a process identifier can be recycled unless an open handle preserves the object."
+    },
+    {
+      "url": "https://learn.microsoft.com/en-us/windows/win32/api/jobapi/nf-jobapi-isprocessinjob",
+      "fact": "Membership is queried using an actual process handle and the exact Job handle."
+    },
+    {
+      "url": "https://learn.microsoft.com/en-us/windows/win32/api/jobapi2/nf-jobapi2-terminatejobobject",
+      "fact": "Job termination applies to associated/nested processes; the existing owner still requires per-process proof."
+    },
+    {
+      "url": "https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-terminateprocess",
+      "fact": "External termination is asynchronous; a process can retain pending I/O until completion, and confirmed exit requires waiting on its handle."
+    }
+  ],
+  "qualification_limits": [
+    "No claim that historical missing counters were positive growth or that this patch has passed native execution.",
+    "No prior943 Standard/component PASS is transferred to this unexecuted owner change.",
+    "No new framework, process supervisor, resource owner, admission policy, deadline or source authority is introduced."
+  ],
+  "ref_changes": false,
+  "peer_reviews": {
+    "root": "Source3c8286,modeledfd204,nativeb62e independently clear; exact inverses and original budgets/guards retained.",
+    "audio_render": "Modeled18-case/API and native observer scope pass clear; no execution.",
+    "voice_reading": "Windows-only selector/prerequisites and exact foreign-owner forwarding successor clear; no execution."
+  }
+}

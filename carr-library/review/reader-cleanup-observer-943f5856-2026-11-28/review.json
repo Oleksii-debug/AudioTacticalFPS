@@ -1,0 +1,101 @@
+{
+  "schema": "carr-reader-cleanup-observer-review/1",
+  "status": "SOURCE_REVIEWED_NOT_RUN",
+  "base_head": "943f585659c55481046266338f428e4a1043a9bd",
+  "base_tree": "86b1ee1a4a859917f11571e8dc9d5a1ded704b5c",
+  "files": [
+    {
+      "path": "carr-library/tests/audio/test_process_deadline.py",
+      "before_git_blob": "a88f8ec1428db70dbd3643acd8b38baa7d78b750",
+      "after_git_blob": "ddab9096a8b622f8993f216f87c0fce3f33ecf58"
+    }
+  ],
+  "production_changes": 0,
+  "refs_changed": false,
+  "observed_failure": {
+    "head": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7",
+    "run_id": 46111569577,
+    "job_id": 140876044023,
+    "workflow_conclusion": "cancelled",
+    "full_job_log_git_blob": "06e3d7867a23ff7a1232fd95f892c443b644e315",
+    "full_job_log_utf8": {
+      "sha256": "fd365725e021d0fec7211b29cb75477c88035373f8ad782d86e2c39977c0a3f7",
+      "bytes": 354107
+    },
+    "reader_trace_git_blob": "7e0bb43c3f61ebcffaed60c42624efa1db8f1589",
+    "reader_trace_utf8": {
+      "sha256": "3862be48bcee884d257fac37ce939a1a72bad6d24a7a6bc9856bbf0b21017689",
+      "bytes": 8125
+    },
+    "nodes": [
+      {
+        "node": "tests/audio/test_process_deadline.py::test_pending_reader_completion_retains_stage_after_native_family_stops",
+        "assertion": "len(native_stops) == 1 and len(tracked.completed) == 2",
+        "actual_count": 33,
+        "printed_pid_prefix": 1868,
+        "printed_list_truncated": true,
+        "exact_child_attribution": "NOT_PROVEN from this trace"
+      },
+      {
+        "node": "tests/audio/test_process_deadline.py::test_failed_reader_pipe_close_remains_retryable_before_stage_release",
+        "assertion": "len(native_stops) == 1 and not stage.exists()",
+        "initial_stop_count_assertion": "PASS before release",
+        "actual_full_pid_list": [
+          5164,
+          1868
+        ],
+        "finding": "The observer subsequently recorded a distinct foreign process; the test-owned process identity does not change."
+      }
+    ]
+  },
+  "correction": [
+    "Both observers record only the exact process object registered by the existing observed fixture for this run.",
+    "Every process, including a foreign retained owner, is still delegated to the captured actual native stopper.",
+    "Original own-process exact-once assertions, pending reader/pipe checks, callback completion and retained-stage cleanup are unchanged."
+  ],
+  "regressions": {
+    "original_cases": 21,
+    "added_cases": 2,
+    "planned_total": 23,
+    "new_case": "test_reader_stop_observation_excludes_a_real_retained_foreign_owner",
+    "parameters": [
+      "pending-reader",
+      "failed-pipe-close"
+    ],
+    "mechanism": "Launch a distinct real native-owned family before requesting the observed fixture, retain it using the existing pending_cleanup owner, then complete it through the active test observer before evaluating the unchanged original scenario assertions.",
+    "actual_apis": [
+      "audio.process._start_process(owned_tree=True)",
+      "audio.cleanup.pending_cleanup",
+      "CleanupOwner.close",
+      "CleanupOwner.add_quiescent_callback through callbacks= argument"
+    ],
+    "positive_proof": [
+      "Foreign process alive before release",
+      "Exact foreign object differs from observed.children[0]",
+      "Native stop forwards foreign process",
+      "Real quiescence callback acknowledged",
+      "Foreign process exited and Windows job/port closed",
+      "Both original test bodies and all their original exact-once and retention assertions run"
+    ]
+  },
+  "preservation": {
+    "original_assertion_lines": 88,
+    "original_raises_lines": 16,
+    "original_timeout_wait_budget_lines": 24,
+    "all_original_assertions_raises_budgets_exact": true,
+    "inverse_exact": true
+  },
+  "review": {
+    "reviewer": "/root/audio_render",
+    "verdict": "CLEAR",
+    "tree": "aa4de1d8b7517bc49ecd2c574a879ef14615cf34",
+    "source_readback": "EXACT",
+    "execution": "NOT_RUN"
+  },
+  "limits": [
+    "This fixture correction neither clears nor hides the earlier real Windows membership-fence failure.",
+    "The earlier fence failure's numeric state and the first Reader failure's exact process attribution are not printed and remain unproven.",
+    "No worker timeout, fixture readiness budget, expected exception or cleanup assertion was weakened.",
+    "Full current source/installed regression execution is required after composition; earlier green runs are separate evidence."
+  ]
+}

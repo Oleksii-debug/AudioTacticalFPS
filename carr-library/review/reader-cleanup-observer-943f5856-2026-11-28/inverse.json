@@ -1,0 +1,33 @@
+{
+  "schema": "carr-exact-test-inverse/1",
+  "path": "carr-library/tests/audio/test_process_deadline.py",
+  "before_git_blob": "a88f8ec1428db70dbd3643acd8b38baa7d78b750",
+  "after_git_blob": "ddab9096a8b622f8993f216f87c0fce3f33ecf58",
+  "before_utf8": {
+    "sha256": "8a88bb69073d984ca26af193bdd6b6b1f506d0787559a88d09ce7b1852f7c4fc",
+    "bytes": 27910
+  },
+  "after_utf8": {
+    "sha256": "747f9001f5d651d325b763b2b2f28cc0385c06ac40cff646dd93f4f420f44fa0",
+    "bytes": 31241
+  },
+  "steps": [
+    {
+      "operation": "remove_exact_suffix",
+      "text": "\n\n@pytest.mark.parametrize('scenario', [\n    test_pending_reader_completion_retains_stage_after_native_family_stops,\n    test_failed_reader_pipe_close_remains_retryable_before_stage_release,\n], ids=['pending-reader', 'failed-pipe-close'])\ndef test_reader_stop_observation_excludes_a_real_retained_foreign_owner(\n        request, monkeypatch, tmp_path, scenario):\n    import subprocess\n    from carr_library.audio.cleanup import pending_cleanup\n\n    # Launch before requesting the observed fixture: this exact native family\n    # belongs to an earlier operation, not to the run that the fixture records.\n    actual_start, actual_stop = process._start_process, process._stop_owned\n    foreign = actual_start([sys.executable, '-I', '-B', '-c',\n        'import time; time.sleep(30)'], owned_tree=True, shell=False,\n        stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,\n        stderr=subprocess.DEVNULL)\n    allow_foreign_stop = threading.Event()\n    foreign_quiet = threading.Event()\n    forwarded = threading.Event()\n    owner = None\n\n    def finish_foreign():\n        if not allow_foreign_stop.is_set():\n            return False\n        forwarded.set()\n        return process._stop_owned(foreign)\n\n    try:\n        owner = pending_cleanup(finish_foreign,\n            message='The independent real family remains owned.',\n            callbacks=(foreign_quiet.set,)).cleanup_owner\n        assert foreign.poll() is None and not owner.quiescent\n        observed = request.getfixturevalue('observed')\n        actual_run = run\n\n        def run_with_foreign_cleanup(*args, **kwargs):\n            try:\n                return actual_run(*args, **kwargs)\n            finally:\n                # Both original scenarios have installed their stop observer.\n                # Complete another real retained owner through that observer\n                # before the original exact-once assertions are evaluated.\n                assert len(observed.children) == 1\n                assert foreign is not observed.children[0]\n                assert foreign.poll() is None\n                allow_foreign_stop.set()\n                owner.close()\n                assert foreign_quiet.wait(10)\n                assert forwarded.is_set() and owner.quiescent\n                assert foreign.poll() is not None\n\n        monkeypatch.setattr(sys.modules[__name__], 'run', run_with_foreign_cleanup)\n        scenario(observed, monkeypatch, tmp_path)\n        assert owner.close() is True and foreign_quiet.is_set()\n        if os.name == 'nt':\n            assert foreign._carr_job.handle is None\n            assert foreign._carr_job.port is None\n    finally:\n        allow_foreign_stop.set()\n        if owner is None:\n            assert actual_stop(foreign) is True\n        else:\n            owner.close()\n            assert foreign_quiet.wait(10), 'The independent native family did not confirm shutdown.'\n",
+      "count": 1
+    },
+    {
+      "operation": "replace_exact",
+      "before": "    def stop(child):\n        # Other retained owners may retry on the same module during this test.\n        # Observe only this exact run; every native family still gets its stop.\n        if observed.children and child is observed.children[0]:\n            native_stops.append(child.pid)\n        return actual_stop(child)\n",
+      "after": "    def stop(child):\n        native_stops.append(child.pid)\n        return actual_stop(child)\n",
+      "count": 2
+    }
+  ],
+  "inverse_readback": "EXACT",
+  "original_assertion_lines": 88,
+  "original_raises_lines": 16,
+  "original_timeout_wait_budget_lines": 24,
+  "all_original_assertions_raises_budgets_exact": true,
+  "inverse_exact": true
+}

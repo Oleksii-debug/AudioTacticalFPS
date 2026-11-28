@@ -1,0 +1,248 @@
+{
+  "schema": "carr-reviewed-native-cleanup-composition/1",
+  "status": "SOURCE_REVIEWED; NOT_RUN",
+  "base_head": "943f585659c55481046266338f428e4a1043a9bd",
+  "base_tree": "86b1ee1a4a859917f11571e8dc9d5a1ded704b5c",
+  "canonical_head": "e5c64a5245583f8f8b404a0f042f6ca438c24d7f",
+  "canonical_requirements": {
+    "agents": "080bb9104d3224749e9317c2273d803c0ac37835",
+    "finalization": "db8adbdc483a03c262885928c7ed214ca70bbaa7",
+    "audio_agent": "d0b2761dd22b33233b311d4800230fb47f5d3d8b",
+    "issue1_updated_at": "2026-11-27T16:44:15Z"
+  },
+  "components": [
+    {
+      "name": "windows",
+      "sparse_tree": "3209f1bf49f41e19e7cb5ae5e1544b17ea16e78d",
+      "files": [
+        {
+          "path": "carr-library/review/windows-member-proof-followup-2026-11-28.json",
+          "before_blob": null,
+          "after_blob": "33de96275cb3d89a4106418c5a96ade6e4016479"
+        },
+        {
+          "path": "carr-library/review/windows-member-proof-inverse-2026-11-28.json",
+          "before_blob": null,
+          "after_blob": "ca9ce9641846618780881a4945697ce0d67026b7"
+        },
+        {
+          "path": "carr-library/src/carr_library/audio/windows_process.py",
+          "before_blob": "32c38bdf6b0a343644e86437fe00bf9b5a84da63",
+          "after_blob": "3c8286ecad9f7b22d04fe76e553c635fa63fb640"
+        },
+        {
+          "path": "carr-library/tests/audio/test_recording_windows_process.py",
+          "before_blob": "e7a4d438f5ba33a94ee9b9f28bea419fc33de668",
+          "after_blob": "fd2042d641de42704a8e2c7869edc68170d4b1d2"
+        },
+        {
+          "path": "carr-library/tests/audio_windows/test_membership_fence.py",
+          "before_blob": null,
+          "after_blob": "b62e446d118cad9e546cf80d5762ec4d6e5b523d"
+        }
+      ]
+    },
+    {
+      "name": "reader",
+      "sparse_tree": "0cc7cf8013e4215d5d844e56a8f5905d03e4bee6",
+      "files": [
+        {
+          "path": "carr-library/review/reader-cleanup-observer-943f5856-2026-11-28/inverse.json",
+          "before_blob": null,
+          "after_blob": "0e9b1881d43f8aa670ef5e49ffe1348cbf00d8d0"
+        },
+        {
+          "path": "carr-library/review/reader-cleanup-observer-943f5856-2026-11-28/review.json",
+          "before_blob": null,
+          "after_blob": "a1c03173ca3f9ac600eff44931a47790f182cbfd"
+        },
+        {
+          "path": "carr-library/tests/audio/test_process_deadline.py",
+          "before_blob": "a88f8ec1428db70dbd3643acd8b38baa7d78b750",
+          "after_blob": "ddab9096a8b622f8993f216f87c0fce3f33ecf58"
+        }
+      ]
+    },
+    {
+      "name": "conversion",
+      "sparse_tree": "2ff251f35c2923519653729e3f751a7a5a8fdd10",
+      "files": [
+        {
+          "path": "carr-library/review/conversion-native-owner-scope-2026-11-28.json",
+          "before_blob": null,
+          "after_blob": "bc0cfd21d5544eb5bedec6b41e858809e28d8bea"
+        },
+        {
+          "path": "carr-library/review/conversion-native-owner-scope-inverse-2026-11-28.json",
+          "before_blob": null,
+          "after_blob": "a0f31c2a7e8e2faa67d4e341ad9ed314f7cca08b"
+        },
+        {
+          "path": "carr-library/tests/conversion/test_conversion_ownership.py",
+          "before_blob": "c80bb99e24c98088764f045048aa416633b64776",
+          "after_blob": "f97bd0aeed9a60a3b785a95b0d801601f49f21db"
+        }
+      ]
+    },
+    {
+      "name": "v3",
+      "sparse_tree": "b126c13e94fc93b0fb012e5e3703a6db4c4f2a0f",
+      "files": [
+        {
+          "path": ".github/workflows/carr-v3.yml",
+          "before_blob": "f448e7cda39525a08ed10fb71d1ea496e05d8091",
+          "after_blob": "73a4f3f1f3e9befeeeb6a88a2d5b7f96f0f65452"
+        },
+        {
+          "path": "carr-library/review/v3-parallel-source-2026-11-28/exact-hunks.json",
+          "before_blob": null,
+          "after_blob": "58fa30d2b5171f878e8854ba87c1cb1af66e629a"
+        },
+        {
+          "path": "carr-library/review/v3-parallel-source-2026-11-28/review.json",
+          "before_blob": null,
+          "after_blob": "897d656de23bdfa757aef925b5091a27d953af9b"
+        }
+      ]
+    },
+    {
+      "name": "selectors",
+      "sparse_tree": "5245df4b05aaf325f94cf5d6912b73331e5a6b6f",
+      "files": [
+        {
+          "path": ".github/workflows/carr-component-followup-evaluation.yml",
+          "before_blob": "40c95c79f99b1293877919759ca608e3593699e1",
+          "after_blob": "3a23611bb5829ef212736562204cde830316af7f"
+        },
+        {
+          "path": ".github/workflows/carr-windows.yml",
+          "before_blob": "8a2340458123a20fc5f050dfe5232c184fec1316",
+          "after_blob": "e6696ed7aa1fd1c4afc2b24d4b80ff0647fe61ce"
+        },
+        {
+          "path": "carr-library/review/native-owner-receiving-selectors-2026-11-28.json",
+          "before_blob": null,
+          "after_blob": "d3114eb84747a3a03e4ae13494cc1de1e049bcfe"
+        },
+        {
+          "path": "carr-library/review/native-owner-receiving-selectors-inverse-2026-11-28.json",
+          "before_blob": null,
+          "after_blob": "76c26733495964b810ded2cfaba726c0672f7ace"
+        }
+      ]
+    },
+    {
+      "name": "bridge",
+      "sparse_tree": "650111867dee0eea17e613fd4ed762153ab59e42",
+      "files": [
+        {
+          "path": "carr-library/review/transcription-bridge-943f5856-2026-11-28/fixture-inverse.json",
+          "before_blob": null,
+          "after_blob": "82b3d91139c611fc90e535abd970ee6dc451be04"
+        },
+        {
+          "path": "carr-library/review/transcription-bridge-943f5856-2026-11-28/fixture-review.json",
+          "before_blob": null,
+          "after_blob": "b2cb50bd368722d9e96544951200fee4a4d87a2b"
+        },
+        {
+          "path": "carr-library/review/transcription-bridge-943f5856-2026-11-28/windows-job.log",
+          "before_blob": null,
+          "after_blob": "482f064871d60d6baa573985fe8f53c1d400ff35"
+        },
+        {
+          "path": "carr-library/review/transcription-bridge-943f5856-2026-11-28/windows-worker-stop-failure.txt",
+          "before_blob": null,
+          "after_blob": "d317ed1699c05dc638cadea3008913e9ffbb8fac"
+        },
+        {
+          "path": "carr-library/tests/transcription/test_supplied_worker_bridge.py",
+          "before_blob": "05c9c42af7914310c92d832dee7961f95ee43772",
+          "after_blob": "be70c081eb7bc05a56aad01e32ee26aadeaf18cb"
+        }
+      ]
+    },
+    {
+      "name": "cleanup",
+      "sparse_tree": "2834ff8baca29b33e1e7c1f2cbdac201ee706d28",
+      "files": [
+        {
+          "path": ".github/workflows/carr-process-cleanup-evaluation.yml",
+          "before_blob": null,
+          "after_blob": "4397ba18980d23522560f38b79d11847a4221619"
+        },
+        {
+          "path": "carr-library/review/windows-process-cleanup-evaluation-2026-11-28/exact-donor-hunks.json",
+          "before_blob": null,
+          "after_blob": "1b0d01132df3e40a5aaf69b2dce6f397d565de88"
+        },
+        {
+          "path": "carr-library/review/windows-process-cleanup-evaluation-2026-11-28/source-review.json",
+          "before_blob": null,
+          "after_blob": "c5b6087012bf91f8a3785db14dc8eacade372c86"
+        }
+      ]
+    }
+  ],
+  "additional_paths": {
+    "readiness": "carr-library/docs/V3_RELEASE_READINESS.md",
+    "reference": "carr-library/review/native-cleanup-python-reference-2026-11-28.json",
+    "root_review": "carr-library/review/native-cleanup-composition-root-review-2026-11-28.json",
+    "self": "carr-library/review/native-cleanup-correction-composition-2026-11-28.json"
+  },
+  "change_counts": {
+    "modified": 9,
+    "added": 21,
+    "deleted": 0
+  },
+  "preimages": {
+    "carr-library/src/carr_library/audio/windows_process.py": "32c38bdf6b0a343644e86437fe00bf9b5a84da63",
+    "carr-library/tests/audio/test_recording_windows_process.py": "e7a4d438f5ba33a94ee9b9f28bea419fc33de668",
+    "carr-library/tests/audio/test_process_deadline.py": "a88f8ec1428db70dbd3643acd8b38baa7d78b750",
+    "carr-library/tests/conversion/test_conversion_ownership.py": "c80bb99e24c98088764f045048aa416633b64776",
+    "carr-library/tests/transcription/test_supplied_worker_bridge.py": "05c9c42af7914310c92d832dee7961f95ee43772",
+    ".github/workflows/carr-v3.yml": "f448e7cda39525a08ed10fb71d1ea496e05d8091",
+    ".github/workflows/carr-windows.yml": "8a2340458123a20fc5f050dfe5232c184fec1316",
+    ".github/workflows/carr-component-followup-evaluation.yml": "40c95c79f99b1293877919759ca608e3593699e1",
+    "carr-library/docs/V3_RELEASE_READINESS.md": "ff5d2878fb8c56c57e0be0c0de03c468af7f50a8"
+  },
+  "source_identity": {
+    "modules": 383,
+    "git_rows_sha256": "bc1015e1e8e2377cf3e7d75162258b3b3f897b59dc9ff001a2fd3277d8e1de83",
+    "runtime_rows_sha256": "50f3388651152a3c45c40fd5bf8882e3e4cfff56328ea82355bb29afa9d6a2b7",
+    "compact_mapping_sha256": "b0f32f8135e23e22317ecbca04ce997445a60154d699be6d6bac075b4d6e7f40",
+    "application_package_files": 476,
+    "changed_application_modules": [
+      {
+        "path": "carr_library/audio/windows_process.py",
+        "before": {
+          "sha256": "6907f4bf2253cc2459b3d0369947dc319a4a084ebbd8500f92fd1360177d5fa6",
+          "bytes": 23275
+        },
+        "after": {
+          "sha256": "2169a92d98c9786f093b0d6bec3e5ee8152679e599fe99803049500280b4710a",
+          "bytes": 25124
+        },
+        "new_rows_sha256": "50f3388651152a3c45c40fd5bf8882e3e4cfff56328ea82355bb29afa9d6a2b7",
+        "modules": 383
+      }
+    ]
+  },
+  "prior_evidence": {
+    "head": "6ccecbc982518764a017945aaf8171387860d91b",
+    "branch": "carr/receiving-evidence-943f5856-20261128",
+    "tests_transfer": false
+  },
+  "receiving_plan": {
+    "focused_branch": "carr/process-cleanup-evaluation-20261128",
+    "focused_cases_each_mode": 232,
+    "required": "Exact successor focused source/installed, component/Reader, ordinary and complete guarded Windows/V3; native capture, human NVDA/listening and private resource/rights/signing scopes remain independently required.",
+    "all_old_test_assertions_and_product_deadlines_preserved": true,
+    "v3_job_budget_minutes_each": 110
+  },
+  "releases": {
+    "final_wheel_qualified": false,
+    "full_platform_done": false
+  },
+  "private_payloads_added": false
+}

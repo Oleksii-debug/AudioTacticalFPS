@@ -97,6 +97,7 @@ class _Job:
         self._leader_handle = self._leader_pid = None
         self._leader_signaled = self._leader_closed = False
         self._shutdown_total = None
+        self._shutdown_members = frozenset()
         self._admission_failure = None
         self._membership_query = None
         self._membership_query_count = 0
@@ -306,6 +307,9 @@ class _Job:
             after = self._query(1, _Accounting())
             if after.total_processes == before.total_processes:
                 self._shutdown_total = int(after.total_processes)
+                self._shutdown_members = frozenset(
+                    {self._leader_pid} | self._completed_members | {
+                        pid for pid, (_handle, verified) in self._members.items() if verified})
                 return
             # New members entered while handles were being retained. Enumerate
             # again within the same deadline before issuing termination.
@@ -313,12 +317,36 @@ class _Job:
     def _check_membership_fence(self):
         current = self._query(1, _Accounting())
         if current.total_processes != self._shutdown_total:
-            # Never rebase onto an empty post-termination inventory: a process
-            # born across the snapshot/termination boundary may still be
-            # completing native I/O without appearing in active accounting.
-            # Keep this job and its exact handles in the cleanup owner.
-            raise OSError('Windows audio job membership changed across termination; '
-                          'owned cleanup remains pending.')
+            # A late positive notice may already have supplied an exact retained
+            # process object. Extend only a complete original proof, with every
+            # added identity still held and verified in this job. A notice plus
+            # ERROR_INVALID_PARAMETER, an empty PID list, or zero active count
+            # cannot admit growth. All admitted handles must still be waited.
+            known = {self._leader_pid} | self._completed_members | {
+                pid for pid, (_handle, verified) in self._members.items() if verified}
+            added = known - self._shutdown_members
+            if (self._shutdown_total < current.total_processes <= _MAX_JOB_MEMBERS
+                    and len(self._shutdown_members) == self._shutdown_total
+                    and self._shutdown_members <= known
+                    and len(known) == current.total_processes
+                    and added <= self._notification_pids
+                    and all(pid in self._members and self._members[pid][1] for pid in added)):
+                self._shutdown_total = int(current.total_processes)
+                self._shutdown_members = frozenset(known)
+            else:
+                failure = OSError('Windows audio job membership changed across termination; '
+                                  'owned cleanup remains pending.')
+                failure.add_note('Windows audio job membership fence: ' + str({
+                    'admitted_total': self._shutdown_total,
+                    'current_total': int(current.total_processes),
+                    'active': int(current.active_processes),
+                    'admitted_identities': len(self._shutdown_members),
+                    'known_identities': len(known),
+                    'retained_verified': sum(verified for _handle, verified in self._members.values()),
+                    'completed_identities': len(self._completed_members),
+                    'notified_identities': len(self._notification_pids),
+                }))
+                raise failure
         return current
 
     def _wait_leader(self, leader, deadline):

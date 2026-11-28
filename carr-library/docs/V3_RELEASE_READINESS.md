@@ -1,5 +1,101 @@
 # Resonance V3 implementation and owner-test delivery status
 
+## Current receiving: native process ownership and isolated cancellation fixtures
+
+**Composition status: SOURCE_REVIEWED / NOT_RUN.** This follow-up is based on
+`943f585659c55481046266338f428e4a1043a9bd`. Results on that source remain separate
+from execution of this successor.
+
+### Confirmed results on 943f5856
+
+The focused Windows Word workflow passed all 22 source and 22 installed cases,
+with complete 383-module source/wheel/installed identity. The actual bundled
+CORE host passed both unchanged multiprocessing regression cases with the
+reviewed `-c` invocation and a valid before/after bundle seal. This verifies
+the spawn transport; it does not execute the complete media/OCR/model wrapper.
+
+Both Standard Installation modes passed 353 source and 353 installed cases
+(the installed reports also contain 22 subtests), including all 151 installer
+cases. Windows additionally passed its 12 real installation lifecycle checks,
+preserving the populated external library. All four Reader modes passed
+746 cases each; the two Windows modes also passed 80 native control checks
+each. Component receiving completed all four modes: Linux 3,222 cases per
+mode, Windows 3,219 per mode; installed reports separately retain 12 subtests.
+
+The ordinary Zig and MSVC bootstrap probes passed nine checks each.
+Bibliography passed its 1,092 source cases and recorded native installed scope;
+Canonical passed 1,186 source and installed cases, with seven installed
+subtests and its separate native phases. The Linux transcription bridge
+passed 838 cases. Windows bridge receiving recorded **836 passing cases and
+one failure**; its later native phases did not run. These distinct scopes
+must not be described as a complete release qualification.
+
+### Corrections with preserved ownership and time limits
+
+A separate guarded V3 run on the older `2dfc5d32` source recorded seven
+unique failing source cases before cancellation. Its last emitted source
+progress preceded cancellation by about 38 minutes 50 seconds; no complete
+source inventory or final source case count exists. Another workflow result
+on the same older source cannot erase those observed failures.
+
+The Windows owner now accepts a bounded increase in the job's lifetime
+membership count only when the original ownership proof is complete and
+preserved, the complete lifetime count is covered, and every added identity
+was positively notified and remains held in a verified native process
+handle. It still waits for the leader and every retained member to signal,
+requires the active count to drain and complete exit proof, and closes the
+job before its completion port. Empty inventories, zero active members,
+PID-only history, missing identities, unverified notices and decreasing or
+over-limit counts cannot satisfy the rule. The same five-second cleanup
+attempt budget and 4,096-member cap apply. New refusal notes expose counts,
+not process IDs or paths. The historical refusal did not contain those
+counts, so its exact counter subcase remains unproven.
+
+All 56 original modeled Windows owner cases remain byte-for-byte intact;
+18 cases are appended. Two additional cases exercise real Windows job
+objects and process handles, including preservation of the original caller
+exception. These cases require Windows and real native evidence.
+
+Reader and conversion regression observers now identify their own process
+objects before recording or delaying cleanup and always forward unrelated
+owners to the real cleanup implementation. Two real foreign-owner controls
+are added to each module. All original assertions, expected exceptions and
+readiness/cleanup budgets remain intact. The scanner's actual filesystem
+error assertions are unchanged.
+
+The bridge stop-and-resume test now starts its existing half-second interval
+after the real child reports running. It positively checks the cooperative
+stop protocol before explicit resume. Pre-admission cancellation behavior,
+all original assertions and both 30-second run limits are unchanged; this
+is a fixture correction, with no transcription product change.
+
+### Required successor execution
+
+The focused Windows cleanup workflow covers six exact modules and 232
+planned cases in both source and installed modes: audio process 27,
+Reader deadline 23, modeled Windows owner 74, conversion ownership 15,
+supplied worker bridge 91, and actual Windows membership 2. Its receipt
+requires both native parameter cases, strict no-failure/no-skip verdicts
+and full source/wheel/installed module identity. These planned counts are
+not execution results.
+
+MAIN, component receiving and V3 include the new native module. MAIN retains
+its reviewed `-c` transport; its wrapper data changes only to include the
+new installed selector. V3's unchanged source-contract phase runs in a
+separate job with the same setup and 110-minute ceiling, while the native
+and installed phases retain their existing job and limits. This removes
+the proven serial native prefix; it does not establish the cause or remedy
+of the historical silent source interval.
+
+Only `src/carr_library/audio/windows_process.py` changes within the
+476-file application package; the Python module count remains 383.
+Complete current-head Windows and ordinary results are still required.
+Human Windows 11/NVDA operation, physical capture/listening, authorized
+engine/language quality evidence, private runtime assembly, signing and
+distribution rights retain their separate acceptance requirements.
+No final wheel or all-platform completion claim is authorized by this
+source review.
+
 ## Current receiving: spawned test hosts and bytecode metadata
 
 **Composition status: SOURCE_REVIEWED / NOT_RUN.** Separate completed trials below retain their exact source identities.

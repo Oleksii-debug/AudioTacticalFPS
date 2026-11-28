@@ -523,7 +523,10 @@ def test_pending_reader_completion_retains_stage_after_native_family_stops(
     stage = None
 
     def stop(child):
-        native_stops.append(child.pid)
+        # Other retained owners may retry on the same module during this test.
+        # Observe only this exact run; every native family still gets its stop.
+        if observed.children and child is observed.children[0]:
+            native_stops.append(child.pid)
         return actual_stop(child)
 
     def after_read():
@@ -592,7 +595,10 @@ def test_failed_reader_pipe_close_remains_retryable_before_stage_release(
         return child
 
     def stop(child):
-        native_stops.append(child.pid)
+        # Other retained owners may retry on the same module during this test.
+        # Observe only this exact run; every native family still gets its stop.
+        if observed.children and child is observed.children[0]:
+            native_stops.append(child.pid)
         return actual_stop(child)
 
     monkeypatch.setattr(process, '_start_process', start)
@@ -716,3 +722,69 @@ def test_native_cleanup_waits_for_inflight_eof_wait_before_closing_process_handl
         # The existing observed fixture performs idempotent cleanup again.
         # Keep its teardown outside this operation's exact-once/order observer.
         monkeypatch.setattr(process, '_stop_owned', actual_stop)
+
+
+@pytest.mark.parametrize('scenario', [
+    test_pending_reader_completion_retains_stage_after_native_family_stops,
+    test_failed_reader_pipe_close_remains_retryable_before_stage_release,
+], ids=['pending-reader', 'failed-pipe-close'])
+def test_reader_stop_observation_excludes_a_real_retained_foreign_owner(
+        request, monkeypatch, tmp_path, scenario):
+    import subprocess
+    from carr_library.audio.cleanup import pending_cleanup
+
+    # Launch before requesting the observed fixture: this exact native family
+    # belongs to an earlier operation, not to the run that the fixture records.
+    actual_start, actual_stop = process._start_process, process._stop_owned
+    foreign = actual_start([sys.executable, '-I', '-B', '-c',
+        'import time; time.sleep(30)'], owned_tree=True, shell=False,
+        stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL)
+    allow_foreign_stop = threading.Event()
+    foreign_quiet = threading.Event()
+    forwarded = threading.Event()
+    owner = None
+
+    def finish_foreign():
+        if not allow_foreign_stop.is_set():
+            return False
+        forwarded.set()
+        return process._stop_owned(foreign)
+
+    try:
+        owner = pending_cleanup(finish_foreign,
+            message='The independent real family remains owned.',
+            callbacks=(foreign_quiet.set,)).cleanup_owner
+        assert foreign.poll() is None and not owner.quiescent
+        observed = request.getfixturevalue('observed')
+        actual_run = run
+
+        def run_with_foreign_cleanup(*args, **kwargs):
+            try:
+                return actual_run(*args, **kwargs)
+            finally:
+                # Both original scenarios have installed their stop observer.
+                # Complete another real retained owner through that observer
+                # before the original exact-once assertions are evaluated.
+                assert len(observed.children) == 1
+                assert foreign is not observed.children[0]
+                assert foreign.poll() is None
+                allow_foreign_stop.set()
+                owner.close()
+                assert foreign_quiet.wait(10)
+                assert forwarded.is_set() and owner.quiescent
+                assert foreign.poll() is not None
+
+        monkeypatch.setattr(sys.modules[__name__], 'run', run_with_foreign_cleanup)
+        scenario(observed, monkeypatch, tmp_path)
+        assert owner.close() is True and foreign_quiet.is_set()
+        if os.name == 'nt':
+            assert foreign._carr_job.handle is None
+            assert foreign._carr_job.port is None
+    finally:
+        allow_foreign_stop.set()
+        if owner is None:
+            assert actual_stop(foreign) is True
+        else:
+            owner.close()
+            assert foreign_quiet.wait(10), 'The independent native family did not confirm shutdown.'

@@ -1,0 +1,53 @@
+{
+  "schema": "carr-conversion-native-owner-scope-review/1",
+  "status": "SOURCE_REVIEWED; NOT_RUN",
+  "base_commit": "943f585659c55481046266338f428e4a1043a9bd",
+  "path": "carr-library/tests/conversion/test_conversion_ownership.py",
+  "before_blob": "c80bb99e24c98088764f045048aa416633b64776",
+  "after_blob": "f97bd0aeed9a60a3b785a95b0d801601f49f21db",
+  "source_only_tree": "4052d2370ee86c1e858a6aaf405e4b6d81042f01",
+  "before_utf8": {
+    "sha256": "7ee2c7eba7b2e83833a41c3fd407c4400974703a17a6098f8c70aee6bce4256e",
+    "bytes": 13237
+  },
+  "after_utf8": {
+    "sha256": "26ae20202b40c50707e950513c58f756a8c3a92116c0b1a1674c991eda0a508c",
+    "bytes": 15952
+  },
+  "observed_evidence": {
+    "tested_head": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7",
+    "run": 46111569577,
+    "job": 140876044023,
+    "trace_blob": "914b352c2a97d1b4ca970848c908bd60d27dba3e",
+    "observed": "Four retained-child variants failed after a preceding native membership-fence failure. Two selected process objects were already exited, two failed their callback completion wait. The test delays the first globally observed stop rather than selecting its own created process.",
+    "exclusive_historical_cause": "NOT_PROVEN; the separate native membership fence remains a product boundary under review."
+  },
+  "correction": "Register only the actual process returned for this conversion's unique complete child command. Delay that exact object; delegate every foreign process to the original native stop function. Reuse the original full scenario for two actual distinct-owner interleavings before launch and after ready.",
+  "preserved": {
+    "original_assert_or_raises_lines": 60,
+    "all_original_checks_preserved": true,
+    "original_test_functions": 6,
+    "all_original_test_names_preserved": true,
+    "additional_cases_planned": 2,
+    "product_changes": false,
+    "old_startup_timeout_seconds": 20,
+    "old_cleanup_timeout_seconds": 15,
+    "new_foreign_exit_timeout_seconds": 5,
+    "execution": "NOT_RUN"
+  },
+  "cases": {
+    "existing": 13,
+    "planned_additional": 2,
+    "planned_total": 15,
+    "execution": "NOT_RUN"
+  },
+  "scope": "Test fixture and two real-process regression scenarios only; no conversion/product/native cleanup behavior, original assertion or original deadline changed.",
+  "peer_review": {
+    "reviewer": "voice_reading",
+    "reviewed_tree": "4052d2370ee86c1e858a6aaf405e4b6d81042f01",
+    "reviewed_blob": "f97bd0aeed9a60a3b785a95b0d801601f49f21db",
+    "verdict": "CLEAR",
+    "verified": "Exact inverse, all60 original assertions/raises, unchanged20/15second bounds, actual selected-command registration, foreign delegation and retained cleanup on regression failure."
+  },
+  "inverse": "conversion-native-owner-scope-inverse-2026-11-28.json"
+}

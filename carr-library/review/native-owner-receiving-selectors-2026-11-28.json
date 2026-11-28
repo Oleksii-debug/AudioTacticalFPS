@@ -1,0 +1,55 @@
+{
+  "schema": "carr-native-owner-receiving-selectors-review/1",
+  "status": "SOURCE_REVIEWED; NOT_RUN",
+  "base_commit": "943f585659c55481046266338f428e4a1043a9bd",
+  "native_selector": "tests/audio_windows/test_membership_fence.py",
+  "native_fixture_blob": "b62e446d118cad9e546cf80d5762ec4d6e5b523d",
+  "required_native_case_names": [
+    "test_real_late_job_objects_require_retained_native_handles_and_exit[normal-return]",
+    "test_real_late_job_objects_require_retained_native_handles_and_exit[original-source-error]"
+  ],
+  "changes": "Append the native Windows file to MAIN source/full-bundle selections and Windows-only source/installed component selections. After unchanged aggregate verdicts, require exactly the two native cases with no failure/error/skip.",
+  "preserved": "Every previous selector/command/assertion, original pytest exit handling, phase/job/product limit, admission/device/privacy guard and actual installed import/origin contract remains unchanged. No new runtime, device, model or private artifact dependency.",
+  "selector_counts": {
+    "MAIN_source": {
+      "old": 450,
+      "new": 451
+    },
+    "component_windows_each_mode": {
+      "old": 88,
+      "new": 89
+    },
+    "component_linux_each_mode": {
+      "old": 89,
+      "new": 89
+    }
+  },
+  "main_wrapper_data": {
+    "sha256": "956be472d91f663d097a8780c1c1eb5ac2696cff94b8c8c5252ba3c6d25a705b",
+    "bytes": 25118,
+    "utf16_units": 25118
+  },
+  "main_direct_command_entry": "Existing -I -B -c entry unchanged; exact wrapper data changes only by the added installed selector. The existing focused CORE checker extracts it dynamically and retains its command-size/source checks.",
+  "source_files": [
+    {
+      "path": ".github/workflows/carr-windows.yml",
+      "before_blob": "8a2340458123a20fc5f050dfe5232c184fec1316",
+      "after_blob": "e6696ed7aa1fd1c4afc2b24d4b80ff0647fe61ce",
+      "full_inverse_verified": true
+    },
+    {
+      "path": ".github/workflows/carr-component-followup-evaluation.yml",
+      "before_blob": "40c95c79f99b1293877919759ca608e3593699e1",
+      "after_blob": "3a23611bb5829ef212736562204cde830316af7f",
+      "full_inverse_verified": true
+    }
+  ],
+  "inverse": "native-owner-receiving-selectors-inverse-2026-11-28.json",
+  "peer_review": {
+    "reviewer": "locate_project",
+    "source_tree": "516de091add5d1b38f5b1963b29331c36d0d876d",
+    "verdict": "CLEAR",
+    "verified": "Exact inverses, both source/installed paths, Windows-only component guard, actual pytest classname suffix/parameter IDs, prior error propagation, existing runtime prerequisites."
+  },
+  "execution": "NOT_RUN; exact source receiving required at the next composed head."
+}

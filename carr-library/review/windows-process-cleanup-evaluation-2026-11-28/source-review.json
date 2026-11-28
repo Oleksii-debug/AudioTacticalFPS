@@ -1,0 +1,154 @@
+{
+  "schema": "carr-source-review/1",
+  "status": "SOURCE_REVIEWED",
+  "execution": "NOT_RUN",
+  "created_utc": "2026-11-28 07:54:39 UTC",
+  "scope": "Focused Windows source and installed process-family cleanup receiving. This is not full MAIN/V3, physical-device, model, installer, listening or release qualification.",
+  "workflow": {
+    "path": ".github/workflows/carr-process-cleanup-evaluation.yml",
+    "blob": "4397ba18980d23522560f38b79d11847a4221619",
+    "sha256": "754daf846b5e66870c62ed16bf7bddaaf78676728178be74b7456a6547ab047e",
+    "bytes": 16785,
+    "source_tree": "26c9d6ebd37a3eca9a360410a5d848284556836d",
+    "trigger_branch": "carr/process-cleanup-evaluation-20261128",
+    "concurrency_cancel_in_progress": false,
+    "platform": "windows-2022",
+    "job_minutes": 35,
+    "dependency_setup_minutes": 8,
+    "source_step_minutes": 12,
+    "installed_step_minutes": 12
+  },
+  "reuse": {
+    "repository": "Oleksii-debug/AudioTacticalFPS",
+    "workflow": ".github/workflows/carr-word-preview-evaluation.yml",
+    "blob": "9a017150e77c935deaeaa391e8d591985e591e2a",
+    "sha256": "00727aede6d28e3fb04d33a1facc55036c815a51c1b55d4af91a261a9e745d3d",
+    "mechanical": {
+      "inverse": true,
+      "hunks": 22,
+      "dependency_setup_bytes_preserved_after_paths": true,
+      "source_wheel_installed_inventory_body_preserved_before_selector": true,
+      "installed_policy_and_invocation_bytes_preserved_after_paths": true,
+      "deadlines": [
+        "    timeout-minutes: ${{ matrix.minutes }}",
+        "            minutes: 35",
+        "        timeout-minutes: 8",
+        "        timeout-minutes: 12",
+        "        timeout-minutes: 12"
+      ],
+      "selectors": [
+        [
+          "tests/audio/test_audio_process.py",
+          27
+        ],
+        [
+          "tests/audio/test_process_deadline.py",
+          23
+        ],
+        [
+          "tests/audio/test_recording_windows_process.py",
+          74
+        ],
+        [
+          "tests/conversion/test_conversion_ownership.py",
+          15
+        ],
+        [
+          "tests/transcription/test_supplied_worker_bridge.py",
+          91
+        ],
+        [
+          "tests/audio_windows/test_membership_fence.py",
+          2
+        ]
+      ]
+    },
+    "inverse_hunks": 22,
+    "inverse_reconstructs_donor_exactly": true,
+    "complete_dependency_setup_preserved_after_diagnostic_path_renames": true,
+    "complete_source_wheel_installed_namespace_and_byte_equality_preserved": true,
+    "existing_unique_RECORD_owner_helper_preserved": true,
+    "actual_windows_19_package_lock_and_build_pins_preserved": true,
+    "unchanged_PYTEST_CHILD_offline_and_XFAIL_XPASS_policy": true,
+    "installed_test_execution_one_process": true,
+    "no_product_test_or_original_deadline_changes": true
+  },
+  "selectors": [
+    {
+      "path": "tests/audio/test_audio_process.py",
+      "planned_cases": 27
+    },
+    {
+      "path": "tests/audio/test_process_deadline.py",
+      "planned_cases": 23
+    },
+    {
+      "path": "tests/audio/test_recording_windows_process.py",
+      "planned_cases": 74
+    },
+    {
+      "path": "tests/conversion/test_conversion_ownership.py",
+      "planned_cases": 15
+    },
+    {
+      "path": "tests/transcription/test_supplied_worker_bridge.py",
+      "planned_cases": 91
+    },
+    {
+      "path": "tests/audio_windows/test_membership_fence.py",
+      "planned_cases": 2
+    }
+  ],
+  "planned_cases_per_mode": 232,
+  "receiving_requirements": [
+    "Exact event checkout, existing source-wheel verification and complete source/wheel/installed Python namespace/byte identity are required.",
+    "Source mode retains existing ci_check --jobs 2, with each required selector independently subject to the unchanged no-empty/failure/error/skip policy.",
+    "Source tally reads all six strict PASS verdicts even when concurrent suite progress precedes PASS; exact names, counts, row cardinality and prior process exit remain required.",
+    "Installed mode retains -I, empty pytest pythonpath, importlib mode and the exact existing PYTEST_CHILD offline/XFAIL/XPASS policy.",
+    "Installed JUnit must contain exactly the six expected suite counts and both unchanged native membership parameter names.",
+    "Both actual Windows late-family cases must run; no platform skip or model substitution is accepted.",
+    "Source failure does not suppress the installed step when wheel/inventory admission succeeded; failed steps remain failed.",
+    "Only public JSON/text/log/XML receipts are uploaded; no executable, wheel, model or private binary asset is published."
+  ],
+  "native_case_names": [
+    "test_real_late_job_objects_require_retained_native_handles_and_exit[normal-return]",
+    "test_real_late_job_objects_require_retained_native_handles_and_exit[original-source-error]"
+  ],
+  "observed_failure_basis": {
+    "v3": {
+      "run": 46111569577,
+      "job": 140876044023,
+      "head": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7",
+      "conclusion": "cancelled",
+      "evidence_tree": "83a8dc2e11764f320d1cb989be212507f151bddf",
+      "source_failures": "Seven unique cases/eight call or teardown reports before the aggregate cutoff; no complete source verdict."
+    },
+    "supplied_worker": {
+      "run": 46119978409,
+      "job": 140902139186,
+      "head": "943f585659c55481046266338f428e4a1043a9bd",
+      "failure_trace_blob": "d317ed1699c05dc638cadea3008913e9ffbb8fac",
+      "completed_log_blob": "482f064871d60d6baa573985fe8f53c1d400ff35",
+      "scope": "The .5-second fixture cancellation fired during resource admission before the intended active-worker stop phase."
+    }
+  },
+  "focused_corrected_test_dependencies": {
+    "reader_observers": "ddab9096a8b622f8993f216f87c0fce3f33ecf58",
+    "modeled_membership_fence": "fd2042d641de42704a8e2c7869edc68170d4b1d2",
+    "native_membership_fence": "b62e446d118cad9e546cf80d5762ec4d6e5b523d",
+    "supplied_worker_stop_phase": "be70c081eb7bc05a56aad01e32ee26aadeaf18cb",
+    "conversion_observer_fixtures": "Parent-owned reviewed composition; exact event wheel/test inventory binds the dispatched source."
+  },
+  "review": {
+    "root": "Reviewed the entire candidate; identified the concurrent-progress verdict prefix. Final source uses word-boundary PASS; final dispatch/integration remains parent-owned.",
+    "voice": "CLEAR on final 4397ba18980d23522560f38b79d11847a4221619: exact donor setup/inventory/policy; six selectors/232 cases; both native names; interleaved verdicts accepted and duplicate/missing/nonzero/wrong-count examples refused. Source-only, NOT_RUN.",
+    "self": "Complete full blob readback exact; complete inverse to donor verified; selector counts and native names checked against frozen source. No execution."
+  },
+  "exclusions": [
+    "No app refs moved",
+    "No workflow dispatched by this agent",
+    "No operating-system consent or device changes",
+    "No new runtime or model assets",
+    "No qualification transferred from any older head"
+  ]
+}

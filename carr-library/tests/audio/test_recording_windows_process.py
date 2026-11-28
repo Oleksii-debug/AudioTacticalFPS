@@ -921,3 +921,260 @@ def test_successful_membership_query_records_returned_length_without_reading_sta
         monkeypatch.setattr(job.api, 'error', original_error)
     assert job.close(leader=leader)
     assert job.handle is None and job.port is None
+
+
+def _add_members_across_termination(monkeypatch, kernel, *, pids=(33,),
+                                    increment=None, notices=None):
+    """Only the real owner logic is under test; native replies are explicit."""
+    original = kernel.TerminateJobObject
+    introduced = []
+    def terminate(handle, status):
+        result = original(handle, status)
+        if result and not introduced:
+            introduced.extend(pids)
+            kernel.total += len(pids) if increment is None else increment
+            kernel.identifiers = ()  # Empty active lists never establish exit.
+            kernel.notifications.extend(
+                [(6, pid, 101) for pid in pids] if notices is None else notices)
+        return result
+    monkeypatch.setattr(kernel, 'TerminateJobObject', terminate)
+    return introduced
+
+
+def test_late_verified_handles_extend_complete_proof_then_require_actual_waits(monkeypatch):
+    job, kernel, leader, events = drain_job(monkeypatch)
+    _add_members_across_termination(monkeypatch, kernel)
+    assert job.close(leader=leader) is True
+    assert job._shutdown_total == 3
+    assert job._shutdown_members == frozenset({11, 22, 33})
+    assert job._completed_members == {22, 33}
+    assert job.handle is None and job.port is None and not job._members
+    assert events.count(('query', 3)) == 1
+    for pid in (22, 33):
+        assert events.count(('open-member', pid)) == 1
+        admitted = events.index(('membership', 1000 + pid))
+        waited = next(i for i, event in enumerate(events)
+                      if event[0] == 'wait-member' and event[1] == 1000 + pid)
+        assert admitted < waited < events.index(('close', 1000 + pid))
+        assert events.index(('close', 1000 + pid)) < events.index(('close', 101))
+    assert events.index(('terminate-job', 101)) < events.index(('open-member', 33))
+
+
+def test_late_member_timeout_retains_augmented_proof_and_same_native_handle(monkeypatch):
+    job, kernel, leader, events = drain_job(monkeypatch)
+    _add_members_across_termination(monkeypatch, kernel)
+    original_wait = kernel.WaitForSingleObject
+    released = False
+    def wait(handle, milliseconds):
+        if handle == 1033 and not released:
+            events.append(('wait-member', handle, milliseconds))
+            return 0x102
+        return original_wait(handle, milliseconds)
+    monkeypatch.setattr(kernel, 'WaitForSingleObject', wait)
+    with pytest.raises(TimeoutError, match='process has not confirmed exit'):
+        job.close(leader=leader)
+    assert kernel.active == 0 and kernel.identifiers == ()
+    assert job._shutdown_total == 3 and job._shutdown_members == frozenset({11, 22, 33})
+    assert job._members == {33: (1033, True)} and job._completed_members == {22}
+    assert job.handle == 101 and job.port == 201
+    assert ('close', 1033) not in events and ('close', 101) not in events
+    released = True
+    assert job.close(leader=leader) is True
+    assert job.handle is None and job.port is None and job._completed_members == {22, 33}
+    assert events.count(('open-member', 33)) == 1
+    assert events.count(('query', 3)) == 1
+
+
+@pytest.mark.parametrize('failure', ['wait', 'close'])
+def test_late_member_native_failure_never_releases_the_exact_job(monkeypatch, failure):
+    job, kernel, leader, events = drain_job(monkeypatch)
+    _add_members_across_termination(monkeypatch, kernel)
+    original_wait, original_close = kernel.WaitForSingleObject, kernel.CloseHandle
+    released = False
+    def wait(handle, milliseconds):
+        if handle == 1033 and not released and failure == 'wait':
+            events.append(('wait-member', handle, milliseconds))
+            return 0xFFFFFFFF
+        return original_wait(handle, milliseconds)
+    def close(handle):
+        if handle == 1033 and not released and failure == 'close':
+            events.append(('failed-close-late', handle))
+            return False
+        return original_close(handle)
+    monkeypatch.setattr(kernel, 'WaitForSingleObject', wait)
+    monkeypatch.setattr(kernel, 'CloseHandle', close)
+    with pytest.raises(OSError, match='native drain failure'):
+        job.close(leader=leader)
+    assert job._shutdown_total == 3 and job._members == {33: (1033, True)}
+    assert job.handle == 101 and job.port == 201 and ('close', 101) not in events
+    assert job._completed_members == ({22, 33} if failure == 'close' else {22})
+    released = True
+    assert job.close(leader=leader) is True
+    assert events.count(('open-member', 33)) == 1
+    assert events.count(('close', 1033)) == 1 and events.count(('query', 3)) == 1
+
+
+@pytest.mark.parametrize('notice', ['missing', 'exit', 'zero', 'duplicate-old'])
+def test_lifetime_growth_without_new_retained_objects_remains_owned(monkeypatch, notice):
+    job, kernel, leader, events = drain_job(monkeypatch)
+    notices = {
+        'missing': [], 'exit': [(7, 33, 101)], 'zero': [(4, None, 101)],
+        'duplicate-old': [(6, 22, 101), (6, 22, 101)],
+    }[notice]
+    _add_members_across_termination(monkeypatch, kernel, notices=notices)
+    with pytest.raises(OSError, match='membership changed across termination') as caught:
+        job.close(leader=leader)
+    assert job._shutdown_total == 2 and job._shutdown_members == frozenset({11, 22})
+    assert kernel.active == 0 and kernel.identifiers == ()
+    assert job._members == {22: (1022, True)} and not job._completed_members
+    assert job.handle == 101 and job.port == 201
+    assert ('open-member', 33) not in events and ('close', 101) not in events
+    assert not any(event[0] == 'wait-member' for event in events)
+    assert "'admitted_total': 2" in caught.value.__notes__[0]
+    assert "'current_total': 3" in caught.value.__notes__[0]
+    with pytest.raises(OSError, match='membership changed across termination'):
+        job.close(leader=leader)
+    assert events.count(('query', 3)) == 1
+
+
+@pytest.mark.parametrize('winerror', [87, 5], ids=['notified-but-gone', 'access-denied'])
+def test_late_open_failure_cannot_add_a_process_object_proof(monkeypatch, winerror):
+    job, kernel, leader, events = drain_job(monkeypatch)
+    _add_members_across_termination(monkeypatch, kernel)
+    original_open = kernel.OpenProcess
+    def open_process(access, inherit, pid):
+        if pid == 33:
+            assert access == 0x00101000 and inherit is False
+            events.append(('open-member', pid))
+            kernel.error_code = winerror
+            return 0
+        return original_open(access, inherit, pid)
+    monkeypatch.setattr(kernel, 'OpenProcess', open_process)
+    message = 'membership changed across termination' if winerror == 87 else 'native drain failure'
+    with pytest.raises(OSError, match=message):
+        job.close(leader=leader)
+    assert job._shutdown_total == 2 and job._shutdown_members == frozenset({11, 22})
+    assert job._members == {22: (1022, True)}
+    assert job._completed_members == ({33} if winerror == 87 else set())
+    assert job.handle == 101 and job.port == 201
+    assert not any(event[0] == 'wait-member' for event in events)
+    assert ('close', 101) not in events and ('close', 201) not in events
+    # The historical-only notice is still insufficient on a later close.
+    with pytest.raises(OSError, match='membership changed across termination'):
+        job.close(leader=leader)
+    assert job.handle == 101 and events.count(('query', 3)) == 1
+
+
+def test_recycled_late_pid_never_counts_as_a_verified_owned_object(monkeypatch):
+    job, kernel, leader, events = drain_job(monkeypatch)
+    _add_members_across_termination(monkeypatch, kernel)
+    original_membership = kernel.IsProcessInJob
+    def membership(handle, expected_job, pointer):
+        if handle == 1033:
+            events.append(('membership', handle))
+            ctypes.cast(pointer, ctypes.POINTER(ctypes.c_int)).contents.value = 0
+            return True
+        return original_membership(handle, expected_job, pointer)
+    monkeypatch.setattr(kernel, 'IsProcessInJob', membership)
+    with pytest.raises(OSError, match='membership changed during shutdown admission'):
+        job.close(leader=leader)
+    assert job._shutdown_total == 2 and job._shutdown_members == frozenset({11, 22})
+    assert job._members == {22: (1022, True)} and not job._completed_members
+    assert events.count(('close', 1033)) == 1  # Only the foreign query handle is closed.
+    assert not any(event[0] == 'wait-member' for event in events)
+    assert job.handle == 101 and job.port == 201
+    with pytest.raises(OSError, match='membership changed across termination'):
+        job.close(leader=leader)
+    assert events.count(('open-member', 33)) == 1 and ('close', 101) not in events
+
+
+@pytest.mark.parametrize('increment', [-1, 2, module._MAX_JOB_MEMBERS],
+                         ids=['decreasing-total', 'uncovered-additional-member', 'over-cap'])
+def test_late_exact_handle_does_not_excuse_invalid_or_incomplete_lifetime_count(
+        monkeypatch, increment):
+    job, kernel, leader, events = drain_job(monkeypatch)
+    _add_members_across_termination(monkeypatch, kernel, increment=increment)
+    with pytest.raises(OSError, match='membership changed across termination'):
+        job.close(leader=leader)
+    assert job._shutdown_total == 2 and job._shutdown_members == frozenset({11, 22})
+    assert job._members == {22: (1022, True), 33: (1033, True)}
+    assert job.handle == 101 and job.port == 201
+    assert not any(event[0] == 'wait-member' for event in events)
+    assert ('close', 101) not in events and events.count(('query', 3)) == 1
+
+
+def test_late_exact_handles_cannot_repair_an_incomplete_original_lifetime_proof(monkeypatch):
+    job, kernel, leader, events = drain_job(monkeypatch)
+    kernel.total = 3  # Leader plus member22 plus one unobserved historical member.
+    _add_members_across_termination(monkeypatch, kernel)
+    with pytest.raises(OSError, match='membership changed across termination'):
+        job.close(leader=leader)
+    assert job._shutdown_total == 3 and job._shutdown_members == frozenset({11, 22})
+    assert kernel.total == 4 and job._members == {22: (1022, True), 33: (1033, True)}
+    assert job.handle == 101 and job.port == 201
+    assert not any(event[0] == 'wait-member' for event in events)
+    assert ('close', 101) not in events and events.count(('query', 3)) == 1
+
+
+def test_delayed_new_object_notice_can_supply_complete_proof_on_retry(monkeypatch):
+    job, kernel, leader, events = drain_job(monkeypatch)
+    _add_members_across_termination(monkeypatch, kernel, notices=[])
+    with pytest.raises(OSError, match='membership changed across termination'):
+        job.close(leader=leader)
+    assert job._shutdown_total == 2 and job._members == {22: (1022, True)}
+    kernel.notifications.append((6, 33, 101))
+    assert job.close(leader=leader) is True
+    assert job._shutdown_total == 3 and job._completed_members == {22, 33}
+    assert job.handle is None and job.port is None
+    assert events.count(('query', 3)) == 1
+    assert events.count(('open-member', 22)) == events.count(('open-member', 33)) == 1
+
+
+def test_a_second_verified_growth_keeps_previously_completed_objects_on_retry(monkeypatch):
+    job, kernel, leader, events = drain_job(monkeypatch)
+    _add_members_across_termination(monkeypatch, kernel)
+    original_wait = kernel.WaitForSingleObject
+    released = False
+    def wait(handle, milliseconds):
+        if handle == 1033 and not released:
+            events.append(('wait-member', handle, milliseconds))
+            return 0x102
+        return original_wait(handle, milliseconds)
+    monkeypatch.setattr(kernel, 'WaitForSingleObject', wait)
+    with pytest.raises(TimeoutError, match='process has not confirmed exit'):
+        job.close(leader=leader)
+    assert job._completed_members == {22} and job._shutdown_total == 3
+    kernel.total += 1
+    kernel.notifications.append((6, 44, 101))
+    released = True
+    assert job.close(leader=leader) is True
+    assert job._shutdown_members == frozenset({11, 22, 33, 44})
+    assert job._completed_members == {22, 33, 44}
+    assert job.handle is None and job.port is None and not job._members
+    for pid in (22, 33, 44):
+        assert events.count(('open-member', pid)) == 1
+    assert events.count(('query', 3)) == 1
+
+
+def test_late_object_retention_and_waits_consume_the_original_shutdown_deadline(monkeypatch):
+    now = [100.0]
+    monkeypatch.setattr(module, 'time', SimpleNamespace(
+        monotonic=lambda: now[0], sleep=lambda seconds: now.__setitem__(0, now[0] + seconds)))
+    job, kernel, leader, events = drain_job(monkeypatch)
+    _add_members_across_termination(monkeypatch, kernel)
+    original_open = kernel.OpenProcess
+    def open_process(access, inherit, pid):
+        if pid == 33:
+            now[0] += 4.8
+        return original_open(access, inherit, pid)
+    monkeypatch.setattr(kernel, 'OpenProcess', open_process)
+    def waited(milliseconds):
+        assert 0 <= milliseconds <= 200
+        now[0] += .3
+    kernel.on_wait = waited
+    with pytest.raises(TimeoutError, match='job has not confirmed shutdown'):
+        job.close(leader=leader)
+    assert job._shutdown_total == 3 and job.handle == 101 and job.port == 201
+    assert job._completed_members == {22} and job._members == {33: (1033, True)}
+    assert ('close', 1033) not in events and ('close', 101) not in events
+    assert events.count(('query', 3)) == 1

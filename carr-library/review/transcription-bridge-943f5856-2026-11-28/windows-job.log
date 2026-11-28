@@ -1,0 +1,1091 @@
+﻿2026-11-28T07:19:51.1430618Z Current runner version: '2.338.2'
+2026-11-28T07:19:51.1454677Z ##[group]Runner Image Provisioner
+2026-11-28T07:19:51.1455820Z Hosted Compute Agent
+2026-11-28T07:19:51.1456722Z Version: 20261111.635
+2026-11-28T07:19:51.1457740Z Commit: b8a594ea514ff44cadb5342986c68b1eac6e22ed
+2026-11-28T07:19:51.1458975Z Build Date: 2026-11-11T01:49:01Z
+2026-11-28T07:19:51.1460109Z Worker ID: {76109c10-0549-4686-a50e-18e8f5a5a129}
+2026-11-28T07:19:51.1461229Z Region: centralus
+2026-11-28T07:19:51.1462074Z Cloud: Azure
+2026-11-28T07:19:51.1463024Z ##[endgroup]
+2026-11-28T07:19:51.1465052Z ##[group]Operating System
+2026-11-28T07:19:51.1466085Z Microsoft Windows Server 2022
+2026-11-28T07:19:51.1467058Z 10.0.20348
+2026-11-28T07:19:51.1467833Z Datacenter
+2026-11-28T07:19:51.1468655Z ##[endgroup]
+2026-11-28T07:19:51.1469504Z ##[group]Runner Image
+2026-11-28T07:19:51.1470459Z Image: windows-2022
+2026-11-28T07:19:51.1471314Z Version: 20261123.376.1
+2026-11-28T07:19:51.1473605Z Included Software: https://github.com/actions/runner-images/blob/win22/20261123.376/images/windows/Windows2022-Readme.md
+2026-11-28T07:19:51.1476178Z Image Release: https://github.com/actions/runner-images/releases/tag/win22%2F20261123.376
+2026-11-28T07:19:51.1477816Z ##[endgroup]
+2026-11-28T07:19:51.1479565Z ##[group]GITHUB_TOKEN Permissions
+2026-11-28T07:19:51.1482367Z Contents: read
+2026-11-28T07:19:51.1483230Z Metadata: read
+2026-11-28T07:19:51.1484084Z ##[endgroup]
+2026-11-28T07:19:51.1486809Z Secret source: Actions
+2026-11-28T07:19:51.1488243Z Cache mode: write
+2026-11-28T07:19:51.1489301Z Prepare workflow directory
+2026-11-28T07:19:51.1935232Z Prepare all required actions
+2026-11-28T07:19:51.1981805Z Getting action download info
+2026-11-28T07:19:51.4604986Z Download action repository 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1' (SHA:3d3c42e5aac5ba805825da76410c181273ba90b1)
+2026-11-28T07:19:51.5710909Z Download action repository 'actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0' (SHA:6d4fd22b20465ccc0f7354476588e8df7c9ca0e0)
+2026-11-28T07:19:51.8210276Z Complete job name: protocol (windows-2022)
+2026-11-28T07:19:51.9853233Z ##[group]Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+2026-11-28T07:19:51.9854894Z with:
+2026-11-28T07:19:51.9855433Z   ref: 943f585659c55481046266338f428e4a1043a9bd
+2026-11-28T07:19:51.9856144Z   persist-credentials: false
+2026-11-28T07:19:51.9856790Z   repository: Oleksii-debug/AudioTacticalFPS
+2026-11-28T07:19:51.9861898Z   token: ***
+2026-11-28T07:19:51.9862401Z   ssh-strict: true
+2026-11-28T07:19:51.9862900Z   ssh-user: git
+2026-11-28T07:19:51.9863354Z   clean: true
+2026-11-28T07:19:51.9863768Z   sparse-checkout-cone-mode: true
+2026-11-28T07:19:51.9864254Z   fetch-depth: 1
+2026-11-28T07:19:51.9864645Z   fetch-tags: false
+2026-11-28T07:19:51.9865050Z   show-progress: true
+2026-11-28T07:19:51.9865457Z   lfs: false
+2026-11-28T07:19:51.9865832Z   submodules: false
+2026-11-28T07:19:51.9866243Z   set-safe-directory: true
+2026-11-28T07:19:51.9866713Z   allow-unsafe-pr-checkout: false
+2026-11-28T07:19:51.9867429Z env:
+2026-11-28T07:19:51.9867830Z   PYTHONUTF8: 1
+2026-11-28T07:19:51.9868231Z   PYTHONUNBUFFERED: 1
+2026-11-28T07:19:51.9868646Z   HF_HUB_OFFLINE: 1
+2026-11-28T07:19:51.9869045Z   TRANSFORMERS_OFFLINE: 1
+2026-11-28T07:19:51.9869471Z   DO_NOT_TRACK: 1
+2026-11-28T07:19:51.9869851Z ##[endgroup]
+2026-11-28T07:19:52.1297449Z Syncing repository: Oleksii-debug/AudioTacticalFPS
+2026-11-28T07:19:52.1299166Z ##[group]Getting Git version info
+2026-11-28T07:19:52.1299881Z Working directory is 'D:\a\AudioTacticalFPS\AudioTacticalFPS'
+2026-11-28T07:19:52.2503040Z [command]"C:\Program Files\Git\bin\git.exe" version
+2026-11-28T07:19:52.5758636Z git version 2.56.1.windows.1
+2026-11-28T07:19:52.5801630Z ##[endgroup]
+2026-11-28T07:19:52.5817324Z Temporarily overriding HOME='D:\a\_temp\9350449c-c174-4862-b08c-a19ba4d68cb2' before making global git config changes
+2026-11-28T07:19:52.5819586Z Adding repository directory to the temporary git global config as a safe directory
+2026-11-28T07:19:52.5831662Z [command]"C:\Program Files\Git\bin\git.exe" config --global --add safe.directory D:\a\AudioTacticalFPS\AudioTacticalFPS
+2026-11-28T07:19:52.6425098Z Deleting the contents of 'D:\a\AudioTacticalFPS\AudioTacticalFPS'
+2026-11-28T07:19:52.6429278Z ##[group]Determining repository object format
+2026-11-28T07:19:52.6431797Z ##[endgroup]
+2026-11-28T07:19:52.6432569Z ##[group]Initializing the repository
+2026-11-28T07:19:52.6443341Z [command]"C:\Program Files\Git\bin\git.exe" init D:\a\AudioTacticalFPS\AudioTacticalFPS
+2026-11-28T07:19:52.7089900Z Initialized empty Git repository in D:/a/AudioTacticalFPS/AudioTacticalFPS/.git/
+2026-11-28T07:19:52.7124169Z [command]"C:\Program Files\Git\bin\git.exe" remote add origin https://github.com/Oleksii-debug/AudioTacticalFPS
+2026-11-28T07:19:52.7724827Z ##[endgroup]
+2026-11-28T07:19:52.7726282Z ##[group]Disabling automatic garbage collection
+2026-11-28T07:19:52.7727728Z [command]"C:\Program Files\Git\bin\git.exe" config --local gc.auto 0
+2026-11-28T07:19:52.8075204Z ##[endgroup]
+2026-11-28T07:19:52.8076951Z ##[group]Setting up auth
+2026-11-28T07:19:52.8077716Z Removing SSH command configuration
+2026-11-28T07:19:52.8086343Z [command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp core\.sshCommand
+2026-11-28T07:19:52.8386199Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "sh -c \"git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :\""
+2026-11-28T07:19:54.0591549Z Removing HTTP extra header
+2026-11-28T07:19:54.0601675Z [command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-11-28T07:19:54.0906106Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "sh -c \"git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :\""
+2026-11-28T07:19:54.5719617Z Removing includeIf entries pointing to credentials config files
+2026-11-28T07:19:54.5729980Z [command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-11-28T07:19:54.6046471Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "git config --local --show-origin --name-only --get-regexp remote.origin.url"
+2026-11-28T07:19:55.0633327Z [command]"C:\Program Files\Git\bin\git.exe" config --file D:\a\_temp\git-credentials-68212ddd-05ff-4f77-ae15-922245e5cdd9.config http.https://github.com/.extraheader "AUTHORIZATION: basic ***"
+2026-11-28T07:19:55.0973075Z [command]"C:\Program Files\Git\bin\git.exe" config --local includeIf.gitdir:D:/a/AudioTacticalFPS/AudioTacticalFPS/.git.path D:\a\_temp\git-credentials-68212ddd-05ff-4f77-ae15-922245e5cdd9.config
+2026-11-28T07:19:55.1255195Z [command]"C:\Program Files\Git\bin\git.exe" config --local includeIf.gitdir:D:/a/AudioTacticalFPS/AudioTacticalFPS/.git/worktrees/*.path D:\a\_temp\git-credentials-68212ddd-05ff-4f77-ae15-922245e5cdd9.config
+2026-11-28T07:19:55.1580001Z [command]"C:\Program Files\Git\bin\git.exe" config --local includeIf.gitdir:/github/workspace/.git.path /github/runner_temp/git-credentials-68212ddd-05ff-4f77-ae15-922245e5cdd9.config
+2026-11-28T07:19:55.1960498Z [command]"C:\Program Files\Git\bin\git.exe" config --local includeIf.gitdir:/github/workspace/.git/worktrees/*.path /github/runner_temp/git-credentials-68212ddd-05ff-4f77-ae15-922245e5cdd9.config
+2026-11-28T07:19:55.2274172Z ##[endgroup]
+2026-11-28T07:19:55.2274637Z ##[group]Fetching the repository
+2026-11-28T07:19:55.2285104Z [command]"C:\Program Files\Git\bin\git.exe" -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin 943f585659c55481046266338f428e4a1043a9bd
+2026-11-28T07:19:57.1666994Z From https://github.com/Oleksii-debug/AudioTacticalFPS
+2026-11-28T07:19:57.1667556Z  * branch            943f585659c55481046266338f428e4a1043a9bd -> FETCH_HEAD
+2026-11-28T07:19:57.1702701Z [command]"C:\Program Files\Git\bin\git.exe" rev-parse --verify --quiet 943f585659c55481046266338f428e4a1043a9bd^{object}
+2026-11-28T07:19:57.2008954Z 943f585659c55481046266338f428e4a1043a9bd
+2026-11-28T07:19:57.2032270Z ##[endgroup]
+2026-11-28T07:19:57.2033437Z ##[group]Determining the checkout info
+2026-11-28T07:19:57.2034262Z ##[endgroup]
+2026-11-28T07:19:57.2041456Z [command]"C:\Program Files\Git\bin\git.exe" sparse-checkout disable
+2026-11-28T07:19:57.2364852Z [command]"C:\Program Files\Git\bin\git.exe" config --local --unset-all extensions.worktreeConfig
+2026-11-28T07:19:57.2636286Z ##[group]Checking out the ref
+2026-11-28T07:19:57.2643730Z [command]"C:\Program Files\Git\bin\git.exe" checkout --progress --force 943f585659c55481046266338f428e4a1043a9bd
+2026-11-28T07:19:57.7665815Z Note: switching to '943f585659c55481046266338f428e4a1043a9bd'.
+2026-11-28T07:19:57.7666433Z 
+2026-11-28T07:19:57.7666835Z You are in 'detached HEAD' state. You can look around, make experimental
+2026-11-28T07:19:57.7667658Z changes and commit them, and you can discard any commits you make in this
+2026-11-28T07:19:57.7668410Z state without impacting any branches by switching back to a branch.
+2026-11-28T07:19:57.7668876Z 
+2026-11-28T07:19:57.7669217Z If you want to create a new branch to retain commits you create, you may
+2026-11-28T07:19:57.7669997Z do so (now or later) by using -c with the switch command. Example:
+2026-11-28T07:19:57.7670470Z 
+2026-11-28T07:19:57.7670689Z   git switch -c <new-branch-name>
+2026-11-28T07:19:57.7671005Z 
+2026-11-28T07:19:57.7671157Z Or undo this operation with:
+2026-11-28T07:19:57.7671432Z 
+2026-11-28T07:19:57.7671567Z   git switch -
+2026-11-28T07:19:57.7671762Z 
+2026-11-28T07:19:57.7672128Z Turn off this advice by setting config variable advice.detachedHead to false
+2026-11-28T07:19:57.7672688Z 
+2026-11-28T07:19:57.7673273Z HEAD is now at 943f585 Preserve bytecode timestamps and correct Windows receiving entry and callbacks
+2026-11-28T07:19:57.7770568Z ##[endgroup]
+2026-11-28T07:19:57.8170973Z [command]"C:\Program Files\Git\bin\git.exe" log -1 --format=%H
+2026-11-28T07:19:57.8433410Z 943f585659c55481046266338f428e4a1043a9bd
+2026-11-28T07:19:57.8462303Z ##[group]Removing auth
+2026-11-28T07:19:57.8462833Z Removing SSH command configuration
+2026-11-28T07:19:57.8470938Z [command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp core\.sshCommand
+2026-11-28T07:19:57.8757959Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "sh -c \"git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :\""
+2026-11-28T07:19:58.3485995Z Removing HTTP extra header
+2026-11-28T07:19:58.3494625Z [command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-11-28T07:19:58.3784589Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "sh -c \"git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :\""
+2026-11-28T07:19:58.8484313Z Removing includeIf entries pointing to credentials config files
+2026-11-28T07:19:58.8491712Z [command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-11-28T07:19:58.8764411Z includeif.gitdir:D:/a/AudioTacticalFPS/AudioTacticalFPS/.git.path
+2026-11-28T07:19:58.8765352Z includeif.gitdir:D:/a/AudioTacticalFPS/AudioTacticalFPS/.git/worktrees/*.path
+2026-11-28T07:19:58.8766589Z includeif.gitdir:/github/workspace/.git.path
+2026-11-28T07:19:58.8767335Z includeif.gitdir:/github/workspace/.git/worktrees/*.path
+2026-11-28T07:19:58.8805345Z [command]"C:\Program Files\Git\bin\git.exe" config --local --get-all includeif.gitdir:D:/a/AudioTacticalFPS/AudioTacticalFPS/.git.path
+2026-11-28T07:19:58.9077424Z D:\a\_temp\git-credentials-68212ddd-05ff-4f77-ae15-922245e5cdd9.config
+2026-11-28T07:19:58.9109348Z [command]"C:\Program Files\Git\bin\git.exe" config --local --unset includeif.gitdir:D:/a/AudioTacticalFPS/AudioTacticalFPS/.git.path D\:\\a\\_temp\\git\-credentials\-68212ddd\-05ff\-4f77\-ae15\-922245e5cdd9\.config
+2026-11-28T07:19:58.9406488Z [command]"C:\Program Files\Git\bin\git.exe" config --local --get-all includeif.gitdir:D:/a/AudioTacticalFPS/AudioTacticalFPS/.git/worktrees/*.path
+2026-11-28T07:19:58.9658991Z D:\a\_temp\git-credentials-68212ddd-05ff-4f77-ae15-922245e5cdd9.config
+2026-11-28T07:19:58.9690510Z [command]"C:\Program Files\Git\bin\git.exe" config --local --unset includeif.gitdir:D:/a/AudioTacticalFPS/AudioTacticalFPS/.git/worktrees/*.path D\:\\a\\_temp\\git\-credentials\-68212ddd\-05ff\-4f77\-ae15\-922245e5cdd9\.config
+2026-11-28T07:19:58.9986750Z [command]"C:\Program Files\Git\bin\git.exe" config --local --get-all includeif.gitdir:/github/workspace/.git.path
+2026-11-28T07:19:59.0247934Z /github/runner_temp/git-credentials-68212ddd-05ff-4f77-ae15-922245e5cdd9.config
+2026-11-28T07:19:59.0287482Z [command]"C:\Program Files\Git\bin\git.exe" config --local --unset includeif.gitdir:/github/workspace/.git.path \/github\/runner_temp\/git\-credentials\-68212ddd\-05ff\-4f77\-ae15\-922245e5cdd9\.config
+2026-11-28T07:19:59.0584060Z [command]"C:\Program Files\Git\bin\git.exe" config --local --get-all includeif.gitdir:/github/workspace/.git/worktrees/*.path
+2026-11-28T07:19:59.0835163Z /github/runner_temp/git-credentials-68212ddd-05ff-4f77-ae15-922245e5cdd9.config
+2026-11-28T07:19:59.0865813Z [command]"C:\Program Files\Git\bin\git.exe" config --local --unset includeif.gitdir:/github/workspace/.git/worktrees/*.path \/github\/runner_temp\/git\-credentials\-68212ddd\-05ff\-4f77\-ae15\-922245e5cdd9\.config
+2026-11-28T07:19:59.1148317Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "git config --local --show-origin --name-only --get-regexp remote.origin.url"
+2026-11-28T07:19:59.5973831Z Removing credentials config 'D:\a\_temp\git-credentials-68212ddd-05ff-4f77-ae15-922245e5cdd9.config'
+2026-11-28T07:19:59.5984375Z ##[endgroup]
+2026-11-28T07:19:59.6403628Z ##[group]Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+2026-11-28T07:19:59.6404085Z with:
+2026-11-28T07:19:59.6404272Z   python-version: 3.11
+2026-11-28T07:19:59.6404498Z   check-latest: false
+2026-11-28T07:19:59.6407253Z   token: ***
+2026-11-28T07:19:59.6407572Z   mirror: https://raw.githubusercontent.com/actions/python-versions/main
+2026-11-28T07:19:59.6407951Z   update-environment: true
+2026-11-28T07:19:59.6408180Z   allow-prereleases: false
+2026-11-28T07:19:59.6408398Z   freethreaded: false
+2026-11-28T07:19:59.6408595Z env:
+2026-11-28T07:19:59.6408755Z   PYTHONUTF8: 1
+2026-11-28T07:19:59.6408932Z   PYTHONUNBUFFERED: 1
+2026-11-28T07:19:59.6409115Z   HF_HUB_OFFLINE: 1
+2026-11-28T07:19:59.6409296Z   TRANSFORMERS_OFFLINE: 1
+2026-11-28T07:19:59.6409490Z   DO_NOT_TRACK: 1
+2026-11-28T07:19:59.6409659Z ##[endgroup]
+2026-11-28T07:19:59.7744582Z ##[group]Installed versions
+2026-11-28T07:19:59.7889778Z Successfully set up CPython (3.11.9)
+2026-11-28T07:19:59.7890481Z ##[endgroup]
+2026-11-28T07:19:59.8127222Z ##[group]Run git rev-parse HEAD
+2026-11-28T07:19:59.8127609Z [36;1mgit rev-parse HEAD[0m
+2026-11-28T07:19:59.8127895Z [36;1mpython -m pip install '.[test]'[0m
+2026-11-28T07:19:59.8128279Z [36;1mif ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }[0m
+2026-11-28T07:19:59.8128637Z [36;1mpython -m pip check[0m
+2026-11-28T07:19:59.8128937Z [36;1mif ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }[0m
+2026-11-28T07:19:59.8129492Z [36;1mpython -m compileall -q src scripts/windows_transcription_smoke.py tests/transcription[0m
+2026-11-28T07:19:59.8130064Z [36;1mif ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }[0m
+2026-11-28T07:19:59.8278914Z shell: C:\Program Files\PowerShell\7\pwsh.EXE -command ". '{0}'"
+2026-11-28T07:19:59.8279291Z env:
+2026-11-28T07:19:59.8279471Z   PYTHONUTF8: 1
+2026-11-28T07:19:59.8279712Z   PYTHONUNBUFFERED: 1
+2026-11-28T07:19:59.8279922Z   HF_HUB_OFFLINE: 1
+2026-11-28T07:19:59.8280332Z   TRANSFORMERS_OFFLINE: 1
+2026-11-28T07:19:59.8280580Z   DO_NOT_TRACK: 1
+2026-11-28T07:19:59.8280868Z   pythonLocation: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T07:19:59.8281387Z   PKG_CONFIG_PATH: C:\hostedtoolcache\windows\Python\3.11.9\x64/lib/pkgconfig
+2026-11-28T07:19:59.8281880Z   Python_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T07:19:59.8282319Z   Python2_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T07:19:59.8282772Z   Python3_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T07:19:59.8283136Z ##[endgroup]
+2026-11-28T07:20:00.1574733Z 943f585659c55481046266338f428e4a1043a9bd
+2026-11-28T07:20:04.2849680Z Processing .\.
+2026-11-28T07:20:04.2883781Z   Installing build dependencies: started
+2026-11-28T07:20:06.9523988Z   Installing build dependencies: finished with status 'done'
+2026-11-28T07:20:06.9538452Z   Getting requirements to build wheel: started
+2026-11-28T07:20:07.9310393Z   Getting requirements to build wheel: finished with status 'done'
+2026-11-28T07:20:07.9337142Z   Preparing metadata (pyproject.toml): started
+2026-11-28T07:20:08.4610480Z   Preparing metadata (pyproject.toml): finished with status 'done'
+2026-11-28T07:20:08.7205257Z Collecting pypdf==7.1.1 (from universal-research-library==0.2.0.dev2)
+2026-11-28T07:20:08.9223282Z   Downloading pypdf-7.1.1-py3-none-any.whl.metadata (7.6 kB)
+2026-11-28T07:20:09.1059343Z Collecting pypdfium2==5.13.0 (from universal-research-library==0.2.0.dev2)
+2026-11-28T07:20:09.1270014Z   Downloading pypdfium2-5.13.0-py3-none-win_amd64.whl.metadata (67 kB)
+2026-11-28T07:20:09.2176711Z Collecting python-docx==1.2.0 (from universal-research-library==0.2.0.dev2)
+2026-11-28T07:20:09.2345866Z   Downloading python_docx-1.2.0-py3-none-any.whl.metadata (2.0 kB)
+2026-11-28T07:20:09.2932856Z Collecting platformdirs==4.10.0 (from universal-research-library==0.2.0.dev2)
+2026-11-28T07:20:09.3115252Z   Downloading platformdirs-4.10.0-py3-none-any.whl.metadata (5.5 kB)
+2026-11-28T07:20:09.3738903Z Collecting filelock==3.29.0 (from universal-research-library==0.2.0.dev2)
+2026-11-28T07:20:09.3915793Z   Downloading filelock-3.29.0-py3-none-any.whl.metadata (2.0 kB)
+2026-11-28T07:20:09.6575058Z Collecting Pillow==13.0.0 (from universal-research-library==0.2.0.dev2)
+2026-11-28T07:20:09.6786830Z   Downloading pillow-13.0.0-cp311-cp311-win_amd64.whl.metadata (9.3 kB)
+2026-11-28T07:20:09.7325682Z Collecting py3langid==0.4.0 (from universal-research-library==0.2.0.dev2)
+2026-11-28T07:20:09.7516147Z   Downloading py3langid-0.4.0-py3-none-any.whl.metadata (7.1 kB)
+2026-11-28T07:20:09.7989064Z Collecting defusedxml==0.7.1 (from universal-research-library==0.2.0.dev2)
+2026-11-28T07:20:09.8169129Z   Downloading defusedxml-0.7.1-py2.py3-none-any.whl.metadata (32 kB)
+2026-11-28T07:20:09.8929391Z Collecting bibtexparser==2.1.0 (from universal-research-library==0.2.0.dev2)
+2026-11-28T07:20:09.9121078Z   Downloading bibtexparser-2.1.0-py3-none-any.whl.metadata (6.3 kB)
+2026-11-28T07:20:09.9795963Z Collecting pylatexenc==2.11 (from universal-research-library==0.2.0.dev2)
+2026-11-28T07:20:09.9968135Z   Downloading pylatexenc-2.11-py2.py3-none-any.whl.metadata (3.9 kB)
+2026-11-28T07:20:10.0589765Z Collecting quickjs-ng==0.18.0.2 (from universal-research-library==0.2.0.dev2)
+2026-11-28T07:20:10.0806649Z   Downloading quickjs_ng-0.18.0.2-cp310-abi3-win_amd64.whl.metadata (8.2 kB)
+2026-11-28T07:20:10.1308620Z Collecting comtypes==1.5.0 (from universal-research-library==0.2.0.dev2)
+2026-11-28T07:20:10.1481454Z   Downloading comtypes-1.5.0-py3-none-any.whl.metadata (7.6 kB)
+2026-11-28T07:20:10.2158450Z Collecting pytest==9.0.2 (from universal-research-library==0.2.0.dev2)
+2026-11-28T07:20:10.2336245Z   Downloading pytest-9.0.2-py3-none-any.whl.metadata (7.6 kB)
+2026-11-28T07:20:10.2972650Z Collecting beautifulsoup4<5,>=4.12 (from universal-research-library==0.2.0.dev2)
+2026-11-28T07:20:10.3146203Z   Downloading beautifulsoup4-4.15.0-py3-none-any.whl.metadata (3.8 kB)
+2026-11-28T07:20:10.3744836Z Collecting openpyxl<4,>=3.1 (from universal-research-library==0.2.0.dev2)
+2026-11-28T07:20:10.3922162Z   Downloading openpyxl-3.1.5-py2.py3-none-any.whl.metadata (2.5 kB)
+2026-11-28T07:20:10.4171051Z Collecting packaging<27,>=25 (from universal-research-library==0.2.0.dev2)
+2026-11-28T07:20:10.4196799Z   Using cached packaging-26.4-py3-none-any.whl.metadata (3.5 kB)
+2026-11-28T07:20:10.4905058Z Collecting huggingface-hub==1.16.1 (from universal-research-library==0.2.0.dev2)
+2026-11-28T07:20:10.5097135Z   Downloading huggingface_hub-1.16.1-py3-none-any.whl.metadata (14 kB)
+2026-11-28T07:20:10.6980071Z Collecting reportlab==4.4.9 (from universal-research-library==0.2.0.dev2)
+2026-11-28T07:20:10.7155650Z   Downloading reportlab-4.4.9-py3-none-any.whl.metadata (1.7 kB)
+2026-11-28T07:20:10.7868538Z Collecting pytesseract==0.3.13 (from universal-research-library==0.2.0.dev2)
+2026-11-28T07:20:10.8071662Z   Downloading pytesseract-0.3.13-py3-none-any.whl.metadata (11 kB)
+2026-11-28T07:20:11.4321341Z Collecting rapidfuzz==3.14.6 (from universal-research-library==0.2.0.dev2)
+2026-11-28T07:20:11.4514477Z   Downloading rapidfuzz-3.14.6-cp311-cp311-win_amd64.whl.metadata (12 kB)
+2026-11-28T07:20:11.5218707Z Collecting nltk==3.9.2 (from universal-research-library==0.2.0.dev2)
+2026-11-28T07:20:11.5424144Z   Downloading nltk-3.9.2-py3-none-any.whl.metadata (3.2 kB)
+2026-11-28T07:20:11.6634794Z Collecting zstandard==0.25.0 (from universal-research-library==0.2.0.dev2)
+2026-11-28T07:20:11.6808448Z   Downloading zstandard-0.25.0-cp311-cp311-win_amd64.whl.metadata (3.3 kB)
+2026-11-28T07:20:11.7439146Z Collecting fsspec>=2023.5.0 (from huggingface-hub==1.16.1->universal-research-library==0.2.0.dev2)
+2026-11-28T07:20:11.7610167Z   Downloading fsspec-2026.9.0-py3-none-any.whl.metadata (10 kB)
+2026-11-28T07:20:11.8678575Z Collecting hf-xet<2.0.0,>=1.4.3 (from huggingface-hub==1.16.1->universal-research-library==0.2.0.dev2)
+2026-11-28T07:20:11.8855379Z   Downloading hf_xet-1.8.0-cp38-abi3-win_amd64.whl.metadata (4.9 kB)
+2026-11-28T07:20:11.9400391Z Collecting httpx<1,>=0.23.0 (from huggingface-hub==1.16.1->universal-research-library==0.2.0.dev2)
+2026-11-28T07:20:11.9572509Z   Downloading httpx-0.29.0-py3-none-any.whl.metadata (7.1 kB)
+2026-11-28T07:20:12.0381358Z Collecting pyyaml>=5.1 (from huggingface-hub==1.16.1->universal-research-library==0.2.0.dev2)
+2026-11-28T07:20:12.0551688Z   Downloading pyyaml-6.0.4-cp311-cp311-win_amd64.whl.metadata (2.4 kB)
+2026-11-28T07:20:12.1384080Z Collecting tqdm>=4.42.1 (from huggingface-hub==1.16.1->universal-research-library==0.2.0.dev2)
+2026-11-28T07:20:12.1585664Z   Downloading tqdm-4.70.1-py3-none-any.whl.metadata (57 kB)
+2026-11-28T07:20:12.2552370Z Collecting typer>=0.20.0 (from huggingface-hub==1.16.1->universal-research-library==0.2.0.dev2)
+2026-11-28T07:20:12.2769195Z   Downloading typer-0.29.3-py3-none-any.whl.metadata (16 kB)
+2026-11-28T07:20:12.3481068Z Collecting typing-extensions>=4.1.0 (from huggingface-hub==1.16.1->universal-research-library==0.2.0.dev2)
+2026-11-28T07:20:12.3682161Z   Downloading typing_extensions-4.16.0-py3-none-any.whl.metadata (3.3 kB)
+2026-11-28T07:20:12.4290768Z Collecting click (from nltk==3.9.2->universal-research-library==0.2.0.dev2)
+2026-11-28T07:20:12.4462291Z   Downloading click-8.5.1-py3-none-any.whl.metadata (2.6 kB)
+2026-11-28T07:20:12.5014826Z Collecting joblib (from nltk==3.9.2->universal-research-library==0.2.0.dev2)
+2026-11-28T07:20:12.5183013Z   Downloading joblib-1.6.0-py3-none-any.whl.metadata (6.5 kB)
+2026-11-28T07:20:13.0505613Z Collecting regex>=2021.8.3 (from nltk==3.9.2->universal-research-library==0.2.0.dev2)
+2026-11-28T07:20:13.0697003Z   Downloading regex-2026.11.25-cp311-cp311-win_amd64.whl.metadata (41 kB)
+2026-11-28T07:20:13.3636879Z Collecting numpy>=2.0.0 (from py3langid==0.4.0->universal-research-library==0.2.0.dev2)
+2026-11-28T07:20:13.3814401Z   Downloading numpy-2.4.6-cp311-cp311-win_amd64.whl.metadata (6.6 kB)
+2026-11-28T07:20:13.4361627Z Collecting colorama>=0.4 (from pytest==9.0.2->universal-research-library==0.2.0.dev2)
+2026-11-28T07:20:13.4533443Z   Downloading colorama-0.4.6-py2.py3-none-any.whl.metadata (17 kB)
+2026-11-28T07:20:13.5000237Z Collecting iniconfig>=1.0.1 (from pytest==9.0.2->universal-research-library==0.2.0.dev2)
+2026-11-28T07:20:13.5168923Z   Downloading iniconfig-2.3.1-py3-none-any.whl.metadata (2.8 kB)
+2026-11-28T07:20:13.5630313Z Collecting pluggy<2,>=1.5 (from pytest==9.0.2->universal-research-library==0.2.0.dev2)
+2026-11-28T07:20:13.5832307Z   Downloading pluggy-1.7.0-py3-none-any.whl.metadata (5.0 kB)
+2026-11-28T07:20:13.6454174Z Collecting pygments>=2.7.2 (from pytest==9.0.2->universal-research-library==0.2.0.dev2)
+2026-11-28T07:20:13.6625104Z   Downloading pygments-2.21.0-py3-none-any.whl.metadata (2.5 kB)
+2026-11-28T07:20:13.9593818Z Collecting lxml>=3.1.0 (from python-docx==1.2.0->universal-research-library==0.2.0.dev2)
+2026-11-28T07:20:13.9768931Z   Downloading lxml-6.2.0-cp311-cp311-win_amd64.whl.metadata (5.7 kB)
+2026-11-28T07:20:14.1883558Z Collecting charset-normalizer (from reportlab==4.4.9->universal-research-library==0.2.0.dev2)
+2026-11-28T07:20:14.2074466Z   Downloading charset_normalizer-3.5.3-cp311-cp311-win_amd64.whl.metadata (44 kB)
+2026-11-28T07:20:14.2790294Z Collecting soupsieve>=1.6.1 (from beautifulsoup4<5,>=4.12->universal-research-library==0.2.0.dev2)
+2026-11-28T07:20:14.2963599Z   Downloading soupsieve-4.1.3-py3-none-any.whl.metadata (4.4 kB)
+2026-11-28T07:20:14.3530701Z Collecting anyio (from httpx<1,>=0.23.0->huggingface-hub==1.16.1->universal-research-library==0.2.0.dev2)
+2026-11-28T07:20:14.3703022Z   Downloading anyio-4.16.0-py3-none-any.whl.metadata (4.7 kB)
+2026-11-28T07:20:14.4620619Z Collecting certifi (from httpx<1,>=0.23.0->huggingface-hub==1.16.1->universal-research-library==0.2.0.dev2)
+2026-11-28T07:20:14.4788399Z   Downloading certifi-2026.11.20-py3-none-any.whl.metadata (2.5 kB)
+2026-11-28T07:20:14.5339955Z Collecting httpcore==1.* (from httpx<1,>=0.23.0->huggingface-hub==1.16.1->universal-research-library==0.2.0.dev2)
+2026-11-28T07:20:14.5512498Z   Downloading httpcore-1.0.9-py3-none-any.whl.metadata (21 kB)
+2026-11-28T07:20:14.6044307Z Collecting idna (from httpx<1,>=0.23.0->huggingface-hub==1.16.1->universal-research-library==0.2.0.dev2)
+2026-11-28T07:20:14.6211647Z   Downloading idna-3.20-py3-none-any.whl.metadata (7.2 kB)
+2026-11-28T07:20:14.6712195Z Collecting h11>=0.16 (from httpcore==1.*->httpx<1,>=0.23.0->huggingface-hub==1.16.1->universal-research-library==0.2.0.dev2)
+2026-11-28T07:20:14.6882311Z   Downloading h11-0.16.0-py3-none-any.whl.metadata (8.3 kB)
+2026-11-28T07:20:14.7386658Z Collecting et-xmlfile (from openpyxl<4,>=3.1->universal-research-library==0.2.0.dev2)
+2026-11-28T07:20:14.7586000Z   Downloading et_xmlfile-2.0.0-py3-none-any.whl.metadata (2.7 kB)
+2026-11-28T07:20:14.9108674Z Collecting pydantic>=2.5.3 (from typer>=0.20.0->huggingface-hub==1.16.1->universal-research-library==0.2.0.dev2)
+2026-11-28T07:20:14.9303406Z   Downloading pydantic-2.14.4-py3-none-any.whl.metadata (143 kB)
+2026-11-28T07:20:14.9954676Z Collecting shellingham>=1.3.0 (from typer>=0.20.0->huggingface-hub==1.16.1->universal-research-library==0.2.0.dev2)
+2026-11-28T07:20:15.0123584Z   Downloading shellingham-1.5.4-py2.py3-none-any.whl.metadata (3.5 kB)
+2026-11-28T07:20:15.0852592Z Collecting rich>=13.8.0 (from typer>=0.20.0->huggingface-hub==1.16.1->universal-research-library==0.2.0.dev2)
+2026-11-28T07:20:15.1020580Z   Downloading rich-15.0.0-py3-none-any.whl.metadata (18 kB)
+2026-11-28T07:20:15.1501160Z Collecting annotated-doc>=0.0.2 (from typer>=0.20.0->huggingface-hub==1.16.1->universal-research-library==0.2.0.dev2)
+2026-11-28T07:20:15.1675670Z   Downloading annotated_doc-0.0.7-py3-none-any.whl.metadata (6.4 kB)
+2026-11-28T07:20:15.2128297Z Collecting annotated-types>=0.6.0 (from pydantic>=2.5.3->typer>=0.20.0->huggingface-hub==1.16.1->universal-research-library==0.2.0.dev2)
+2026-11-28T07:20:15.2301908Z   Downloading annotated_types-0.8.0-py3-none-any.whl.metadata (15 kB)
+2026-11-28T07:20:16.0799723Z Collecting pydantic-core==2.50.5 (from pydantic>=2.5.3->typer>=0.20.0->huggingface-hub==1.16.1->universal-research-library==0.2.0.dev2)
+2026-11-28T07:20:16.0976351Z   Downloading pydantic_core-2.50.5-cp311-cp311-win_amd64.whl.metadata (6.7 kB)
+2026-11-28T07:20:16.1505870Z Collecting typing-inspection>=0.4.4 (from pydantic>=2.5.3->typer>=0.20.0->huggingface-hub==1.16.1->universal-research-library==0.2.0.dev2)
+2026-11-28T07:20:16.1676545Z   Downloading typing_inspection-0.4.5-py3-none-any.whl.metadata (2.6 kB)
+2026-11-28T07:20:16.2234757Z Collecting markdown-it-py>=2.2.0 (from rich>=13.8.0->typer>=0.20.0->huggingface-hub==1.16.1->universal-research-library==0.2.0.dev2)
+2026-11-28T07:20:16.2406375Z   Downloading markdown_it_py-4.3.0-py3-none-any.whl.metadata (7.9 kB)
+2026-11-28T07:20:16.3028225Z Collecting mdurl~=0.1 (from markdown-it-py>=2.2.0->rich>=13.8.0->typer>=0.20.0->huggingface-hub==1.16.1->universal-research-library==0.2.0.dev2)
+2026-11-28T07:20:16.3200612Z   Downloading mdurl-0.1.2-py3-none-any.whl.metadata (1.6 kB)
+2026-11-28T07:20:16.3943079Z Collecting cloudpickle>=3.0 (from joblib->nltk==3.9.2->universal-research-library==0.2.0.dev2)
+2026-11-28T07:20:16.4183349Z   Downloading cloudpickle-3.1.3-py3-none-any.whl.metadata (7.1 kB)
+2026-11-28T07:20:16.4609514Z Downloading pillow-13.0.0-cp311-cp311-win_amd64.whl (7.3 MB)
+2026-11-28T07:20:16.6047998Z    ---------------------------------------- 7.3/7.3 MB 50.1 MB/s  0:00:00
+2026-11-28T07:20:16.6226055Z Downloading bibtexparser-2.1.0-py3-none-any.whl (50 kB)
+2026-11-28T07:20:16.6585215Z Downloading pylatexenc-2.11-py2.py3-none-any.whl (137 kB)
+2026-11-28T07:20:16.6972546Z Downloading comtypes-1.5.0-py3-none-any.whl (325 kB)
+2026-11-28T07:20:16.7401133Z Downloading defusedxml-0.7.1-py2.py3-none-any.whl (25 kB)
+2026-11-28T07:20:16.7742692Z Downloading filelock-3.29.0-py3-none-any.whl (39 kB)
+2026-11-28T07:20:16.8067956Z Downloading huggingface_hub-1.16.1-py3-none-any.whl (668 kB)
+2026-11-28T07:20:16.8297096Z    ---------------------------------------- 668.2/668.2 kB 12.7 MB/s  0:00:00
+2026-11-28T07:20:16.8489914Z Downloading nltk-3.9.2-py3-none-any.whl (1.5 MB)
+2026-11-28T07:20:16.8785061Z    ---------------------------------------- 1.5/1.5 MB 40.4 MB/s  0:00:00
+2026-11-28T07:20:16.8950898Z Downloading platformdirs-4.10.0-py3-none-any.whl (22 kB)
+2026-11-28T07:20:16.9339026Z Downloading py3langid-0.4.0-py3-none-any.whl (4.6 MB)
+2026-11-28T07:20:16.9891365Z    ---------------------------------------- 4.6/4.6 MB 92.3 MB/s  0:00:00
+2026-11-28T07:20:17.0063422Z Downloading pypdf-7.1.1-py3-none-any.whl (421 kB)
+2026-11-28T07:20:17.0530962Z Downloading pypdfium2-5.13.0-py3-none-win_amd64.whl (3.9 MB)
+2026-11-28T07:20:17.1125108Z    ---------------------------------------- 3.9/3.9 MB 57.5 MB/s  0:00:00
+2026-11-28T07:20:17.1292626Z Downloading pytesseract-0.3.13-py3-none-any.whl (14 kB)
+2026-11-28T07:20:17.1642549Z Downloading pytest-9.0.2-py3-none-any.whl (374 kB)
+2026-11-28T07:20:17.1972488Z Downloading python_docx-1.2.0-py3-none-any.whl (252 kB)
+2026-11-28T07:20:17.2322908Z Downloading quickjs_ng-0.18.0.2-cp310-abi3-win_amd64.whl (401 kB)
+2026-11-28T07:20:17.2694025Z Downloading rapidfuzz-3.14.6-cp311-cp311-win_amd64.whl (1.7 MB)
+2026-11-28T07:20:17.3594695Z    ---------------------------------------- 1.7/1.7 MB 18.9 MB/s  0:00:00
+2026-11-28T07:20:17.3780268Z Downloading reportlab-4.4.9-py3-none-any.whl (2.0 MB)
+2026-11-28T07:20:17.4112141Z    ---------------------------------------- 2.0/2.0 MB 52.9 MB/s  0:00:00
+2026-11-28T07:20:17.4286197Z Downloading zstandard-0.25.0-cp311-cp311-win_amd64.whl (506 kB)
+2026-11-28T07:20:17.4622955Z Downloading beautifulsoup4-4.15.0-py3-none-any.whl (109 kB)
+2026-11-28T07:20:17.4963065Z Downloading hf_xet-1.8.0-cp38-abi3-win_amd64.whl (3.9 MB)
+2026-11-28T07:20:17.5452168Z    ---------------------------------------- 3.9/3.9 MB 77.6 MB/s  0:00:00
+2026-11-28T07:20:17.5620548Z Downloading httpx-0.29.0-py3-none-any.whl (73 kB)
+2026-11-28T07:20:17.5956235Z Downloading httpcore-1.0.9-py3-none-any.whl (78 kB)
+2026-11-28T07:20:17.6254486Z Downloading openpyxl-3.1.5-py2.py3-none-any.whl (250 kB)
+2026-11-28T07:20:17.6432625Z Using cached packaging-26.4-py3-none-any.whl (140 kB)
+2026-11-28T07:20:17.6606271Z Downloading pluggy-1.7.0-py3-none-any.whl (27 kB)
+2026-11-28T07:20:17.6893002Z Downloading colorama-0.4.6-py2.py3-none-any.whl (25 kB)
+2026-11-28T07:20:17.7245023Z Downloading fsspec-2026.9.0-py3-none-any.whl (221 kB)
+2026-11-28T07:20:17.7571847Z Downloading h11-0.16.0-py3-none-any.whl (37 kB)
+2026-11-28T07:20:17.7875532Z Downloading iniconfig-2.3.1-py3-none-any.whl (7.6 kB)
+2026-11-28T07:20:17.8211786Z Downloading lxml-6.2.0-cp311-cp311-win_amd64.whl (4.1 MB)
+2026-11-28T07:20:17.8721532Z    ---------------------------------------- 4.1/4.1 MB 81.7 MB/s  0:00:00
+2026-11-28T07:20:17.8908438Z Downloading numpy-2.4.6-cp311-cp311-win_amd64.whl (12.6 MB)
+2026-11-28T07:20:17.9901792Z    ---------------------------------------- 12.6/12.6 MB 112.2 MB/s  0:00:00
+2026-11-28T07:20:18.0087160Z Downloading pygments-2.21.0-py3-none-any.whl (1.3 MB)
+2026-11-28T07:20:18.0340098Z    ---------------------------------------- 1.3/1.3 MB 61.8 MB/s  0:00:00
+2026-11-28T07:20:18.0515620Z Downloading pyyaml-6.0.4-cp311-cp311-win_amd64.whl (161 kB)
+2026-11-28T07:20:18.0877168Z Downloading regex-2026.11.25-cp311-cp311-win_amd64.whl (282 kB)
+2026-11-28T07:20:18.1250980Z Downloading soupsieve-4.1.3-py3-none-any.whl (59 kB)
+2026-11-28T07:20:18.1696105Z Downloading tqdm-4.70.1-py3-none-any.whl (80 kB)
+2026-11-28T07:20:18.2146532Z Downloading typer-0.29.3-py3-none-any.whl (121 kB)
+2026-11-28T07:20:18.2630344Z Downloading annotated_doc-0.0.7-py3-none-any.whl (5.3 kB)
+2026-11-28T07:20:18.3086365Z Downloading pydantic-2.14.4-py3-none-any.whl (494 kB)
+2026-11-28T07:20:18.3600018Z Downloading pydantic_core-2.50.5-cp311-cp311-win_amd64.whl (2.3 MB)
+2026-11-28T07:20:18.4036988Z    ---------------------------------------- 2.3/2.3 MB 64.8 MB/s  0:00:00
+2026-11-28T07:20:18.4204297Z Downloading annotated_types-0.8.0-py3-none-any.whl (13 kB)
+2026-11-28T07:20:18.4520967Z Downloading rich-15.0.0-py3-none-any.whl (310 kB)
+2026-11-28T07:20:18.4882866Z Downloading markdown_it_py-4.3.0-py3-none-any.whl (96 kB)
+2026-11-28T07:20:18.5237390Z Downloading mdurl-0.1.2-py3-none-any.whl (10.0 kB)
+2026-11-28T07:20:18.5556382Z Downloading shellingham-1.5.4-py2.py3-none-any.whl (9.8 kB)
+2026-11-28T07:20:18.5889861Z Downloading typing_extensions-4.16.0-py3-none-any.whl (45 kB)
+2026-11-28T07:20:18.6201470Z Downloading typing_inspection-0.4.5-py3-none-any.whl (14 kB)
+2026-11-28T07:20:18.6508274Z Downloading anyio-4.16.0-py3-none-any.whl (134 kB)
+2026-11-28T07:20:19.0116014Z Downloading idna-3.20-py3-none-any.whl (69 kB)
+2026-11-28T07:20:19.0430702Z Downloading certifi-2026.11.20-py3-none-any.whl (127 kB)
+2026-11-28T07:20:19.0731367Z Downloading charset_normalizer-3.5.3-cp311-cp311-win_amd64.whl (212 kB)
+2026-11-28T07:20:19.1093013Z Downloading click-8.5.1-py3-none-any.whl (126 kB)
+2026-11-28T07:20:19.1451640Z Downloading et_xmlfile-2.0.0-py3-none-any.whl (18 kB)
+2026-11-28T07:20:19.1779032Z Downloading joblib-1.6.0-py3-none-any.whl (306 kB)
+2026-11-28T07:20:19.2112654Z Downloading cloudpickle-3.1.3-py3-none-any.whl (22 kB)
+2026-11-28T07:20:19.4716963Z Building wheels for collected packages: universal-research-library
+2026-11-28T07:20:19.4788391Z   Building wheel for universal-research-library (pyproject.toml): started
+2026-11-28T07:20:21.0901132Z   Building wheel for universal-research-library (pyproject.toml): finished with status 'done'
+2026-11-28T07:20:21.0916950Z   C:\Users\runneradmin\AppData\Local\Temp\pip-build-env-z3nffoft\overlay\Lib\site-packages\setuptools\command\build_py.py:215: BuildBackendWarning: Package 'bootstrap.vendor.cairn_extractors' is absent from the `packages` configuration.
+2026-11-28T07:20:21.0918775Z   !!
+2026-11-28T07:20:21.0919076Z   
+2026-11-28T07:20:21.0919480Z           ********************************************************************************
+2026-11-28T07:20:21.0920078Z           ############################
+2026-11-28T07:20:21.0921671Z           # Package would be ignored #
+2026-11-28T07:20:21.0921999Z           ############################
+2026-11-28T07:20:21.0922517Z           Python recognizes 'bootstrap.vendor.cairn_extractors' as an importable package[^1],
+2026-11-28T07:20:21.0923157Z           but it is absent from setuptools' `packages` configuration.
+2026-11-28T07:20:21.0923539Z   
+2026-11-28T07:20:21.0923913Z           This leads to an ambiguous overall configuration. If you want to distribute this
+2026-11-28T07:20:21.0924807Z           package, please make sure that 'bootstrap.vendor.cairn_extractors' is explicitly added
+2026-11-28T07:20:21.0925824Z           to the `packages` configuration field.
+2026-11-28T07:20:21.0926332Z   
+2026-11-28T07:20:21.0926848Z           Alternatively, you can also rely on setuptools' discovery methods
+2026-11-28T07:20:21.0927751Z           (for example by using `find_namespace_packages(...)`/`find_namespace:`
+2026-11-28T07:20:21.0928165Z           instead of `find_packages(...)`/`find:`).
+2026-11-28T07:20:21.0928414Z   
+2026-11-28T07:20:21.0928711Z           You can read more about "package discovery" on setuptools documentation page:
+2026-11-28T07:20:21.0929081Z   
+2026-11-28T07:20:21.0929390Z           - https://setuptools.pypa.io/en/latest/userguide/package_discovery.html
+2026-11-28T07:20:21.0929764Z   
+2026-11-28T07:20:21.0930059Z           If you don't want 'bootstrap.vendor.cairn_extractors' to be distributed and are
+2026-11-28T07:20:21.0930562Z           already explicitly excluding 'bootstrap.vendor.cairn_extractors' via
+2026-11-28T07:20:21.0931043Z           `find_namespace_packages(...)/find_namespace` or `find_packages(...)/find`,
+2026-11-28T07:20:21.0931544Z           you can try to use `exclude_package_data`, or `include-package-data=False` in
+2026-11-28T07:20:21.0932020Z           combination with a more fine grained `package-data` configuration.
+2026-11-28T07:20:21.0932556Z   
+2026-11-28T07:20:21.0932992Z           You can read more about "package data files" on setuptools documentation page:
+2026-11-28T07:20:21.0933374Z   
+2026-11-28T07:20:21.0933707Z           - https://setuptools.pypa.io/en/latest/userguide/datafiles.html
+2026-11-28T07:20:21.0934280Z   
+2026-11-28T07:20:21.0934511Z   
+2026-11-28T07:20:21.0935015Z           [^1]: For Python, any directory (with suitable naming) can be imported,
+2026-11-28T07:20:21.0935725Z                 even if it does not contain any `.py` files.
+2026-11-28T07:20:21.0936414Z                 On the other hand, currently there is no concept of package data
+2026-11-28T07:20:21.0937174Z                 directory, all directories are treated like packages.
+2026-11-28T07:20:21.0937580Z           ********************************************************************************
+2026-11-28T07:20:21.0937860Z   
+2026-11-28T07:20:21.0938002Z   !!
+2026-11-28T07:20:21.0938198Z     check.warn(importable)
+2026-11-28T07:20:21.0939337Z   C:\Users\runneradmin\AppData\Local\Temp\pip-build-env-z3nffoft\overlay\Lib\site-packages\setuptools\command\build_py.py:215: BuildBackendWarning: Package 'carr_library.academic_integration.locales' is absent from the `packages` configuration.
+2026-11-28T07:20:21.0940327Z   !!
+2026-11-28T07:20:21.0940464Z   
+2026-11-28T07:20:21.0940659Z           ********************************************************************************
+2026-11-28T07:20:21.0940951Z           ############################
+2026-11-28T07:20:21.0941181Z           # Package would be ignored #
+2026-11-28T07:20:21.0941420Z           ############################
+2026-11-28T07:20:21.0941832Z           Python recognizes 'carr_library.academic_integration.locales' as an importable package[^1],
+2026-11-28T07:20:21.0942345Z           but it is absent from setuptools' `packages` configuration.
+2026-11-28T07:20:21.0942639Z   
+2026-11-28T07:20:21.0943152Z           This leads to an ambiguous overall configuration. If you want to distribute this
+2026-11-28T07:20:21.0944127Z           package, please make sure that 'carr_library.academic_integration.locales' is explicitly added
+2026-11-28T07:20:21.0945147Z           to the `packages` configuration field.
+2026-11-28T07:20:21.0945582Z   
+2026-11-28T07:20:21.0945975Z           Alternatively, you can also rely on setuptools' discovery methods
+2026-11-28T07:20:21.0946673Z           (for example by using `find_namespace_packages(...)`/`find_namespace:`
+2026-11-28T07:20:21.0947048Z           instead of `find_packages(...)`/`find:`).
+2026-11-28T07:20:21.0947316Z   
+2026-11-28T07:20:21.0947619Z           You can read more about "package discovery" on setuptools documentation page:
+2026-11-28T07:20:21.0947993Z   
+2026-11-28T07:20:21.0948279Z           - https://setuptools.pypa.io/en/latest/userguide/package_discovery.html
+2026-11-28T07:20:21.0948634Z   
+2026-11-28T07:20:21.0948953Z           If you don't want 'carr_library.academic_integration.locales' to be distributed and are
+2026-11-28T07:20:21.0949510Z           already explicitly excluding 'carr_library.academic_integration.locales' via
+2026-11-28T07:20:21.0950029Z           `find_namespace_packages(...)/find_namespace` or `find_packages(...)/find`,
+2026-11-28T07:20:21.0950524Z           you can try to use `exclude_package_data`, or `include-package-data=False` in
+2026-11-28T07:20:21.0950998Z           combination with a more fine grained `package-data` configuration.
+2026-11-28T07:20:21.0951379Z   
+2026-11-28T07:20:21.0951663Z           You can read more about "package data files" on setuptools documentation page:
+2026-11-28T07:20:21.0952154Z   
+2026-11-28T07:20:21.0952462Z           - https://setuptools.pypa.io/en/latest/userguide/datafiles.html
+2026-11-28T07:20:21.0952794Z   
+2026-11-28T07:20:21.0952927Z   
+2026-11-28T07:20:21.0953184Z           [^1]: For Python, any directory (with suitable naming) can be imported,
+2026-11-28T07:20:21.0953572Z                 even if it does not contain any `.py` files.
+2026-11-28T07:20:21.0953941Z                 On the other hand, currently there is no concept of package data
+2026-11-28T07:20:21.0954351Z                 directory, all directories are treated like packages.
+2026-11-28T07:20:21.0954699Z           ********************************************************************************
+2026-11-28T07:20:21.0954977Z   
+2026-11-28T07:20:21.0955114Z   !!
+2026-11-28T07:20:21.0955277Z     check.warn(importable)
+2026-11-28T07:20:21.0956220Z   C:\Users\runneradmin\AppData\Local\Temp\pip-build-env-z3nffoft\overlay\Lib\site-packages\setuptools\command\build_py.py:215: BuildBackendWarning: Package 'carr_library.academic_integration.styles' is absent from the `packages` configuration.
+2026-11-28T07:20:21.0957174Z   !!
+2026-11-28T07:20:21.0957309Z   
+2026-11-28T07:20:21.0957499Z           ********************************************************************************
+2026-11-28T07:20:21.0957800Z           ############################
+2026-11-28T07:20:21.0958030Z           # Package would be ignored #
+2026-11-28T07:20:21.0958251Z           ############################
+2026-11-28T07:20:21.0958772Z           Python recognizes 'carr_library.academic_integration.styles' as an importable package[^1],
+2026-11-28T07:20:21.0959294Z           but it is absent from setuptools' `packages` configuration.
+2026-11-28T07:20:21.0959588Z   
+2026-11-28T07:20:21.0959873Z           This leads to an ambiguous overall configuration. If you want to distribute this
+2026-11-28T07:20:21.0960447Z           package, please make sure that 'carr_library.academic_integration.styles' is explicitly added
+2026-11-28T07:20:21.0960916Z           to the `packages` configuration field.
+2026-11-28T07:20:21.0961155Z   
+2026-11-28T07:20:21.0961413Z           Alternatively, you can also rely on setuptools' discovery methods
+2026-11-28T07:20:21.0961852Z           (for example by using `find_namespace_packages(...)`/`find_namespace:`
+2026-11-28T07:20:21.0962217Z           instead of `find_packages(...)`/`find:`).
+2026-11-28T07:20:21.0962465Z   
+2026-11-28T07:20:21.0962740Z           You can read more about "package discovery" on setuptools documentation page:
+2026-11-28T07:20:21.0963198Z   
+2026-11-28T07:20:21.0963483Z           - https://setuptools.pypa.io/en/latest/userguide/package_discovery.html
+2026-11-28T07:20:21.0963840Z   
+2026-11-28T07:20:21.0964151Z           If you don't want 'carr_library.academic_integration.styles' to be distributed and are
+2026-11-28T07:20:21.0964695Z           already explicitly excluding 'carr_library.academic_integration.styles' via
+2026-11-28T07:20:21.0965207Z           `find_namespace_packages(...)/find_namespace` or `find_packages(...)/find`,
+2026-11-28T07:20:21.0965694Z           you can try to use `exclude_package_data`, or `include-package-data=False` in
+2026-11-28T07:20:21.0966167Z           combination with a more fine grained `package-data` configuration.
+2026-11-28T07:20:21.0966500Z   
+2026-11-28T07:20:21.0966776Z           You can read more about "package data files" on setuptools documentation page:
+2026-11-28T07:20:21.0967143Z   
+2026-11-28T07:20:21.0967395Z           - https://setuptools.pypa.io/en/latest/userguide/datafiles.html
+2026-11-28T07:20:21.0967727Z   
+2026-11-28T07:20:21.0967873Z   
+2026-11-28T07:20:21.0968119Z           [^1]: For Python, any directory (with suitable naming) can be imported,
+2026-11-28T07:20:21.0968505Z                 even if it does not contain any `.py` files.
+2026-11-28T07:20:21.0968873Z                 On the other hand, currently there is no concept of package data
+2026-11-28T07:20:21.0969272Z                 directory, all directories are treated like packages.
+2026-11-28T07:20:21.0969623Z           ********************************************************************************
+2026-11-28T07:20:21.0969901Z   
+2026-11-28T07:20:21.0970037Z   !!
+2026-11-28T07:20:21.0970198Z     check.warn(importable)
+2026-11-28T07:20:21.0971157Z   C:\Users\runneradmin\AppData\Local\Temp\pip-build-env-z3nffoft\overlay\Lib\site-packages\setuptools\command\build_py.py:215: BuildBackendWarning: Package 'carr_library.academic_integration.vendor' is absent from the `packages` configuration.
+2026-11-28T07:20:21.0972820Z   !!
+2026-11-28T07:20:21.0973059Z   
+2026-11-28T07:20:21.0973373Z           ********************************************************************************
+2026-11-28T07:20:21.0973830Z           ############################
+2026-11-28T07:20:21.0974062Z           # Package would be ignored #
+2026-11-28T07:20:21.0974285Z           ############################
+2026-11-28T07:20:21.0974695Z           Python recognizes 'carr_library.academic_integration.vendor' as an importable package[^1],
+2026-11-28T07:20:21.0975209Z           but it is absent from setuptools' `packages` configuration.
+2026-11-28T07:20:21.0975505Z   
+2026-11-28T07:20:21.0975796Z           This leads to an ambiguous overall configuration. If you want to distribute this
+2026-11-28T07:20:21.0976381Z           package, please make sure that 'carr_library.academic_integration.vendor' is explicitly added
+2026-11-28T07:20:21.0976852Z           to the `packages` configuration field.
+2026-11-28T07:20:21.0977097Z   
+2026-11-28T07:20:21.0977458Z           Alternatively, you can also rely on setuptools' discovery methods
+2026-11-28T07:20:21.0977907Z           (for example by using `find_namespace_packages(...)`/`find_namespace:`
+2026-11-28T07:20:21.0978284Z           instead of `find_packages(...)`/`find:`).
+2026-11-28T07:20:21.0978530Z   
+2026-11-28T07:20:21.0978811Z           You can read more about "package discovery" on setuptools documentation page:
+2026-11-28T07:20:21.0979177Z   
+2026-11-28T07:20:21.0979455Z           - https://setuptools.pypa.io/en/latest/userguide/package_discovery.html
+2026-11-28T07:20:21.0979809Z   
+2026-11-28T07:20:21.0980121Z           If you don't want 'carr_library.academic_integration.vendor' to be distributed and are
+2026-11-28T07:20:21.0980662Z           already explicitly excluding 'carr_library.academic_integration.vendor' via
+2026-11-28T07:20:21.0981166Z           `find_namespace_packages(...)/find_namespace` or `find_packages(...)/find`,
+2026-11-28T07:20:21.0981733Z           you can try to use `exclude_package_data`, or `include-package-data=False` in
+2026-11-28T07:20:21.0982204Z           combination with a more fine grained `package-data` configuration.
+2026-11-28T07:20:21.0982530Z   
+2026-11-28T07:20:21.0982813Z           You can read more about "package data files" on setuptools documentation page:
+2026-11-28T07:20:21.0983172Z   
+2026-11-28T07:20:21.0983420Z           - https://setuptools.pypa.io/en/latest/userguide/datafiles.html
+2026-11-28T07:20:21.0983745Z   
+2026-11-28T07:20:21.0983885Z   
+2026-11-28T07:20:21.0984135Z           [^1]: For Python, any directory (with suitable naming) can be imported,
+2026-11-28T07:20:21.0984518Z                 even if it does not contain any `.py` files.
+2026-11-28T07:20:21.0984885Z                 On the other hand, currently there is no concept of package data
+2026-11-28T07:20:21.0985285Z                 directory, all directories are treated like packages.
+2026-11-28T07:20:21.0985646Z           ********************************************************************************
+2026-11-28T07:20:21.0985927Z   
+2026-11-28T07:20:21.0986064Z   !!
+2026-11-28T07:20:21.0986231Z     check.warn(importable)
+2026-11-28T07:20:21.0987159Z   C:\Users\runneradmin\AppData\Local\Temp\pip-build-env-z3nffoft\overlay\Lib\site-packages\setuptools\command\build_py.py:215: BuildBackendWarning: Package 'carr_library.citations._vendor_citeproc' is absent from the `packages` configuration.
+2026-11-28T07:20:21.0988113Z   !!
+2026-11-28T07:20:21.0988253Z   
+2026-11-28T07:20:21.0988442Z           ********************************************************************************
+2026-11-28T07:20:21.0988730Z           ############################
+2026-11-28T07:20:21.0988964Z           # Package would be ignored #
+2026-11-28T07:20:21.0989185Z           ############################
+2026-11-28T07:20:21.0989589Z           Python recognizes 'carr_library.citations._vendor_citeproc' as an importable package[^1],
+2026-11-28T07:20:21.0990099Z           but it is absent from setuptools' `packages` configuration.
+2026-11-28T07:20:21.0990394Z   
+2026-11-28T07:20:21.0990678Z           This leads to an ambiguous overall configuration. If you want to distribute this
+2026-11-28T07:20:21.0991249Z           package, please make sure that 'carr_library.citations._vendor_citeproc' is explicitly added
+2026-11-28T07:20:21.0991701Z           to the `packages` configuration field.
+2026-11-28T07:20:21.0991943Z   
+2026-11-28T07:20:21.0992208Z           Alternatively, you can also rely on setuptools' discovery methods
+2026-11-28T07:20:21.0992650Z           (for example by using `find_namespace_packages(...)`/`find_namespace:`
+2026-11-28T07:20:21.0994588Z           instead of `find_packages(...)`/`find:`).
+2026-11-28T07:20:21.0994867Z   
+2026-11-28T07:20:21.0995176Z           You can read more about "package discovery" on setuptools documentation page:
+2026-11-28T07:20:21.0995554Z   
+2026-11-28T07:20:21.0996503Z           - https://setuptools.pypa.io/en/latest/userguide/package_discovery.html
+2026-11-28T07:20:21.0996906Z   
+2026-11-28T07:20:21.0997240Z           If you don't want 'carr_library.citations._vendor_citeproc' to be distributed and are
+2026-11-28T07:20:21.0997796Z           already explicitly excluding 'carr_library.citations._vendor_citeproc' via
+2026-11-28T07:20:21.0998310Z           `find_namespace_packages(...)/find_namespace` or `find_packages(...)/find`,
+2026-11-28T07:20:21.0998820Z           you can try to use `exclude_package_data`, or `include-package-data=False` in
+2026-11-28T07:20:21.0999306Z           combination with a more fine grained `package-data` configuration.
+2026-11-28T07:20:21.0999641Z   
+2026-11-28T07:20:21.0999937Z           You can read more about "package data files" on setuptools documentation page:
+2026-11-28T07:20:21.1000300Z   
+2026-11-28T07:20:21.1000564Z           - https://setuptools.pypa.io/en/latest/userguide/datafiles.html
+2026-11-28T07:20:21.1021048Z   
+2026-11-28T07:20:21.1021224Z   
+2026-11-28T07:20:21.1021527Z           [^1]: For Python, any directory (with suitable naming) can be imported,
+2026-11-28T07:20:21.1021954Z                 even if it does not contain any `.py` files.
+2026-11-28T07:20:21.1022346Z                 On the other hand, currently there is no concept of package data
+2026-11-28T07:20:21.1022773Z                 directory, all directories are treated like packages.
+2026-11-28T07:20:21.1023154Z           ********************************************************************************
+2026-11-28T07:20:21.1023441Z   
+2026-11-28T07:20:21.1023584Z   !!
+2026-11-28T07:20:21.1023749Z     check.warn(importable)
+2026-11-28T07:20:21.1024671Z   C:\Users\runneradmin\AppData\Local\Temp\pip-build-env-z3nffoft\overlay\Lib\site-packages\setuptools\command\build_py.py:215: BuildBackendWarning: Package 'carr_library.citations.styles' is absent from the `packages` configuration.
+2026-11-28T07:20:21.1025591Z   !!
+2026-11-28T07:20:21.1025741Z   
+2026-11-28T07:20:21.1025947Z           ********************************************************************************
+2026-11-28T07:20:21.1026246Z           ############################
+2026-11-28T07:20:21.1026483Z           # Package would be ignored #
+2026-11-28T07:20:21.1026713Z           ############################
+2026-11-28T07:20:21.1027090Z           Python recognizes 'carr_library.citations.styles' as an importable package[^1],
+2026-11-28T07:20:21.1027848Z           but it is absent from setuptools' `packages` configuration.
+2026-11-28T07:20:21.1028168Z   
+2026-11-28T07:20:21.1028463Z           This leads to an ambiguous overall configuration. If you want to distribute this
+2026-11-28T07:20:21.1029084Z           package, please make sure that 'carr_library.citations.styles' is explicitly added
+2026-11-28T07:20:21.1029641Z           to the `packages` configuration field.
+2026-11-28T07:20:21.1029896Z   
+2026-11-28T07:20:21.1030157Z           Alternatively, you can also rely on setuptools' discovery methods
+2026-11-28T07:20:21.1030625Z           (for example by using `find_namespace_packages(...)`/`find_namespace:`
+2026-11-28T07:20:21.1031011Z           instead of `find_packages(...)`/`find:`).
+2026-11-28T07:20:21.1031265Z   
+2026-11-28T07:20:21.1031555Z           You can read more about "package discovery" on setuptools documentation page:
+2026-11-28T07:20:21.1031929Z   
+2026-11-28T07:20:21.1032227Z           - https://setuptools.pypa.io/en/latest/userguide/package_discovery.html
+2026-11-28T07:20:21.1032596Z   
+2026-11-28T07:20:21.1032877Z           If you don't want 'carr_library.citations.styles' to be distributed and are
+2026-11-28T07:20:21.1033352Z           already explicitly excluding 'carr_library.citations.styles' via
+2026-11-28T07:20:21.1033819Z           `find_namespace_packages(...)/find_namespace` or `find_packages(...)/find`,
+2026-11-28T07:20:21.1034322Z           you can try to use `exclude_package_data`, or `include-package-data=False` in
+2026-11-28T07:20:21.1034810Z           combination with a more fine grained `package-data` configuration.
+2026-11-28T07:20:21.1035298Z   
+2026-11-28T07:20:21.1035598Z           You can read more about "package data files" on setuptools documentation page:
+2026-11-28T07:20:21.1035969Z   
+2026-11-28T07:20:21.1036229Z           - https://setuptools.pypa.io/en/latest/userguide/datafiles.html
+2026-11-28T07:20:21.1036574Z   
+2026-11-28T07:20:21.1036711Z   
+2026-11-28T07:20:21.1036961Z           [^1]: For Python, any directory (with suitable naming) can be imported,
+2026-11-28T07:20:21.1037355Z                 even if it does not contain any `.py` files.
+2026-11-28T07:20:21.1037730Z                 On the other hand, currently there is no concept of package data
+2026-11-28T07:20:21.1038141Z                 directory, all directories are treated like packages.
+2026-11-28T07:20:21.1038498Z           ********************************************************************************
+2026-11-28T07:20:21.1038863Z   
+2026-11-28T07:20:21.1039012Z   !!
+2026-11-28T07:20:21.1039178Z     check.warn(importable)
+2026-11-28T07:20:21.1040170Z   C:\Users\runneradmin\AppData\Local\Temp\pip-build-env-z3nffoft\overlay\Lib\site-packages\setuptools\command\build_py.py:215: BuildBackendWarning: Package 'carr_library.language_qualification.data' is absent from the `packages` configuration.
+2026-11-28T07:20:21.1041145Z   !!
+2026-11-28T07:20:21.1041287Z   
+2026-11-28T07:20:21.1041486Z           ********************************************************************************
+2026-11-28T07:20:21.1041783Z           ############################
+2026-11-28T07:20:21.1042027Z           # Package would be ignored #
+2026-11-28T07:20:21.1042253Z           ############################
+2026-11-28T07:20:21.1042667Z           Python recognizes 'carr_library.language_qualification.data' as an importable package[^1],
+2026-11-28T07:20:21.1043182Z           but it is absent from setuptools' `packages` configuration.
+2026-11-28T07:20:21.1043484Z   
+2026-11-28T07:20:21.1043779Z           This leads to an ambiguous overall configuration. If you want to distribute this
+2026-11-28T07:20:21.1044360Z           package, please make sure that 'carr_library.language_qualification.data' is explicitly added
+2026-11-28T07:20:21.1044827Z           to the `packages` configuration field.
+2026-11-28T07:20:21.1045071Z   
+2026-11-28T07:20:21.1045330Z           Alternatively, you can also rely on setuptools' discovery methods
+2026-11-28T07:20:21.1045778Z           (for example by using `find_namespace_packages(...)`/`find_namespace:`
+2026-11-28T07:20:21.1046155Z           instead of `find_packages(...)`/`find:`).
+2026-11-28T07:20:21.1046405Z   
+2026-11-28T07:20:21.1046687Z           You can read more about "package discovery" on setuptools documentation page:
+2026-11-28T07:20:21.1047052Z   
+2026-11-28T07:20:21.1047344Z           - https://setuptools.pypa.io/en/latest/userguide/package_discovery.html
+2026-11-28T07:20:21.1047700Z   
+2026-11-28T07:20:21.1048021Z           If you don't want 'carr_library.language_qualification.data' to be distributed and are
+2026-11-28T07:20:21.1048584Z           already explicitly excluding 'carr_library.language_qualification.data' via
+2026-11-28T07:20:21.1049087Z           `find_namespace_packages(...)/find_namespace` or `find_packages(...)/find`,
+2026-11-28T07:20:21.1049595Z           you can try to use `exclude_package_data`, or `include-package-data=False` in
+2026-11-28T07:20:21.1050096Z           combination with a more fine grained `package-data` configuration.
+2026-11-28T07:20:21.1050436Z   
+2026-11-28T07:20:21.1050719Z           You can read more about "package data files" on setuptools documentation page:
+2026-11-28T07:20:21.1051082Z   
+2026-11-28T07:20:21.1051389Z           - https://setuptools.pypa.io/en/latest/userguide/datafiles.html
+2026-11-28T07:20:21.1051721Z   
+2026-11-28T07:20:21.1051869Z   
+2026-11-28T07:20:21.1052121Z           [^1]: For Python, any directory (with suitable naming) can be imported,
+2026-11-28T07:20:21.1052515Z                 even if it does not contain any `.py` files.
+2026-11-28T07:20:21.1052964Z                 On the other hand, currently there is no concept of package data
+2026-11-28T07:20:21.1053377Z                 directory, all directories are treated like packages.
+2026-11-28T07:20:21.1053732Z           ********************************************************************************
+2026-11-28T07:20:21.1054014Z   
+2026-11-28T07:20:21.1054154Z   !!
+2026-11-28T07:20:21.1054322Z     check.warn(importable)
+2026-11-28T07:20:21.1055113Z   Created wheel for universal-research-library: filename=universal_research_library-0.2.0.dev2-py3-none-any.whl size=2614462 sha256=c89440ae74b86d5aac75fc41507c1228a52764788bc92162787e4a4626bf7b43
+2026-11-28T07:20:21.1056332Z   Stored in directory: C:\Users\runneradmin\AppData\Local\Temp\pip-ephem-wheel-cache-pbkr5lqi\wheels\56\87\a2\50569f72c5b9f7230430620c2128f1fdaa627321daeeb76ee4
+2026-11-28T07:20:21.1096764Z Successfully built universal-research-library
+2026-11-28T07:20:21.2383061Z Installing collected packages: pylatexenc, zstandard, typing-extensions, soupsieve, shellingham, regex, rapidfuzz, quickjs-ng, pyyaml, pypdfium2, pypdf, pygments, pluggy, platformdirs, Pillow, packaging, numpy, mdurl, lxml, iniconfig, idna, hf-xet, h11, fsspec, filelock, et-xmlfile, defusedxml, comtypes, colorama, cloudpickle, click, charset-normalizer, certifi, bibtexparser, annotated-types, annotated-doc, typing-inspection, tqdm, reportlab, python-docx, pytest, pytesseract, pydantic-core, py3langid, openpyxl, markdown-it-py, joblib, httpcore, beautifulsoup4, anyio, universal-research-library, rich, pydantic, nltk, httpx, typer, huggingface-hub
+2026-11-28T07:20:43.0028914Z 
+2026-11-28T07:20:43.0061321Z Successfully installed Pillow-13.0.0 annotated-doc-0.0.7 annotated-types-0.8.0 anyio-4.16.0 beautifulsoup4-4.15.0 bibtexparser-2.1.0 certifi-2026.11.20 charset-normalizer-3.5.3 click-8.5.1 cloudpickle-3.1.3 colorama-0.4.6 comtypes-1.5.0 defusedxml-0.7.1 et-xmlfile-2.0.0 filelock-3.29.0 fsspec-2026.9.0 h11-0.16.0 hf-xet-1.8.0 httpcore-1.0.9 httpx-0.29.0 huggingface-hub-1.16.1 idna-3.20 iniconfig-2.3.1 joblib-1.6.0 lxml-6.2.0 markdown-it-py-4.3.0 mdurl-0.1.2 nltk-3.9.2 numpy-2.4.6 openpyxl-3.1.5 packaging-26.4 platformdirs-4.10.0 pluggy-1.7.0 py3langid-0.4.0 pydantic-2.14.4 pydantic-core-2.50.5 pygments-2.21.0 pylatexenc-2.11 pypdf-7.1.1 pypdfium2-5.13.0 pytesseract-0.3.13 pytest-9.0.2 python-docx-1.2.0 pyyaml-6.0.4 quickjs-ng-0.18.0.2 rapidfuzz-3.14.6 regex-2026.11.25 reportlab-4.4.9 rich-15.0.0 shellingham-1.5.4 soupsieve-4.1.3 tqdm-4.70.1 typer-0.29.3 typing-extensions-4.16.0 typing-inspection-0.4.5 universal-research-library-0.2.0.dev2 zstandard-0.25.0
+2026-11-28T07:20:43.6321345Z No broken requirements found.
+2026-11-28T07:20:45.3277041Z ##[group]Run python scripts/ci_check.py tests/assistant/test_transcription_workflow.py tests/transcription/test_supplied_worker_bridge.py tests/storage/test_transcription_recovery.py tests/storage/test_import_publication_backup.py tests/ui/test_progress_job_review.py tests/transcription/test_protocol_routing.py tests/transcription/test_owned_admission.py tests/transcription/test_protocol_fixture.py tests/transcription/test_runtime_admission.py tests/transcription/test_runtime_inventory.py tests/storage/test_asr_additional_profile.py tests/storage/test_state_json_reader.py tests/transcription/test_control_reads.py tests/transcription/test_service.py tests/transcription/test_admission_boundaries.py tests/transcription/test_restore.py tests/e2e/test_transcription_cli.py tests/storage/test_transcription_backup.py tests/storage/test_transcription_composite_backup.py tests/operations/test_resources.py tests/operations/test_facade.py tests/operations/test_transcription_views.py tests/e2e/test_operations_cli.py tests/storage/test_atomic_state_publication.py tests/audio/test_audio_process.py tests/audio/test_process_deadline.py
+2026-11-28T07:20:45.3285248Z [36;1mpython scripts/ci_check.py tests/assistant/test_transcription_workflow.py tests/transcription/test_supplied_worker_bridge.py tests/storage/test_transcription_recovery.py tests/storage/test_import_publication_backup.py tests/ui/test_progress_job_review.py tests/transcription/test_protocol_routing.py tests/transcription/test_owned_admission.py tests/transcription/test_protocol_fixture.py tests/transcription/test_runtime_admission.py tests/transcription/test_runtime_inventory.py tests/storage/test_asr_additional_profile.py tests/storage/test_state_json_reader.py tests/transcription/test_control_reads.py tests/transcription/test_service.py tests/transcription/test_admission_boundaries.py tests/transcription/test_restore.py tests/e2e/test_transcription_cli.py tests/storage/test_transcription_backup.py tests/storage/test_transcription_composite_backup.py tests/operations/test_resources.py tests/operations/test_facade.py tests/operations/test_transcription_views.py tests/e2e/test_operations_cli.py tests/storage/test_atomic_state_publication.py tests/audio/test_audio_process.py tests/audio/test_process_deadline.py[0m
+2026-11-28T07:20:45.3289740Z [36;1mif ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }[0m
+2026-11-28T07:20:45.3332487Z shell: C:\Program Files\PowerShell\7\pwsh.EXE -command ". '{0}'"
+2026-11-28T07:20:45.3332821Z env:
+2026-11-28T07:20:45.3332993Z   PYTHONUTF8: 1
+2026-11-28T07:20:45.3333192Z   PYTHONUNBUFFERED: 1
+2026-11-28T07:20:45.3333389Z   HF_HUB_OFFLINE: 1
+2026-11-28T07:20:45.3333584Z   TRANSFORMERS_OFFLINE: 1
+2026-11-28T07:20:45.3333787Z   DO_NOT_TRACK: 1
+2026-11-28T07:20:45.3334050Z   pythonLocation: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T07:20:45.3334490Z   PKG_CONFIG_PATH: C:\hostedtoolcache\windows\Python\3.11.9\x64/lib/pkgconfig
+2026-11-28T07:20:45.3334936Z   Python_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T07:20:45.3335329Z   Python2_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T07:20:45.3336323Z   Python3_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+2026-11-28T07:20:45.3336674Z ##[endgroup]
+2026-11-28T07:20:46.0018279Z ============================= test session starts =============================
+2026-11-28T07:20:46.0052244Z platform win32 -- Python 3.11.9, pytest-9.0.2, pluggy-1.7.0
+2026-11-28T07:20:46.0054050Z rootdir: D:\a\AudioTacticalFPS\AudioTacticalFPS\carr-library
+2026-11-28T07:20:46.0054628Z configfile: pyproject.toml
+2026-11-28T07:20:46.3984804Z collected 24 items
+2026-11-28T07:20:46.3989263Z 
+2026-11-28T07:21:02.7554655Z tests\assistant\test_transcription_workflow.py ........................  [100%]
+2026-11-28T07:21:02.7555432Z 
+2026-11-28T07:21:02.7556202Z - generated xml file: C:\Users\RUNNER~1\AppData\Local\Temp\carr-ci-svw9531_\junit.xml -
+2026-11-28T07:21:02.7559686Z ============================= 24 passed in 16.75s =============================
+2026-11-28T07:21:02.8236777Z PASS: tests/assistant/test_transcription_workflow.py: junit_passed=24, failed=0, skipped=0, pytest_exit=0
+2026-11-28T07:21:03.2112183Z ============================= test session starts =============================
+2026-11-28T07:21:03.2146090Z platform win32 -- Python 3.11.9, pytest-9.0.2, pluggy-1.7.0
+2026-11-28T07:21:03.2148011Z rootdir: D:\a\AudioTacticalFPS\AudioTacticalFPS\carr-library
+2026-11-28T07:21:03.2148564Z configfile: pyproject.toml
+2026-11-28T07:21:03.5234923Z collected 91 items
+2026-11-28T07:21:03.5239384Z 
+2026-11-28T07:21:07.8480899Z tests\transcription\test_supplied_worker_bridge.py ..................... [ 23%]
+2026-11-28T07:21:32.7524006Z .............F........................................................   [100%]
+2026-11-28T07:21:32.7524739Z 
+2026-11-28T07:21:32.7525012Z ================================== FAILURES ===================================
+2026-11-28T07:21:32.7525998Z _______________ test_stop_flag_cancellation_and_explicit_resume _______________
+2026-11-28T07:21:32.7526693Z 
+2026-11-28T07:21:32.7529960Z prepared = (<carr_library.application.LibraryApp object at 0x000001F7C202B190>, '0fa7d7f4aeac470ebf39e684b8a01fc4', <carr_library...nd1t/pytest/test_stop_flag_cancellation_an0/Лекція.wav'), <function prepared.<locals>.configure at 0x000001F7C206AC00>)
+2026-11-28T07:21:32.7531790Z 
+2026-11-28T07:21:32.7532100Z     def test_stop_flag_cancellation_and_explicit_resume(prepared):
+2026-11-28T07:21:32.7532760Z         _, _, service, original, configure = prepared
+2026-11-28T07:21:32.7533257Z         configure('pause-once')
+2026-11-28T07:21:32.7533710Z         identity = service.submit([original])
+2026-11-28T07:21:32.7534167Z         started = time.monotonic()
+2026-11-28T07:21:32.7534973Z >       stopped = service.run(identity, timeout=30, cancelled=lambda: time.monotonic() - started > .5)
+2026-11-28T07:21:32.7535977Z                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2026-11-28T07:21:32.7536435Z 
+2026-11-28T07:21:32.7536708Z tests\transcription\test_supplied_worker_bridge.py:435: 
+2026-11-28T07:21:32.7537373Z _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+2026-11-28T07:21:32.7539228Z src\carr_library\transcription\__init__.py:598: in run
+2026-11-28T07:21:32.7539837Z     with retained_context(broker.reserve(request,
+2026-11-28T07:21:32.7540599Z C:\hostedtoolcache\windows\Python\3.11.9\x64\Lib\contextlib.py:137: in __enter__
+2026-11-28T07:21:32.7541311Z     return next(self.gen)
+2026-11-28T07:21:32.7541642Z            ^^^^^^^^^^^^^^
+2026-11-28T07:21:32.7541940Z src\carr_library\transcription\ownership.py:27: in retained_context
+2026-11-28T07:21:32.7542301Z     value = stack.enter_context(context)
+2026-11-28T07:21:32.7542547Z             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2026-11-28T07:21:32.7542930Z C:\hostedtoolcache\windows\Python\3.11.9\x64\Lib\contextlib.py:517: in enter_context
+2026-11-28T07:21:32.7543345Z     result = _enter(cm)
+2026-11-28T07:21:32.7543689Z              ^^^^^^^^^^
+2026-11-28T07:21:32.7544152Z C:\hostedtoolcache\windows\Python\3.11.9\x64\Lib\contextlib.py:137: in __enter__
+2026-11-28T07:21:32.7544555Z     return next(self.gen)
+2026-11-28T07:21:32.7544763Z            ^^^^^^^^^^^^^^
+2026-11-28T07:21:32.7545011Z _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+2026-11-28T07:21:32.7545421Z 
+2026-11-28T07:21:32.7545675Z self = <carr_library.operations.broker.ResourceBroker object at 0x000001F7C1D35650>
+2026-11-28T07:21:32.7547048Z request = ResourceRequest(cpu_slots=1, memory_bytes=268435456, gpu_device=None, gpu_memory_bytes=0, disk_bytes=536870970, disk_p...cf842019454230bbfe04fbd7e9024a137ef91b935de39/jobs/ef6c93eb9e434160a5b6f97bc34e3185'), devices=(), additional_disks=())
+2026-11-28T07:21:32.7547956Z 
+2026-11-28T07:21:32.7548040Z     @contextmanager
+2026-11-28T07:21:32.7549132Z     def reserve(self, request, *, operation_id, cancelled=lambda: False, timeout=60, run_timeout=None):
+2026-11-28T07:21:32.7549747Z         if not isinstance(request, ResourceRequest) or not callable(cancelled):
+2026-11-28T07:21:32.7550290Z             raise TypeError('Admission requires a typed request and a cancellation callback.')
+2026-11-28T07:21:32.7550762Z         _token(operation_id, 'operation identity')
+2026-11-28T07:21:32.7551102Z         timeout = _seconds(timeout, 'Admission wait timeout')
+2026-11-28T07:21:32.7551510Z         run_timeout = _seconds(run_timeout, 'Execution timeout', allow_none=True)
+2026-11-28T07:21:32.7551887Z         if cancelled():
+2026-11-28T07:21:32.7552270Z             raise ResourceCancelled('Resource admission was cancelled before starting heavy work.')
+2026-11-28T07:21:32.7552714Z         disks, volumes = [], []
+2026-11-28T07:21:32.7552961Z         for incoming, amount in request.disks:
+2026-11-28T07:21:32.7553260Z             path = local_path(incoming, exists=True)
+2026-11-28T07:21:32.7553563Z             regular(path, directory=True)
+2026-11-28T07:21:32.7553835Z             disks.append((path, amount))
+2026-11-28T07:21:32.7554111Z             volumes.append(str(path.stat().st_dev))
+2026-11-28T07:21:32.7554390Z         if disks:
+2026-11-28T07:21:32.7554618Z             offset = int(request.disk_path is not None)
+2026-11-28T07:21:32.7555023Z             request = replace(request, disk_path=disks[0][0] if offset else None,
+2026-11-28T07:21:32.7555432Z                               additional_disks=tuple(disks[offset:]))
+2026-11-28T07:21:32.7555831Z         deadline, lease, attempted = time.monotonic() + timeout, None, False
+2026-11-28T07:21:32.7556190Z         while lease is None:
+2026-11-28T07:21:32.7556406Z             if cancelled():
+2026-11-28T07:21:32.7556756Z                 raise ResourceCancelled('Resource admission was cancelled while waiting.')
+2026-11-28T07:21:32.7557201Z             if attempted and time.monotonic() >= deadline:
+2026-11-28T07:21:32.7557731Z                 raise ResourceTimeout('Timed out waiting for shared resources; heavy work was not started.')
+2026-11-28T07:21:32.7558183Z             attempted = True
+2026-11-28T07:21:32.7558427Z             with self._gate(deadline, cancelled):
+2026-11-28T07:21:32.7558730Z                 limits, active = self.limits, self._active()
+2026-11-28T07:21:32.7559213Z                 if any(item['operation_id'] == operation_id for item in active):
+2026-11-28T07:21:32.7559712Z                     raise ResourceConflict('This operation already holds a resource reservation.')
+2026-11-28T07:21:32.7560194Z                 reason = self._reason(request, volumes, active, limits)
+2026-11-28T07:21:32.7560517Z                 if reason is None:
+2026-11-28T07:21:32.7560749Z                     identity = uuid4().hex
+2026-11-28T07:21:32.7561175Z                     record = {'schema': 'carr-resource-lease/1', 'id': identity, 'operation_id': operation_id,
+2026-11-28T07:21:32.7561771Z                               'owner_pid': os.getpid(), 'owner_token': _process_token(), 'created': time.time(),
+2026-11-28T07:21:32.7562252Z                               'request': request.to_dict(), 'disk_volumes': volumes}
+2026-11-28T07:21:32.7562649Z                     lock = NativeLock(self.leases_root / (identity + '.lock'))
+2026-11-28T07:21:32.7562981Z                     if not lock.acquire():
+2026-11-28T07:21:32.7563340Z                         raise ResourceConflict('Reservation identity is already locked.')
+2026-11-28T07:21:32.7563700Z                     try:
+2026-11-28T07:21:32.7563907Z                         if cancelled():
+2026-11-28T07:21:32.7564319Z >                           raise ResourceCancelled('Resource admission was cancelled before publication.')
+2026-11-28T07:21:32.7565027Z E                           carr_library.operations.models.ResourceCancelled: Resource admission was cancelled before publication.
+2026-11-28T07:21:32.7565481Z 
+2026-11-28T07:21:32.7565633Z src\carr_library\operations\broker.py:329: ResourceCancelled
+2026-11-28T07:21:32.7566202Z - generated xml file: C:\Users\RUNNER~1\AppData\Local\Temp\carr-ci-hwwund1t\junit.xml -
+2026-11-28T07:21:32.7566673Z =========================== short test summary info ===========================
+2026-11-28T07:21:32.7567653Z FAILED tests/transcription/test_supplied_worker_bridge.py::test_stop_flag_cancellation_and_explicit_resume - carr_library.operations.models.ResourceCancelled: Resource admission was cancelled before publication.
+2026-11-28T07:21:32.7568582Z ======================== 1 failed, 90 passed in 29.54s ========================
+2026-11-28T07:21:32.8247827Z FAIL: tests/transcription/test_supplied_worker_bridge.py: junit_passed=90, failed=1, skipped=0, pytest_exit=1
+2026-11-28T07:21:33.4463391Z ============================= test session starts =============================
+2026-11-28T07:21:33.4496820Z platform win32 -- Python 3.11.9, pytest-9.0.2, pluggy-1.7.0
+2026-11-28T07:21:33.4498608Z rootdir: D:\a\AudioTacticalFPS\AudioTacticalFPS\carr-library
+2026-11-28T07:21:33.4499190Z configfile: pyproject.toml
+2026-11-28T07:21:33.6365432Z collected 11 items
+2026-11-28T07:21:33.6369791Z 
+2026-11-28T07:21:38.3477062Z tests\storage\test_transcription_recovery.py ...........                 [100%]
+2026-11-28T07:21:38.3477543Z 
+2026-11-28T07:21:38.3477884Z - generated xml file: C:\Users\RUNNER~1\AppData\Local\Temp\carr-ci-gd8sll68\junit.xml -
+2026-11-28T07:21:38.3478888Z ============================= 11 passed in 4.90s ==============================
+2026-11-28T07:21:38.4164159Z PASS: tests/storage/test_transcription_recovery.py: junit_passed=11, failed=0, skipped=0, pytest_exit=0
+2026-11-28T07:21:38.7082131Z ============================= test session starts =============================
+2026-11-28T07:21:38.7115726Z platform win32 -- Python 3.11.9, pytest-9.0.2, pluggy-1.7.0
+2026-11-28T07:21:38.7117471Z rootdir: D:\a\AudioTacticalFPS\AudioTacticalFPS\carr-library
+2026-11-28T07:21:38.7118052Z configfile: pyproject.toml
+2026-11-28T07:21:38.9034895Z collected 11 items
+2026-11-28T07:21:38.9039313Z 
+2026-11-28T07:21:52.2705788Z tests\storage\test_import_publication_backup.py ...........              [100%]
+2026-11-28T07:21:52.2706514Z 
+2026-11-28T07:21:52.2706857Z - generated xml file: C:\Users\RUNNER~1\AppData\Local\Temp\carr-ci-dy3cw678\junit.xml -
+2026-11-28T07:21:52.2708198Z ============================= 11 passed in 13.56s =============================
+2026-11-28T07:21:52.3445967Z PASS: tests/storage/test_import_publication_backup.py: junit_passed=11, failed=0, skipped=0, pytest_exit=0
+2026-11-28T07:21:52.6160912Z ============================= test session starts =============================
+2026-11-28T07:21:52.6199093Z platform win32 -- Python 3.11.9, pytest-9.0.2, pluggy-1.7.0
+2026-11-28T07:21:52.6200703Z rootdir: D:\a\AudioTacticalFPS\AudioTacticalFPS\carr-library
+2026-11-28T07:21:52.6201236Z configfile: pyproject.toml
+2026-11-28T07:21:52.7910014Z collected 45 items
+2026-11-28T07:21:52.7914186Z 
+2026-11-28T07:21:53.1904451Z tests\ui\test_progress_job_review.py ................................... [ 77%]
+2026-11-28T07:21:53.3975225Z ..........                                                               [100%]
+2026-11-28T07:21:53.3975650Z 
+2026-11-28T07:21:53.3975918Z - generated xml file: C:\Users\RUNNER~1\AppData\Local\Temp\carr-ci-vpahff02\junit.xml -
+2026-11-28T07:21:53.3977409Z ============================= 45 passed in 0.78s ==============================
+2026-11-28T07:21:53.4598982Z PASS: tests/ui/test_progress_job_review.py: junit_passed=45, failed=0, skipped=0, pytest_exit=0
+2026-11-28T07:21:53.6914442Z ============================= test session starts =============================
+2026-11-28T07:21:53.6949273Z platform win32 -- Python 3.11.9, pytest-9.0.2, pluggy-1.7.0
+2026-11-28T07:21:53.6951039Z rootdir: D:\a\AudioTacticalFPS\AudioTacticalFPS\carr-library
+2026-11-28T07:21:53.6951638Z configfile: pyproject.toml
+2026-11-28T07:21:53.8410866Z collected 20 items
+2026-11-28T07:21:53.8415032Z 
+2026-11-28T07:21:54.3721884Z tests\transcription\test_protocol_routing.py ....................        [100%]
+2026-11-28T07:21:54.3722456Z 
+2026-11-28T07:21:54.3722797Z - generated xml file: C:\Users\RUNNER~1\AppData\Local\Temp\carr-ci-td72s9hl\junit.xml -
+2026-11-28T07:21:54.3723714Z ============================= 20 passed in 0.68s ==============================
+2026-11-28T07:21:54.4276859Z PASS: tests/transcription/test_protocol_routing.py: junit_passed=20, failed=0, skipped=0, pytest_exit=0
+2026-11-28T07:21:54.6618831Z ============================= test session starts =============================
+2026-11-28T07:21:54.6653123Z platform win32 -- Python 3.11.9, pytest-9.0.2, pluggy-1.7.0
+2026-11-28T07:21:54.6654580Z rootdir: D:\a\AudioTacticalFPS\AudioTacticalFPS\carr-library
+2026-11-28T07:21:54.6655367Z configfile: pyproject.toml
+2026-11-28T07:21:54.8018309Z collected 4 items
+2026-11-28T07:21:54.8022322Z 
+2026-11-28T07:22:07.6682650Z tests\transcription\test_owned_admission.py ....                         [100%]
+2026-11-28T07:22:07.6683274Z 
+2026-11-28T07:22:07.6683626Z - generated xml file: C:\Users\RUNNER~1\AppData\Local\Temp\carr-ci-_na_0ciu\junit.xml -
+2026-11-28T07:22:07.6684750Z ============================= 4 passed in 13.01s ==============================
+2026-11-28T07:22:07.7295018Z PASS: tests/transcription/test_owned_admission.py: junit_passed=4, failed=0, skipped=0, pytest_exit=0
+2026-11-28T07:22:07.9946423Z ============================= test session starts =============================
+2026-11-28T07:22:07.9980691Z platform win32 -- Python 3.11.9, pytest-9.0.2, pluggy-1.7.0
+2026-11-28T07:22:07.9982489Z rootdir: D:\a\AudioTacticalFPS\AudioTacticalFPS\carr-library
+2026-11-28T07:22:07.9983064Z configfile: pyproject.toml
+2026-11-28T07:22:08.0323101Z collected 9 items
+2026-11-28T07:22:08.0327656Z 
+2026-11-28T07:22:08.0929575Z tests\transcription\test_protocol_fixture.py .........                   [100%]
+2026-11-28T07:22:08.0929949Z 
+2026-11-28T07:22:08.0930385Z - generated xml file: C:\Users\RUNNER~1\AppData\Local\Temp\carr-ci-39f3e9g0\junit.xml -
+2026-11-28T07:22:08.0932245Z ============================== 9 passed in 0.10s ==============================
+2026-11-28T07:22:08.1307949Z PASS: tests/transcription/test_protocol_fixture.py: junit_passed=9, failed=0, skipped=0, pytest_exit=0
+2026-11-28T07:22:08.3625118Z ============================= test session starts =============================
+2026-11-28T07:22:08.3659248Z platform win32 -- Python 3.11.9, pytest-9.0.2, pluggy-1.7.0
+2026-11-28T07:22:08.3661107Z rootdir: D:\a\AudioTacticalFPS\AudioTacticalFPS\carr-library
+2026-11-28T07:22:08.3661719Z configfile: pyproject.toml
+2026-11-28T07:22:08.4191734Z collected 13 items
+2026-11-28T07:22:08.4196093Z 
+2026-11-28T07:22:27.9472014Z tests\transcription\test_runtime_admission.py .............              [100%]
+2026-11-28T07:22:27.9472712Z 
+2026-11-28T07:22:27.9473061Z - generated xml file: C:\Users\RUNNER~1\AppData\Local\Temp\carr-ci-j4w6g4a5\junit.xml -
+2026-11-28T07:22:27.9473856Z ============================= 13 passed in 19.59s =============================
+2026-11-28T07:22:27.9990771Z PASS: tests/transcription/test_runtime_admission.py: junit_passed=13, failed=0, skipped=0, pytest_exit=0
+2026-11-28T07:22:28.3615375Z ============================= test session starts =============================
+2026-11-28T07:22:28.3649527Z platform win32 -- Python 3.11.9, pytest-9.0.2, pluggy-1.7.0
+2026-11-28T07:22:28.3651400Z rootdir: D:\a\AudioTacticalFPS\AudioTacticalFPS\carr-library
+2026-11-28T07:22:28.3651998Z configfile: pyproject.toml
+2026-11-28T07:22:28.4387236Z collected 172 items
+2026-11-28T07:22:28.4391859Z 
+2026-11-28T07:22:35.2252451Z tests\transcription\test_runtime_inventory.py .......................... [ 15%]
+2026-11-28T07:23:01.7292090Z ........................................................................ [ 56%]
+2026-11-28T07:23:16.1236876Z ........................................................................ [ 98%]
+2026-11-28T07:23:16.3575894Z ..                                                                       [100%]
+2026-11-28T07:23:16.3576468Z 
+2026-11-28T07:23:16.3578000Z - generated xml file: C:\Users\RUNNER~1\AppData\Local\Temp\carr-ci-wdkh0o37\junit.xml -
+2026-11-28T07:23:16.3579068Z ============================ 172 passed in 48.00s =============================
+2026-11-28T07:23:16.4043748Z PASS: tests/transcription/test_runtime_inventory.py: junit_passed=172, failed=0, skipped=0, pytest_exit=0
+2026-11-28T07:23:17.9011798Z ============================= test session starts =============================
+2026-11-28T07:23:17.9044326Z platform win32 -- Python 3.11.9, pytest-9.0.2, pluggy-1.7.0
+2026-11-28T07:23:17.9045897Z rootdir: D:\a\AudioTacticalFPS\AudioTacticalFPS\carr-library
+2026-11-28T07:23:17.9046815Z configfile: pyproject.toml
+2026-11-28T07:23:18.0850523Z collected 11 items
+2026-11-28T07:23:18.0854476Z 
+2026-11-28T07:23:19.2881800Z tests\storage\test_asr_additional_profile.py ...........                 [100%]
+2026-11-28T07:23:19.2882514Z 
+2026-11-28T07:23:19.2883467Z - generated xml file: C:\Users\RUNNER~1\AppData\Local\Temp\carr-ci-2rykal91\junit.xml -
+2026-11-28T07:23:19.2884218Z ============================= 11 passed in 1.39s ==============================
+2026-11-28T07:23:19.3520723Z PASS: tests/storage/test_asr_additional_profile.py: junit_passed=11, failed=0, skipped=0, pytest_exit=0
+2026-11-28T07:23:19.6531905Z ============================= test session starts =============================
+2026-11-28T07:23:19.6566352Z platform win32 -- Python 3.11.9, pytest-9.0.2, pluggy-1.7.0
+2026-11-28T07:23:19.6567906Z rootdir: D:\a\AudioTacticalFPS\AudioTacticalFPS\carr-library
+2026-11-28T07:23:19.6569454Z configfile: pyproject.toml
+2026-11-28T07:23:19.7502373Z collected 63 items
+2026-11-28T07:23:19.7506407Z 
+2026-11-28T07:23:20.2095008Z tests\storage\test_state_json_reader.py ................................ [ 50%]
+2026-11-28T07:23:20.4429676Z ...............................                                          [100%]
+2026-11-28T07:23:20.4430305Z 
+2026-11-28T07:23:20.4430717Z - generated xml file: C:\Users\RUNNER~1\AppData\Local\Temp\carr-ci-njdo12at\junit.xml -
+2026-11-28T07:23:20.4431632Z ============================= 63 passed in 0.79s ==============================
+2026-11-28T07:23:20.4854404Z PASS: tests/storage/test_state_json_reader.py: junit_passed=63, failed=0, skipped=0, pytest_exit=0
+2026-11-28T07:23:20.7486937Z ============================= test session starts =============================
+2026-11-28T07:23:20.7521841Z platform win32 -- Python 3.11.9, pytest-9.0.2, pluggy-1.7.0
+2026-11-28T07:23:20.7523446Z rootdir: D:\a\AudioTacticalFPS\AudioTacticalFPS\carr-library
+2026-11-28T07:23:20.7524114Z configfile: pyproject.toml
+2026-11-28T07:23:20.8160937Z collected 33 items
+2026-11-28T07:23:20.8164776Z 
+2026-11-28T07:23:21.5436699Z tests\transcription\test_control_reads.py .............................. [ 90%]
+2026-11-28T07:23:21.6813129Z ...                                                                      [100%]
+2026-11-28T07:23:21.6813819Z 
+2026-11-28T07:23:21.6816528Z - generated xml file: C:\Users\RUNNER~1\AppData\Local\Temp\carr-ci-1bzk17yi\junit.xml -
+2026-11-28T07:23:21.6817299Z ============================= 33 passed in 0.93s ==============================
+2026-11-28T07:23:21.7236395Z PASS: tests/transcription/test_control_reads.py: junit_passed=33, failed=0, skipped=0, pytest_exit=0
+2026-11-28T07:23:21.9900326Z ============================= test session starts =============================
+2026-11-28T07:23:21.9933835Z platform win32 -- Python 3.11.9, pytest-9.0.2, pluggy-1.7.0
+2026-11-28T07:23:21.9935693Z rootdir: D:\a\AudioTacticalFPS\AudioTacticalFPS\carr-library
+2026-11-28T07:23:21.9936431Z configfile: pyproject.toml
+2026-11-28T07:23:22.0824467Z collected 28 items
+2026-11-28T07:23:22.0828569Z 
+2026-11-28T07:27:32.5566393Z tests\transcription\test_service.py ............................         [100%]
+2026-11-28T07:27:32.5566955Z 
+2026-11-28T07:27:32.5567275Z - generated xml file: C:\Users\RUNNER~1\AppData\Local\Temp\carr-ci-78jvsb33\junit.xml -
+2026-11-28T07:27:32.5568390Z ======================= 28 passed in 250.57s (0:04:10) ========================
+2026-11-28T07:27:32.6109299Z PASS: tests/transcription/test_service.py: junit_passed=28, failed=0, skipped=0, pytest_exit=0
+2026-11-28T07:27:33.1916616Z ============================= test session starts =============================
+2026-11-28T07:27:33.1950399Z platform win32 -- Python 3.11.9, pytest-9.0.2, pluggy-1.7.0
+2026-11-28T07:27:33.1952231Z rootdir: D:\a\AudioTacticalFPS\AudioTacticalFPS\carr-library
+2026-11-28T07:27:33.1952912Z configfile: pyproject.toml
+2026-11-28T07:27:33.3135267Z collected 14 items
+2026-11-28T07:27:33.3139102Z 
+2026-11-28T07:32:05.6723691Z tests\transcription\test_admission_boundaries.py ..............          [100%]
+2026-11-28T07:32:05.6724288Z 
+2026-11-28T07:32:05.6724789Z - generated xml file: C:\Users\RUNNER~1\AppData\Local\Temp\carr-ci-vm3xwj05\junit.xml -
+2026-11-28T07:32:05.6725891Z ======================= 14 passed in 272.48s (0:04:32) ========================
+2026-11-28T07:32:05.7279848Z PASS: tests/transcription/test_admission_boundaries.py: junit_passed=14, failed=0, skipped=0, pytest_exit=0
+2026-11-28T07:32:06.1798386Z ============================= test session starts =============================
+2026-11-28T07:32:06.1832104Z platform win32 -- Python 3.11.9, pytest-9.0.2, pluggy-1.7.0
+2026-11-28T07:32:06.1834092Z rootdir: D:\a\AudioTacticalFPS\AudioTacticalFPS\carr-library
+2026-11-28T07:32:06.1834773Z configfile: pyproject.toml
+2026-11-28T07:32:06.3506193Z collected 1 item
+2026-11-28T07:32:06.3510382Z 
+2026-11-28T07:32:22.0136599Z tests\transcription\test_restore.py .                                    [100%]
+2026-11-28T07:32:22.0137301Z 
+2026-11-28T07:32:22.0137716Z - generated xml file: C:\Users\RUNNER~1\AppData\Local\Temp\carr-ci-4zf9g6t6\junit.xml -
+2026-11-28T07:32:22.0140015Z ============================= 1 passed in 15.83s ==============================
+2026-11-28T07:32:22.0791953Z PASS: tests/transcription/test_restore.py: junit_passed=1, failed=0, skipped=0, pytest_exit=0
+2026-11-28T07:32:22.3313327Z ============================= test session starts =============================
+2026-11-28T07:32:22.3346365Z platform win32 -- Python 3.11.9, pytest-9.0.2, pluggy-1.7.0
+2026-11-28T07:32:22.3348216Z rootdir: D:\a\AudioTacticalFPS\AudioTacticalFPS\carr-library
+2026-11-28T07:32:22.3349099Z configfile: pyproject.toml
+2026-11-28T07:32:22.4660118Z collected 3 items
+2026-11-28T07:32:22.4664497Z 
+2026-11-28T07:32:46.4653721Z tests\e2e\test_transcription_cli.py ...                                  [100%]
+2026-11-28T07:32:46.4654353Z 
+2026-11-28T07:32:46.4654930Z - generated xml file: C:\Users\RUNNER~1\AppData\Local\Temp\carr-ci-0aa2ljyy\junit.xml -
+2026-11-28T07:32:46.4655924Z ============================= 3 passed in 24.13s ==============================
+2026-11-28T07:32:46.5219441Z PASS: tests/e2e/test_transcription_cli.py: junit_passed=3, failed=0, skipped=0, pytest_exit=0
+2026-11-28T07:32:46.7791875Z ============================= test session starts =============================
+2026-11-28T07:32:46.7825794Z platform win32 -- Python 3.11.9, pytest-9.0.2, pluggy-1.7.0
+2026-11-28T07:32:46.7827764Z rootdir: D:\a\AudioTacticalFPS\AudioTacticalFPS\carr-library
+2026-11-28T07:32:46.7828418Z configfile: pyproject.toml
+2026-11-28T07:32:46.9995371Z collected 143 items
+2026-11-28T07:32:46.9999285Z 
+2026-11-28T07:35:06.0581214Z tests\storage\test_transcription_backup.py ............................. [ 20%]
+2026-11-28T07:35:06.2040597Z ........................................................................ [ 70%]
+2026-11-28T07:35:20.6806205Z ..........................................                               [100%]
+2026-11-28T07:35:20.6806856Z 
+2026-11-28T07:35:20.6807271Z - generated xml file: C:\Users\RUNNER~1\AppData\Local\Temp\carr-ci-9yv9vwi7\junit.xml -
+2026-11-28T07:35:20.6809010Z ======================= 143 passed in 153.90s (0:02:33) =======================
+2026-11-28T07:35:20.7502744Z PASS: tests/storage/test_transcription_backup.py: junit_passed=143, failed=0, skipped=0, pytest_exit=0
+2026-11-28T07:35:21.2485155Z ============================= test session starts =============================
+2026-11-28T07:35:21.2518247Z platform win32 -- Python 3.11.9, pytest-9.0.2, pluggy-1.7.0
+2026-11-28T07:35:21.2520375Z rootdir: D:\a\AudioTacticalFPS\AudioTacticalFPS\carr-library
+2026-11-28T07:35:21.2521055Z configfile: pyproject.toml
+2026-11-28T07:35:21.4430602Z collected 10 items
+2026-11-28T07:35:21.4435001Z 
+2026-11-28T07:35:25.8708403Z tests\storage\test_transcription_composite_backup.py ..........          [100%]
+2026-11-28T07:35:25.8708923Z 
+2026-11-28T07:35:25.8709310Z - generated xml file: C:\Users\RUNNER~1\AppData\Local\Temp\carr-ci-7cmurobb\junit.xml -
+2026-11-28T07:35:25.8710336Z ============================= 10 passed in 4.62s ==============================
+2026-11-28T07:35:25.9351709Z PASS: tests/storage/test_transcription_composite_backup.py: junit_passed=10, failed=0, skipped=0, pytest_exit=0
+2026-11-28T07:35:26.2299985Z ============================= test session starts =============================
+2026-11-28T07:35:26.2332852Z platform win32 -- Python 3.11.9, pytest-9.0.2, pluggy-1.7.0
+2026-11-28T07:35:26.2334610Z rootdir: D:\a\AudioTacticalFPS\AudioTacticalFPS\carr-library
+2026-11-28T07:35:26.2335420Z configfile: pyproject.toml
+2026-11-28T07:35:26.3969514Z collected 46 items
+2026-11-28T07:35:26.3973469Z 
+2026-11-28T07:35:29.6249734Z tests\operations\test_resources.py ..................................... [ 80%]
+2026-11-28T07:35:29.7311398Z .........                                                                [100%]
+2026-11-28T07:35:29.7311908Z 
+2026-11-28T07:35:29.7312446Z - generated xml file: C:\Users\RUNNER~1\AppData\Local\Temp\carr-ci-ca2o3__l\junit.xml -
+2026-11-28T07:35:29.7314091Z ============================= 46 passed in 3.50s ==============================
+2026-11-28T07:35:29.7834055Z PASS: tests/operations/test_resources.py: junit_passed=46, failed=0, skipped=0, pytest_exit=0
+2026-11-28T07:35:30.0492329Z ============================= test session starts =============================
+2026-11-28T07:35:30.0527152Z platform win32 -- Python 3.11.9, pytest-9.0.2, pluggy-1.7.0
+2026-11-28T07:35:30.0529097Z rootdir: D:\a\AudioTacticalFPS\AudioTacticalFPS\carr-library
+2026-11-28T07:35:30.0531324Z configfile: pyproject.toml
+2026-11-28T07:35:30.2725539Z collected 23 items
+2026-11-28T07:35:30.2729435Z 
+2026-11-28T07:35:34.7322317Z tests\operations\test_facade.py .......................                  [100%]
+2026-11-28T07:35:34.7323183Z 
+2026-11-28T07:35:34.7323645Z - generated xml file: C:\Users\RUNNER~1\AppData\Local\Temp\carr-ci-hsf49rii\junit.xml -
+2026-11-28T07:35:34.7324572Z ============================= 23 passed in 4.68s ==============================
+2026-11-28T07:35:34.7932388Z PASS: tests/operations/test_facade.py: junit_passed=23, failed=0, skipped=0, pytest_exit=0
+2026-11-28T07:35:35.0883000Z ============================= test session starts =============================
+2026-11-28T07:35:35.0917396Z platform win32 -- Python 3.11.9, pytest-9.0.2, pluggy-1.7.0
+2026-11-28T07:35:35.0918973Z rootdir: D:\a\AudioTacticalFPS\AudioTacticalFPS\carr-library
+2026-11-28T07:35:35.0920231Z configfile: pyproject.toml
+2026-11-28T07:35:35.2257739Z collected 3 items
+2026-11-28T07:35:35.2261690Z 
+2026-11-28T07:35:35.6434187Z tests\operations\test_transcription_views.py ...                         [100%]
+2026-11-28T07:35:35.6435021Z 
+2026-11-28T07:35:35.6435763Z - generated xml file: C:\Users\RUNNER~1\AppData\Local\Temp\carr-ci-jih_ld1_\junit.xml -
+2026-11-28T07:35:35.6436705Z ============================== 3 passed in 0.56s ==============================
+2026-11-28T07:35:35.6997761Z PASS: tests/operations/test_transcription_views.py: junit_passed=3, failed=0, skipped=0, pytest_exit=0
+2026-11-28T07:35:35.9313625Z ============================= test session starts =============================
+2026-11-28T07:35:35.9346386Z platform win32 -- Python 3.11.9, pytest-9.0.2, pluggy-1.7.0
+2026-11-28T07:35:35.9348529Z rootdir: D:\a\AudioTacticalFPS\AudioTacticalFPS\carr-library
+2026-11-28T07:35:35.9349141Z configfile: pyproject.toml
+2026-11-28T07:35:36.0344529Z collected 4 items
+2026-11-28T07:35:36.0348669Z 
+2026-11-28T07:35:37.1215267Z tests\e2e\test_operations_cli.py ....                                    [100%]
+2026-11-28T07:35:37.1216010Z 
+2026-11-28T07:35:37.1216459Z - generated xml file: C:\Users\RUNNER~1\AppData\Local\Temp\carr-ci-u910iutg\junit.xml -
+2026-11-28T07:35:37.1217584Z ============================== 4 passed in 1.19s ==============================
+2026-11-28T07:35:37.1796715Z PASS: tests/e2e/test_operations_cli.py: junit_passed=4, failed=0, skipped=0, pytest_exit=0
+2026-11-28T07:35:37.4212306Z ============================= test session starts =============================
+2026-11-28T07:35:37.4245988Z platform win32 -- Python 3.11.9, pytest-9.0.2, pluggy-1.7.0
+2026-11-28T07:35:37.4247855Z rootdir: D:\a\AudioTacticalFPS\AudioTacticalFPS\carr-library
+2026-11-28T07:35:37.4248684Z configfile: pyproject.toml
+2026-11-28T07:35:37.4759596Z collected 7 items
+2026-11-28T07:35:37.4763725Z 
+2026-11-28T07:35:38.5803080Z tests\storage\test_atomic_state_publication.py .......                   [100%]
+2026-11-28T07:35:38.5803751Z 
+2026-11-28T07:35:38.5804121Z - generated xml file: C:\Users\RUNNER~1\AppData\Local\Temp\carr-ci-thf010wn\junit.xml -
+2026-11-28T07:35:38.5805186Z ============================== 7 passed in 1.16s ==============================
+2026-11-28T07:35:38.6205970Z PASS: tests/storage/test_atomic_state_publication.py: junit_passed=7, failed=0, skipped=0, pytest_exit=0
+2026-11-28T07:35:38.8534272Z ============================= test session starts =============================
+2026-11-28T07:35:38.8568963Z platform win32 -- Python 3.11.9, pytest-9.0.2, pluggy-1.7.0
+2026-11-28T07:35:38.8570745Z rootdir: D:\a\AudioTacticalFPS\AudioTacticalFPS\carr-library
+2026-11-28T07:35:38.8571459Z configfile: pyproject.toml
+2026-11-28T07:35:38.9312566Z collected 27 items
+2026-11-28T07:35:38.9316692Z 
+2026-11-28T07:35:39.7416297Z tests\audio\test_audio_process.py ...........................            [100%]
+2026-11-28T07:35:39.7416798Z 
+2026-11-28T07:35:39.7417116Z - generated xml file: C:\Users\RUNNER~1\AppData\Local\Temp\carr-ci-v66ztnl8\junit.xml -
+2026-11-28T07:35:39.7418111Z ============================= 27 passed in 0.89s ==============================
+2026-11-28T07:35:39.7818503Z PASS: tests/audio/test_audio_process.py: junit_passed=27, failed=0, skipped=0, pytest_exit=0
+2026-11-28T07:35:40.0149212Z ============================= test session starts =============================
+2026-11-28T07:35:40.0181941Z platform win32 -- Python 3.11.9, pytest-9.0.2, pluggy-1.7.0
+2026-11-28T07:35:40.0183884Z rootdir: D:\a\AudioTacticalFPS\AudioTacticalFPS\carr-library
+2026-11-28T07:35:40.0184621Z configfile: pyproject.toml
+2026-11-28T07:35:40.1346463Z collected 21 items
+2026-11-28T07:35:40.1350517Z 
+2026-11-28T07:35:49.5863824Z tests\audio\test_process_deadline.py .....................               [100%]
+2026-11-28T07:35:49.5864626Z 
+2026-11-28T07:35:49.5865205Z - generated xml file: C:\Users\RUNNER~1\AppData\Local\Temp\carr-ci-6pd7b9yb\junit.xml -
+2026-11-28T07:35:49.5866084Z ============================= 21 passed in 9.57s ==============================
+2026-11-28T07:35:49.6288538Z PASS: tests/audio/test_process_deadline.py: junit_passed=21, failed=0, skipped=0, pytest_exit=0
+2026-11-28T07:35:49.6380272Z Required suites complete: 26; passed=25; failed=1
+2026-11-28T07:35:49.6864851Z ##[error]Process completed with exit code 1.
+2026-11-28T07:35:49.7159845Z Post job cleanup.
+2026-11-28T07:35:49.9138199Z [command]"C:\Program Files\Git\bin\git.exe" version
+2026-11-28T07:35:49.9413233Z git version 2.56.1.windows.1
+2026-11-28T07:35:49.9468921Z Temporarily overriding HOME='D:\a\_temp\f53806df-b2f3-462b-9428-8b4f9fa8dc7c' before making global git config changes
+2026-11-28T07:35:49.9469787Z Adding repository directory to the temporary git global config as a safe directory
+2026-11-28T07:35:49.9480047Z [command]"C:\Program Files\Git\bin\git.exe" config --global --add safe.directory D:\a\AudioTacticalFPS\AudioTacticalFPS
+2026-11-28T07:35:49.9758685Z Removing SSH command configuration
+2026-11-28T07:35:49.9767951Z [command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp core\.sshCommand
+2026-11-28T07:35:50.0048992Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "sh -c \"git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :\""
+2026-11-28T07:35:50.5158812Z Removing HTTP extra header
+2026-11-28T07:35:50.5168776Z [command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-11-28T07:35:50.5455172Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "sh -c \"git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :\""
+2026-11-28T07:35:51.0000509Z Removing includeIf entries pointing to credentials config files
+2026-11-28T07:35:51.0011366Z [command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-11-28T07:35:51.0288457Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "git config --local --show-origin --name-only --get-regexp remote.origin.url"
+2026-11-28T07:35:51.4979149Z Cleaning up orphan processes
