@@ -1,0 +1,871 @@
+{
+  "schema": "carr-immutable-artifact-receipts/1",
+  "source_commit": "8bcbdb74328d7f6bb71ea8987cb5305064b8eb0e",
+  "source_run": 46093366008,
+  "source_job": 140819158582,
+  "source_workflow": ".github/workflows/carr-windows.yml",
+  "source_run_status_at_extraction": "in_progress",
+  "scope": "Immutable pre-source and endpoint artifacts only; no assertion of terminal run or complete bundle success.",
+  "reader": {
+    "commit": "6a140cbeaa0dfc801f5fd4c2f5b3e68479a3e04d",
+    "run": 46095415314,
+    "job": 140825509289,
+    "conclusion": "success",
+    "log": {
+      "sha256": "f857b4495636712bbbb6368d7093e8b59a0207865025d0e11636d28d2d7eb2a1",
+      "bytes": 439124
+    },
+    "execution": "Read-only artifact retrieval; no CARR application/model/installer execution."
+  },
+  "artifacts": [
+    {
+      "id": 15242339416,
+      "name": "carr-windows-pre-source-8bcbdb74328d7f6bb71ea8987cb5305064b8eb0e-1",
+      "bytes": 181346,
+      "sha256": "924dde88988090e7f7137c2c54a94fde232197c252da4eb17a8c5bd6f6fabe63",
+      "created_at": "2026-11-28T01:47:18Z",
+      "updated_at": "2026-11-28T01:47:18Z",
+      "run": 46093366008,
+      "head": "8bcbdb74328d7f6bb71ea8987cb5305064b8eb0e",
+      "mode": "bundle"
+    },
+    {
+      "id": 15241719856,
+      "name": "carr-windows-audio-endpoint-8bcbdb74328d7f6bb71ea8987cb5305064b8eb0e-1",
+      "bytes": 1002,
+      "sha256": "d87984ddd5f310e380140a529e583c18c3497f7a3e028bfeac6e03e879bff6ff",
+      "created_at": "2026-11-28T01:30:25Z",
+      "updated_at": "2026-11-28T01:30:25Z",
+      "run": 46093366008,
+      "head": "8bcbdb74328d7f6bb71ea8987cb5305064b8eb0e",
+      "mode": "endpoint"
+    }
+  ],
+  "verification": {
+    "zip": "Reader enforces exact immutable artifact byte length and API SHA-256, exact source head/run/branch/workflow, canonical member paths and bounded expansion.",
+    "member": "Root independently decoded ordered base64 chunks, verified raw byte length/SHA-256 and strict UTF-8 roundtrip for every retained raw member.",
+    "raw_members": 35,
+    "summary_only_members": 11
+  },
+  "findings": {
+    "endpoint_device_count": 0,
+    "format_query_result": 2,
+    "installed_reader_playback": "FAILED: Windows MCI326",
+    "bundle_reader_playback": "FAILED: Windows MCI326",
+    "installed_and_bundle_source_bytes": "Three named player/UI modules matched this exact checkout before native playback failure.",
+    "preparatory_checks_each": 13,
+    "actual_winmm": false,
+    "actual_native_keys": false,
+    "native_audio_preview": "NOT_RUN: DEVICE_UNAVAILABLE",
+    "nvda": "NOT_RUN",
+    "human_listening": "NOT_RUN",
+    "voice_inference": "NOT_RUN",
+    "complete_bundle": "FAILED; partial producer successes are not complete-bundle qualification."
+  },
+  "retained_members": [
+    {
+      "artifact": 15242339416,
+      "mode": "bundle",
+      "path": "audio-endpoint.json",
+      "bytes": 655,
+      "sha256": "d31a10a6098553fd94743ad6a93d9e9833fdd2b1d20b0d0dbecdf96f92f844b3",
+      "encoding": "utf-8-sig",
+      "exact_utf8_roundtrip": true,
+      "raw_retained": true,
+      "saved_path": "artifact-15242339416/audio-endpoint.json"
+    },
+    {
+      "artifact": 15242339416,
+      "mode": "bundle",
+      "path": "audio-services.json",
+      "bytes": 376,
+      "sha256": "1b7677b8ea87225842e870c71dd9c82292392b84cb482dd5b70730aae9cc2937",
+      "encoding": "utf-8-sig",
+      "exact_utf8_roundtrip": true,
+      "raw_retained": true,
+      "saved_path": "artifact-15242339416/audio-services.json"
+    },
+    {
+      "artifact": 15242339416,
+      "mode": "bundle",
+      "path": "bundle-reader-controls.json",
+      "bytes": 4603,
+      "sha256": "5888ceb15e1d0684968decbf5a8f74e8b8d467796225e8ac0330076c9e32a797",
+      "encoding": "utf-8-sig",
+      "exact_utf8_roundtrip": true,
+      "raw_retained": true,
+      "saved_path": "artifact-15242339416/bundle-reader-controls.json"
+    },
+    {
+      "artifact": 15242339416,
+      "mode": "bundle",
+      "path": "core-bundle-install.txt",
+      "bytes": 13143,
+      "sha256": "737372e629a9c827edd9b8d16a239ffff5c54ef8368acb3862f4abb7c4271e79",
+      "encoding": "utf-8-sig",
+      "exact_utf8_roundtrip": true,
+      "raw_retained": true,
+      "saved_path": "artifact-15242339416/core-bundle-install.txt"
+    },
+    {
+      "artifact": 15242339416,
+      "mode": "bundle",
+      "path": "core-bundle-native.txt",
+      "bytes": 1396,
+      "sha256": "af5764988d27973199c6ffb50fcad76f5fee5ace2f5326c1f518a14f8d890571",
+      "encoding": "utf-8-sig",
+      "exact_utf8_roundtrip": true,
+      "raw_retained": true,
+      "saved_path": "artifact-15242339416/core-bundle-native.txt"
+    },
+    {
+      "artifact": 15242339416,
+      "mode": "bundle",
+      "path": "full-bundle-academic-native.txt",
+      "bytes": 2753,
+      "sha256": "5218194c239eb69b93a9bad4b73c7ac42f0a9b004de419fe93b3c8eb5478e317",
+      "encoding": "utf-8-sig",
+      "exact_utf8_roundtrip": true,
+      "raw_retained": true,
+      "saved_path": "artifact-15242339416/full-bundle-academic-native.txt"
+    },
+    {
+      "artifact": 15242339416,
+      "mode": "bundle",
+      "path": "full-bundle-catalog-tools.txt",
+      "bytes": 7290,
+      "sha256": "09846d6aeac2b5b22b1f9f9600654082320d516fa2746dfc4816e98c0f7b6484",
+      "encoding": "utf-8-sig",
+      "exact_utf8_roundtrip": true,
+      "raw_retained": true,
+      "saved_path": "artifact-15242339416/full-bundle-catalog-tools.txt"
+    },
+    {
+      "artifact": 15242339416,
+      "mode": "bundle",
+      "path": "full-bundle-delivery-lifecycle.txt",
+      "bytes": 2566,
+      "sha256": "b67bc16c454b43a6a4a5e757b5c1f1110954230ee564040e2a300a432e1e5290",
+      "encoding": "utf-8-sig",
+      "exact_utf8_roundtrip": true,
+      "raw_retained": true,
+      "saved_path": "artifact-15242339416/full-bundle-delivery-lifecycle.txt"
+    },
+    {
+      "artifact": 15242339416,
+      "mode": "bundle",
+      "path": "full-bundle-reader-controls.txt",
+      "bytes": 5985,
+      "sha256": "4f3f683ee7c85fd66de871669c4ccbb3a0946088c4cac6629383d74e14b8230e",
+      "encoding": "utf-8-sig",
+      "exact_utf8_roundtrip": true,
+      "raw_retained": true,
+      "saved_path": "artifact-15242339416/full-bundle-reader-controls.txt"
+    },
+    {
+      "artifact": 15242339416,
+      "mode": "bundle",
+      "path": "native-audio-preview.json",
+      "bytes": 112,
+      "sha256": "1c0e533adc3e4456da3b34186b93c5cdb148f5c7e90282dc4fc74fe55ba691aa",
+      "encoding": "utf-8-sig",
+      "exact_utf8_roundtrip": true,
+      "raw_retained": true,
+      "saved_path": "artifact-15242339416/native-audio-preview.json"
+    },
+    {
+      "artifact": 15242339416,
+      "mode": "bundle",
+      "path": "native-audio-runtime-setup.json",
+      "bytes": 2700,
+      "sha256": "5bd0a8b913b316ed781b470253f381fd2174354fee2cbb08dae37d2d5107bb59",
+      "encoding": "utf-8-sig",
+      "exact_utf8_roundtrip": true,
+      "raw_retained": true,
+      "saved_path": "artifact-15242339416/native-audio-runtime-setup.json"
+    },
+    {
+      "artifact": 15242339416,
+      "mode": "bundle",
+      "path": "native-audio-runtime-setup.txt",
+      "bytes": 4593,
+      "sha256": "06b83c4b3c5f895b1b31eaa5e17ec8b2fdb46c8ff0730bfc2ebd4ec0bde41efa",
+      "encoding": "utf-8-sig",
+      "exact_utf8_roundtrip": true,
+      "raw_retained": true,
+      "saved_path": "artifact-15242339416/native-audio-runtime-setup.txt"
+    },
+    {
+      "artifact": 15242339416,
+      "mode": "bundle",
+      "path": "native-delivery-lifecycle.txt",
+      "bytes": 2566,
+      "sha256": "b67bc16c454b43a6a4a5e757b5c1f1110954230ee564040e2a300a432e1e5290",
+      "encoding": "utf-8-sig",
+      "exact_utf8_roundtrip": true,
+      "raw_retained": true,
+      "saved_path": "artifact-15242339416/native-delivery-lifecycle.txt"
+    },
+    {
+      "artifact": 15242339416,
+      "mode": "bundle",
+      "path": "native-draft-timer.json",
+      "bytes": 1398,
+      "sha256": "ca18dee0a1a4c198f48eeda1c85115a5610fd23baa5fb8751d9678fac33238ea",
+      "encoding": "utf-8-sig",
+      "exact_utf8_roundtrip": true,
+      "raw_retained": true,
+      "saved_path": "artifact-15242339416/native-draft-timer.json"
+    },
+    {
+      "artifact": 15242339416,
+      "mode": "bundle",
+      "path": "native-draft-timer.txt",
+      "bytes": 18932,
+      "sha256": "a9ebb6caeb722169389d2c394b09c708febd12988d2d04275b1dcf1c94f6fb2c",
+      "encoding": "utf-8-sig",
+      "exact_utf8_roundtrip": true,
+      "raw_retained": true,
+      "saved_path": "artifact-15242339416/native-draft-timer.txt"
+    },
+    {
+      "artifact": 15242339416,
+      "mode": "bundle",
+      "path": "native-owner-voice-controls.txt",
+      "bytes": 800,
+      "sha256": "6f62a06cbae2c98b12ca9b83d0c996fb10dc655d357995707037b81ba8a3e328",
+      "encoding": "utf-8-sig",
+      "exact_utf8_roundtrip": true,
+      "raw_retained": true,
+      "saved_path": "artifact-15242339416/native-owner-voice-controls.txt"
+    },
+    {
+      "artifact": 15242339416,
+      "mode": "bundle",
+      "path": "native-reader-controls.json",
+      "bytes": 4470,
+      "sha256": "1617f47f632e329764eff67077d5786aef57350ac6a1355d2d19dbfca18f5595",
+      "encoding": "utf-8-sig",
+      "exact_utf8_roundtrip": true,
+      "raw_retained": true,
+      "saved_path": "artifact-15242339416/native-reader-controls.json"
+    },
+    {
+      "artifact": 15242339416,
+      "mode": "bundle",
+      "path": "native-reader-controls.txt",
+      "bytes": 5852,
+      "sha256": "cac5862fc66540b6cce5be65449828f6c2917a6d2d460ae82ee206f17b1fce5f",
+      "encoding": "utf-8-sig",
+      "exact_utf8_roundtrip": true,
+      "raw_retained": true,
+      "saved_path": "artifact-15242339416/native-reader-controls.txt"
+    },
+    {
+      "artifact": 15242339416,
+      "mode": "bundle",
+      "path": "native-reader-keymap.json",
+      "bytes": 3377,
+      "sha256": "2a8824481da719e65947e75d4b720a1c11ae62a262e17101450a2e9e1b8907bd",
+      "encoding": "utf-8-sig",
+      "exact_utf8_roundtrip": true,
+      "raw_retained": true,
+      "saved_path": "artifact-15242339416/native-reader-keymap.json"
+    },
+    {
+      "artifact": 15242339416,
+      "mode": "bundle",
+      "path": "native-reader-keymap.txt",
+      "bytes": 2827,
+      "sha256": "6cf4ee3a85dc16098bdf13398f22d1349b7fa2ed8e8ac24581feae0baf494367",
+      "encoding": "utf-8-sig",
+      "exact_utf8_roundtrip": true,
+      "raw_retained": true,
+      "saved_path": "artifact-15242339416/native-reader-keymap.txt"
+    },
+    {
+      "artifact": 15242339416,
+      "mode": "bundle",
+      "path": "native-sapi-speech.json",
+      "bytes": 2747,
+      "sha256": "e2cb9061442a284db9509ea35515a94e0ced351446481736304870d2e818f5d9",
+      "encoding": "utf-8-sig",
+      "exact_utf8_roundtrip": true,
+      "raw_retained": true,
+      "saved_path": "artifact-15242339416/native-sapi-speech.json"
+    },
+    {
+      "artifact": 15242339416,
+      "mode": "bundle",
+      "path": "native-save-all-recovery.json",
+      "bytes": 3671,
+      "sha256": "4f520bbe6b0a3954df450c0ba0fa4e8cf5056881dd055627b8b56ebc3da0e967",
+      "encoding": "utf-8-sig",
+      "exact_utf8_roundtrip": true,
+      "raw_retained": true,
+      "saved_path": "artifact-15242339416/native-save-all-recovery.json"
+    },
+    {
+      "artifact": 15242339416,
+      "mode": "bundle",
+      "path": "native-save-all-recovery.txt",
+      "bytes": 6085,
+      "sha256": "012d87c9130578b4c512fc7e357e5523c89e7a81d6635d848c97ffcf83c34ae5",
+      "encoding": "utf-8-sig",
+      "exact_utf8_roundtrip": true,
+      "raw_retained": true,
+      "saved_path": "artifact-15242339416/native-save-all-recovery.txt"
+    },
+    {
+      "artifact": 15242339416,
+      "mode": "bundle",
+      "path": "native-translation-source.txt",
+      "bytes": 849,
+      "sha256": "a27ad3101ce7acfbb4810ed386a1cb30f5602d1ec4fd80197d8b992e6ad8a62e",
+      "encoding": "utf-8-sig",
+      "exact_utf8_roundtrip": true,
+      "raw_retained": true,
+      "saved_path": "artifact-15242339416/native-translation-source.txt"
+    },
+    {
+      "artifact": 15242339416,
+      "mode": "bundle",
+      "path": "offline-bundle-command-palette.txt",
+      "bytes": 3154,
+      "sha256": "b9487d9c438476d8660d0f71f304859b4493abe500f97a65fdf9bc95e652ed18",
+      "encoding": "utf-8-sig",
+      "exact_utf8_roundtrip": true,
+      "raw_retained": true,
+      "saved_path": "artifact-15242339416/offline-bundle-command-palette.txt"
+    },
+    {
+      "artifact": 15242339416,
+      "mode": "bundle",
+      "path": "offline-bundle-daisy-schema.txt",
+      "bytes": 6058,
+      "sha256": "dd79cd84a08502fbd3dd9d4ac1005d43ee79d78cf03aff480cc6efe4e39da0ad",
+      "encoding": "utf-8-sig",
+      "exact_utf8_roundtrip": true,
+      "raw_retained": true,
+      "saved_path": "artifact-15242339416/offline-bundle-daisy-schema.txt"
+    },
+    {
+      "artifact": 15242339416,
+      "mode": "bundle",
+      "path": "offline-bundle-document-formats.json",
+      "bytes": 2400,
+      "sha256": "f2f117bfc5ff92cdbf1947595d9b06ce214866f7adb417af59e4d9110069d827",
+      "encoding": "utf-8-sig",
+      "exact_utf8_roundtrip": true,
+      "raw_retained": true,
+      "saved_path": "artifact-15242339416/offline-bundle-document-formats.json"
+    },
+    {
+      "artifact": 15242339416,
+      "mode": "bundle",
+      "path": "offline-bundle-epub-publication.txt",
+      "bytes": 5568,
+      "sha256": "5b07a0d396eaa363514aad45136fbd87db1c95eb70481277af703b7de1e72de5",
+      "encoding": "utf-8-sig",
+      "exact_utf8_roundtrip": true,
+      "raw_retained": true,
+      "saved_path": "artifact-15242339416/offline-bundle-epub-publication.txt"
+    },
+    {
+      "artifact": 15242339416,
+      "mode": "bundle",
+      "path": "offline-bundle-epubcheck.txt",
+      "bytes": 3398,
+      "sha256": "72431c2ccea64ee3b8e75dcb7b618d8a13509ebd364e49d7ac9a7faa95dfc93d",
+      "encoding": "utf-8-sig",
+      "exact_utf8_roundtrip": true,
+      "raw_retained": true,
+      "saved_path": "artifact-15242339416/offline-bundle-epubcheck.txt"
+    },
+    {
+      "artifact": 15242339416,
+      "mode": "bundle",
+      "path": "offline-bundle-keyboard-preferences.json",
+      "bytes": 2024,
+      "sha256": "6d3e65930582bb6e76e48c1017dd72bb0f6b1caeddb8738a9dc02dd64511f73c",
+      "encoding": "utf-8-sig",
+      "exact_utf8_roundtrip": true,
+      "raw_retained": true,
+      "saved_path": "artifact-15242339416/offline-bundle-keyboard-preferences.json"
+    },
+    {
+      "artifact": 15242339416,
+      "mode": "bundle",
+      "path": "offline-bundle-ocr-manager.json",
+      "bytes": 12171,
+      "sha256": "578e6d2c22c7fb1e4c9b4c0cdfeab4746403da6dfe042fc58b19da2d9ae749f4",
+      "encoding": "utf-8-sig",
+      "exact_utf8_roundtrip": true,
+      "raw_retained": true,
+      "saved_path": "artifact-15242339416/offline-bundle-ocr-manager.json"
+    },
+    {
+      "artifact": 15242339416,
+      "mode": "bundle",
+      "path": "offline-bundle-ocr-selection.json",
+      "bytes": 1620,
+      "sha256": "b043af184f571d405e6df63e86b1634b1a34774448fdd04f119915db0385f0e8",
+      "encoding": "utf-8-sig",
+      "exact_utf8_roundtrip": true,
+      "raw_retained": true,
+      "saved_path": "artifact-15242339416/offline-bundle-ocr-selection.json"
+    },
+    {
+      "artifact": 15242339416,
+      "mode": "bundle",
+      "path": "offline-bundle-workflow-productivity.txt",
+      "bytes": 4876,
+      "sha256": "981b6d494b3e75f74d1ccc652e1bded55a0f8db40deac6d81b3774523e05e46f",
+      "encoding": "utf-8-sig",
+      "exact_utf8_roundtrip": true,
+      "raw_retained": true,
+      "saved_path": "artifact-15242339416/offline-bundle-workflow-productivity.txt"
+    },
+    {
+      "artifact": 15241719856,
+      "mode": "endpoint",
+      "path": "audio-endpoint.json",
+      "bytes": 655,
+      "sha256": "d31a10a6098553fd94743ad6a93d9e9833fdd2b1d20b0d0dbecdf96f92f844b3",
+      "encoding": "utf-8-sig",
+      "exact_utf8_roundtrip": true,
+      "raw_retained": true,
+      "saved_path": "artifact-15241719856/audio-endpoint.json"
+    },
+    {
+      "artifact": 15241719856,
+      "mode": "endpoint",
+      "path": "audio-services.json",
+      "bytes": 376,
+      "sha256": "1b7677b8ea87225842e870c71dd9c82292392b84cb482dd5b70730aae9cc2937",
+      "encoding": "utf-8-sig",
+      "exact_utf8_roundtrip": true,
+      "raw_retained": true,
+      "saved_path": "artifact-15241719856/audio-services.json"
+    }
+  ],
+  "summary_only_members": [
+    {
+      "artifact": 15242339416,
+      "path": "core-bundle-self-test.json",
+      "bytes": 272,
+      "sha256": "20e78b8dd6e565795b5678bb6d31130401207540cf16b20b77ab1d58b02c97bc",
+      "raw_retained": false
+    },
+    {
+      "artifact": 15242339416,
+      "path": "full-bundle-audio-effects.json",
+      "bytes": 656,
+      "sha256": "b7bb3749b4f7820f148abd74123ceb2cbee6003a965571b4da95e088a2d053c7",
+      "raw_retained": false
+    },
+    {
+      "artifact": 15242339416,
+      "path": "full-bundle-audio-studio.json",
+      "bytes": 561,
+      "sha256": "c4824e917cb96e25ac35e6db3cb6bd53c204709fce16b354dfb3cfaeb23ad5c7",
+      "raw_retained": false
+    },
+    {
+      "artifact": 15242339416,
+      "path": "full-bundle-build.json",
+      "bytes": 1641,
+      "sha256": "a1746fb03dbf6f047b30ac439e8a64b0ace2317503268c6f1fdda43d7130e6c5",
+      "raw_retained": false
+    },
+    {
+      "artifact": 15242339416,
+      "path": "full-bundle-citation-styles.txt",
+      "bytes": 62334,
+      "sha256": "57214aecb45cd966b313baa4c6bc550975ee5a3a7703c3398a55f28d57ec1009",
+      "raw_retained": false
+    },
+    {
+      "artifact": 15242339416,
+      "path": "full-bundle-firewall.json",
+      "bytes": 1063,
+      "sha256": "484b92f904c3da543f30fd57fe9a814b6ec1b0ab9095e24647161859bc405559",
+      "raw_retained": false
+    },
+    {
+      "artifact": 15242339416,
+      "path": "full-bundle-native-runtime.json",
+      "bytes": 637,
+      "sha256": "8b2f119179147b317348702bcc46d338ba768a2b8b867eafbb2652b9b8266d59",
+      "raw_retained": false
+    },
+    {
+      "artifact": 15242339416,
+      "path": "full-bundle-voice-settings.json",
+      "bytes": 279,
+      "sha256": "978f5c34787f4198a3c464effc35e0ba353fea3b0253376c1998845654bf9dcd",
+      "raw_retained": false
+    },
+    {
+      "artifact": 15242339416,
+      "path": "offline-bundle-daisy-schema.json",
+      "bytes": 6058,
+      "sha256": "dd79cd84a08502fbd3dd9d4ac1005d43ee79d78cf03aff480cc6efe4e39da0ad",
+      "raw_retained": false
+    },
+    {
+      "artifact": 15242339416,
+      "path": "offline-bundle-epubcheck.json",
+      "bytes": 3398,
+      "sha256": "72431c2ccea64ee3b8e75dcb7b618d8a13509ebd364e49d7ac9a7faa95dfc93d",
+      "raw_retained": false
+    },
+    {
+      "artifact": 15242339416,
+      "path": "offline-bundle-ocr-catalogue.json",
+      "bytes": 199,
+      "sha256": "d2cd30f557cac19e35077f597b692c8dc7ea1a8d84164a86cc8dbb3a2d3cb751",
+      "raw_retained": false
+    }
+  ],
+  "json_summaries": [
+    {
+      "artifact": 15242339416,
+      "mode": "bundle",
+      "path": "audio-endpoint.json",
+      "bytes": 655,
+      "sha256": "d31a10a6098553fd94743ad6a93d9e9833fdd2b1d20b0d0dbecdf96f92f844b3",
+      "encoding": "utf-8-sig",
+      "summary": {
+        "status": "UNAVAILABLE"
+      }
+    },
+    {
+      "artifact": 15242339416,
+      "mode": "bundle",
+      "path": "audio-services.json",
+      "bytes": 376,
+      "sha256": "1b7677b8ea87225842e870c71dd9c82292392b84cb482dd5b70730aae9cc2937",
+      "encoding": "utf-8-sig",
+      "summary": {
+        "errors": []
+      }
+    },
+    {
+      "artifact": 15242339416,
+      "mode": "bundle",
+      "path": "bundle-reader-controls.json",
+      "bytes": 4603,
+      "sha256": "5888ceb15e1d0684968decbf5a8f74e8b8d467796225e8ac0330076c9e32a797",
+      "encoding": "utf-8-sig",
+      "summary": {
+        "status": "FAILED",
+        "failure": "Traceback (most recent call last):\n  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_reader_controls_smoke.py\", line 407, in _run_probe\n    raise AssertionError('\\n'.join(failures))\nAssertionError: Traceback (most recent call last):\n  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_reader_controls_smoke.py\", line 143, in guarded\n    callback()\n  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_reader_controls_smoke.py\", line 157, in tick\n    done()\n  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_reader_controls_smoke.py\", line 323, in begin_playback\n    play_when_quiet((frame.operation_progress,), lambda: player.play(active['source']),\n  File \"D:\\a\\_temp\\carr-bundle-ci\\complete bundle\\.venv\\Lib\\site-packages\\carr_library\\speech\\progress_speech.py\", line 325, in play_when_quiet\n    attempt()\n  File \"D:\\a\\_temp\\carr-bundle-ci\\complete bundle\\.venv\\Lib\\site-packages\\carr_library\\speech\\progress_speech.py\", line 323, in attempt\n    on_error(exc)\n  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_reader_controls_smoke.py\", line 325, in <lambda>\n    on_error=lambda error: (_ for _ in ()).throw(error))\n                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_reader_controls_smoke.py\", line 325, in <genexpr>\n    on_error=lambda error: (_ for _ in ()).throw(error))\n  File \"D:\\a\\_temp\\carr-bundle-ci\\complete bundle\\.venv\\Lib\\site-packages\\carr_library\\speech\\progress_speech.py\", line 311, in attempt\n    start()\n  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_reader_controls_smoke.py\", line 323, in <lambda>\n    play_when_quiet((frame.operation_progress,), lambda: player.play(active['source']),\n                                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"D:\\a\\_temp\\carr-bundle-ci\\complete bundle\\.venv\\Lib\\site-packages\\carr_library\\speech\\player.py\", line 582, in play\n    self._replace_recording(path, start_seconds=start_seconds)\n  File \"D:\\a\\_temp\\carr-bundle-ci\\complete bundle\\.venv\\Lib\\site-packages\\carr_library\\speech\\player.py\", line 578, in _replace_recording\n    self._start(target, start_seconds=start_seconds)\n  File \"D:\\a\\_temp\\carr-bundle-ci\\complete bundle\\.venv\\Lib\\site-packages\\carr_library\\speech\\player.py\", line 539, in _start\n    self._mci_open(transport)\n  File \"D:\\a\\_temp\\carr-bundle-ci\\complete bundle\\.venv\\Lib\\site-packages\\carr_library\\speech\\player.py\", line 423, in _mci_open\n    raise RuntimeError(f'Windows audio device rejected the operation (MCI {code}).')\nRuntimeError: Windows audio device rejected the operation (MCI 326).\n\n",
+        "check_count": 13,
+        "last_checks": [
+          "native named reader control: Mark B at current position",
+          "native named reader control: Set A/B times...",
+          "native named reader control: Enable A/B repeat",
+          "native named reader control: Clear A/B",
+          "native named reader control: Sleep timer...",
+          "native named reader control: Repeat and sleep status",
+          "native named reader control: A/B repeat and sleep timer status",
+          "actual installed Windows MCI transport"
+        ]
+      }
+    },
+    {
+      "artifact": 15242339416,
+      "mode": "bundle",
+      "path": "core-bundle-self-test.json",
+      "bytes": 272,
+      "sha256": "20e78b8dd6e565795b5678bb6d31130401207540cf16b20b77ab1d58b02c97bc",
+      "encoding": "utf-8-sig",
+      "summary": {
+        "status": "PASS",
+        "check_count": 9,
+        "last_checks": [
+          "scoped search",
+          "exact quotation",
+          "workspace isolation",
+          "saved research",
+          "reopen persistence",
+          "academic reading list",
+          "bibliography export",
+          "backup and restore"
+        ]
+      }
+    },
+    {
+      "artifact": 15242339416,
+      "mode": "bundle",
+      "path": "full-bundle-audio-effects.json",
+      "bytes": 656,
+      "sha256": "b7bb3749b4f7820f148abd74123ceb2cbee6003a965571b4da95e088a2d053c7",
+      "encoding": "utf-8-sig",
+      "summary": {
+        "status": "PASS",
+        "check_count": 11,
+        "last_checks": [
+          "native forward keyboard traversal",
+          "ordered preset and explicit move",
+          "bypass retained",
+          "native numeric parameter dialog and return focus",
+          "asynchronous conversion and cancellable focus",
+          "real verified local FLAC output",
+          "unchanged source bytes and unsaved parent note",
+          "completed status focus"
+        ]
+      }
+    },
+    {
+      "artifact": 15242339416,
+      "mode": "bundle",
+      "path": "full-bundle-audio-studio.json",
+      "bytes": 561,
+      "sha256": "c4824e917cb96e25ac35e6db3cb6bd53c204709fce16b354dfb3cfaeb23ad5c7",
+      "encoding": "utf-8-sig",
+      "summary": {
+        "status": "PASS",
+        "check_count": 10,
+        "last_checks": [
+          "Ctrl+S handler saves a revision",
+          "three native voice assignments",
+          "background speech and music production",
+          "actual chapter/subtitle/stem files",
+          "original script unchanged",
+          "native source reading copy preserves exact CRLF and treats directives as text",
+          "reviewed assistant plan executes actual selected-library search",
+          "literal quotation and retained source remain unchanged"
+        ]
+      }
+    },
+    {
+      "artifact": 15242339416,
+      "mode": "bundle",
+      "path": "full-bundle-build.json",
+      "bytes": 1641,
+      "sha256": "a1746fb03dbf6f047b30ac439e8a64b0ace2317503268c6f1fdda43d7130e6c5",
+      "encoding": "utf-8-sig",
+      "summary": {}
+    },
+    {
+      "artifact": 15242339416,
+      "mode": "bundle",
+      "path": "full-bundle-firewall.json",
+      "bytes": 1063,
+      "sha256": "484b92f904c3da543f30fd57fe9a814b6ec1b0ab9095e24647161859bc405559",
+      "encoding": "utf-8-sig",
+      "summary": {
+        "status": "PASS",
+        "phase": "installation, native desktop, multilingual inference and scanned-source research"
+      }
+    },
+    {
+      "artifact": 15242339416,
+      "mode": "bundle",
+      "path": "full-bundle-native-runtime.json",
+      "bytes": 637,
+      "sha256": "8b2f119179147b317348702bcc46d338ba768a2b8b867eafbb2652b9b8266d59",
+      "encoding": "utf-8-sig",
+      "summary": {}
+    },
+    {
+      "artifact": 15242339416,
+      "mode": "bundle",
+      "path": "full-bundle-voice-settings.json",
+      "bytes": 279,
+      "sha256": "978f5c34787f4198a3c464effc35e0ba353fea3b0253376c1998845654bf9dcd",
+      "encoding": "utf-8-sig",
+      "summary": {
+        "status": "PASS",
+        "check_count": 2,
+        "last_checks": [
+          "named native controls save pinned installation metadata and select the declared profile language",
+          "native reset detaches the registration without deleting external assets"
+        ]
+      }
+    },
+    {
+      "artifact": 15242339416,
+      "mode": "bundle",
+      "path": "native-audio-preview.json",
+      "bytes": 112,
+      "sha256": "1c0e533adc3e4456da3b34186b93c5cdb148f5c7e90282dc4fc74fe55ba691aa",
+      "encoding": "utf-8-sig",
+      "summary": {
+        "status": "NOT_RUN"
+      }
+    },
+    {
+      "artifact": 15242339416,
+      "mode": "bundle",
+      "path": "native-audio-runtime-setup.json",
+      "bytes": 2700,
+      "sha256": "5bd0a8b913b316ed781b470253f381fd2174354fee2cbb08dae37d2d5107bb59",
+      "encoding": "utf-8-sig",
+      "summary": {
+        "status": "PASS",
+        "check_count": 35,
+        "last_checks": [
+          "cancelled verification retains exact settings bytes",
+          "cancelled verification retains the previous active owner",
+          "cancellation has a readable native result",
+          "selected FFmpeg remains the same actual executable",
+          "native key dispatch 32",
+          "closing setup keeps the frame-owned runtime active",
+          "actual fixed native version commands passed",
+          "frame close releases its audio binding"
+        ]
+      }
+    },
+    {
+      "artifact": 15242339416,
+      "mode": "bundle",
+      "path": "native-draft-timer.json",
+      "bytes": 1398,
+      "sha256": "ca18dee0a1a4c198f48eeda1c85115a5610fd23baa5fb8751d9678fac33238ea",
+      "encoding": "utf-8-sig",
+      "summary": {
+        "status": "PASS",
+        "phase": "complete",
+        "check_count": 4,
+        "last_checks": [
+          "Both actual draft timers initially target their own DesktopFrame",
+          "Child destruction preserved actual live 3000 ms timer delivery",
+          "Close and direct Destroy stopped their native draft and active progress timers",
+          "MainLoop remained usable without new ticks beyond the original timer period"
+        ]
+      }
+    },
+    {
+      "artifact": 15242339416,
+      "mode": "bundle",
+      "path": "native-reader-controls.json",
+      "bytes": 4470,
+      "sha256": "1617f47f632e329764eff67077d5786aef57350ac6a1355d2d19dbfca18f5595",
+      "encoding": "utf-8-sig",
+      "summary": {
+        "status": "FAILED",
+        "failure": "Traceback (most recent call last):\n  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_reader_controls_smoke.py\", line 407, in _run_probe\n    raise AssertionError('\\n'.join(failures))\nAssertionError: Traceback (most recent call last):\n  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_reader_controls_smoke.py\", line 143, in guarded\n    callback()\n  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_reader_controls_smoke.py\", line 157, in tick\n    done()\n  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_reader_controls_smoke.py\", line 323, in begin_playback\n    play_when_quiet((frame.operation_progress,), lambda: player.play(active['source']),\n  File \"D:\\a\\_temp\\carr-windows-python\\Lib\\site-packages\\carr_library\\speech\\progress_speech.py\", line 325, in play_when_quiet\n    attempt()\n  File \"D:\\a\\_temp\\carr-windows-python\\Lib\\site-packages\\carr_library\\speech\\progress_speech.py\", line 323, in attempt\n    on_error(exc)\n  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_reader_controls_smoke.py\", line 325, in <lambda>\n    on_error=lambda error: (_ for _ in ()).throw(error))\n                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_reader_controls_smoke.py\", line 325, in <genexpr>\n    on_error=lambda error: (_ for _ in ()).throw(error))\n  File \"D:\\a\\_temp\\carr-windows-python\\Lib\\site-packages\\carr_library\\speech\\progress_speech.py\", line 311, in attempt\n    start()\n  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_reader_controls_smoke.py\", line 323, in <lambda>\n    play_when_quiet((frame.operation_progress,), lambda: player.play(active['source']),\n                                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"D:\\a\\_temp\\carr-windows-python\\Lib\\site-packages\\carr_library\\speech\\player.py\", line 582, in play\n    self._replace_recording(path, start_seconds=start_seconds)\n  File \"D:\\a\\_temp\\carr-windows-python\\Lib\\site-packages\\carr_library\\speech\\player.py\", line 578, in _replace_recording\n    self._start(target, start_seconds=start_seconds)\n  File \"D:\\a\\_temp\\carr-windows-python\\Lib\\site-packages\\carr_library\\speech\\player.py\", line 539, in _start\n    self._mci_open(transport)\n  File \"D:\\a\\_temp\\carr-windows-python\\Lib\\site-packages\\carr_library\\speech\\player.py\", line 423, in _mci_open\n    raise RuntimeError(f'Windows audio device rejected the operation (MCI {code}).')\nRuntimeError: Windows audio device rejected the operation (MCI 326).\n\n",
+        "check_count": 13,
+        "last_checks": [
+          "native named reader control: Mark B at current position",
+          "native named reader control: Set A/B times...",
+          "native named reader control: Enable A/B repeat",
+          "native named reader control: Clear A/B",
+          "native named reader control: Sleep timer...",
+          "native named reader control: Repeat and sleep status",
+          "native named reader control: A/B repeat and sleep timer status",
+          "actual installed Windows MCI transport"
+        ]
+      }
+    },
+    {
+      "artifact": 15242339416,
+      "mode": "bundle",
+      "path": "native-reader-keymap.json",
+      "bytes": 3377,
+      "sha256": "2a8824481da719e65947e75d4b720a1c11ae62a262e17101450a2e9e1b8907bd",
+      "encoding": "utf-8-sig",
+      "summary": {
+        "status": "PASS",
+        "phase": "complete",
+        "check_count": 35,
+        "last_checks": [
+          "a reopened native Reader restores the measured source location",
+          "the reopened source has native focus",
+          "reopen preserves removal of the old default key",
+          "persisted custom key drives the reopened production dialog",
+          "reopened Reader closes through actual Escape",
+          "all original source pages remain unchanged after remap, clear, reset and reopen",
+          "host accepts native keyboard focus after Reader closes",
+          "same chord invokes the host context only after Reader closes"
+        ]
+      }
+    },
+    {
+      "artifact": 15242339416,
+      "mode": "bundle",
+      "path": "native-sapi-speech.json",
+      "bytes": 2747,
+      "sha256": "e2cb9061442a284db9509ea35515a94e0ced351446481736304870d2e818f5d9",
+      "encoding": "utf-8-sig",
+      "summary": {
+        "status": "PASS"
+      }
+    },
+    {
+      "artifact": 15242339416,
+      "mode": "bundle",
+      "path": "native-save-all-recovery.json",
+      "bytes": 3671,
+      "sha256": "4f520bbe6b0a3954df450c0ba0fa4e8cf5056881dd055627b8b56ebc3da0e967",
+      "encoding": "utf-8-sig",
+      "summary": {
+        "status": "PASS"
+      }
+    },
+    {
+      "artifact": 15242339416,
+      "mode": "bundle",
+      "path": "offline-bundle-daisy-schema.json",
+      "bytes": 6058,
+      "sha256": "dd79cd84a08502fbd3dd9d4ac1005d43ee79d78cf03aff480cc6efe4e39da0ad",
+      "encoding": "utf-8-sig",
+      "summary": {
+        "status": "PASS"
+      }
+    },
+    {
+      "artifact": 15242339416,
+      "mode": "bundle",
+      "path": "offline-bundle-epubcheck.json",
+      "bytes": 3398,
+      "sha256": "72431c2ccea64ee3b8e75dcb7b618d8a13509ebd364e49d7ac9a7faa95dfc93d",
+      "encoding": "utf-8-sig",
+      "summary": {
+        "status": "PASS"
+      }
+    },
+    {
+      "artifact": 15242339416,
+      "mode": "bundle",
+      "path": "offline-bundle-ocr-catalogue.json",
+      "bytes": 199,
+      "sha256": "d2cd30f557cac19e35077f597b692c8dc7ea1a8d84164a86cc8dbb3a2d3cb751",
+      "encoding": "utf-8-sig",
+      "summary": {
+        "status": "PASS"
+      }
+    },
+    {
+      "artifact": 15241719856,
+      "mode": "endpoint",
+      "path": "audio-endpoint.json",
+      "bytes": 655,
+      "sha256": "d31a10a6098553fd94743ad6a93d9e9833fdd2b1d20b0d0dbecdf96f92f844b3",
+      "encoding": "utf-8-sig",
+      "summary": {
+        "status": "UNAVAILABLE"
+      }
+    },
+    {
+      "artifact": 15241719856,
+      "mode": "endpoint",
+      "path": "audio-services.json",
+      "bytes": 376,
+      "sha256": "1b7677b8ea87225842e870c71dd9c82292392b84cb482dd5b70730aae9cc2937",
+      "encoding": "utf-8-sig",
+      "summary": {
+        "errors": []
+      }
+    }
+  ],
+  "limits": [
+    "Pre-source artifacts are immutable despite the enclosing source-suite job still running.",
+    "Successful summarized JSON without raw chunks is retained only as an explicitly derived summary plus original member digest, never as reconstructed original bytes.",
+    "This no-output PR environment differs from the earlier exact-branch signed-endpoint capture environment; it does not explain that earlier access denial.",
+    "No consent, selected output identity, capture gate, output policy, product deadline or assertion was changed."
+  ]
+}

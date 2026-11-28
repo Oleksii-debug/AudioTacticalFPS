@@ -1,0 +1,285 @@
+{
+  "schema": "carr-scoped-ci-evidence/1",
+  "head_sha": "8bcbdb74328d7f6bb71ea8987cb5305064b8eb0e",
+  "tree_sha": "af194dd3c240b38eaafc898b71d8cb3a0bbe315b",
+  "event": "pull_request",
+  "run_id": 46093366026,
+  "job_id": 140819158674,
+  "job_name": "protocol (windows-2022)",
+  "status": "completed",
+  "conclusion": "success",
+  "started_at": "2026-11-28T01:31:26Z",
+  "completed_at": "2026-11-28T01:48:09Z",
+  "job_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46093366026/job/140819158674",
+  "workflow": {
+    "path": ".github/workflows/carr-transcription-bridge.yml",
+    "blob": "847b1e36301a5f3185555d727a27bc20363ae23e"
+  },
+  "identity": {
+    "exact_checkout_commit_prints": 3,
+    "python": "3.11.9",
+    "complete_installed_package_inventory": "NOT_PROVIDED_BY_THIS_WORKFLOW"
+  },
+  "log": {
+    "sha256": "3d545f2926273c08cf76ba70ac7669170edd9daf77d8d53b0c283911326f54c4",
+    "bytes": 105114,
+    "scope": "Complete decoded terminal job log returned by GitHub; digest is UTF-8 bytes of that returned text."
+  },
+  "tests": {
+    "modules": 28,
+    "passed": 805,
+    "failed": 0,
+    "skipped": 0,
+    "verdicts": [
+      {
+        "status": "PASS",
+        "path": "tests/assistant/test_transcription_workflow.py",
+        "passed": 24,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "path": "tests/transcription/test_supplied_worker_bridge.py",
+        "passed": 91,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "path": "tests/storage/test_transcription_recovery.py",
+        "passed": 11,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "path": "tests/storage/test_import_publication_backup.py",
+        "passed": 11,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "path": "tests/ui/test_progress_job_review.py",
+        "passed": 45,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "path": "tests/transcription/test_protocol_routing.py",
+        "passed": 20,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "path": "tests/transcription/test_owned_admission.py",
+        "passed": 4,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "path": "tests/transcription/test_protocol_fixture.py",
+        "passed": 9,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "path": "tests/transcription/test_runtime_admission.py",
+        "passed": 13,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "path": "tests/transcription/test_runtime_inventory.py",
+        "passed": 172,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "path": "tests/storage/test_asr_additional_profile.py",
+        "passed": 11,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "path": "tests/storage/test_state_json_reader.py",
+        "passed": 63,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "path": "tests/transcription/test_control_reads.py",
+        "passed": 33,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "path": "tests/transcription/test_service.py",
+        "passed": 28,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "path": "tests/transcription/test_admission_boundaries.py",
+        "passed": 14,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "path": "tests/transcription/test_restore.py",
+        "passed": 1,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "path": "tests/e2e/test_transcription_cli.py",
+        "passed": 3,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "path": "tests/storage/test_transcription_backup.py",
+        "passed": 143,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "path": "tests/storage/test_transcription_composite_backup.py",
+        "passed": 10,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "path": "tests/operations/test_resources.py",
+        "passed": 46,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "path": "tests/operations/test_facade.py",
+        "passed": 4,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "path": "tests/operations/test_transcription_views.py",
+        "passed": 3,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "path": "tests/e2e/test_operations_cli.py",
+        "passed": 2,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "path": "tests/storage/test_atomic_state_publication.py",
+        "passed": 7,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "path": "tests/audio/test_audio_process.py",
+        "passed": 12,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "path": "tests/audio/test_process_deadline.py",
+        "passed": 21,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "path": "tests/transcription_windows/test_protocol_fixture_handles.py",
+        "passed": 2,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "path": "tests/operations_windows/test_native_lock_release.py",
+        "passed": 2,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      }
+    ]
+  },
+  "native_transcription": {
+    "command": "python -I -B -X utf8 scripts/windows_transcription_smoke.py",
+    "status": "PASS",
+    "checks": [
+      "actual named wx controls",
+      "shared background operation",
+      "actual named folder action",
+      "background folder intake",
+      "relative source and exclusion count",
+      "actual isolated child protocol",
+      "six verified formats",
+      "separate edit revision",
+      "original unchanged"
+    ],
+    "folder_picker_interaction": "NOT_RUN",
+    "folder_picker_answer": "controlled synthetic directory",
+    "whisper_acoustic_inference": "NOT_RUN",
+    "manual_NVDA": "NOT_RUN"
+  },
+  "scope_limits": [
+    "No test_recording_windows_process.py selector; its 17 new membership-query cases are not covered by this run.",
+    "Native fixture uses a controlled synthetic directory and isolated protocol child, not Whisper acoustic inference.",
+    "No manual NVDA, model quality, voice rights, release or whole-platform qualification is inferred.",
+    "Independent push and pull_request event executions are reported separately."
+  ]
+}

@@ -1,0 +1,249 @@
+{
+  "schema": "carr-receiving-evidence-update/1",
+  "tested_commit": "8bcbdb74328d7f6bb71ea8987cb5305064b8eb0e",
+  "parent_evidence_commit": "be9e7a0af0bf2c941cd49ddf05a3798a4a20fc0d",
+  "state": "PARTIAL; complete receiving acceptance remains open",
+  "authority": {
+    "canonical_commit": "e5c64a5245583f8f8b404a0f042f6ca438c24d7f",
+    "issue1_updated_at": "2026-11-27T16:44:15Z"
+  },
+  "completed_evidence": {
+    "component": "All four OS/mode jobs completed successfully, including later Windows 2188 source and 2188 installed cases plus12 installed subtests.",
+    "bridge": "Both push and pull-request Linux/Windows runs completed;805 Windows or802 Linux cases each; no skipped cases.",
+    "bibliography": "Ordinary native bibliography gate completed;1092 source cases and69 separate installed native checks."
+  },
+  "source_head_separation": {
+    "current_8b": "Later successful focused receipts and immutable failed pre-source Windows evidence are bound only to8bcbdb74.",
+    "historical_17": "The fullsource terminal failure and exact interpreter proof retain17c58101 identity; they do not transfer success to8b or a successor."
+  },
+  "full_windows": {
+    "pr_run": 46093366008,
+    "status_at_capture": "IN_PROGRESS",
+    "bundle_playback": "FAILED: zero output devices, Windows MCI326",
+    "source_suite": "Terminal result not yet available in this update.",
+    "v3_pr_run": 46093366005,
+    "v3_pr": "Still in progress. Installed shared-services step completed successfully; case-level terminal log not yet available.",
+    "old_v3_run": 46088683372,
+    "old_v3": "Still in progress; earlier installed step failed. No cancellation or result rewriting."
+  },
+  "constraints": [
+    "No application, tests, workflows or package bytes changed in this evidence-only commit.",
+    "No release, signed installer, NVDA, human listening, real model inference or full platform completion is claimed.",
+    "New loop, heavy-reader admission, redacted details and the early-EOF fixture correction are separate source-reviewed work and remain NOT_RUN."
+  ],
+  "files": [
+    {
+      "path": "carr-library/review/bibliography-8bcbdb74-2026-11-28/installed-native.json",
+      "git_blob": "a5c03ad458cd230e19b052efbd7386561fa93eb5"
+    },
+    {
+      "path": "carr-library/review/bibliography-8bcbdb74-2026-11-28/source-wheel.json",
+      "git_blob": "2fd9d519d9ce39b4b07dca5c18dc18e714b89f55"
+    },
+    {
+      "path": "carr-library/review/bibliography-8bcbdb74-2026-11-28/terminal.json",
+      "git_blob": "31114dffd608f123c8e1ef999914a5c675c5802d"
+    },
+    {
+      "path": "carr-library/review/terminal-8bcbdb74-2026-11-28/windows-source-component.json",
+      "git_blob": "2b8375a10da584e0e99e6e59a317583e148d1749"
+    },
+    {
+      "path": "carr-library/review/terminal-8bcbdb74-2026-11-28/windows-installed-component.json",
+      "git_blob": "bbfcc6c003aa007aec285634667a9a8e891c0cc3"
+    },
+    {
+      "path": "carr-library/review/supplied-transcription-8bcbdb74-2026-11-28/README.md",
+      "git_blob": "d6f0bb6f0917ac11f06c2e1792d933db73dae562"
+    },
+    {
+      "path": "carr-library/review/supplied-transcription-8bcbdb74-2026-11-28/pull_request-linux.json",
+      "git_blob": "ef76de226fb8430bc4b0611f66976393f5d781c9"
+    },
+    {
+      "path": "carr-library/review/supplied-transcription-8bcbdb74-2026-11-28/pull_request-windows.json",
+      "git_blob": "c40c03f8c8ce589afabfe5ce397d623e1f887eb5"
+    },
+    {
+      "path": "carr-library/review/supplied-transcription-8bcbdb74-2026-11-28/push-linux.json",
+      "git_blob": "642ac4e77230321079efffed0bdeda352495d926"
+    },
+    {
+      "path": "carr-library/review/supplied-transcription-8bcbdb74-2026-11-28/push-windows.json",
+      "git_blob": "e137f322880ab57bbadbbf457b55fa0cd546de1f"
+    },
+    {
+      "path": "carr-library/review/windows-full-source-17c58101-2026-11-28/capture-fixture-failure.txt",
+      "git_blob": "ced266f1a1c448da47d477ae8a5addda89e7628e"
+    },
+    {
+      "path": "carr-library/review/windows-full-source-17c58101-2026-11-28/deadline-failures.txt",
+      "git_blob": "d2af3216e63f0307356158125e63f75a8df8d2d3"
+    },
+    {
+      "path": "carr-library/review/windows-full-source-17c58101-2026-11-28/job-steps.json",
+      "git_blob": "aa8ecd43bcde2451bef3a47d8606e13a96d22656"
+    },
+    {
+      "path": "carr-library/review/windows-full-source-17c58101-2026-11-28/readiness-only.json",
+      "git_blob": "457f49d4f984ecaadfa0fc0576701219fd06acfc"
+    },
+    {
+      "path": "carr-library/review/windows-full-source-17c58101-2026-11-28/source-inventory.json",
+      "git_blob": "fca8e9d9a08ebf4638088c9db119d5540381215f"
+    },
+    {
+      "path": "carr-library/review/windows-full-source-17c58101-2026-11-28/terminal-result.json",
+      "git_blob": "16a729833e8e08b666eec02834dfbd04cf49fd5a"
+    },
+    {
+      "path": "carr-library/review/windows-full-source-17c58101-2026-11-28/interpreter-identity.json",
+      "git_blob": "9d6df3bcfac989a78bdd02144d669c2918c875e6"
+    },
+    {
+      "path": "carr-library/review/windows-pr-pre-source-8bcbdb74-2026-11-28/artifact-15241719856/audio-endpoint.json",
+      "git_blob": "c332b52660c85507ef2f6887dba91bd5385d8343"
+    },
+    {
+      "path": "carr-library/review/windows-pr-pre-source-8bcbdb74-2026-11-28/artifact-15241719856/audio-services.json",
+      "git_blob": "f71fed76a0f5c2f96908acd0c6c1d87611a0f3d8"
+    },
+    {
+      "path": "carr-library/review/windows-pr-pre-source-8bcbdb74-2026-11-28/artifact-15242339416/audio-endpoint.json",
+      "git_blob": "c332b52660c85507ef2f6887dba91bd5385d8343"
+    },
+    {
+      "path": "carr-library/review/windows-pr-pre-source-8bcbdb74-2026-11-28/artifact-15242339416/audio-services.json",
+      "git_blob": "f71fed76a0f5c2f96908acd0c6c1d87611a0f3d8"
+    },
+    {
+      "path": "carr-library/review/windows-pr-pre-source-8bcbdb74-2026-11-28/artifact-15242339416/bundle-reader-controls.json",
+      "git_blob": "a1bb7eec00935e38534810df200991382bba24e8"
+    },
+    {
+      "path": "carr-library/review/windows-pr-pre-source-8bcbdb74-2026-11-28/artifact-15242339416/core-bundle-install.txt",
+      "git_blob": "a400006f6b4435424fd1be7322a57f51e3a0f0ca"
+    },
+    {
+      "path": "carr-library/review/windows-pr-pre-source-8bcbdb74-2026-11-28/artifact-15242339416/core-bundle-native.txt",
+      "git_blob": "10295b0c6b93c7a11c9c5a7d8eed82d8906f4d27"
+    },
+    {
+      "path": "carr-library/review/windows-pr-pre-source-8bcbdb74-2026-11-28/artifact-15242339416/full-bundle-academic-native.txt",
+      "git_blob": "26e31b0910e9c375eecd5657582bc0e35e27e7ea"
+    },
+    {
+      "path": "carr-library/review/windows-pr-pre-source-8bcbdb74-2026-11-28/artifact-15242339416/full-bundle-catalog-tools.txt",
+      "git_blob": "dddda8d4ad9a75ac73d7423936d677b877ae6b82"
+    },
+    {
+      "path": "carr-library/review/windows-pr-pre-source-8bcbdb74-2026-11-28/artifact-15242339416/full-bundle-delivery-lifecycle.txt",
+      "git_blob": "b6dd55f23f2d73d44ea532246a5d890542376274"
+    },
+    {
+      "path": "carr-library/review/windows-pr-pre-source-8bcbdb74-2026-11-28/artifact-15242339416/full-bundle-reader-controls.txt",
+      "git_blob": "c1ee56a709635ba3ea773655cd28102cc4b8de40"
+    },
+    {
+      "path": "carr-library/review/windows-pr-pre-source-8bcbdb74-2026-11-28/artifact-15242339416/native-audio-preview.json",
+      "git_blob": "ce8bd25359019fa3c3d2924f4f875367441d0e6b"
+    },
+    {
+      "path": "carr-library/review/windows-pr-pre-source-8bcbdb74-2026-11-28/artifact-15242339416/native-audio-runtime-setup.json",
+      "git_blob": "6c2754cbb3a6f2ac3f64e2113eec5c298cb3457d"
+    },
+    {
+      "path": "carr-library/review/windows-pr-pre-source-8bcbdb74-2026-11-28/artifact-15242339416/native-audio-runtime-setup.txt",
+      "git_blob": "c44dfe3b2b459f90cf37a895d9eb2467573c9fe2"
+    },
+    {
+      "path": "carr-library/review/windows-pr-pre-source-8bcbdb74-2026-11-28/artifact-15242339416/native-delivery-lifecycle.txt",
+      "git_blob": "b6dd55f23f2d73d44ea532246a5d890542376274"
+    },
+    {
+      "path": "carr-library/review/windows-pr-pre-source-8bcbdb74-2026-11-28/artifact-15242339416/native-draft-timer.json",
+      "git_blob": "3cac8d5cf80e37f850bfe490dfa205aa198758e7"
+    },
+    {
+      "path": "carr-library/review/windows-pr-pre-source-8bcbdb74-2026-11-28/artifact-15242339416/native-draft-timer.txt",
+      "git_blob": "40e2c0438edc8cd6679fa5f53e267c9db5fe2b9e"
+    },
+    {
+      "path": "carr-library/review/windows-pr-pre-source-8bcbdb74-2026-11-28/artifact-15242339416/native-owner-voice-controls.txt",
+      "git_blob": "942359c6106389f444bfbb5184dddcd35e5e9c60"
+    },
+    {
+      "path": "carr-library/review/windows-pr-pre-source-8bcbdb74-2026-11-28/artifact-15242339416/native-reader-controls.json",
+      "git_blob": "c49365009b7bcf1d18a3e3e521387f3a622104ce"
+    },
+    {
+      "path": "carr-library/review/windows-pr-pre-source-8bcbdb74-2026-11-28/artifact-15242339416/native-reader-controls.txt",
+      "git_blob": "6d34a7981fddfd3347ec199c1e02149e1b05d170"
+    },
+    {
+      "path": "carr-library/review/windows-pr-pre-source-8bcbdb74-2026-11-28/artifact-15242339416/native-reader-keymap.json",
+      "git_blob": "0eb175bd427c82d3d600c1ff20402a6c625e1a57"
+    },
+    {
+      "path": "carr-library/review/windows-pr-pre-source-8bcbdb74-2026-11-28/artifact-15242339416/native-reader-keymap.txt",
+      "git_blob": "ce9651016b5757535356a78c11782156274e7343"
+    },
+    {
+      "path": "carr-library/review/windows-pr-pre-source-8bcbdb74-2026-11-28/artifact-15242339416/native-sapi-speech.json",
+      "git_blob": "8f355d1d36a97c441015777889fa53886bd8d7c1"
+    },
+    {
+      "path": "carr-library/review/windows-pr-pre-source-8bcbdb74-2026-11-28/artifact-15242339416/native-save-all-recovery.json",
+      "git_blob": "eb2a65cf4dac4e4f7a2c96fb5ed112b05cf41206"
+    },
+    {
+      "path": "carr-library/review/windows-pr-pre-source-8bcbdb74-2026-11-28/artifact-15242339416/native-save-all-recovery.txt",
+      "git_blob": "78439cec44f94e11b6f48dc3e9380a3c18e94919"
+    },
+    {
+      "path": "carr-library/review/windows-pr-pre-source-8bcbdb74-2026-11-28/artifact-15242339416/native-translation-source.txt",
+      "git_blob": "bd0dd2a58bf52e741c783884f653edca66a22264"
+    },
+    {
+      "path": "carr-library/review/windows-pr-pre-source-8bcbdb74-2026-11-28/artifact-15242339416/offline-bundle-command-palette.txt",
+      "git_blob": "88cca9e6a59d811b6c06c7be3548c5a283c647b5"
+    },
+    {
+      "path": "carr-library/review/windows-pr-pre-source-8bcbdb74-2026-11-28/artifact-15242339416/offline-bundle-daisy-schema.txt",
+      "git_blob": "416c79b115a9234a4a9589e1575a0e119a9c8feb"
+    },
+    {
+      "path": "carr-library/review/windows-pr-pre-source-8bcbdb74-2026-11-28/artifact-15242339416/offline-bundle-document-formats.json",
+      "git_blob": "7447948a5058948b11dcf6ce8f071a80effd08c3"
+    },
+    {
+      "path": "carr-library/review/windows-pr-pre-source-8bcbdb74-2026-11-28/artifact-15242339416/offline-bundle-epub-publication.txt",
+      "git_blob": "d3a588c207416b921d377c272fc1e93ed1c13b29"
+    },
+    {
+      "path": "carr-library/review/windows-pr-pre-source-8bcbdb74-2026-11-28/artifact-15242339416/offline-bundle-epubcheck.txt",
+      "git_blob": "4906dd28105f3a2d640bd873483a84dd6a73d02f"
+    },
+    {
+      "path": "carr-library/review/windows-pr-pre-source-8bcbdb74-2026-11-28/artifact-15242339416/offline-bundle-keyboard-preferences.json",
+      "git_blob": "95423c98af609430067404ab252a366d216e6328"
+    },
+    {
+      "path": "carr-library/review/windows-pr-pre-source-8bcbdb74-2026-11-28/artifact-15242339416/offline-bundle-ocr-manager.json",
+      "git_blob": "a43fd28d26613d304fa8f48553c44eecedc360d6"
+    },
+    {
+      "path": "carr-library/review/windows-pr-pre-source-8bcbdb74-2026-11-28/artifact-15242339416/offline-bundle-ocr-selection.json",
+      "git_blob": "c732fcad95f7bc182f5f6842798a4cde56cfe85f"
+    },
+    {
+      "path": "carr-library/review/windows-pr-pre-source-8bcbdb74-2026-11-28/artifact-15242339416/offline-bundle-workflow-productivity.txt",
+      "git_blob": "c37002ea9f0f879ee5723abd232e1a22152ded41"
+    },
+    {
+      "path": "carr-library/review/windows-pr-pre-source-8bcbdb74-2026-11-28/provenance.json",
+      "git_blob": "2ec87660f84fae63e10c4b6e0b4bb55cdbd34796"
+    }
+  ],
+  "files_added": 54
+}

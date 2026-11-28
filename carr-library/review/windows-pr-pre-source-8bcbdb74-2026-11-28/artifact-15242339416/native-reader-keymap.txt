@@ -1,0 +1,37 @@
+READER_KEYMAP_PHASE starting
+READER_KEYMAP_PHASE modal reader opens the first exact source
+READER_KEYMAP_PHASE reader is tested in a real native modal context
+READER_KEYMAP_PHASE reader exposes the shared configurable command adapter
+READER_KEYMAP_PHASE reader and keyboard modules load from the installed distribution
+READER_KEYMAP_PHASE actual Ctrl+PageDown opens the next source
+READER_KEYMAP_PHASE actual Ctrl+PageUp opens the previous source
+READER_KEYMAP_PHASE actual Where am I shortcut focuses the named native location control
+READER_KEYMAP_PHASE actual bookmark shortcut persists the current source location
+READER_KEYMAP_PHASE shared chord dispatches to Reader bookmarks in the modal context
+READER_KEYMAP_PHASE actual Reader shortcut settings save through native chooser and text controls
+READER_KEYMAP_PHASE old next shortcut is inactive after remapping
+READER_KEYMAP_PHASE new next shortcut dispatches the real source navigation
+READER_KEYMAP_PHASE unmodified previous shortcut still works after remapping
+READER_KEYMAP_PHASE native keyboard guide reports the current remapped shortcut
+READER_KEYMAP_PHASE an explicitly unassigned action has neither old nor custom key
+READER_KEYMAP_PHASE a rejected native-context collision preserves saved choices
+READER_KEYMAP_PHASE editing and screen-reader protected assignments leave the keymap unchanged
+READER_KEYMAP_PHASE ordinary typing and Insert do not navigate or change the read-only original
+READER_KEYMAP_PHASE shortcut cannot bypass an explicitly disabled native command
+READER_KEYMAP_PHASE reader operation is held while its native commands are disabled
+READER_KEYMAP_PHASE busy native shortcuts neither open prompts nor clear pending cancellation
+READER_KEYMAP_PHASE cancelled work leaves the displayed and persisted source unchanged
+READER_KEYMAP_PHASE reset removes the custom native shortcut
+READER_KEYMAP_PHASE reset restores the default native shortcut
+READER_KEYMAP_PHASE keyboard reading preserves the unsaved host note and citation state
+READER_KEYMAP_PHASE custom Reader key is saved through the shared preference store
+READER_KEYMAP_PHASE actual Escape closes the modal Reader
+READER_KEYMAP_PHASE a reopened native Reader restores the measured source location
+READER_KEYMAP_PHASE the reopened source has native focus
+READER_KEYMAP_PHASE reopen preserves removal of the old default key
+READER_KEYMAP_PHASE persisted custom key drives the reopened production dialog
+READER_KEYMAP_PHASE reopened Reader closes through actual Escape
+READER_KEYMAP_PHASE all original source pages remain unchanged after remap, clear, reset and reopen
+READER_KEYMAP_PHASE host accepts native keyboard focus after Reader closes
+READER_KEYMAP_PHASE same chord invokes the host context only after Reader closes
+READER_KEYMAP_PHASE complete

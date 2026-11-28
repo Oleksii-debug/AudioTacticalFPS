@@ -1,0 +1,30 @@
+PASS: command palette loads from the installed wheel
+PASS: native Windows wx is active
+PASS: palette belongs to the existing native shortcut inventory
+PASS: filter and results have accessible names
+PASS: status uses a native read-only multiline control
+PASS: Escape is bound to native cancellation
+PASS: filter resolves the existing native Save binding
+PASS: filter can receive native keyboard focus
+PASS: Tab reaches the native matching-command list
+PASS: native filter Enter event is handled
+PASS: palette dispatch reports the original menu event
+PASS: original Save handler commits the synthetic research note
+PASS: original menu event runs after the palette closes
+PASS: research note has focus before command search
+PASS: palette search and list use the remapped native shortcut
+PASS: cancelling search does not dispatch a command
+PASS: cancel preserves the dispatch count
+PASS: cancel restores focus to the originating research note
+PASS: Edit command comes from the same native menu registry
+PASS: native filter Enter event is handled
+PASS: palette dispatches the existing Edit Select all handler
+PASS: Edit handler acts on the originating note after the palette closes
+PASS: disabled native commands remain discoverable and clearly marked
+PASS: native filter Enter event is handled
+PASS: Enter cannot accept a disabled native command
+PASS: disabled command does not dispatch
+PASS: native filter Enter event is handled
+PASS: command availability is checked again after modal acceptance
+PASS: invalidated command neither executes nor discards the draft
+{"status": "PASS", "checks": ["command palette loads from the installed wheel", "native Windows wx is active", "palette belongs to the existing native shortcut inventory", "filter and results have accessible names", "status uses a native read-only multiline control", "Escape is bound to native cancellation", "filter resolves the existing native Save binding", "filter can receive native keyboard focus", "Tab reaches the native matching-command list", "native filter Enter event is handled", "palette dispatch reports the original menu event", "original Save handler commits the synthetic research note", "original menu event runs after the palette closes", "research note has focus before command search", "palette search and list use the remapped native shortcut", "cancelling search does not dispatch a command", "cancel preserves the dispatch count", "cancel restores focus to the originating research note", "Edit command comes from the same native menu registry", "native filter Enter event is handled", "palette dispatches the existing Edit Select all handler", "Edit handler acts on the originating note after the palette closes", "disabled native commands remain discoverable and clearly marked", "native filter Enter event is handled", "Enter cannot accept a disabled native command", "disabled command does not dispatch", "native filter Enter event is handled", "command availability is checked again after modal acceptance", "invalidated command neither executes nor discards the draft"], "count": 29, "nvda": "NOT_RUN", "manual_keyboard": "NOT_RUN"}

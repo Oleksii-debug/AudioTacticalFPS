@@ -1,0 +1,91 @@
+Independent native audio setup deadline: 240 seconds; incomplete execution remains FAILED.
+PASS: installed exact source carr_library.audio.local_runtime
+PASS: installed exact source carr_library.audio.windows_setup
+PASS: installed exact source carr_library.audio.runtime
+PASS: installed exact source carr_library.ui.audio_runtime_setup
+PASS: installed exact source carr_library.ui.desktop_app
+PASS: real native Windows controls
+PASS: native setup has keyboard reachable source and cancel controls
+PASS: native key dispatch 32
+PASS: native download confirmation exists
+PASS: download confirmation belongs to this probe and setup window
+PASS: actual download confirmation is enabled
+PASS: declined download does not start the worker
+PASS: native No declines download with a readable result
+PASS: declined download did not publish settings
+PASS: native key dispatch 32
+PASS: native setup saved and activated the complete runtime
+PASS: selected manifest is bound to actual bytes
+PASS: native setup uses the current library binding
+PASS: shared operation progress is installed
+PASS: native key dispatch 32
+PASS: actual shared worker reached a verification boundary
+PASS: progress query stays enabled while setup is busy
+PASS: native key dispatch 32
+PASS: modal progress query presents actual current verification
+PASS: configured default progress shortcut is native
+PASS: configured shortcut updates the modal progress result
+PASS: native key dispatch 32
+PASS: cancelled verification retains exact settings bytes
+PASS: cancelled verification retains the previous active owner
+PASS: cancellation has a readable native result
+PASS: selected FFmpeg remains the same actual executable
+PASS: native key dispatch 32
+PASS: closing setup keeps the frame-owned runtime active
+PASS: actual fixed native version commands passed
+PASS: frame close releases its audio binding
+{
+  "status": "PASS",
+  "checks": [
+    "installed exact source carr_library.audio.local_runtime",
+    "installed exact source carr_library.audio.windows_setup",
+    "installed exact source carr_library.audio.runtime",
+    "installed exact source carr_library.ui.audio_runtime_setup",
+    "installed exact source carr_library.ui.desktop_app",
+    "real native Windows controls",
+    "native setup has keyboard reachable source and cancel controls",
+    "native key dispatch 32",
+    "native download confirmation exists",
+    "download confirmation belongs to this probe and setup window",
+    "actual download confirmation is enabled",
+    "declined download does not start the worker",
+    "native No declines download with a readable result",
+    "declined download did not publish settings",
+    "native key dispatch 32",
+    "native setup saved and activated the complete runtime",
+    "selected manifest is bound to actual bytes",
+    "native setup uses the current library binding",
+    "shared operation progress is installed",
+    "native key dispatch 32",
+    "actual shared worker reached a verification boundary",
+    "progress query stays enabled while setup is busy",
+    "native key dispatch 32",
+    "modal progress query presents actual current verification",
+    "configured default progress shortcut is native",
+    "configured shortcut updates the modal progress result",
+    "native key dispatch 32",
+    "cancelled verification retains exact settings bytes",
+    "cancelled verification retains the previous active owner",
+    "cancellation has a readable native result",
+    "selected FFmpeg remains the same actual executable",
+    "native key dispatch 32",
+    "closing setup keeps the frame-owned runtime active",
+    "actual fixed native version commands passed",
+    "frame close releases its audio binding"
+  ],
+  "network_download": "NOT_REQUESTED",
+  "neural_inference": "NOT_RUN",
+  "human_listening": "NOT_RUN",
+  "nvda": "NOT_RUN",
+  "independent_deadline_seconds": 240,
+  "actual_native_keyboard": true,
+  "actual_windows_ffmpeg": true,
+  "source_hashes": {
+    "carr_library.audio.local_runtime": "c007261d7632c2863496b54113d4309054d029e9b1964506a1c53a4fb8ff2c7a",
+    "carr_library.audio.windows_setup": "06049a81e9445654a099a18baf8c61d3e4d33d9ee132721b389d8a7149a750f0",
+    "carr_library.audio.runtime": "312f69ce19e30d0ebc3eb8dec2baf850dadc021cfbd3c74a24a5ad183bfc27d6",
+    "carr_library.ui.audio_runtime_setup": "16c524ce9a82a0842b776ce3b942675bd2687829e101ca5e8b5f8b1989b59b4e",
+    "carr_library.ui.desktop_app": "039a3be765bbc72ef73e00f124cae1839b9eb83957ee5224f00cc493bc876d10"
+  },
+  "count": 35
+}

@@ -1,0 +1,31 @@
+PASS: manager loads from the installed wheel
+PASS: controls use native Windows wx
+PASS: portable OCR inventory has verified checksums
+PASS: bundled English Ukrainian Slovak and OSD are present
+PASS: real bundled English recognition succeeds
+PASS: filter and list controls have readable names
+PASS: status is a native read-only multiline control
+PASS: filter receives native keyboard focus
+PASS: Tab navigation reaches the installed-model list
+PASS: orientation model is never a recognition choice
+PASS: native button exists: &Add selected
+PASS: native button dispatches: &Add selected
+PASS: native button exists: &Add selected
+PASS: native button dispatches: &Add selected
+PASS: native multiple selection retains priority order
+PASS: native button exists: Move &up
+PASS: native button dispatches: Move &up
+PASS: native move changes recognition order
+PASS: native button exists: Use &preset
+PASS: native button dispatches: Use &preset
+PASS: saved preset restores the same ordered choice
+PASS: status text can receive native keyboard focus
+PASS: native button exists: Use settings
+PASS: native button dispatches: Use settings
+PASS: native modal returns expected result
+PASS: accepted native choice returns canonical OCR Config
+PASS: custom preset survives reopening the file
+PASS: reopened dialog preserves accepted order
+PASS: native modal returns expected result
+PASS: cancel does not return an accepted configuration
+{"status": "PASS", "checks": 30, "installed_models": ["eng", "osd", "slk", "ukr"], "runtime_integrity": "portable_sha256", "english_inference": "PASS", "nvda": "NOT_RUN"}

@@ -1,0 +1,19 @@
+{
+  "status": "PASS",
+  "platform": "win32",
+  "checks": [
+    "named native controls and read-only captured source",
+    "actual shared-worker source capture and exact CRLF preview without transmission",
+    "saved exact account/languages/budget/source restoration",
+    "native resume/export handlers reject changed visible scope and focus the error",
+    "actual installed CLI dispatch reads the same immutable source/job/receipt contract",
+    "unavailable saved account blocks remote resume while keeping offline linked reading",
+    "bilingual shared-reader document retains original source anchor",
+    "retained original bytes unchanged"
+  ],
+  "provider_transport": "synthetic protocol only",
+  "live_google": "NOT_RUN",
+  "translation_quality": "NOT_RUN",
+  "acoustic_inference": "NOT_RUN",
+  "manual_nvda": "NOT_RUN"
+}

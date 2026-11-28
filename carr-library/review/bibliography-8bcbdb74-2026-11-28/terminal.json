@@ -1,0 +1,342 @@
+{
+  "schema": 1,
+  "source_commit": "8bcbdb74328d7f6bb71ea8987cb5305064b8eb0e",
+  "source_tree": "af194dd3c240b38eaafc898b71d8cb3a0bbe315b",
+  "run": 46093366065,
+  "job": 140819158837,
+  "event": "pull_request",
+  "head_branch": "carr/v3-integrated-final-dbbb-20261126",
+  "conclusion": "success",
+  "status": "completed",
+  "started_at": "2026-11-28T01:31:26Z",
+  "completed_at": "2026-11-28T01:36:56Z",
+  "job_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46093366065/job/140819158837",
+  "source": {
+    "modules": 29,
+    "passed": 1092,
+    "failed": 0,
+    "skipped": 0,
+    "verdicts": [
+      {
+        "module": "tests/research/test_bibtex_import.py",
+        "passed": 68,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "module": "tests/research/test_academic_library.py",
+        "passed": 94,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "module": "tests/research/test_csl_author_boundaries.py",
+        "passed": 20,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "module": "tests/citations/test_csl.py",
+        "passed": 79,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "module": "tests/citations/test_custom_csl.py",
+        "passed": 132,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "module": "tests/citations/test_bibliography_workbench.py",
+        "passed": 19,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "module": "tests/citations/test_custom_workbench.py",
+        "passed": 20,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "module": "tests/ui/test_citation_styles_jobs.py",
+        "passed": 31,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "module": "tests/ui/test_academic_library_dialog.py",
+        "passed": 63,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "module": "tests/ui/test_academic_actions.py",
+        "passed": 39,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "module": "tests/ui/test_academic_export_handler.py",
+        "passed": 39,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "module": "tests/catalog/test_bibliography.py",
+        "passed": 39,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "module": "tests/catalog/test_archive_portability.py",
+        "passed": 54,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "module": "tests/catalog/test_intake_portability.py",
+        "passed": 16,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "module": "tests/catalog/test_reference_exchange.py",
+        "passed": 64,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "module": "tests/ingest/test_import_replay_identity.py",
+        "passed": 22,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "module": "tests/ingest/test_txt_replay_registration.py",
+        "passed": 4,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "module": "tests/reader/test_export_no_clobber.py",
+        "passed": 35,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "module": "tests/reader/test_export_reconciliation.py",
+        "passed": 20,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "module": "tests/reader/test_file_export.py",
+        "passed": 54,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "module": "tests/reader/test_binary_file_export.py",
+        "passed": 35,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "module": "tests/reader/test_academic_documents.py",
+        "passed": 41,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "module": "tests/reader/test_bibliographic_locators.py",
+        "passed": 6,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "module": "tests/reader/test_evidence_export.py",
+        "passed": 40,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "module": "tests/storage/test_academic_migration.py",
+        "passed": 32,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "module": "tests/e2e/test_academic_workflow.py",
+        "passed": 6,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "module": "tests/e2e/test_academic_workflows.py",
+        "passed": 4,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "module": "tests/e2e/test_academic_document_export.py",
+        "passed": 10,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "module": "tests/e2e/test_export_destination.py",
+        "passed": 6,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      }
+    ]
+  },
+  "installed_native": {
+    "status": "PASS",
+    "checks": 69,
+    "module_identities": 5
+  },
+  "runtime": {
+    "python": "3.11.9 (tags/v3.11.9:de54cf5, Apr  2 2024, 10:12:12) [MSC v.1938 64 bit (AMD64)]",
+    "windows": "Windows-10-10.0.20348-SP0",
+    "sqlite": "3.45.1",
+    "wx": "4.2.4 msw (phoenix) wxWidgets 3.2.8"
+  },
+  "source_wheel": {
+    "payload_files": 489,
+    "project_name": "universal-research-library",
+    "project_version": "0.2.0.dev2",
+    "required_runtime_files": 394,
+    "source_commit": "8bcbdb74328d7f6bb71ea8987cb5305064b8eb0e",
+    "source_tree": "af194dd3c240b38eaafc898b71d8cb3a0bbe315b",
+    "wheel_sha256": "e77f49d5696792157455038842e33253676285adb80c4ea78e12a9fbff3189b6"
+  },
+  "decoded_log": {
+    "sha256": "b17ba9e70390c7b2be44b6d22aa4118c7c2736434c21ff7efa2ef795d0c49c72",
+    "bytes": 139858
+  },
+  "artifact": {
+    "id": 15242189399,
+    "name": "bibliography-windows-8bcbdb74328d7f6bb71ea8987cb5305064b8eb0e",
+    "size_in_bytes": 6631,
+    "url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15242189399",
+    "archive_download_url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15242189399/zip",
+    "expired": false,
+    "created_at": "2026-11-28T01:36:53Z",
+    "expires_at": "2026-12-05T01:36:52Z",
+    "updated_at": "2026-11-28T01:36:53Z",
+    "digest": "sha256:950c84ed7e5f54f7d442cd503e0f47b417d9319c10391462d6f7a51846ac05d4",
+    "workflow_run": {
+      "id": 46093366065,
+      "repository_id": 1341777614,
+      "head_repository_id": 1341777614,
+      "head_branch": "carr/v3-integrated-final-dbbb-20261126",
+      "head_sha": "8bcbdb74328d7f6bb71ea8987cb5305064b8eb0e"
+    }
+  },
+  "steps": [
+    {
+      "number": 1,
+      "name": "Set up job",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "number": 2,
+      "name": "Preserve the exact committed source bytes",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "number": 3,
+      "name": "Check out the exact event commit",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "number": 4,
+      "name": "Set up native x64 CPython",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "number": 5,
+      "name": "Build, verify and install the actual application wheel",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "number": 6,
+      "name": "Exercise installed native BibTeX and citation controls",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "number": 7,
+      "name": "Run strict bibliography, replay and export acceptance",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "number": 8,
+      "name": "Retain text acceptance evidence only",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "number": 15,
+      "name": "Post Set up native x64 CPython",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "number": 16,
+      "name": "Post Check out the exact event commit",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "number": 17,
+      "name": "Complete job",
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "limits": [
+    "Exact8bcb ordinary bibliography gate only; source suite and installed native scopes overlap and are not a unique combined test total.",
+    "Parsed JSON and strict verdicts are extracted from the completed job log; this receipt is not the original artifact member bytes.",
+    "Native file picker/custom-style paths are controlled fixtures; human NVDA and complete-platform acceptance remain separate.",
+    "No earlier-head result is transferred and no model/audio/private assets are stored."
+  ]
+}
