@@ -1,0 +1,205 @@
+{
+  "schema": 1,
+  "status": "ACCEPTED_STATIC_NOT_RUN",
+  "parent": "7e042074c0190879bb21a07f5361bd29a93d3682",
+  "files": [
+    {
+      "path": "carr-library/scripts/windows_audio_player_smoke.py",
+      "preimage": "88c41833b0fc30f1f46b6bb8312f1f26de03cddc",
+      "blob_sha": "63d31bdd624bdac5340d1e1173155b3974b846ff"
+    },
+    {
+      "path": "carr-library/tests/ui/test_native_saved_audio_cleanup.py",
+      "preimage": "206b5f026ff2d185e62c64b324f354ec30ced0dd",
+      "blob_sha": "5eeba4884c846a6ca21a85a649ea2cd7830d7429"
+    },
+    {
+      "path": "carr-library/scripts/ci_native_saved_audio_cleanup.py",
+      "preimage": "280dcf7357420c0a16baf24ec1b60f8a1e4fca83",
+      "blob_sha": "d2c34b8d193f959a51d0bdbc24746a4e38a23df2"
+    },
+    {
+      "path": ".github/workflows/carr-native-saved-audio-cleanup.yml",
+      "preimage": "8a79b6e6742fff6d35b0f76ba416ef201f4986c2",
+      "blob_sha": "e321f06b5dfc6de108b63832e5938e1e238c5266"
+    }
+  ],
+  "actual_failure": {
+    "run": 46103021386,
+    "job": 140849517239,
+    "source": 13,
+    "installed": 13,
+    "native_checks": 15,
+    "host_close": "accepted; HWND gone; owner+worker drain PASS",
+    "strict_failure": "destroy_event_seen false; current frame-bound GetEventObject identity never acknowledged"
+  },
+  "fix": {
+    "external_observer": "Actual wx.EventFilter registered before MainLoop, removed after normal Close+drain; returns Event_Skip for every event",
+    "identity": "actual EVT_WINDOW_DESTROY + captured event ID + GetWindow().GetId(), no Python derived-object identity",
+    "required_acknowledgements": "normal Close accepted, actual Destroy event observed AND exact captured HWND gone, all owners/shared worker drained",
+    "deadlines": "all existing 12s waits and90s watchdog unchanged"
+  },
+  "tests": {
+    "suite": "tests/ui/test_native_saved_audio_cleanup.py",
+    "cases": 19,
+    "functions": [
+      "test_native_saved_queue_failure_always_drains_real_owner_and_shared_executor",
+      "test_native_saved_queue_unwind_closes_only_one_recorded_running_modal_per_turn",
+      "test_native_saved_queue_unwind_refuses_unowned_or_inactive_native_state",
+      "test_native_saved_queue_cleanup_keeps_primary_failure_and_continues_all_obligations",
+      "test_native_saved_queue_cleanup_only_does_not_qualify_or_bypass_default_playback",
+      "test_native_saved_queue_destroy_observer_requires_the_exact_real_event_and_host_id"
+    ],
+    "companion": "scripts/windows_audio_player_smoke.py",
+    "changes": "Original13 cases retained and updated for explicit real-event acknowledgement; missing-destroy case+five actual observer event/ID regressions"
+  },
+  "source_operations": [
+    {
+      "label": "external-observer",
+      "before": "    def close_host():\n",
+      "after": "    def observe_destroy(event):\n        # Top-level destruction can expose a base wx window wrapper after the\n        # Python frame handler has gone. Observe the real event externally by\n        # the captured native window ID; never consume or manufacture an event.\n        if event.GetEventType() == wx.EVT_WINDOW_DESTROY.typeId:\n            window = event.GetWindow()\n            if event.GetId() == host_id and window is not None and window.GetId() == host_id:\n                destroyed.append(True)\n        return wx.EventFilter.Event_Skip\n\n    class HostDestroyObserver(wx.EventFilter):\n        def FilterEvent(self, event):\n            return observe_destroy(event)\n\n    def close_host():\n"
+    },
+    {
+      "label": "already-gone-ack",
+      "before": "        if not user32.IsWindow(host_handle):\n            return\n        pump(lambda: not frame.working,",
+      "after": "        if not user32.IsWindow(host_handle):\n            pump(lambda: bool(destroyed), 'Actual host destroy acknowledgement', allow_errors=True)\n            return\n        pump(lambda: not frame.working,"
+    },
+    {
+      "label": "both-close-acknowledgements",
+      "before": "            pump(lambda: not user32.IsWindow(host_handle),\n                 'Failure-path desktop close', allow_errors=True)",
+      "after": "            pump(lambda: bool(destroyed) and not user32.IsWindow(host_handle),\n                 'Failure-path desktop close', allow_errors=True)"
+    },
+    {
+      "label": "strict-finish",
+      "before": "                and not user32.IsWindow(host_handle) and not executor.cleanup_failures",
+      "after": "                and bool(destroyed) and not user32.IsWindow(host_handle) and not executor.cleanup_failures"
+    },
+    {
+      "label": "captured-native-id",
+      "before": "        frame.Bind(wx.EVT_WINDOW_DESTROY,\n            lambda event: (destroyed.append(True) if event.GetEventObject() is frame else None, event.Skip()))",
+      "after": "        host_id = frame.GetId()"
+    },
+    {
+      "label": "ack-comment",
+      "before": "                # success and failure. The captured HWND is the acknowledgement.",
+      "after": "                # success and failure. Both the actual Destroy event and the\n                # captured HWND disappearance are required acknowledgements."
+    },
+    {
+      "label": "register-before-loop",
+      "before": "        try:\n            frame.Show()\n",
+      "after": "        destroy_observer = HostDestroyObserver()\n        wx.EvtHandler.AddFilter(destroy_observer)\n        try:\n            frame.Show()\n"
+    },
+    {
+      "label": "scoped-removal",
+      "before": "            finally:\n                wx.FileDialog = original_picker\n        if errors:",
+      "after": "            finally:\n                cleanup_step('host destroy observer removal',\n                             lambda: wx.EvtHandler.RemoveFilter(destroy_observer))\n                wx.FileDialog = original_picker\n        if errors:"
+    }
+  ],
+  "test_operations": [
+    {
+      "label": "extract-actual-observer",
+      "before": "('cleanup_step', 'unwind', 'observe_stage', 'observe_close', 'close_host', 'finish_host', 'result_report')",
+      "after": "('cleanup_step', 'unwind', 'observe_stage', 'observe_close', 'observe_destroy',\n             'close_host', 'finish_host', 'result_report')"
+    },
+    {
+      "label": "negative-destroy-case",
+      "before": "@pytest.mark.parametrize('close_result', ['acknowledged', 'vetoed', 'raised'])",
+      "after": "@pytest.mark.parametrize('close_result', ['acknowledged', 'missing-destroy', 'vetoed', 'raised'])"
+    },
+    {
+      "label": "fixture-explicit-destroy-ack",
+      "before": "        native_alive[0] = False\n        return True",
+      "after": "        native_alive[0] = False\n        if close_result == 'acknowledged':\n            env['destroyed'].append(True)\n        return True"
+    },
+    {
+      "label": "deterministic-missing-event",
+      "before": "        while not predicate():\n            assert time.monotonic() < deadline, label",
+      "after": "        while not predicate():\n            if close_result == 'missing-destroy' and not native_alive[0]:\n                raise RuntimeError('Actual host destroy acknowledgement is missing.')\n            assert time.monotonic() < deadline, label"
+    },
+    {
+      "label": "negative-assertions",
+      "before": "        else:\n            assert len(env['errors']) == 3 and native_alive[0]\n            expected = 'refused ordinary Close' if close_result == 'vetoed' else 'Close handler failure'",
+      "after": "        else:\n            assert len(env['errors']) == 3\n            assert native_alive[0] is (close_result != 'missing-destroy')\n            expected = ('destroy acknowledgement is missing' if close_result == 'missing-destroy'\n                        else 'refused ordinary Close' if close_result == 'vetoed' else 'Close handler failure')"
+    },
+    {
+      "label": "actual-event-identity-cases",
+      "before": "",
+      "after": "\n\n@pytest.mark.parametrize('kind', ['host', 'other-event', 'other-id', 'other-window', 'missing-window'])\ndef test_native_saved_queue_destroy_observer_requires_the_exact_real_event_and_host_id(kind):\n    requested = []\n    # A distinct base-window wrapper must work without Python frame identity.\n    window = SimpleNamespace(GetId=lambda: 78 if kind == 'other-window' else 77)\n    def get_window():\n        requested.append('window')\n        return None if kind == 'missing-window' else window\n    event = SimpleNamespace(GetEventType=lambda: 202 if kind == 'other-event' else 101,\n                            GetId=lambda: 78 if kind == 'other-id' else 77,\n                            GetWindow=get_window)\n    env = helpers(host_id=77, wx=SimpleNamespace(EVT_WINDOW_DESTROY=SimpleNamespace(typeId=101),\n                  EventFilter=SimpleNamespace(Event_Skip=-1)))\n    assert env['observe_destroy'](event) == -1, 'Observation must preserve normal native dispatch.'\n    assert env['destroyed'] == ([True] if kind == 'host' else [])\n    assert requested == ([] if kind == 'other-event' else ['window'])\n",
+      "append": true
+    }
+  ],
+  "exact_inverse": true,
+  "execution": "NOT_RUN",
+  "peer": {
+    "reviewer": "progress_completion",
+    "verdict": "ACCEPTED_STATIC_NOT_RUN",
+    "native_and_test_exact_inverse": true,
+    "actual_event_identity_and_scope_confirmed": true,
+    "source_cases": 19,
+    "required_test_functions": 6,
+    "existing_deadlines_unchanged": true
+  },
+  "focused_gates": {
+    "source": 19,
+    "installed": 19,
+    "native_required": 15,
+    "current_pins": 25,
+    "source_and_installed_companion": "scripts/windows_audio_player_smoke.py",
+    "all_original_native_required_predicates_retained": true
+  },
+  "gate_operations": {
+    "helper": [
+      {
+        "before": "cleanup-only: 13 source cases, 13 isolated installed",
+        "after": "cleanup-only: 19 source cases, 19 isolated installed",
+        "occurrences": 1
+      },
+      {
+        "before": "\"tests/ui/test_native_saved_audio_cleanup.py\": 13",
+        "after": "\"tests/ui/test_native_saved_audio_cleanup.py\": 19",
+        "occurrences": 1
+      },
+      {
+        "before": "exact whole13 source",
+        "after": "exact whole19 source",
+        "occurrences": 1
+      },
+      {
+        "before": "88c41833b0fc30f1f46b6bb8312f1f26de03cddc",
+        "after": "63d31bdd624bdac5340d1e1173155b3974b846ff",
+        "occurrences": 1
+      },
+      {
+        "before": "206b5f026ff2d185e62c64b324f354ec30ced0dd",
+        "after": "5eeba4884c846a6ca21a85a649ea2cd7830d7429",
+        "occurrences": 1
+      }
+    ],
+    "workflow": [
+      {
+        "before": "cleanup13 source",
+        "after": "cleanup19 source",
+        "occurrences": 1
+      },
+      {
+        "before": "'tests/ui/test_native_saved_audio_cleanup.py': 13",
+        "after": "'tests/ui/test_native_saved_audio_cleanup.py': 19",
+        "occurrences": 1
+      },
+      {
+        "before": "Require13 source,13 isolated installed",
+        "after": "Require19 source,19 isolated installed",
+        "occurrences": 1
+      },
+      {
+        "before": "280dcf7357420c0a16baf24ec1b60f8a1e4fca83",
+        "after": "d2c34b8d193f959a51d0bdbc24746a4e38a23df2",
+        "occurrences": 1
+      }
+    ]
+  },
+  "documentation": [
+    "https://docs.wxpython.org/wx.EventFilter.html",
+    "https://docs.wxpython.org/wx.WindowDestroyEvent.html"
+  ]
+}

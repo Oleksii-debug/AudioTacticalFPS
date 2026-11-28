@@ -188,9 +188,24 @@ def main():
         except Exception:
             pass  # Observation cannot change a Close result or cleanup ordering.
 
+    def observe_destroy(event):
+        # Top-level destruction can expose a base wx window wrapper after the
+        # Python frame handler has gone. Observe the real event externally by
+        # the captured native window ID; never consume or manufacture an event.
+        if event.GetEventType() == wx.EVT_WINDOW_DESTROY.typeId:
+            window = event.GetWindow()
+            if event.GetId() == host_id and window is not None and window.GetId() == host_id:
+                destroyed.append(True)
+        return wx.EventFilter.Event_Skip
+
+    class HostDestroyObserver(wx.EventFilter):
+        def FilterEvent(self, event):
+            return observe_destroy(event)
+
     def close_host():
         host_cancel.set()
         if not user32.IsWindow(host_handle):
+            pump(lambda: bool(destroyed), 'Actual host destroy acknowledgement', allow_errors=True)
             return
         pump(lambda: not frame.working, 'Failure-path playlist review cleanup', allow_errors=True)
         before = {'working': bool(frame.working), 'busy': bool(frame.busy),
@@ -206,7 +221,7 @@ def main():
         if not accepted:
             raise RuntimeError('The actual desktop refused ordinary Close; its owners remain retained.')
         try:
-            pump(lambda: not user32.IsWindow(host_handle),
+            pump(lambda: bool(destroyed) and not user32.IsWindow(host_handle),
                  'Failure-path desktop close', allow_errors=True)
         finally:
             observe_close('settled', native_window_present=bool(user32.IsWindow(host_handle)),
@@ -231,7 +246,7 @@ def main():
             cleanup_step('native ownership acknowledgement', lambda: check(
                 'actual host Close drains saved playback owners and the existing worker',
                 close_ok and drained and cleanup_state['worker_drained']
-                and not user32.IsWindow(host_handle) and not executor.cleanup_failures
+                and bool(destroyed) and not user32.IsWindow(host_handle) and not executor.cleanup_failures
                 and not _wave_output._UNRELEASED_OUTPUTS
                 and all(owner.silence_confirmed for owner in playback_owners)))
         if exit_loop:
@@ -265,8 +280,7 @@ def main():
         frame = desktop_app.DesktopFrame(library)
         executor = frame.executor
         host_handle, host_cancel = int(frame.GetHandle()), frame.cancel_event
-        frame.Bind(wx.EVT_WINDOW_DESTROY,
-            lambda event: (destroyed.append(True) if event.GetEventObject() is frame else None, event.Skip()))
+        host_id = frame.GetId()
         original_picker = wx.FileDialog
         picked = []
         other = player.WavePlayer()
@@ -498,9 +512,12 @@ def main():
                 errors.append(traceback.format_exc())
             finally:
                 # Close/drain before leaving the original main loop, on both
-                # success and failure. The captured HWND is the acknowledgement.
+                # success and failure. Both the actual Destroy event and the
+                # captured HWND disappearance are required acknowledgements.
                 finish_host(exit_loop=True)
 
+        destroy_observer = HostDestroyObserver()
+        wx.EvtHandler.AddFilter(destroy_observer)
         try:
             frame.Show()
             app.SetTopWindow(frame)
@@ -510,6 +527,8 @@ def main():
             try:
                 finish_host()
             finally:
+                cleanup_step('host destroy observer removal',
+                             lambda: wx.EvtHandler.RemoveFilter(destroy_observer))
                 wx.FileDialog = original_picker
         if errors:
             raise RuntimeError('\n'.join(errors))

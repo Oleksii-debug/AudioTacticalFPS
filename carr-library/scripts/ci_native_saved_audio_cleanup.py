@@ -1,6 +1,6 @@
 """Verify saved-audio failure cleanup from current source and a verified installed wheel.
 
-The required qualification is cleanup-only: 13 source cases, 13 isolated installed
+The required qualification is cleanup-only: 19 source cases, 19 isolated installed
 cases, and 15 actual native observations. A second default playback run is a bounded
 diagnostic. Its own result is retained independently and cannot qualify playback
 from a failed exit or from the cleanup-only result. No physical listening or NVDA
@@ -22,7 +22,7 @@ import xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parents[1]
 SUITES = {
-    "tests/ui/test_native_saved_audio_cleanup.py": 13
+    "tests/ui/test_native_saved_audio_cleanup.py": 19
 }
 COMPANIONS = ["scripts/windows_audio_player_smoke.py"]
 MODULES = [
@@ -71,8 +71,8 @@ PINS = {
     "scripts/ci_check.py": "6ad3055cfcd7c6a1b1af8544ae462c5d51adb473",
     "packaging/source_wheel.py": "478de248451d59a44b35784eb808fb2974f0af67",
     "packaging/windows-audio.lock.json": "2bc706ffc6208f5596a10abee61d3da33f20e6c6",
-    "scripts/windows_audio_player_smoke.py": "88c41833b0fc30f1f46b6bb8312f1f26de03cddc",
-    "tests/ui/test_native_saved_audio_cleanup.py": "206b5f026ff2d185e62c64b324f354ec30ced0dd"
+    "scripts/windows_audio_player_smoke.py": "63d31bdd624bdac5340d1e1173155b3974b846ff",
+    "tests/ui/test_native_saved_audio_cleanup.py": "5eeba4884c846a6ca21a85a649ea2cd7830d7429"
 }
 NATIVE_CONTRACT = {
     "origins": [
@@ -649,7 +649,7 @@ def main():
         required_native_cleanup=native['cleanup_only']['native_owners_settled'],
         default_native_cleanup=native['default_playback_diagnostic']['native_owners_settled'],
         expected_failures=False, native=native,
-        qualification='Cleanup-only: exact whole13 source and isolated installed cases plus all15 actual native cleanup observations. The independent default playback diagnostic retains its own exit and qualification; no failed playback, physical listening, NVDA or release claim is transferred from cleanup success.')
+        qualification='Cleanup-only: exact whole19 source and isolated installed cases plus all15 actual native cleanup observations. The independent default playback diagnostic retains its own exit and qualification; no failed playback, physical listening, NVDA or release claim is transferred from cleanup success.')
     write(evidence / 'contracts-summary.json', report)
     print(json.dumps({key: report[key] for key in ('status', 'source_commit', 'source_tree',
           'source_passed', 'installed_passed', 'inputs_unchanged', 'required_native_cleanup', 'default_native_cleanup')}, sort_keys=True), flush=True)

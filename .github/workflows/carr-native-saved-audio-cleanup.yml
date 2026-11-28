@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   saved-audio-cleanup-windows:
-    name: Saved-audio cleanup13 source and installed, native15 and bounded playback diagnostic
+    name: Saved-audio cleanup19 source and installed, native15 and bounded playback diagnostic
     runs-on: windows-2022
     timeout-minutes: 80
     concurrency:
@@ -52,7 +52,7 @@ jobs:
           $verify = @'
           from hashlib import sha1
           import importlib.util, pathlib, sys
-          pins = {"scripts/ci_native_saved_audio_cleanup.py":"280dcf7357420c0a16baf24ec1b60f8a1e4fca83","packaging/prepare_windows_audio.py":"65b172ac432f28e865200aed2f8e610dda1ac7cf","packaging/windows-audio.lock.json":"2bc706ffc6208f5596a10abee61d3da33f20e6c6","packaging/windows-cp311.lock":"8dad99c0ea80470b7253873aee78e08857affec6","packaging/windows-sync-cp311.lock":"cd9c18a24d7a7ac203d81cf6a8d82d8bcb8f8ab3","packaging/trusted-client.lock":"6c4b48ac09572dc259d62d0d801057ab47c04583","packaging/windows-sync-test-cp311.lock":"e3f6eda5976e867abe7267c04e0b867b1fd16f7a"}
+          pins = {"scripts/ci_native_saved_audio_cleanup.py":"d2c34b8d193f959a51d0bdbc24746a4e38a23df2","packaging/prepare_windows_audio.py":"65b172ac432f28e865200aed2f8e610dda1ac7cf","packaging/windows-audio.lock.json":"2bc706ffc6208f5596a10abee61d3da33f20e6c6","packaging/windows-cp311.lock":"8dad99c0ea80470b7253873aee78e08857affec6","packaging/windows-sync-cp311.lock":"cd9c18a24d7a7ac203d81cf6a8d82d8bcb8f8ab3","packaging/trusted-client.lock":"6c4b48ac09572dc259d62d0d801057ab47c04583","packaging/windows-sync-test-cp311.lock":"e3f6eda5976e867abe7267c04e0b867b1fd16f7a"}
           for name, expected in pins.items():
               path = pathlib.Path(name)
               assert path.is_file() and not path.is_symlink()
@@ -71,7 +71,7 @@ jobs:
                   compile(pathlib.Path(name).read_bytes(), name, 'exec')
           for name in ('INSTALLED_CHILD', 'ORIGIN_CHILD'):
               compile(getattr(module, name), '<saved-audio-cleanup-'+name+'>', 'exec')
-          assert module.SUITES == {'tests/ui/test_native_saved_audio_cleanup.py': 13}
+          assert module.SUITES == {'tests/ui/test_native_saved_audio_cleanup.py': 19}
           assert module.COMPANIONS == ['scripts/windows_audio_player_smoke.py']
           assert len(module.PINS) == 25 and len(module.MODULES) == len(set(module.MODULES)) == 20
           assert len(module.NATIVE_CONTRACT['origins']) == 11
@@ -95,7 +95,7 @@ jobs:
           Copy-Item -LiteralPath (Join-Path $audio 'runtime-manifest.json') -Destination 'ci-saved-audio-cleanup/audio-manifest.json' -ErrorAction Stop
           "CARR_SAVED_AUDIO_DIR=$audio" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           (Join-Path $audio 'bin') | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-      - name: Require13 source,13 isolated installed and native15 cleanup; retain default playback diagnostic
+      - name: Require19 source,19 isolated installed and native15 cleanup; retain default playback diagnostic
         # 45 minutes contains source660, installed600, both native120 bounds,
         # four origin snapshots and the existing private wheel build/install.
         timeout-minutes: 45

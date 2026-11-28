@@ -26,7 +26,8 @@ def helpers(**values):
     path = Path(__file__).resolve().parents[2] / 'scripts' / 'windows_audio_player_smoke.py'
     tree = ast.parse(path.read_text(encoding='utf-8'), filename=str(path))
     main, = [node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == 'main']
-    names = ('cleanup_step', 'unwind', 'observe_stage', 'observe_close', 'close_host', 'finish_host', 'result_report')
+    names = ('cleanup_step', 'unwind', 'observe_stage', 'observe_close', 'observe_destroy',
+             'close_host', 'finish_host', 'result_report')
     functions = []
     for name in names:
         function, = [node for node in main.body if isinstance(node, ast.FunctionDef) and node.name == name]
@@ -40,7 +41,7 @@ def helpers(**values):
     return env
 
 
-@pytest.mark.parametrize('close_result', ['acknowledged', 'vetoed', 'raised'])
+@pytest.mark.parametrize('close_result', ['acknowledged', 'missing-destroy', 'vetoed', 'raised'])
 def test_native_saved_queue_failure_always_drains_real_owner_and_shared_executor(tmp_path, close_result):
     library = LibraryApp(tmp_path / 'library')
     cancel, started = Event(), Event()
@@ -76,12 +77,16 @@ def test_native_saved_queue_failure_always_drains_real_owner_and_shared_executor
         frame._closing = True
         executor.shutdown(wait=False, cancel_futures=True)
         native_alive[0] = False
+        if close_result == 'acknowledged':
+            env['destroyed'].append(True)
         return True
     frame.Close = close
     def pump(predicate, label, timeout=12, *, allow_errors=False):
         assert allow_errors is True
         deadline = time.monotonic() + 5
         while not predicate():
+            if close_result == 'missing-destroy' and not native_alive[0]:
+                raise RuntimeError('Actual host destroy acknowledgement is missing.')
             assert time.monotonic() < deadline, label
             time.sleep(.001)
     def exit_loop():
@@ -116,8 +121,10 @@ def test_native_saved_queue_failure_always_drains_real_owner_and_shared_executor
         if close_result == 'acknowledged':
             assert env['errors'] == [original_failure] and not native_alive[0]
         else:
-            assert len(env['errors']) == 3 and native_alive[0]
-            expected = 'refused ordinary Close' if close_result == 'vetoed' else 'Close handler failure'
+            assert len(env['errors']) == 3
+            assert native_alive[0] is (close_result != 'missing-destroy')
+            expected = ('destroy acknowledgement is missing' if close_result == 'missing-destroy'
+                        else 'refused ordinary Close' if close_result == 'vetoed' else 'Close handler failure')
             assert expected in env['errors'][1]
         before = list(events)
         env['finish_host']()
@@ -274,3 +281,21 @@ def test_native_saved_queue_cleanup_only_does_not_qualify_or_bypass_default_play
     else:
         assert len(env['errors']) == 1
         assert 'endpoint-dependent playback scenario is still required' in env['errors'][0]
+
+
+@pytest.mark.parametrize('kind', ['host', 'other-event', 'other-id', 'other-window', 'missing-window'])
+def test_native_saved_queue_destroy_observer_requires_the_exact_real_event_and_host_id(kind):
+    requested = []
+    # A distinct base-window wrapper must work without Python frame identity.
+    window = SimpleNamespace(GetId=lambda: 78 if kind == 'other-window' else 77)
+    def get_window():
+        requested.append('window')
+        return None if kind == 'missing-window' else window
+    event = SimpleNamespace(GetEventType=lambda: 202 if kind == 'other-event' else 101,
+                            GetId=lambda: 78 if kind == 'other-id' else 77,
+                            GetWindow=get_window)
+    env = helpers(host_id=77, wx=SimpleNamespace(EVT_WINDOW_DESTROY=SimpleNamespace(typeId=101),
+                  EventFilter=SimpleNamespace(Event_Skip=-1)))
+    assert env['observe_destroy'](event) == -1, 'Observation must preserve normal native dispatch.'
+    assert env['destroyed'] == ([True] if kind == 'host' else [])
+    assert requested == ([] if kind == 'other-event' else ['window'])
