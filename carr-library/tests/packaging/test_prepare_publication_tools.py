@@ -114,3 +114,70 @@ def test_license_notices_are_read_and_hashed_without_extracting(tmp_path):
     assert all(value == {'size': 24, 'sha256': sha256(b'Synthetic license notice').hexdigest()}
                for value in proof.values())
     assert not (tmp_path / 'validator').exists()
+
+
+# Exercise the shared installed EPUB/DAISY tool identity guard on real files.
+_conformance_spec = importlib.util.spec_from_file_location('publication_conformance_fixture',
+    Path(__file__).resolve().parents[2] / 'scripts' / 'epubcheck_acceptance.py')
+conformance = importlib.util.module_from_spec(_conformance_spec)
+_conformance_spec.loader.exec_module(conformance)
+
+
+def _conformance_tool(tmp_path, name):
+    bundle = tmp_path / 'installed bundle'
+    executable = bundle / 'audio-runtime' / 'bin' / (name + '.exe')
+    executable.parent.mkdir(parents=True)
+    executable.write_bytes(b'Exact synthetic executable identity for ' + name.encode('ascii'))
+    checksum = sha256(executable.read_bytes()).hexdigest()
+    manifest = {'files': {'audio-runtime/bin/' + name + '.exe': checksum}}
+    return bundle, executable, checksum, manifest
+
+
+@pytest.mark.parametrize('name', ['ffmpeg', 'ffprobe'])
+def test_conformance_accepts_actual_sealed_bundle_audio_layout(tmp_path, name):
+    bundle, executable, checksum, manifest = _conformance_tool(tmp_path, name)
+    assert conformance.require_sealed_audio(bundle, executable, name, checksum, manifest) is None
+    assert executable.read_bytes() == b'Exact synthetic executable identity for ' + name.encode('ascii')
+    assert not (bundle / 'audio').exists()
+
+
+@pytest.mark.parametrize('name', ['ffmpeg', 'ffprobe'])
+def test_conformance_rejects_identical_unowned_executable_copy(tmp_path, name):
+    bundle, executable, checksum, manifest = _conformance_tool(tmp_path, name)
+    outside = tmp_path / (name + '.exe')
+    outside.write_bytes(executable.read_bytes())
+    assert sha256(outside.read_bytes()).hexdigest() == checksum
+    with pytest.raises(RuntimeError, match='escaped the installed bundle'):
+        conformance.require_sealed_audio(bundle, outside, name, checksum, manifest)
+    assert outside.read_bytes() == executable.read_bytes()
+
+
+@pytest.mark.parametrize('name', ['ffmpeg', 'ffprobe'])
+@pytest.mark.parametrize('mutation', ['changed-bytes', 'missing-seal', 'wrong-seal'])
+def test_conformance_requires_current_exact_manifest_digest(tmp_path, name, mutation):
+    bundle, executable, checksum, manifest = _conformance_tool(tmp_path, name)
+    key = 'audio-runtime/bin/' + name + '.exe'
+    if mutation == 'changed-bytes':
+        executable.write_bytes(b'Changed selected executable')
+        checksum = sha256(executable.read_bytes()).hexdigest()
+    elif mutation == 'missing-seal':
+        del manifest['files'][key]
+    else:
+        manifest['files'][key] = '0' * 64
+    with pytest.raises(RuntimeError, match='escaped the installed bundle'):
+        conformance.require_sealed_audio(bundle, executable, name, checksum, manifest)
+
+
+@pytest.mark.parametrize('name', ['ffmpeg', 'ffprobe'])
+def test_conformance_rejects_legacy_audio_path_even_with_matching_bytes(tmp_path, name):
+    bundle, executable, checksum, manifest = _conformance_tool(tmp_path, name)
+    legacy = bundle / 'audio' / 'bin' / (name + '.exe')
+    legacy.parent.mkdir(parents=True)
+    legacy.write_bytes(executable.read_bytes())
+    manifest['files']['audio/bin/' + name + '.exe'] = checksum
+    with pytest.raises(RuntimeError, match='escaped the installed bundle'):
+        conformance.require_sealed_audio(bundle, legacy, name, checksum, manifest)
+    executable.unlink()
+    with pytest.raises(FileNotFoundError):
+        conformance.require_sealed_audio(bundle, legacy, name, checksum, manifest)
+    assert legacy.read_bytes() == b'Exact synthetic executable identity for ' + name.encode('ascii')
