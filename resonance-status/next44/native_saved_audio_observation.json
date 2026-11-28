@@ -1,0 +1,128 @@
+{
+  "schema": 1,
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "base_commit": "9fca8982a16af3c33fc675fde2c1839cfd3592a5",
+  "base_tree": "488ce9d51647758d8543e53b53599a21df90936d",
+  "purpose": "Observe the actual 53e native passive-worker failure path that hit its unchanged 90-second watchdog before any host Close observation.",
+  "changes": [
+    {
+      "path": "carr-library/scripts/windows_audio_player_smoke.py",
+      "before": "cc68ddba234a396d0c8738a6ec49a57b7116e5f5",
+      "after": "a8cdfc88f4e0cce65d8683e738bad4f6821f2304"
+    },
+    {
+      "path": "carr-library/scripts/ci_native_saved_audio_cleanup.py",
+      "before": "226bad73e28ce9891f45393715365214c0eb05f6",
+      "after": "1218923b17ed96bf626486a1e5aed118e3b34063"
+    },
+    {
+      "path": ".github/workflows/carr-native-saved-audio-cleanup.yml",
+      "before": "3ad9b353c048adf72d5672834387832e993fa122",
+      "after": "66f24ab1ae486e2f5a6d7adbefa2d6189c23b096"
+    }
+  ],
+  "diagnostic_only": true,
+  "unchanged": {
+    "product_sources": true,
+    "source_cases": 13,
+    "installed_cases": 13,
+    "required_native_cleanup_checks": 15,
+    "required_native_default_checks": 46,
+    "watchdog_seconds": 90,
+    "outer_process_seconds": 120,
+    "all_gate_failure_policies": true
+  },
+  "observation_fields": "Fixed boolean/count admission stages, bounded original callback traceback, watchdog stacks without frame locals; no credentials, source contents, audio or binary artifacts.",
+  "qualification": "NOT_RUN. This candidate adds observation only and cannot turn the prior failure into a pass.",
+  "native_literal_operations": [
+    {
+      "before": "import ctypes as C\n",
+      "after": "import ctypes as C\nimport faulthandler\n",
+      "count": 1
+    },
+    {
+      "before": "        loop = wx.EventLoopBase.GetActive()\n        if (window.GetParent() is not frame or not window.IsModal()\n",
+      "after": "        loop = wx.EventLoopBase.GetActive()\n        observe_close('modal-admission', parent_is_host=window.GetParent() is frame,\n                      modal=bool(window.IsModal()), active_loop=loop is not None,\n                      active_main=bool(loop is not None and loop.IsMain()),\n                      active_running=bool(loop is not None and loop.IsRunning()))\n        if (window.GetParent() is not frame or not window.IsModal()\n",
+      "count": 1
+    },
+    {
+      "before": "    def fail():\n        errors.append(traceback.format_exc())\n        wx.CallAfter(unwind)\n",
+      "after": "    def fail():\n        detail = traceback.format_exc()\n        errors.append(detail)\n        try:\n            print('SAVED_PLAYBACK_CALLBACK_FAILURE: ' + json.dumps(detail[:8192], ensure_ascii=True), flush=True)\n        except Exception:\n            pass\n        wx.CallAfter(unwind)\n",
+      "count": 1
+    },
+    {
+      "before": "        def failure_controls():\n            try:\n",
+      "after": "        def failure_controls():\n            try:\n                observe_close('failure-controls-entered', modal_candidates=sum(\n                    isinstance(window, wx.Dialog) and window.IsModal()\n                    and window.GetParent() is frame for window in wx.GetTopLevelWindows()))\n",
+      "count": 1
+    },
+    {
+      "before": "                controlled_failure['owner'] = frame._playback_owner\n                def work():\n",
+      "after": "                controlled_failure['owner'] = frame._playback_owner\n                observe_close('failure-owner-recorded', host_working=bool(frame.working),\n                              owner_present=frame._playback_owner is not None)\n                def work():\n",
+      "count": 1
+    },
+    {
+      "before": "                def failed(error):\n                    controlled_failure['observed'] = error\n                    wx.CallAfter(unwind)\n",
+      "after": "                def failed(error):\n                    controlled_failure['observed'] = error\n                    observe_close('failure-callback', exact_error=error is controlled_failure['error'],\n                                  host_working=bool(frame.working))\n                    wx.CallAfter(unwind)\n",
+      "count": 1
+    },
+    {
+      "before": "                controlled_failure['future'] = future\n",
+      "after": "                controlled_failure['future'] = future\n                observe_close('failure-job-admitted', future_done=bool(future.done()))\n",
+      "count": 1
+    },
+    {
+      "before": "                schedule(100, failure_controls)\n                frame.GetEventHandler().ProcessEvent(wx.CommandEvent(wx.EVT_MENU.typeId, item.GetId()))\n",
+      "after": "                schedule(100, failure_controls)\n                observe_close('failure-menu-invocation', host_working=bool(frame.working),\n                              host_closing=bool(frame._closing))\n                frame.GetEventHandler().ProcessEvent(wx.CommandEvent(wx.EVT_MENU.typeId, item.GetId()))\n                observe_close('failure-menu-returned', errors=len(errors))\n",
+      "count": 1
+    },
+    {
+      "before": "        print('FAIL: native saved queue and owned-output probe exceeded 90 seconds.', flush=True)\n        os._exit(2)\n",
+      "after": "        print('FAIL: native saved queue and owned-output probe exceeded 90 seconds.', flush=True)\n        try:\n            faulthandler.dump_traceback(all_threads=True)\n        finally:\n            os._exit(2)\n",
+      "count": 1
+    },
+    {
+      "before": "    def observe_close(event, **values):\n",
+      "after": "    def observe_stage(event, **values):\n        try:\n            print('SAVED_PLAYBACK_STAGE: ' + json.dumps(\n                {'event': event, **values}, ensure_ascii=True), flush=True)\n        except Exception:\n            pass\n\n    def observe_close(event, **values):\n",
+      "count": 1
+    },
+    {
+      "before": "observe_close('modal-admission'",
+      "after": "observe_stage('modal-admission'",
+      "count": 1
+    },
+    {
+      "before": "observe_close('failure-controls-entered'",
+      "after": "observe_stage('failure-controls-entered'",
+      "count": 1
+    },
+    {
+      "before": "observe_close('failure-owner-recorded'",
+      "after": "observe_stage('failure-owner-recorded'",
+      "count": 1
+    },
+    {
+      "before": "observe_close('failure-callback'",
+      "after": "observe_stage('failure-callback'",
+      "count": 1
+    },
+    {
+      "before": "observe_close('failure-job-admitted'",
+      "after": "observe_stage('failure-job-admitted'",
+      "count": 1
+    },
+    {
+      "before": "observe_close('failure-menu-invocation'",
+      "after": "observe_stage('failure-menu-invocation'",
+      "count": 1
+    },
+    {
+      "before": "observe_close('failure-menu-returned'",
+      "after": "observe_stage('failure-menu-returned'",
+      "count": 1
+    }
+  ],
+  "observation_prefixes": {
+    "unchanged_two_close_receipts": "SAVED_PLAYBACK_HOST_CLOSE: ",
+    "additional_fixed_stage_fields": "SAVED_PLAYBACK_STAGE: "
+  }
+}

@@ -6,6 +6,7 @@ or NVDA qualification is inferred from native API acknowledgements.
 """
 import argparse
 import ctypes as C
+import faulthandler
 from ctypes import wintypes
 from hashlib import sha256
 import json
@@ -80,6 +81,10 @@ def main():
 
     def own_modal(window):
         loop = wx.EventLoopBase.GetActive()
+        observe_stage('modal-admission', parent_is_host=window.GetParent() is frame,
+                      modal=bool(window.IsModal()), active_loop=loop is not None,
+                      active_main=bool(loop is not None and loop.IsMain()),
+                      active_running=bool(loop is not None and loop.IsRunning()))
         if (window.GetParent() is not frame or not window.IsModal()
                 or loop is None or loop.IsMain() or not loop.IsRunning()):
             raise AssertionError('Playback cleanup requires its actual owned running modal.')
@@ -104,7 +109,12 @@ def main():
                 return
 
     def fail():
-        errors.append(traceback.format_exc())
+        detail = traceback.format_exc()
+        errors.append(detail)
+        try:
+            print('SAVED_PLAYBACK_CALLBACK_FAILURE: ' + json.dumps(detail[:8192], ensure_ascii=True), flush=True)
+        except Exception:
+            pass
         wx.CallAfter(unwind)
 
     class App(wx.App):
@@ -150,6 +160,13 @@ def main():
              user32.GetForegroundWindow() == top.GetHandle(), 'Native playback control focus')
         check('actual keyboard Space', simulator.Char(wx.WXK_SPACE))
         settle()
+
+    def observe_stage(event, **values):
+        try:
+            print('SAVED_PLAYBACK_STAGE: ' + json.dumps(
+                {'event': event, **values}, ensure_ascii=True), flush=True)
+        except Exception:
+            pass
 
     def observe_close(event, **values):
         try:
@@ -394,21 +411,29 @@ def main():
 
         def failure_controls():
             try:
+                observe_stage('failure-controls-entered', modal_candidates=sum(
+                    isinstance(window, wx.Dialog) and window.IsModal()
+                    and window.GetParent() is frame for window in wx.GetTopLevelWindows()))
                 popup, = [window for window in wx.GetTopLevelWindows()
                            if isinstance(window, wx.Dialog) and window.IsModal()
                            and window.GetParent() is frame
                            and window.GetTitle() == 'Audio playback and saved playlist']
                 own_modal(popup)
                 controlled_failure['owner'] = frame._playback_owner
+                observe_stage('failure-owner-recorded', host_working=bool(frame.working),
+                              owner_present=frame._playback_owner is not None)
                 def work():
                     raise controlled_failure['error']
                 def failed(error):
                     controlled_failure['observed'] = error
+                    observe_stage('failure-callback', exact_error=error is controlled_failure['error'],
+                                  host_working=bool(frame.working))
                     wx.CallAfter(unwind)
                 future = frame.run_job('Controlled passive playback worker failure', work, failed=failed)
                 if future is None:
                     raise AssertionError('The controlled worker failure was not admitted.')
                 controlled_failure['future'] = future
+                observe_stage('failure-job-admitted', future_done=bool(future.done()))
             except Exception:
                 fail()
 
@@ -421,7 +446,10 @@ def main():
                       specification.command_id == 'audio.playback'
                       and specification.context == 'main' and specification.default_shortcut == '')
                 schedule(100, failure_controls)
+                observe_stage('failure-menu-invocation', host_working=bool(frame.working),
+                              host_closing=bool(frame._closing))
                 frame.GetEventHandler().ProcessEvent(wx.CommandEvent(wx.EVT_MENU.typeId, item.GetId()))
+                observe_stage('failure-menu-returned', errors=len(errors))
                 if errors:
                     raise RuntimeError('\n'.join(errors))
                 observed_owner = controlled_failure['owner']
@@ -483,7 +511,10 @@ def main():
 if __name__ == '__main__':
     def expired():
         print('FAIL: native saved queue and owned-output probe exceeded 90 seconds.', flush=True)
-        os._exit(2)
+        try:
+            faulthandler.dump_traceback(all_threads=True)
+        finally:
+            os._exit(2)
     watchdog = threading.Timer(90, expired)
     watchdog.daemon = True
     watchdog.start()

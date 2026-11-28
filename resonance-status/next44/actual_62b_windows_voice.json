@@ -1,0 +1,176 @@
+{
+  "schema": 1,
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "source_commit": "62b358005048b2d91f92b693314c8897b6a7a0c5",
+  "run_id": 46097299416,
+  "job_id": 140831496364,
+  "status": "FAIL",
+  "completed_whole_suites": [
+    {
+      "module": "tests/audio/test_voice_management_state.py",
+      "passed": 25,
+      "failed": 0,
+      "skipped": 0,
+      "exit_code": 0
+    },
+    {
+      "module": "tests/audio/test_voice_reference_management.py",
+      "passed": 30,
+      "failed": 0,
+      "skipped": 0,
+      "exit_code": 0
+    },
+    {
+      "module": "tests/audio/test_voice_protected_management.py",
+      "passed": 15,
+      "failed": 0,
+      "skipped": 0,
+      "exit_code": 0
+    },
+    {
+      "module": "tests/audio/test_voice_publication_lifetime.py",
+      "passed": 15,
+      "failed": 0,
+      "skipped": 0,
+      "exit_code": 0
+    },
+    {
+      "module": "tests/audio/test_voice_ownership.py",
+      "passed": 30,
+      "failed": 0,
+      "skipped": 0,
+      "exit_code": 0
+    },
+    {
+      "module": "tests/integrations/test_dordiai_owner_lease.py",
+      "passed": 28,
+      "failed": 0,
+      "skipped": 0,
+      "exit_code": 0
+    },
+    {
+      "module": "tests/integrations/test_dordiai_managed_authority.py",
+      "passed": 18,
+      "failed": 0,
+      "skipped": 0,
+      "exit_code": 0
+    },
+    {
+      "module": "tests/ui/test_voice_packages.py",
+      "passed": 46,
+      "failed": 0,
+      "skipped": 0,
+      "exit_code": 0
+    },
+    {
+      "module": "tests/ui/test_voice_reference.py",
+      "passed": 32,
+      "failed": 0,
+      "skipped": 0,
+      "exit_code": 0
+    },
+    {
+      "module": "tests/ui/test_engine_settings_lifetime.py",
+      "passed": 43,
+      "failed": 0,
+      "skipped": 0,
+      "exit_code": 0
+    },
+    {
+      "module": "tests/integrations/test_dordiai_voices.py",
+      "passed": 40,
+      "failed": 0,
+      "skipped": 0,
+      "exit_code": 0
+    },
+    {
+      "module": "tests/integrations/test_dordiai_speech.py",
+      "passed": 10,
+      "failed": 0,
+      "skipped": 0,
+      "exit_code": 0
+    },
+    {
+      "module": "tests/integrations/test_dordiai_host_lifecycle.py",
+      "passed": 13,
+      "failed": 0,
+      "skipped": 0,
+      "exit_code": 0
+    },
+    {
+      "module": "tests/integrations/test_dordiai_settings.py",
+      "passed": 17,
+      "failed": 0,
+      "skipped": 0,
+      "exit_code": 0
+    },
+    {
+      "module": "tests/integrations/test_dordiai_probe_cancellation.py",
+      "passed": 7,
+      "failed": 0,
+      "skipped": 0,
+      "exit_code": 0
+    },
+    {
+      "module": "tests/integrations/test_dordiai_convergence.py",
+      "passed": 10,
+      "failed": 0,
+      "skipped": 0,
+      "exit_code": 0
+    },
+    {
+      "module": "tests/audio/test_bundled_runtime_settings.py",
+      "passed": 8,
+      "failed": 0,
+      "skipped": 0,
+      "exit_code": 0
+    },
+    {
+      "module": "tests/storage/test_v3_state_backup.py",
+      "passed": 42,
+      "failed": 0,
+      "skipped": 0,
+      "exit_code": 0
+    },
+    {
+      "module": "tests/storage/test_library_backup.py",
+      "passed": 9,
+      "failed": 0,
+      "skipped": 0,
+      "exit_code": 0
+    },
+    {
+      "module": "tests/storage/test_state_backup_portability.py",
+      "passed": 27,
+      "failed": 0,
+      "skipped": 0,
+      "exit_code": 0
+    }
+  ],
+  "incomplete_whole_suites": [
+    {
+      "module": "tests/audio/test_voice_package_management.py",
+      "contract_cases": 30,
+      "status": "INCOMPLETE",
+      "reason": "Actual child TimeoutExpired after the unchanged 600-second whole-suite budget; partial case execution must not be represented as zero execution or a complete result."
+    }
+  ],
+  "summary": {
+    "whole_required": 21,
+    "whole_passed": 20,
+    "whole_incomplete": 1,
+    "completed_junit_passed": 465,
+    "completed_junit_failed": 0,
+    "completed_junit_skipped": 0,
+    "isolated_installed": "NOT_RUN",
+    "actual_current_owner": "NOT_RUN",
+    "native_management": "NOT_RUN"
+  },
+  "artifact": {
+    "id": 15244246981,
+    "name": "voice-management-windows-62b358005048b2d91f92b693314c8897b6a7a0c5-1",
+    "bytes": 22570,
+    "sha256": "f7bd3038addb0dfa32cf432f75105305a84497dbe0c8b2232fc4ee8caa3a7f4f"
+  },
+  "qualification": "Exact source Windows run only. Reference30 and managed-authority18 completed this time; package30 still requires diagnosis. Native/installed acceptance cannot be inferred."
+}
