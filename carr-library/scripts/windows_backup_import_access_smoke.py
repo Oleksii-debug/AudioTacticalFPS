@@ -633,7 +633,9 @@ def _run_native():
         text = [item for item in descendants(peer) if isinstance(item, wx.TextCtrl)]
         check('one real native independent-checksum entry', len(text) == 1 and peer.IsModal())
         yield from type_text(text[0], value)
-        check('native checksum value equals the independently retained receipt', peer.GetValue() == value)
+        # TextEntryDialog copies this live control into GetValue() only on OK.
+        # The later real receipt/reference checks bind the accepted checksum.
+        check('native checksum value equals the independently retained receipt', text[0].GetValue() == value)
         press(button_id(peer, wx.ID_OK))
         yield waiting(lambda: window(title) is None, 'Native checksum entry did not return', 10)
 
