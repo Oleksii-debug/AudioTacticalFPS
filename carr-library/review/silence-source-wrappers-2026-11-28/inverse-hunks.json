@@ -1,0 +1,133 @@
+{
+  "schema": "carr-inverse-hunks/1",
+  "base_commit": "f8311d17fa960448b350cb739b5a90584c30c74b",
+  "entries": [
+    {
+      "path": "carr-library/src/carr_library/studio/book_audio.py",
+      "preimage_blob": "e6657bc580ccc247e3e971bf6287addd78aaf811",
+      "new_blob": "db32aeb0d056ccaf2704fa0f9e2c2edba399f11d",
+      "hunks": [
+        {
+          "oldline": 624,
+          "newline": 624,
+          "before": "    def _measured_publication(self, plan_id, index, output, *, maximum_ms, name_template,\n                              publish, approval, budget, cancelled, guard, progress):",
+          "after": "    def inspect_silence(self, plan_id, index, *, threshold_dbfs, minimum_seconds,\n                        budget=None, cancelled=lambda: False, guard=lambda: None, progress=None):\n        \"\"\"Inspect one completed part while retaining its original Book authority.\"\"\""
+        },
+        {
+          "oldline": 628,
+          "newline": 629,
+          "before": "        from ..audio.cleanup import retained_state_lock\n        from .publishing import PublicationService\n        selected_budget = budget or AudioBudget()\n        if not isinstance(selected_budget, AudioBudget):\n            raise TypeError('Use the existing AudioBudget for measured publication.')\n        deadline = monotonic() + selected_budget.timeout",
+          "after": "        from ..audio.silence import SilenceCriteria\n\n        criteria = SilenceCriteria(threshold_dbfs, minimum_seconds)\n        selected_budget = AudioBudget() if budget is None else budget\n        if not isinstance(selected_budget, AudioBudget):\n            raise TypeError('Use the existing AudioBudget for silence inspection.')\n        deadline = monotonic() + selected_budget.timeout\n"
+        },
+        {
+          "oldline": 637,
+          "newline": 640,
+          "before": "        try:",
+          "after": "\n        try:\n            _check(stopped, guard)"
+        },
+        {
+          "oldline": 640,
+          "newline": 645,
+          "before": "                def original_source():",
+          "after": "                job_id = plan.job_id(index)\n                expected_job = None\n\n                def original_source():\n                    nonlocal expected_job"
+        },
+        {
+          "oldline": 643,
+          "newline": 652,
+          "before": "                        raise ValueError('The saved Book plan changed during measured publication.')",
+          "after": "                        raise ValueError('The saved Book plan changed during silence inspection.')"
+        },
+        {
+          "oldline": 647,
+          "newline": 656,
+          "before": "                        raise ValueError('Run and verify this exact Book part before measured audio splitting.')\n                    return plan.provenance(index)\n                original_source()\n                publisher = PublicationService(self.production, budget=selected_budget)\n                options = dict(maximum_ms=maximum_ms, name_template=name_template,\n                    source_guard=original_source, cancelled=stopped, progress=progress)\n                if publish:\n                    return publisher.export_pcm_parts(plan.job_id(index), output,\n                                                      review_sha256=approval, **options)\n                return publisher.review_pcm_parts(plan.job_id(index), output, **options)",
+          "after": "                        raise ValueError('Run and verify this exact Book part before silence inspection.')\n                    current = encode(state)\n                    if expected_job is not None and current != expected_job:\n                        raise ValueError('The completed Book job changed during silence inspection.')\n                    expected_job = current\n                    return plan.provenance(index)\n\n                original_source()\n                result = self.production.inspect_silence(job_id,\n                    threshold_dbfs=criteria.threshold_dbfs,\n                    minimum_seconds=criteria.minimum_seconds, budget=selected_budget,\n                    source_guard=original_source, cancelled=stopped, progress=progress)\n                original_source()\n                _check(stopped, guard)\n                return result"
+        },
+        {
+          "oldline": 659,
+          "newline": 673,
+          "before": "                raise TimeoutError('Measured audio publication exceeded its selected time budget.') from exc",
+          "after": "                raise TimeoutError('Book silence inspection exceeded its selected time budget.') from exc"
+        },
+        {
+          "oldline": 662,
+          "newline": 676,
+          "before": "",
+          "after": "    def _measured_publication(self, plan_id, index, output, *, maximum_ms, name_template,\n                              publish, approval, budget, cancelled, guard, progress):\n        from time import monotonic\n        from ..audio import AudioBudget, AudioCancelled\n        from ..audio.cleanup import retained_state_lock\n        from .publishing import PublicationService\n        selected_budget = budget or AudioBudget()\n        if not isinstance(selected_budget, AudioBudget):\n            raise TypeError('Use the existing AudioBudget for measured publication.')\n        deadline = monotonic() + selected_budget.timeout\n        def stopped():\n            return (self._closed.is_set() or self.production._closed\n                    or bool(cancelled()) or monotonic() >= deadline)\n        try:\n            with retained_state_lock(self.plans, 'book-' + _identity(plan_id)):\n                plan = self.load(plan_id)\n                def original_source():\n                    self._validate(plan, stopped, guard)\n                    if self.load(plan.id).fingerprint != plan.fingerprint:\n                        raise ValueError('The saved Book plan changed during measured publication.')\n                    state = self._job(plan, index)\n                    if (state is None or state['status'] != 'complete'\n                            or state.get('restore_requires_new_output') is True):\n                        raise ValueError('Run and verify this exact Book part before measured audio splitting.')\n                    return plan.provenance(index)\n                original_source()\n                publisher = PublicationService(self.production, budget=selected_budget)\n                options = dict(maximum_ms=maximum_ms, name_template=name_template,\n                    source_guard=original_source, cancelled=stopped, progress=progress)\n                if publish:\n                    return publisher.export_pcm_parts(plan.job_id(index), output,\n                                                      review_sha256=approval, **options)\n                return publisher.review_pcm_parts(plan.job_id(index), output, **options)\n        except (InterruptedError, AudioCancelled) as exc:\n            if monotonic() >= deadline and not cancelled():\n                raise TimeoutError('Measured audio publication exceeded its selected time budget.') from exc\n            raise\n"
+        }
+      ],
+      "inverse_verified": true
+    },
+    {
+      "path": "carr-library/src/carr_library/studio/publishing_source.py",
+      "preimage_blob": "55039c9ead2e448392756b2cadd28d99d5398675",
+      "new_blob": "f50c6527d89638b37be249304d94583c3dc0b3c0",
+      "hunks": [
+        {
+          "oldline": 254,
+          "newline": 254,
+          "before": "    def publication_audio_name(self, state, paths):\n        return 'audio.mp3' if state['project']['settings']['format'] == 'mp3' and 'audio.mp3' in paths else 'master.wav'\n\n\nclass LibraryPublicationService:\n    \"\"\"A menu-level router over existing jobs, with one shared receipt store.\"\"\"\n\n    def __init__(self, library_root, *, budget=None):\n        from .publishing import PublicationService\n        from .render import ProductionService\n        self.library_root = local_path(library_root, exists=True)\n        self.production = ProductionService(self.library_root / 'state' / 'studio')\n        self.production.private_root = self.library_root\n        self.service = PublicationService(self.production, budget=budget)\n        self.budget = budget\n\n    def jobs(self):\n        from .publishing import PublicationService\n        rows = [dict(row, id='scene:' + row['id'], family='Scene Studio') for row in self.service.jobs()]\n        store = ProjectStore(self.library_root)\n        for project in store.list_projects():\n            source = DirectorPublicationSource(self.library_root, project['id'])\n            for row in PublicationService(source, budget=self.budget).jobs():\n                rows.append(dict(row, id='director:' + project['id'] + ':' + row['id'], family='Audio Studio'))\n        return tuple(rows)\n\n    def publications(self):\n        return self.service.publications()\n\n    def export_epub(self, selection, output, **options):\n        from .publishing import PublicationService\n        if not isinstance(selection, str):\n            raise ValueError('Explicitly select one completed Studio job.')\n        parts = selection.split(':')\n        if len(parts) == 2 and parts[0] == 'scene':\n            return self.service.export_epub(_id(parts[1]), output, **options)\n        if len(parts) == 3 and parts[0] == 'director':\n            source = DirectorPublicationSource(self.library_root, parts[1])\n            return PublicationService(source, budget=self.budget).export_epub(parts[2], output, **options)\n        raise ValueError('Unknown publication source family or job identity.')\n\n    def export_daisy(self, selection, output, **options):\n        from .publishing import PublicationService\n        if not isinstance(selection, str):\n            raise ValueError('Explicitly select one completed Studio job.')\n        parts = selection.split(':')\n        if len(parts) == 2 and parts[0] == 'scene':\n            return self.service.export_daisy(_id(parts[1]), output, **options)\n        if len(parts) == 3 and parts[0] == 'director':\n            source = DirectorPublicationSource(self.library_root, parts[1])\n            return PublicationService(source, budget=self.budget).export_daisy(parts[2], output, **options)\n        raise ValueError('Unknown publication source family or job identity.')\n\n    def close(self):\n        self.production.close()\n\n    def verify(self, publication_id, **options):\n        return self.service.verify(publication_id, **options)",
+          "after": "    def inspect_silence(self, job_id, *, threshold_dbfs, minimum_seconds,\n                        budget=None, broker=None, cancelled=lambda: False, progress=None):\n        \"\"\"Measure the existing primary master through its publication authority.\"\"\"\n        from time import monotonic\n        from ..audio import AudioBudget, AudioCancelled, AudioError\n        from ..audio.cleanup import retained_context, retained_temporary_directory\n        from ..audio.recording import _file_identity, _verified_reader\n        from ..audio.silence import SilenceCriteria, runtime_for_inspection\n        from ..operations import ResourceBroker, ResourceRequest\n        from .publishing import _HASH, _json, _read"
+        },
+        {
+          "oldline": 313,
+          "newline": 265,
+          "before": "",
+          "after": "        criteria = SilenceCriteria(threshold_dbfs, minimum_seconds)\n        selected = AudioBudget() if budget is None else budget\n        if not isinstance(selected, AudioBudget):\n            raise TypeError('Use the existing AudioBudget for silence inspection.')\n        started, lease = monotonic(), None\n        deadline = started + selected.timeout\n\n        def base_check():\n            if cancelled():\n                raise AudioCancelled('Primary Studio silence inspection cancelled.')\n            if monotonic() >= deadline:\n                raise AudioError('Silence inspection exceeded its total time budget.')\n            return False\n\n        def check():\n            base_check()\n            if lease is not None:\n                lease.checkpoint()\n            return False\n\n        def phase(message):\n            check()\n            if progress is not None:\n                progress(message)\n            check()\n\n        base_check()\n        self.get(job_id)  # Unknown identities must not create a job or output.\n        with retained_context(self.publication_lock(job_id)):\n            job_file = self.folder / 'jobs' / (job_id + '.json')\n            stamp = _file_identity(plain(job_file))\n            state = self.get(job_id)\n            if _file_identity(plain(job_file)) != stamp:\n                raise ValueError('The primary Studio job changed before silence inspection.')\n            restored = state.get('restore_requires_new_output', False)\n            if type(restored) is not bool or restored or state['state'] != 'complete':\n                raise ValueError('Choose a completed primary Studio job with a newly reviewed output.')\n            saved = encode(state)\n            outputs = state.get('outputs')\n            if not isinstance(outputs, list) or not 3 <= len(outputs) <= 100000:\n                raise ValueError('The completed primary job lacks its bounded artifact receipts.')\n            masters = [item for item in outputs\n                       if type(item) is dict and item.get('file') == 'master.wav']\n            if len(masters) != 1:\n                raise ValueError('The completed primary job needs one exact master PCM receipt.')\n            master = masters[0]\n            if (set(master) != {'file', 'sha256', 'size_bytes'}\n                    or type(master['size_bytes']) is not int or master['size_bytes'] <= 0\n                    or not isinstance(master['sha256'], str)\n                    or _HASH.fullmatch(master['sha256']) is None):\n                raise ValueError('Invalid primary master PCM receipt.')\n            cache = self.folder / 'cache'\n            plain(cache, directory=True)\n            request = ResourceRequest(cpu_slots=selected.threads,\n                memory_bytes=max(512 * 1024**2, 2 * selected.max_alloc_bytes),\n                disk_bytes=min(selected.max_output_bytes, master['size_bytes'] * 4) + 65536,\n                disk_path=cache)\n            owner = broker if broker is not None else ResourceBroker.for_app(self.private_root)\n            if not isinstance(owner, ResourceBroker):\n                raise TypeError('Use the existing shared ResourceBroker for silence inspection.')\n\n            def unchanged_job():\n                check()\n                if (encode(self.get(job_id)) != saved\n                        or _file_identity(plain(job_file)) != stamp):\n                    raise ValueError('The completed primary Studio job changed during silence inspection.')\n                check()\n\n            base_check()\n            with retained_context(owner.reserve(request,\n                    operation_id='director-silence:' + self.project_id + ':' + job_id,\n                    cancelled=base_check,\n                    timeout=min(60, max(0, deadline - monotonic())))) as lease:\n                unchanged_job()\n                phase('Verifying the completed primary Studio artifact receipts.')\n                project, timeline, paths = self.publication_snapshot(state, selected, check, phase)\n                source, receipt = paths['master.wav']\n                metadata_path, metadata_receipt = paths['production.json']\n                metadata = _json(_read(metadata_path, metadata_receipt, check, collect=True))\n                with retained_temporary_directory(prefix='.carr-inspect-', dir=cache) as temporary:\n                    runtime = runtime_for_inspection(Path(temporary), state_root=self.root.parent,\n                        input_roots=(source.parent,), budget=selected, cancelled=check,\n                        runtime_factory=self.runtime_factory)\n                    deadline = min(deadline, started + runtime.budget.timeout)\n                    check()\n                    # Keep the source bound through the last whole-artifact and\n                    # journal checks, including deferred native cleanup.\n                    with retained_context(_verified_reader(source)):\n                        result = runtime.inspect_silence(source,\n                            threshold_dbfs=criteria.threshold_dbfs,\n                            minimum_seconds=criteria.minimum_seconds,\n                            cancelled=check, progress=phase, deadline=deadline)\n                        if (result['source']['sha256'] != receipt['sha256']\n                                or result['source']['size'] != receipt['size']\n                                or result['audio']['frames'] != metadata['frames']\n                                or result['audio']['sample_rate'] != timeline['sample_rate']\n                                or result['audio']['channels'] != timeline['channels']):\n                            raise ValueError('The measured primary PCM differs from its completed source receipts.')\n                        phase('Rechecking the primary artifacts and saved job after measurement.')\n                        if self.publication_snapshot(state, selected, check, phase) != (project, timeline, paths):\n                            raise ValueError('The completed primary source changed during silence inspection.')\n                        unchanged_job()\n                        check()\n                        result.update(job_id=job_id, project_fingerprint=project.fingerprint,\n                                      source_family='director')\n        base_check()\n        return result\n\n    def publication_audio_name(self, state, paths):\n        return 'audio.mp3' if state['project']['settings']['format'] == 'mp3' and 'audio.mp3' in paths else 'master.wav'\n\n\nclass LibraryPublicationService:\n    \"\"\"A menu-level router over existing jobs, with one shared receipt store.\"\"\"\n\n    def __init__(self, library_root, *, budget=None):\n        from .publishing import PublicationService\n        from .render import ProductionService\n        self.library_root = local_path(library_root, exists=True)\n        self.production = ProductionService(self.library_root / 'state' / 'studio')\n        self.production.private_root = self.library_root\n        self.service = PublicationService(self.production, budget=budget)\n        self.budget = budget\n\n    def jobs(self):\n        from .publishing import PublicationService\n        rows = [dict(row, id='scene:' + row['id'], family='Scene Studio') for row in self.service.jobs()]\n        store = ProjectStore(self.library_root)\n        for project in store.list_projects():\n            source = DirectorPublicationSource(self.library_root, project['id'])\n            for row in PublicationService(source, budget=self.budget).jobs():\n                rows.append(dict(row, id='director:' + project['id'] + ':' + row['id'], family='Audio Studio'))\n        return tuple(rows)\n\n    def publications(self):\n        return self.service.publications()\n\n    def export_epub(self, selection, output, **options):\n        from .publishing import PublicationService\n        if not isinstance(selection, str):\n            raise ValueError('Explicitly select one completed Studio job.')\n        parts = selection.split(':')\n        if len(parts) == 2 and parts[0] == 'scene':\n            return self.service.export_epub(_id(parts[1]), output, **options)\n        if len(parts) == 3 and parts[0] == 'director':\n            source = DirectorPublicationSource(self.library_root, parts[1])\n            return PublicationService(source, budget=self.budget).export_epub(parts[2], output, **options)\n        raise ValueError('Unknown publication source family or job identity.')\n\n    def export_daisy(self, selection, output, **options):\n        from .publishing import PublicationService\n        if not isinstance(selection, str):\n            raise ValueError('Explicitly select one completed Studio job.')\n        parts = selection.split(':')\n        if len(parts) == 2 and parts[0] == 'scene':\n            return self.service.export_daisy(_id(parts[1]), output, **options)\n        if len(parts) == 3 and parts[0] == 'director':\n            source = DirectorPublicationSource(self.library_root, parts[1])\n            return PublicationService(source, budget=self.budget).export_daisy(parts[2], output, **options)\n        raise ValueError('Unknown publication source family or job identity.')\n\n    def inspect_silence(self, selection, *, threshold_dbfs, minimum_seconds,\n                        cancelled=lambda: False, progress=None):\n        \"\"\"Route an explicitly selected existing job without changing its family.\"\"\"\n        self.production._check_open()\n        if not isinstance(selection, str):\n            raise ValueError('Explicitly select one completed Studio job.')\n        parts = selection.split(':')\n        options = dict(threshold_dbfs=threshold_dbfs, minimum_seconds=minimum_seconds,\n            budget=self.budget, cancelled=lambda: self.production._closed or bool(cancelled()),\n            progress=progress)\n        if len(parts) == 2 and parts[0] == 'scene':\n            expected_id = _id(parts[1])\n            result = self.production.inspect_silence(expected_id, **options)\n            expected_family = None\n        elif len(parts) == 3 and parts[0] == 'director':\n            source = DirectorPublicationSource(self.library_root, parts[1])\n            expected_id = identity(parts[2], 'job identity')\n            result = source.inspect_silence(expected_id, broker=self.production.broker, **options)\n            expected_family = 'director'\n        else:\n            raise ValueError('Unknown inspection source family or job identity.')\n        if (type(result) is not dict or result.get('job_id') != expected_id\n                or result.get('source_family') != expected_family\n                or ('selected_source_id' in result and result['selected_source_id'] != selection)):\n            raise ValueError('The inspection result belongs to another selected source.')\n        return dict(result, selected_source_id=selection)\n\n    def close(self):\n        self.production.close()\n\n    def verify(self, publication_id, **options):\n        return self.service.verify(publication_id, **options)\n"
+        }
+      ],
+      "inverse_verified": true
+    }
+  ],
+  "added_test_paths": [
+    "carr-library/tests/studio/test_book_silence.py",
+    "carr-library/tests/studio/test_director_silence.py"
+  ],
+  "prior_candidate_corrections": [
+    {
+      "path": "carr-library/tests/studio/test_book_silence.py",
+      "preimage_blob": "22a81da63e543fe1789a654d9fe297e1ed7479dd",
+      "new_blob": "6bee2f7ec8f65eb93adeffc2de0bbd725f0ad79e",
+      "hunks": [
+        {
+          "oldline": 135,
+          "newline": 135,
+          "before": "        if 'Measuring below-threshold' not in message or changed:",
+          "after": "        if 'Measuring intervals at or below the threshold' not in message or changed:"
+        },
+        {
+          "oldline": 172,
+          "newline": 172,
+          "before": "        if 'Measuring below-threshold' in message:",
+          "after": "        if 'Measuring intervals at or below the threshold' in message:"
+        }
+      ]
+    },
+    {
+      "path": "carr-library/src/carr_library/studio/publishing_source.py",
+      "preimage_blob": "2b3951ef7e9689e228b880a24b5cd73a77a8be00",
+      "new_blob": "f50c6527d89638b37be249304d94583c3dc0b3c0",
+      "hunks": [
+        {
+          "oldline": 356,
+          "newline": 356,
+          "before": "                            cancelled=check, progress=phase)",
+          "after": "                            cancelled=check, progress=phase, deadline=deadline)"
+        }
+      ]
+    },
+    {
+      "path": "carr-library/tests/studio/test_director_silence.py",
+      "preimage_blob": "4c545203eff6145c75e76c6189035c5f2110ffe3",
+      "new_blob": "859cf31f3da97edf1c5727ae9b673649bd93139f",
+      "hunks": [
+        {
+          "oldline": 195,
+          "newline": 195,
+          "before": "        if 'Measuring below-threshold' in message:",
+          "after": "        if 'Measuring intervals at or below the threshold' in message:"
+        }
+      ]
+    }
+  ]
+}

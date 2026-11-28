@@ -448,6 +448,15 @@ class ProductionService:
         return audio_runtime(self.cache, state_root=self.root.parent,
                              input_roots=(self.cache, *self.input_roots))
 
+    def inspect_silence(self, job_id, *, threshold_dbfs, minimum_seconds,
+                        cancelled=lambda: False, progress=None, source_guard=None, budget=None,
+                        runtime_binding=None):
+        from .silence_inspection import inspect_job
+        return inspect_job(self, job_id, threshold_dbfs=threshold_dbfs,
+            minimum_seconds=minimum_seconds, cancelled=cancelled,
+            progress=progress, source_guard=source_guard, budget=budget,
+            runtime_binding=runtime_binding)
+
     def run(self, job_id, *, cancelled=lambda: False, progress=None, source_guard=None):
         self._check_open()
         from ..audio import AudioCancelled, AudioError, Track, MusicSpec

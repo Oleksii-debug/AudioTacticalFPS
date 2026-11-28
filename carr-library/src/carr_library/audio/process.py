@@ -509,7 +509,17 @@ def run_process(args, *, budget=None, cancelled=lambda: False,
             if stat.S_ISLNK(info.st_mode) or getattr(info, 'st_file_attributes', 0) & 0x400:
                 raise AudioError('Audio worker output is not a regular file.')
             if stat.S_ISDIR(info.st_mode):
-                with os.scandir(path) as entries:
+                try:
+                    scan = os.scandir(path)
+                except FileNotFoundError:
+                    # A worker may remove its temporary directory after lstat.
+                    # Accept only fresh absence, never a replacement object.
+                    try:
+                        path.lstat()
+                    except FileNotFoundError:
+                        continue
+                    raise
+                with scan as entries:
                     for entry in entries:
                         if cancelled():
                             raise AudioCancelled('Audio operation cancelled during staging inspection.')

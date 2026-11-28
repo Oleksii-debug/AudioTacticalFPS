@@ -1,0 +1,154 @@
+{
+  "schema": "carr-silence-ui-review/1",
+  "base_head": "f8311d17fa960448b350cb739b5a90584c30c74b",
+  "status": "SOURCE_REVIEWED_NOT_RUN",
+  "application_tree": "aaf1bb8b67236ff454ac7c932de06f66129e4049",
+  "paths": [
+    {
+      "path": "carr-library/src/carr_library/ui/book_audio_dialog.py",
+      "before": "86b184a46e35c2b76be7f2a36d4c435d8e0157dc",
+      "after": "0e16e240dbf6f6d84a3f27e3c296d00bbdff0175",
+      "sha256": "917e6658d71619dd2ad9386febfa305fdacf91d91ceaa415111f496f7bbbb355",
+      "bytes": 38012
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/publishing_dialog.py",
+      "before": "63a0516a50773cf82a4c6e91cb9166c7e4684158",
+      "after": "d28205d7c82bc811bee2908698e05c8b0b75750d",
+      "sha256": "7f25d526282ae48a4221ebb7a42d781b101e811d68c3de57cca2ef291dd534d3",
+      "bytes": 20300
+    },
+    {
+      "path": "carr-library/tests/ui/test_book_audio_dialog.py",
+      "before": "8c8cc3e0bf0147f842e3698f8b6e2b601fd2f435",
+      "after": "d74c357df9c5060ac7b24a330aedcc6f349961d8",
+      "sha256": "5cccca9ba5e8c41d5a8c7668a4301e465691f9badbb33f6ef9fa05ae4cca42c8",
+      "bytes": 38329
+    },
+    {
+      "path": "carr-library/tests/studio/test_publishing_handlers.py",
+      "before": "31830b291a84bcc0ab3468e7ea3bd654cb0d1dc2",
+      "after": "d8491a65caf86d6d14a79d3e643d7087baf77521",
+      "sha256": "2fc639eecb10ae50b8d31e8c111223f4d11f824ec8cd5a412d43b408e943c938",
+      "bytes": 24168
+    }
+  ],
+  "source_hunks": {
+    "carr-library/src/carr_library/ui/book_audio_dialog.py": [
+      {
+        "before": "    layout.Add(form, 0, wx.ALL | wx.EXPAND, 6)\n    alive, busy, selected_source, plan, review, reviewed_fields = True, False, None, None, None, None\n    locked_plan, voices = False, ()\n    dialog_destroyed, owner_id = False, dialog.GetId()\n    dialog._book_destroyed = False\n    selected_bookmarks = ()\n",
+        "after": "    layout.Add(form, 0, wx.ALL | wx.EXPAND, 6)\n    alive, busy, selected_source, plan, review, reviewed_fields = True, False, None, None, None, None\n    locked_plan, voices = False, ()\n    inspection_active = False\n    dialog_destroyed, owner_id = False, dialog.GetId()\n    dialog._book_destroyed = False\n    selected_bookmarks = ()\n"
+      },
+      {
+        "before": "        [('bookmarks', 'Choose reading &bookmarks...')],\n        [('prepare', '&Prepare saved items'), ('run', '&Run or resume saved items'),\n         ('pause', 'Pa&use'), ('saved', 'Saved &book plans'), ('fresh', 'New output review'), ('help', '&Help'), ('close', '&Close')],\n        *([[('batch', '&Multiple books...'), ('duration', 'Measured &duration parts...')]]\n          if on_reviewed is None else []),\n    ]:\n        row = wx.BoxSizer(wx.HORIZONTAL)\n",
+        "after": "        [('bookmarks', 'Choose reading &bookmarks...')],\n        [('prepare', '&Prepare saved items'), ('run', '&Run or resume saved items'),\n         ('pause', 'Pa&use'), ('saved', 'Saved &book plans'), ('fresh', 'New output review'), ('help', '&Help'), ('close', '&Close')],\n        *([[('batch', '&Multiple books...'), ('duration', 'Measured &duration parts...'),\n            ('silence', 'Inspect long silences...')]]\n          if on_reviewed is None else []),\n    ]:\n        row = wx.BoxSizer(wx.HORIZONTAL)\n"
+      },
+      {
+        "before": "        for name, button in buttons.items():\n            button.Enable(not busy or name in ('pause', 'close'))\n        buttons['pause'].Enable(busy)\n        buttons['prepare'].Enable(not busy and review is not None)\n        buttons['run'].Enable(not busy and review is not None and review.prepared)\n        buttons['voices'].Enable(not busy and not locked_plan)\n",
+        "after": "        for name, button in buttons.items():\n            button.Enable(not busy or name in ('pause', 'close'))\n        buttons['pause'].Enable(busy)\n        pause_label = 'Cancel inspection' if busy and inspection_active else 'Pa&use'\n        buttons['pause'].SetLabel(pause_label)\n        buttons['pause'].SetName(pause_label.replace('&', ''))\n        buttons['prepare'].Enable(not busy and review is not None)\n        buttons['run'].Enable(not busy and review is not None and review.prepared)\n        buttons['voices'].Enable(not busy and not locked_plan)\n"
+      },
+      {
+        "before": "        buttons['bookmarks'].Enable(not busy and not locked_plan and selected_source is not None)\n        if 'duration' in buttons:\n            buttons['duration'].Enable(not busy and plan is not None)\n        if on_reviewed is not None:\n            buttons['run'].Enable(False)\n            buttons['saved'].Enable(False)\n",
+        "after": "        buttons['bookmarks'].Enable(not busy and not locked_plan and selected_source is not None)\n        if 'duration' in buttons:\n            buttons['duration'].Enable(not busy and plan is not None)\n        if 'silence' in buttons:\n            buttons['silence'].Enable(not busy and plan is not None and\n                                      (locked_plan or (review is not None and review.prepared)))\n        if on_reviewed is not None:\n            buttons['run'].Enable(False)\n            buttons['saved'].Enable(False)\n"
+      },
+      {
+        "before": "                      failed=lambda error: frame.report('Book audio cleanup needs attention: ' + str(error)))\n        return True\n\n    def begin(title, operation, done):\n        nonlocal busy\n        if busy:\n            return\n        try:\n",
+        "after": "                      failed=lambda error: frame.report('Book audio cleanup needs attention: ' + str(error)))\n        return True\n\n    def begin(title, operation, done, *, inspection=False):\n        nonlocal busy, inspection_active\n        if busy:\n            return\n        try:\n"
+      },
+      {
+        "before": "            return\n        cancel.clear()\n        busy = True\n        controls()\n        def checked():\n            try:\n",
+        "after": "            return\n        cancel.clear()\n        busy = True\n        inspection_active = inspection\n        controls()\n        def checked():\n            try:\n"
+      },
+      {
+        "before": "                if not alive or getattr(frame, '_closing', False):\n                    cleanup_owned()\n        def finished(value):\n            nonlocal busy\n            busy = False\n            controls()\n            if not alive:\n                queue_cleanup()\n",
+        "after": "                if not alive or getattr(frame, '_closing', False):\n                    cleanup_owned()\n        def finished(value):\n            nonlocal busy, inspection_active\n            busy = False\n            inspection_active = False\n            controls()\n            if not alive:\n                queue_cleanup()\n"
+      },
+      {
+        "before": "                if alive:\n                    status.SetFocus()\n        def failed(error):\n            nonlocal busy\n            busy = False\n            controls()\n            if not alive:\n                queue_cleanup()\n",
+        "after": "                if alive:\n                    status.SetFocus()\n        def failed(error):\n            nonlocal busy, inspection_active\n            busy = False\n            inspection_active = False\n            controls()\n            if not alive:\n                queue_cleanup()\n"
+      },
+      {
+        "before": "            report(error)\n            if alive:\n                status.SetFocus()\n        if frame.run_job(title, checked, done=finished, failed=failed) is False:\n            busy = False\n            controls()\n\n    def load_source(event=None):\n",
+        "after": "            report(error)\n            if alive:\n                status.SetFocus()\n        try:\n            accepted = frame.run_job(title, checked, done=finished, failed=failed)\n        except Exception:\n            busy = False\n            inspection_active = False\n            controls()\n            raise\n        if accepted is False:\n            busy = False\n            inspection_active = False\n            controls()\n\n    def load_source(event=None):\n"
+      },
+      {
+        "before": "        except Exception as exc:\n            report(exc)\n\n    def measured_duration(event=None):\n        try:\n            guard()\n",
+        "after": "        except Exception as exc:\n            report(exc)\n\n    def inspect_silence(event=None):\n        try:\n            guard()\n            if busy or getattr(frame, 'working', False) or getattr(frame, '_closing', False):\n                raise ValueError('Finish the current operation before inspecting completed Book audio.')\n            if plan is None or not (locked_plan or (review is not None and review.prepared)):\n                raise ValueError('Choose an existing saved Book plan first.')\n            captured, signature = plan, fields()\n\n            def current():\n                try:\n                    guard()\n                    return plan is captured\n                except (ValueError, OSError, RuntimeError):\n                    return False\n\n            def current_ui():\n                return current() and fields() == signature\n\n            chooser = wx.SingleChoiceDialog(dialog,\n                'Choose one completed part from this saved Book plan. The audio will not be changed.',\n                'Book part for silence inspection',\n                [f'{index}. {part.label}' for index, part in enumerate(captured.parts, 1)])\n            try:\n                decision = chooser.ShowModal()\n                if not current_ui() or decision != wx.ID_OK:\n                    return\n                index = chooser.GetSelection() + 1\n            finally:\n                if not dialog_destroyed:\n                    chooser.Destroy()\n            if not 1 <= index <= len(captured.parts):\n                raise ValueError('Choose one part in this saved Book plan.')\n            from .studio_silence_inspection import choose_criteria, show_result\n            criteria = choose_criteria(dialog, current=current_ui)\n            if criteria is None:\n                return\n            if not current_ui():\n                raise ValueError('The Book plan changed while choosing inspection criteria.')\n            expected_job = captured.job_id(index)\n\n            def operation():\n                if stopped() or not current():\n                    raise InterruptedError('Book silence inspection was cancelled before starting.')\n                return service.inspect_silence(captured.id, index,\n                    threshold_dbfs=criteria.threshold_dbfs, minimum_seconds=criteria.minimum_seconds,\n                    cancelled=stopped, guard=guard)\n\n            def completed(value):\n                if stopped() or not current_ui():\n                    raise InterruptedError('The Book plan changed; the late inspection was discarded.')\n                if value.get('job_id') != expected_job:\n                    raise ValueError('The inspection belongs to a different Book part.')\n                show_result(dialog, value, current=lambda: not stopped() and current_ui())\n\n            begin('Inspecting completed Book audio for long silences',\n                  operation, completed, inspection=True)\n        except Exception as exc:\n            report(exc)\n\n    def measured_duration(event=None):\n        try:\n            guard()\n"
+      },
+      {
+        "before": "        buttons['batch'].Bind(wx.EVT_BUTTON, multiple)\n    if 'duration' in buttons:\n        buttons['duration'].Bind(wx.EVT_BUTTON, measured_duration)\n    for widget in plan_controls + (output,):\n        widget.Bind(wx.EVT_CHOICE if widget in (modes, ignore_case, voice, formats) else wx.EVT_TEXT, invalidate)\n    def destroyed(event):\n",
+        "after": "        buttons['batch'].Bind(wx.EVT_BUTTON, multiple)\n    if 'duration' in buttons:\n        buttons['duration'].Bind(wx.EVT_BUTTON, measured_duration)\n    if 'silence' in buttons:\n        buttons['silence'].Bind(wx.EVT_BUTTON, inspect_silence)\n    for widget in plan_controls + (output,):\n        widget.Bind(wx.EVT_CHOICE if widget in (modes, ignore_case, voice, formats) else wx.EVT_TEXT, invalidate)\n    def destroyed(event):\n"
+      }
+    ],
+    "carr-library/src/carr_library/ui/publishing_dialog.py": [
+      {
+        "before": "            super().__init__(frame, title='EPUB3 and DAISY publication — measured Studio line synchronization',\n                size=(920, 760), style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)\n            self.library_root = local_path(frame.library.root, exists=True)\n            self.service = LibraryPublicationService(self.library_root)\n            self.alive, self.busy = True, False\n            self.destroyed, self._cleanup_queued = False, False\n            self._owner_id = self.GetId()\n            register = getattr(frame, 'register_worker_cleanup', None)\n",
+        "after": "            super().__init__(frame, title='EPUB3 and DAISY publication — measured Studio line synchronization',\n                size=(920, 760), style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)\n            self.library_root = local_path(frame.library.root, exists=True)\n            self.library_owner = frame.library\n            self.service = LibraryPublicationService(self.library_root)\n            self.alive, self.busy = True, False\n            self.inspection_active, self._inspection_cancel = False, None\n            self.destroyed, self._cleanup_queued = False, False\n            self._owner_id = self.GetId()\n            register = getattr(frame, 'register_worker_cleanup', None)\n"
+      },
+      {
+        "before": "                ('cancel', '&Cancel operation', self.on_cancel), ('close', '&Close', self.on_close)):\n                button = wx.Button(self, label=label); button.Bind(wx.EVT_BUTTON, handler)\n                self.buttons[key] = button; row.Add(button, 0, wx.ALL, 3)\n            layout.Add(row, 0, wx.ALL, 3); self.SetSizer(layout)\n            panel.FitInside()\n            self.Bind(wx.EVT_CLOSE, self.on_close)\n            self.Bind(wx.EVT_WINDOW_DESTROY, self.on_destroy)\n",
+        "after": "                ('cancel', '&Cancel operation', self.on_cancel), ('close', '&Close', self.on_close)):\n                button = wx.Button(self, label=label); button.Bind(wx.EVT_BUTTON, handler)\n                self.buttons[key] = button; row.Add(button, 0, wx.ALL, 3)\n            layout.Add(row, 0, wx.ALL, 3)\n            inspection = wx.Button(self, label='Inspect long silences...')\n            inspection.SetName('Inspect long silences in the selected completed job')\n            inspection.Bind(wx.EVT_BUTTON, self.on_inspect_silence)\n            self.buttons['silence'] = inspection\n            layout.Add(inspection, 0, wx.ALL, 3)\n            self.SetSizer(layout)\n            panel.FitInside()\n            self.Bind(wx.EVT_CLOSE, self.on_close)\n            self.Bind(wx.EVT_WINDOW_DESTROY, self.on_destroy)\n"
+      },
+      {
+        "before": "                return\n            for control in (self.job_choice,self.language,self.creator,self.publisher,self.output,self.max_gib,self.minutes,self.receipt_choice):\n                control.Enable(not self.busy)\n            for key in ('refresh','choose','export','daisy','verify'):\n                self.buttons[key].Enable(not self.busy)\n            self.buttons['cancel'].Enable(self.busy)\n\n",
+        "after": "                return\n            for control in (self.job_choice,self.language,self.creator,self.publisher,self.output,self.max_gib,self.minutes,self.receipt_choice):\n                control.Enable(not self.busy)\n            for key in ('refresh','choose','export','daisy','verify','silence'):\n                self.buttons[key].Enable(not self.busy)\n            self.buttons['cancel'].Enable(self.busy)\n\n"
+      },
+      {
+        "before": "            return AudioBudget(max_output_bytes=int(self.max_gib.GetValue()) * 1024**3,\n                               timeout=float(self.minutes.GetValue()) * 60)\n\n        def begin(self, title, operation, complete):\n            if self.busy or not self.alive:\n                return False\n            if local_path(frame.library.root, exists=True) != self.library_root:\n",
+        "after": "            return AudioBudget(max_output_bytes=int(self.max_gib.GetValue()) * 1024**3,\n                               timeout=float(self.minutes.GetValue()) * 60)\n\n        def begin(self, title, operation, complete, *, inspection_cancel=None):\n            if self.busy or not self.alive:\n                return False\n            if local_path(frame.library.root, exists=True) != self.library_root:\n"
+      },
+      {
+        "before": "            if getattr(frame, 'working', False) or getattr(frame, '_closing', False):\n                self.report('Another operation is active. Finish or cancel it before publishing.')\n                return False\n            self.cancel.clear(); self.busy = True; self.controls()\n            def done(value):\n                self.busy = False\n                if self.alive and not getattr(frame, '_closing', False):\n                    if frame.library.root == self.library_root:\n                        complete(value)\n                    else:\n                        self.report('The library location changed. Reopen EPUB publication to review its records.')\n                    self.controls(); self.status.SetFocus()\n            def failed(error):\n                self.busy = False\n                if self.alive and not getattr(frame, '_closing', False):\n                    self.report(str(error)); self.controls(); self.status.SetFocus()\n            frame.run_job(title, operation, done=done, failed=failed)\n            return True\n\n        def on_refresh(self, event=None):\n",
+        "after": "            if getattr(frame, 'working', False) or getattr(frame, '_closing', False):\n                self.report('Another operation is active. Finish or cancel it before publishing.')\n                return False\n            self.cancel.clear(); self.busy = True\n            self.inspection_active = inspection_cancel is not None\n            self._inspection_cancel = inspection_cancel\n            self.controls()\n            def settled():\n                if inspection_cancel is not None:\n                    inspection_cancel.set()\n                self.inspection_active, self._inspection_cancel = False, None\n            def done(value):\n                self.busy = False\n                self.inspection_active = False\n                try:\n                    if self.alive and not getattr(frame, '_closing', False):\n                        if frame.library.root == self.library_root:\n                            complete(value)\n                        else:\n                            self.report('The library location changed. Reopen EPUB publication to review its records.')\n                        if self.alive and not getattr(frame, '_closing', False):\n                            self.controls(); self.status.SetFocus()\n                finally:\n                    settled()\n            def failed(error):\n                self.busy = False\n                settled()\n                if self.alive and not getattr(frame, '_closing', False):\n                    self.report(str(error)); self.controls(); self.status.SetFocus()\n            try:\n                accepted = frame.run_job(title, operation, done=done, failed=failed)\n            except Exception:\n                self.busy = False\n                settled()\n                self.controls()\n                raise\n            if accepted is False:\n                self.busy = False\n                settled()\n                self.controls()\n                return False\n            return True\n\n        def on_refresh(self, event=None):\n"
+      },
+      {
+        "before": "            except Exception as exc:\n                self.report(exc)\n\n        def on_verify(self, event=None):\n            try:\n                index = self.receipt_choice.GetSelection()\n",
+        "after": "            except Exception as exc:\n                self.report(exc)\n\n        def on_inspect_silence(self, event=None):\n            try:\n                if (not self.alive or self.destroyed or getattr(frame, '_closing', False)\n                        or frame.library is not self.library_owner\n                        or frame.library.root != self.library_root):\n                    raise ValueError('The library or publication window changed. Reopen it before inspection.')\n                if self.busy or getattr(frame, 'working', False):\n                    raise ValueError('Finish the current operation before inspecting completed audio.')\n                index = self.job_choice.GetSelection()\n                if not 0 <= index < len(self.jobs):\n                    raise ValueError('Load and explicitly choose a completed Studio job first.')\n                jobs, selected = self.jobs, self.jobs[index]['id']\n                parts = selected.split(':') if isinstance(selected, str) else ()\n                if not ((len(parts) == 2 and parts[0] == 'scene')\n                        or (len(parts) == 3 and parts[0] == 'director')):\n                    raise ValueError('Choose an existing Scene Studio or Audio Studio job.')\n                expected_job = parts[-1]\n                expected_family = 'director' if parts[0] == 'director' else None\n                root, library = self.library_root, self.library_owner\n                limits = self.max_gib.GetValue(), self.minutes.GetValue()\n                budget, revoked = self.budget(), Event()\n\n                def current():\n                    return (not revoked.is_set() and self.alive and not self.destroyed\n                            and not getattr(frame, '_closing', False)\n                            and frame.library is library and frame.library.root == root\n                            and self.jobs is jobs and jobs[index]['id'] == selected)\n\n                def current_ui():\n                    return (current() and self.job_choice.GetSelection() == index\n                            and (self.max_gib.GetValue(), self.minutes.GetValue()) == limits)\n\n                from .studio_silence_inspection import choose_criteria, show_result\n                criteria = choose_criteria(self, current=current_ui)\n                if criteria is None:\n                    return\n                if not current_ui():\n                    raise ValueError('The selected job or inspection limits changed while choosing criteria.')\n\n                def cancelled():\n                    return (not current() or self.cancel.is_set()\n                            or frame.cancel_event.is_set())\n\n                def deliver_phase(message):\n                    if self.busy and self.inspection_active and current_ui():\n                        self.report(message)\n\n                def operation():\n                    if cancelled():\n                        raise InterruptedError('Silence inspection cancelled before starting.')\n                    token = frame.operation_progress.event.token\n                    def progress(message):\n                        if cancelled():\n                            raise InterruptedError('Silence inspection cancelled.')\n                        frame.operation_progress.update(phase=message, token=token)\n                        wx.CallAfter(deliver_phase, message)\n                    from contextlib import ExitStack\n                    from ..audio.cleanup import retained_context\n                    with retained_context(ExitStack()) as retained:\n                        service = LibraryPublicationService(root, budget=budget)\n                        retained.callback(service.close)\n                        return service.inspect_silence(selected,\n                            threshold_dbfs=criteria.threshold_dbfs,\n                            minimum_seconds=criteria.minimum_seconds,\n                            cancelled=cancelled, progress=progress)\n\n                def completed(value):\n                    try:\n                        if cancelled() or not current_ui():\n                            raise InterruptedError('The selected job changed; the late inspection was discarded.')\n                        if (type(value) is not dict or value.get('job_id') != expected_job\n                                or value.get('selected_source_id') != selected\n                                or value.get('source_family') != expected_family):\n                            raise ValueError('The inspection belongs to a different selected Studio job.')\n                        show_result(self, value,\n                                    current=lambda: not cancelled() and current_ui())\n                    except Exception as exc:\n                        self.report(exc)\n\n                if not self.begin('Inspecting completed audio for long silences',\n                                  operation, completed, inspection_cancel=revoked):\n                    revoked.set()\n            except Exception as exc:\n                self.report(exc)\n\n        def on_verify(self, event=None):\n            try:\n                index = self.receipt_choice.GetSelection()\n"
+      },
+      {
+        "before": "        def on_cancel(self, event=None):\n            if self.busy:\n                self.cancel.set(); frame.cancel_event.set()\n                self.report('Cancellation requested. A completed EPUB and its prepared receipt remain available for verification.')\n\n        def _queue_cleanup(self):\n            if self._cleanup_queued:\n",
+        "after": "        def on_cancel(self, event=None):\n            if self.busy:\n                self.cancel.set(); frame.cancel_event.set()\n                if self._inspection_cancel is not None:\n                    self._inspection_cancel.set()\n                if self.inspection_active:\n                    self.report('Silence inspection cancellation requested. The completed audio and job remain unchanged.')\n                else:\n                    self.report('Cancellation requested. A completed EPUB and its prepared receipt remain available for verification.')\n\n        def _queue_cleanup(self):\n            if self._cleanup_queued:\n"
+      },
+      {
+        "before": "                self.destroyed = True\n                self.alive = False\n                self.cancel.set()\n                if self.busy:\n                    frame.cancel_event.set()\n                self._queue_cleanup()\n",
+        "after": "                self.destroyed = True\n                self.alive = False\n                self.cancel.set()\n                if self._inspection_cancel is not None:\n                    self._inspection_cancel.set()\n                if self.busy:\n                    frame.cancel_event.set()\n                self._queue_cleanup()\n"
+      },
+      {
+        "before": "            if self.busy:\n                self.on_cancel()\n            self.alive = False\n            self._queue_cleanup()\n            if self.destroyed:\n                return\n",
+        "after": "            if self.busy:\n                self.on_cancel()\n            self.alive = False\n            if self._inspection_cancel is not None:\n                self._inspection_cancel.set()\n            self._queue_cleanup()\n            if self.destroyed:\n                return\n"
+      }
+    ]
+  },
+  "preservation": {
+    "book_old_test_prefix_inverse_exact": true,
+    "book_fixture_hunk": {
+      "before": "        def SetName(self, name): self.name = name\n",
+      "after": "        def SetName(self, name): self.name = name\n        def SetLabel(self, label): self.label = label\n"
+    },
+    "publication_old_test_exact_prefix": true,
+    "all_old_assertions_retained": true,
+    "old_book_assertion_lines": 121,
+    "old_publication_assertion_lines": 18,
+    "new_book_cases": 28,
+    "new_publication_cases": 28,
+    "no_skip_or_xfail_added": true
+  },
+  "dependencies": {
+    "shared_scene_ui_tree": "156c9df7c04d8e39f1487db440c979bdffbdaea7",
+    "book_service": "db32aeb0d056ccaf2704fa0f9e2c2edba399f11d",
+    "wrapper_contract": "LibraryPublicationService.inspect_silence returns unchanged local job_id, exact selected_source_id and validated source_family.",
+    "core_contract": "Final retained PCM-only silence runtime/service; custom runtime factory accepts directory,input_roots only."
+  },
+  "scope": {
+    "book": "Saved/prepared plan, explicit1-based part, existing worker and source guard; shared explicit criteria and read-only result. Pause label becomes Cancel inspection only during this request; no F8 binding is claimed.",
+    "publication": "Existing explicit scene/director picker; no destination/language/creator/publisher read or requirement. New action is on a separate row. User time/byte limits are captured before dispatch. Same worker and current owner checks; per-request revocation cannot revive.",
+    "ownership": "Private publication router closes through existing retained_context(ExitStack), after all causal cleanup owners settle; no new executor, player, receipt or state store.",
+    "tests": "Actual source-bound Book preparation/unrendered refusal; actual existing Scene PCM measurement on a real worker; modeled GUI/router cases explicitly test stale/cancelled/closed owner and direct/masked retained cleanup with real local bytes."
+  },
+  "limits": [
+    "No execution of these56newcases has occurred.",
+    "No native Book/publication controls qualification or NVDA/hearing/model quality claim.",
+    "Existing native Scene inspection extension is a separate pending run; no prior PASS transferred."
+  ],
+  "refs_mutated": false
+}

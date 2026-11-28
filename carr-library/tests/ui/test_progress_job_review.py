@@ -293,6 +293,7 @@ def studio():
 def make(progress, executor, wx, report, service):
     busy = False
     alive = True
+    active_production = False
     current_job = 'saved-production'
     cancel = threading.Event()
     controls = lambda: None
@@ -443,6 +444,7 @@ def test_studio_close_releases_device_and_both_observers_even_after_device_failu
 def make(autosave, cancel, service, timer, dialog, progress, parent_progress, report, executor):
     alive = True
     busy = True
+    active_production = True
     current_job = 'saved-production'
     return close
 ''')

@@ -1,0 +1,92 @@
+{
+  "schema": 1,
+  "kind": "exact-donor-fixture-reuse",
+  "status": "NOT_RUN",
+  "target_commit": "f8311d17fa960448b350cb739b5a90584c30c74b",
+  "target_tree": "905201ae02b07c4899e542f3eb19ac2b059ef92c",
+  "donor": {
+    "repository": "Oleksii-debug/AudioTacticalFPS",
+    "pull_request": 99,
+    "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/pull/99",
+    "inspected_head": "6752e8d94fdc7d84a95242f204554f4a8d10b842",
+    "inspected_tree": "ae866cd713b6052d8751fac0ea20c5db29623055",
+    "inherited_correction_checkpoint": "e828403becce67eead4f7def3ec826f7893a2970",
+    "acceptance_note": "carr-library/docs/acceptance/FULL_BUNDLE_UTF8_FIXTURES_20261128.md",
+    "donor_execution": "Donor reports an actual isolated Windows CPAL decoding failure before this correction. No donor PASS is transferred."
+  },
+  "file": {
+    "path": "carr-library/tests/citations/test_csl.py",
+    "before": "aa228ad6b203506fdd1b970496f8ca6e192e4b63",
+    "after": "eab5b324ba623021a7fb20cb47fc22a85164d490",
+    "before_sha256": "0e3e7d6383034a43e8605d4d05183f15f29c188535f012087992791689d52404",
+    "after_sha256": "cb550135b3f257445594c131b77c4bbb5e50adfd0d7621f14d63ca4f10b890fe",
+    "before_utf8_bytes": 14348,
+    "after_utf8_bytes": 14380
+  },
+  "diagnosis": {
+    "scope": "Distinct canonical CSL attribution fixture; not the separate academic_integration formatting fixture already corrected in f831.",
+    "boundary": "The current pinned CPAL file contains UTF-8 smart quotes; locale-default Path.read_text can select CP1252 under isolated embedded Windows Python.",
+    "adjacent_manifest": "The current UPSTREAM JSON is ASCII; declaring its UTF-8 encoding leaves current data unchanged.",
+    "parent_authorization": "Reuse the exact two existing donor encoding arguments and audit only the specifically named license/notice/CSL fixture family."
+  },
+  "hunks": [
+    {
+      "before": "    manifest = json.loads((csl._ROOT / '_vendor_citeproc/UPSTREAM.json').read_text())",
+      "after": "    manifest = json.loads((csl._ROOT / '_vendor_citeproc/UPSTREAM.json').read_text(encoding='utf-8'))"
+    },
+    {
+      "before": "    cpal = (csl._ROOT / '_vendor_citeproc/CPAL').read_text()",
+      "after": "    cpal = (csl._ROOT / '_vendor_citeproc/CPAL').read_text(encoding='utf-8')"
+    }
+  ],
+  "preservation": {
+    "assertionLines": 63,
+    "testFunctions": 32,
+    "exactTwoHunkInverse": true,
+    "donorExactReuse": true,
+    "pinnedAssets": [
+      {
+        "path": "carr-library/src/carr_library/citations/_vendor_citeproc/CPAL",
+        "blob": "ff98dbf084cd8e8428976d84e9056e9876a4bec1",
+        "sha256": "a953615139d8c767eb5e95f14215bf5c356ea23397a15137f6e119babf3fe69b",
+        "bytes": 28740
+      },
+      {
+        "path": "carr-library/src/carr_library/citations/_vendor_citeproc/UPSTREAM.json",
+        "blob": "5c9a42c08c1d9854f5aeb071672c8b25986e9761",
+        "sha256": "34906d835c9d38b21ad4cbc20c7c247917225df5caa48ff09019b2000aa68b8f",
+        "bytes": 3275
+      }
+    ],
+    "all_assertion_lines_byte_identical": true,
+    "all_test_functions_and_parameters_unchanged": true,
+    "all_other_source_bytes_exact_inverse": true,
+    "production_and_pinned_assets_unchanged": true,
+    "global_encoding_unchanged": true
+  },
+  "bounded_sibling_audit": {
+    "matched_named_test_files": [
+      {
+        "path": "carr-library/tests/citations/test_csl.py",
+        "sha": "aa228ad6b203506fdd1b970496f8ca6e192e4b63"
+      },
+      {
+        "path": "carr-library/tests/citations/test_custom_csl.py",
+        "sha": "6798ffc3d2326c0aa0f96daaea715b1daabd74c2"
+      },
+      {
+        "path": "carr-library/tests/research/test_csl_author_boundaries.py",
+        "sha": "929ff2c487a2a3d92a6c8cbc4320daeeba2bcd98"
+      }
+    ],
+    "additional_deterministic_findings": 0,
+    "custom_csl": "The sole locale-default write contains the fixed ASCII SOURCE XML; the Arabic/Ukrainian metadata case explicitly uses UTF-8 bytes.",
+    "author_boundaries": "Unicode CSL JSON is explicitly encoded as UTF-8 and passed as bytes/strings; no locale-default text file read/write.",
+    "repository_wide_audit": false
+  },
+  "execution": {
+    "local_tests_run": false,
+    "new_runtime_result": "NOT_RUN",
+    "no_ref_or_workflow_mutation": true
+  }
+}

@@ -60,11 +60,22 @@ def main(argv=None):
     render.add_argument('--output', type=Path, required=True, help='Existing parent folder; a new project subfolder is created')
     render.add_argument('--format', default='wav', choices=('wav','flac','mp3','ogg','opus','m4a','m4b','aiff','wma'))
     render.add_argument('--no-stems', action='store_true')
+    silence = operations.add_parser('inspect-silence',
+        help='Measure warning-only long-silence intervals in an existing completed PCM master')
+    silence.add_argument('job_id')
+    silence.add_argument('--threshold-dbfs', type=float, required=True,
+                         help='Explicit amplitude threshold from -192 through 0 dBFS; every channel must meet it')
+    silence.add_argument('--minimum-seconds', type=float, required=True,
+                         help='Positive minimum duration; rounded up to the exact frame grid')
     resume = operations.add_parser('resume', help='Resume a saved interrupted job, retaining successful chunks')
     resume.add_argument('job_id')
     args = parser.parse_args(arguments)
     binding = service = None
     try:
+        if args.operation == 'inspect-silence':
+            result = _inspect_silence_command(args)
+            print(json.dumps(result, ensure_ascii=False, indent=2, allow_nan=False))
+            return 0
         from ..application import LibraryApp
         app = LibraryApp(data_directory(args.data_dir))
         if args.operation in ('render', 'resume', 'capabilities', 'publish-epub', 'publish-daisy'):
@@ -129,7 +140,10 @@ def main(argv=None):
         print(json.dumps(result, ensure_ascii=False, indent=2, allow_nan=False))
         return 0
     except KeyboardInterrupt:
-        print('Production interrupted. Resume its saved job ID to reuse completed chunks.', file=sys.stderr)
+        if args.operation == 'inspect-silence':
+            print('Silence inspection interrupted. The saved job and audio are preserved; rerun the inspection when ready.', file=sys.stderr)
+        else:
+            print('Production interrupted. Resume its saved job ID to reuse completed chunks.', file=sys.stderr)
         return 130
     except (ValueError, OSError, RuntimeError) as exc:
         print('Audio Studio: ' + str(exc), file=sys.stderr)
@@ -141,6 +155,56 @@ def main(argv=None):
         finally:
             if binding is not None:
                 binding.close()
+
+
+
+def _inspect_silence_command(args):
+    """Keep the selected runtime and process alive through actual native cleanup."""
+    from contextlib import ExitStack
+    from ..application import LibraryApp
+    from ..audio.cleanup import _pending_owners, retained_context
+    from ..audio.local_runtime import open_local_audio_runtime
+    from ..audio.silence import SilenceCriteria
+
+    criteria = SilenceCriteria(args.threshold_dbfs, args.minimum_seconds)
+    app = LibraryApp(data_directory(args.data_dir))
+    try:
+        with retained_context(ExitStack()) as bindings:
+            def bind_runtime(*, cancelled):
+                bindings.enter_context(open_local_audio_runtime(app.root, strict=True,
+                                                               cancelled=cancelled))
+
+            service = ProductionService(app.root / 'state' / 'studio',
+                                        input_roots=args.input_root)
+            try:
+                return service.inspect_silence(args.job_id,
+                    threshold_dbfs=criteria.threshold_dbfs,
+                    minimum_seconds=criteria.minimum_seconds,
+                    runtime_binding=bind_runtime,
+                    progress=lambda message: print(message, file=sys.stderr, flush=True))
+            finally:
+                service.close()
+    except BaseException as error:
+        # A CLI must not end its interpreter while retained cleanup daemons
+        # still own the decoder, source handle, staging, lock or broker lease.
+        # Retry only the existing causal owners; no new owner or worker.
+        owners = _pending_owners(error)
+        interrupted = None
+        while owners:
+            try:
+                waiting = tuple(owner for owner in owners
+                                if not owner.quiescent_event.is_set())
+                if not waiting:
+                    break
+                for owner in waiting:
+                    owner.close()
+                waiting[0].quiescent_event.wait(.25)
+            except (KeyboardInterrupt, SystemExit) as signal:
+                if interrupted is None:
+                    interrupted = signal
+        if interrupted is not None:
+            raise interrupted from error
+        raise
 
 
 @installed_entrypoint

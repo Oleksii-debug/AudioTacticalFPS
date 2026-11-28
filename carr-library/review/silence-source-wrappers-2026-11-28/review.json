@@ -1,0 +1,77 @@
+{
+  "schema": "carr-source-review/1",
+  "task": "V3-20 completed Book and primary Studio silence inspection",
+  "base_commit": "f8311d17fa960448b350cb739b5a90584c30c74b",
+  "base_tree": "905201ae02b07c4899e542f3eb19ac2b059ef92c",
+  "source_test_tree": "655fe66e71180ba1921eab551a2f715ec2e5a8ab",
+  "supersedes_source_test_tree": "ec033e5d39b2ac2aed40b5c4ac1a140333c1fbcd",
+  "dependency": {
+    "tree": "e05e43ea4979efb85a768f3c179fadf04e502551",
+    "pcm_inspector_blob": "6a50070b2f1e41237ee81b03ae017a5860d589d8",
+    "scene_inspector_blob": "6c89ecb645bfb6c11c9d4f948314c284620b4ab2",
+    "required_api": "runtime_for_inspection(..., budget=..., runtime_factory=...) and AudioRuntime.inspect_silence(..., deadline=absolute)"
+  },
+  "scope": [
+    "Book reuses the original plan lock, source revision/provenance checks and exact completed job before and after the shared Scene inspector.",
+    "Primary Studio reuses its render lock and whole publication snapshot, retains the shared broker reservation and private staging through native cleanup, and inspects only the checked master.",
+    "The library router preserves the measured local job_id and adds the exact selected_source_id from the existing family-qualified picker.",
+    "No production receipt, project, source, cache node, audio output or restore authority is written."
+  ],
+  "final_review_corrections": [
+    "Three test progress predicates match the real inclusive measurement phase; mutation/cancel expectations and assertions are unchanged.",
+    "Primary inspection forwards its single operation deadline directly to the final shared runtime API."
+  ],
+  "selectors": [
+    {
+      "path": "tests/studio/test_book_silence.py",
+      "functions": 8,
+      "planned_cases": 16
+    },
+    {
+      "path": "tests/studio/test_director_silence.py",
+      "functions": 8,
+      "planned_cases": 16
+    }
+  ],
+  "validation": {
+    "full_blob_readback": "4/4 exact",
+    "original_production_inverse": "2/2 exact",
+    "runtime_execution": "NOT_RUN",
+    "native_or_acoustic_qualification": "NOT_RUN",
+    "review_scope": "Source, API, existing fixture and retained ownership review; no successful execution inferred."
+  },
+  "files": [
+    {
+      "path": "carr-library/src/carr_library/studio/book_audio.py",
+      "preimage_blob": "e6657bc580ccc247e3e971bf6287addd78aaf811",
+      "new_blob": "db32aeb0d056ccaf2704fa0f9e2c2edba399f11d",
+      "utf8_bytes": 39035,
+      "content_sha256": "e3ed45add96c68062afc65b117200245465b57af2162839435403dd27b1c59b3",
+      "original_source_preserved": true
+    },
+    {
+      "path": "carr-library/tests/studio/test_book_silence.py",
+      "preimage_blob": null,
+      "new_blob": "6bee2f7ec8f65eb93adeffc2de0bbd725f0ad79e",
+      "utf8_bytes": 11664,
+      "content_sha256": "e863a79d75514c17048f0bbdf7fa694db49468d81a3146db3be7ad9ce71c54fe",
+      "original_source_preserved": null
+    },
+    {
+      "path": "carr-library/src/carr_library/studio/publishing_source.py",
+      "preimage_blob": "55039c9ead2e448392756b2cadd28d99d5398675",
+      "new_blob": "f50c6527d89638b37be249304d94583c3dc0b3c0",
+      "utf8_bytes": 25632,
+      "content_sha256": "c818fb409e5ad3755b1518283ee6a121cb97c67cea2b1eadf1c06bcfb38b6111",
+      "original_source_preserved": true
+    },
+    {
+      "path": "carr-library/tests/studio/test_director_silence.py",
+      "preimage_blob": null,
+      "new_blob": "859cf31f3da97edf1c5727ae9b673649bd93139f",
+      "utf8_bytes": 14905,
+      "content_sha256": "a4514c0d062de09cbc1c2eb28d3903a1bbe439eaca9f528b871875e0408f9d5a",
+      "original_source_preserved": null
+    }
+  ]
+}

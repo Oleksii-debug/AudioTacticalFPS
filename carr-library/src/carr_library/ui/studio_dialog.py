@@ -145,6 +145,8 @@ def show_studio(frame):
     executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix='audio-studio')
     cancel = threading.Event()
     voices, current_job, alive, busy = (), None, True, False
+    active_production = False
+    inspection_generation, inspection_owner_id = 0, dialog.GetId()
     draft_dirty = False
     saved_signature = None
     save_library, save_root = frame.library, frame.library.root
@@ -177,13 +179,16 @@ def show_studio(frame):
                  ('roles', 'Edit &roles and voices'), ('help', '&Help')),
                 (('render', '&Render / resume (F6)'), ('pause', '&Pause (F8)'), ('jobs', 'Saved &jobs'),
                  ('preview', 'Listen to &output'), ('close', '&Close')),
-                (('progress_voice', 'Use voice for progress...'), ('save_all', 'Save all open drafts'), ('cancel_save_all', 'Cancel Save All'))):
+                (('inspect_silence', 'Inspect long silences...'), ('progress_voice', 'Use voice for progress...'),
+                 ('save_all', 'Save all open drafts'), ('cancel_save_all', 'Cancel Save All'))):
         box = wx.BoxSizer(wx.HORIZONTAL)
         for identity, label in row:
             button = wx.Button(dialog, label=label)
             buttons[identity] = button
             if identity == 'progress_voice':
                 button.SetName('Use selected local voice for progress')
+            elif identity == 'inspect_silence':
+                button.SetName('Inspect long silences in completed audio')
             box.Add(button, 0, wx.ALL, 4)
         layout.Add(box, 0, wx.EXPAND)
     dialog.SetSizer(layout)
@@ -215,7 +220,11 @@ def show_studio(frame):
         for name in ('render', 'open', 'roles', 'jobs'):
             buttons[name].Enable(not busy)
         buttons['pause'].Enable(busy)
+        pause_label = 'Cancel inspection (F8)' if busy and not active_production else '&Pause (F8)'
+        buttons['pause'].SetLabel(pause_label)
+        buttons['pause'].SetName(pause_label.replace('&', ''))
         buttons['preview'].Enable(not busy and current_job is not None)
+        buttons['inspect_silence'].Enable(not busy and current_job is not None)
         selected = voice_choice.GetSelection()
         buttons['progress_voice'].Enable(not busy and 0 <= selected < len(voices)
                                           and 'volume' in voices[selected].capabilities)
@@ -225,11 +234,13 @@ def show_studio(frame):
         format_choice.Enable(not busy)
         stems.Enable(not busy)
 
-    def run(operation, complete, *, phase='Audio Studio operation', with_progress=False):
-        nonlocal busy
-        if busy or not alive:
+    def run(operation, complete, *, phase='Audio Studio operation', with_progress=False,
+            pause_production=True, delivery_guard=lambda: True):
+        nonlocal busy, active_production
+        if busy or not alive or not delivery_guard():
             return
         busy = True
+        active_production = pause_production
         cancel.clear()
         controls()
         token, observer_available = None, True
@@ -274,7 +285,7 @@ def show_studio(frame):
                 description = ' '.join(str(message).split())[:512] or phase
                 observe('update', None, None, description, token=token)
                 def show_phase():
-                    if alive and not finished.is_set():
+                    if alive and delivery_guard() and not finished.is_set():
                         report(message)
                 wx.CallAfter(show_phase)
             except Exception as exc:
@@ -284,9 +295,9 @@ def show_studio(frame):
 
         def failed_operation(exc, *, worker=False):
             from carr_library.audio.models import AudioCancelled
-            interrupted = worker and isinstance(exc, (InterruptedError, AudioCancelled))
-            state = 'paused' if interrupted else 'failed'
-            if worker and with_progress and job_identity is not None:
+            interrupted = isinstance(exc, (InterruptedError, AudioCancelled)) and (worker or not pause_production)
+            state = ('paused' if pause_production else 'cancelled') if interrupted else 'failed'
+            if worker and with_progress and job_identity is not None and pause_production:
                 try:
                     saved_state = operation_outcome(service.get(job_identity))
                     if interrupted and saved_state in ('paused', 'cancelled', 'failed'):
@@ -307,17 +318,21 @@ def show_studio(frame):
         except Exception as exc:
             finished.set()
             busy = False
+            active_production = False
             controls()
             failed_operation(exc)
             return
 
         def finish(done):
             def apply():
-                nonlocal busy
+                nonlocal busy, active_production
                 finished.set()
-                if not alive:
+                if not alive or not delivery_guard():
+                    busy = False
+                    active_production = False
                     return
                 busy = False
+                active_production = False
                 controls()
                 try:
                     result = done.result()
@@ -331,7 +346,7 @@ def show_studio(frame):
                 except Exception as exc:
                     failed_operation(exc)
                     return
-                if not alive:
+                if not alive or not delivery_guard():
                     return
                 try:
                     outcome = operation_outcome(result)
@@ -651,6 +666,71 @@ def show_studio(frame):
         except Exception as exc:
             report(str(exc), True)
 
+    def inspect_long_silences(event=None):
+        nonlocal inspection_generation
+        if busy or not alive or current_job is None:
+            return
+        inspection_generation += 1
+        generation, identity, project = inspection_generation, current_job, controller.project
+
+        def current():
+            # This callback also runs on the existing worker: only captured
+            # Python state is read here, never a native widget.
+            return (alive and inspection_generation == generation and current_job == identity
+                    and controller.project is project and frame.library is save_library
+                    and frame.library.root == save_root and not getattr(frame, '_closing', False))
+
+        try:
+            if not current():
+                raise ValueError('The selected production or library changed. Reopen this inspection.')
+            signature = editor_signature()
+
+            def current_ui():
+                return current() and editor_signature() == signature
+
+            from .studio_silence_inspection import choose_criteria, show_result
+            criteria = choose_criteria(dialog, current=current_ui)
+            if criteria is None:
+                return
+            if not current_ui():
+                raise ValueError('The selected production changed while choosing inspection criteria.')
+
+            def stopped():
+                return cancel.is_set() or not current()
+
+            def inspect(measured):
+                if stopped():
+                    raise InterruptedError('Audio inspection was cancelled before it started.')
+                result = service.inspect_silence(identity,
+                    threshold_dbfs=criteria.threshold_dbfs,
+                    minimum_seconds=criteria.minimum_seconds,
+                    cancelled=stopped, progress=measured)
+                if stopped():
+                    raise InterruptedError('Audio inspection was cancelled before results were shown.')
+                return result
+
+            def completed(result):
+                if stopped() or not current_ui():
+                    raise InterruptedError('The selected production changed; the late inspection was discarded.')
+                if result.get('job_id') != identity:
+                    raise ValueError('The silence inspection belongs to a different production.')
+                show_result(dialog, result, current=lambda: not stopped() and current_ui())
+                if current() and not cancel.is_set():
+                    report('Silence inspection finished. The completed audio was not changed or played.', True)
+
+            run(inspect, completed, phase='Inspecting completed audio for long silences',
+                with_progress=True, pause_production=False,
+                delivery_guard=lambda: inspection_generation == generation)
+        except Exception as exc:
+            if current():
+                report(str(exc), True)
+
+    def inspection_owner_destroyed(event):
+        nonlocal inspection_generation
+        if event.GetId() == inspection_owner_id:
+            inspection_generation += 1
+        event.Skip()
+
     def help_text(event=None):
         from .desktop_app import show_text
         show_text(dialog, 'Audio Studio keyboard and script guide', SCRIPT_HELP)
@@ -659,7 +739,7 @@ def show_studio(frame):
         nonlocal alive
         autosave()
         cancel.set()
-        if current_job is not None and busy:
+        if current_job is not None and busy and active_production:
             service.request_pause(current_job)
         timer.Stop()
         close_notices = []
@@ -681,7 +761,10 @@ def show_studio(frame):
         if close_notices:
             report(' '.join(close_notices))
         if busy:
-            progress.pause('Audio production paused; completed chunks retained')
+            if active_production:
+                progress.pause('Audio production paused; completed chunks retained')
+            else:
+                progress.cancel('Audio inspection cancelled')
         progress.close()
         alive = False
         executor.shutdown(wait=False, cancel_futures=True)
@@ -697,7 +780,8 @@ def show_studio(frame):
 
     for name, callback in {'save': save, 'save_all': save_all_drafts, 'cancel_save_all': cancel_all_drafts, 'open': open_project, 'saveas': save_as, 'roles': edit_roles,
                            'render': render, 'pause': lambda event: cancel.set(), 'jobs': jobs,
-                           'preview': preview, 'help': help_text, 'close': close,
+                           'preview': preview, 'inspect_silence': inspect_long_silences,
+                           'help': help_text, 'close': close,
                            'progress_voice': select_progress_voice}.items():
         buttons[name].Bind(wx.EVT_BUTTON, callback)
     bindings = []
@@ -715,6 +799,7 @@ def show_studio(frame):
         controls()
     voice_choice.Bind(wx.EVT_CHOICE, voice_changed)
     dialog.Bind(wx.EVT_CLOSE, close)
+    dialog.Bind(wx.EVT_WINDOW_DESTROY, inspection_owner_destroyed)
     timer = wx.Timer(dialog)
     dialog.Bind(wx.EVT_TIMER, autosave, timer)
     timer.Start(4000)

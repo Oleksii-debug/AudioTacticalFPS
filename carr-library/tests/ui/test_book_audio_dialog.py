@@ -33,6 +33,7 @@ def handlers(tmp_path, monkeypatch):
             assert not self.destroyed, 'Called a destroyed native wrapper.'
             return self.modal
         def SetName(self, name): self.name = name
+        def SetLabel(self, label): self.label = label
         def GetValue(self):
             assert threading.get_ident() == ui_thread, 'Worker read a live native control.'
             return self.value
@@ -625,3 +626,243 @@ def test_unrelated_child_destroy_does_not_revoke_book_owner(handlers):
     assert e.dialog._book_destroyed is False
     preview(e)
     assert e.find('Prepare saved items').enabled
+
+
+
+# Silence UI contracts use actual saved Book plans and the existing worker.
+# Native PCM/source authority is exercised separately by test_book_silence.
+def _prepared_for_silence(e):
+    plan, _ = preview(e)
+    e.press('Prepare saved items')
+    e.complete()
+    assert e.find('Inspect long silences...').enabled
+    return plan
+
+
+def _book_inspection_bytes(e, plan):
+    paths = [e.service.plans / (plan.id + '.json'),
+             e.app.assets.resolve(e.imported['asset'])]
+    paths.extend(e.production.jobs_root / row['id'] / 'job.json'
+                 for row in e.production.jobs())
+    return {str(path): path.read_bytes() for path in paths}
+
+
+def _book_inspection_report(plan, index=2):
+    return dict(schema='carr-silence-inspection/1', status='complete',
+        job_id=plan.job_id(index),
+        source=dict(artifact='master.wav', sha256='a' * 64, size=16044),
+        audio=dict(sample_rate=8000, channels=1, frames=8000, source_codec='pcm_s16le'),
+        criteria=dict(threshold_dbfs=-50.0, minimum_seconds=.25,
+            minimum_frames=2000, amplitude_limit_s32=6790939,
+            channel_policy='every-channel', comparison='absolute-sample-at-or-below'),
+        intervals=[dict(start_frame=2000, end_frame=6000,
+            start_seconds=.25, end_seconds=.75, duration_seconds=.5)],
+        interval_count=1, omitted_count=0, pcm_sha256='b' * 64,
+        notice='Modeled UI report; actual PCM acceptance is tested by the Book service.')
+
+
+def _book_inspection_dialogs(e, plan, monkeypatch, *, during_part=lambda: None,
+                             during_criteria=lambda: None, criteria_cancel=False):
+    from carr_library.audio.silence import SilenceCriteria
+    from carr_library.ui import studio_silence_inspection as inspection
+    seen = SimpleNamespace(parts=[], criteria=[], shown=[], destroyed=[])
+    class Picker:
+        def __init__(self, parent, message, title, choices):
+            assert threading.get_ident() == e.ui_thread and parent is e.dialog
+            assert title == 'Book part for silence inspection'
+            assert len(choices) == len(plan.parts) == 2
+            assert choices[1].startswith('2. ')
+            seen.parts.append(tuple(choices))
+        def ShowModal(self):
+            during_part()
+            return e.wx.ID_OK
+        def GetSelection(self): return 1
+        def Destroy(self):
+            assert not e.dialog.destroyed, 'Destroyed a child after its owner was deleted.'
+            seen.destroyed.append(True)
+    e.wx.SingleChoiceDialog = Picker
+    def choose(parent, *, current):
+        assert threading.get_ident() == e.ui_thread and current()
+        seen.criteria.append(parent)
+        during_criteria()
+        return None if criteria_cancel else SilenceCriteria(-50, .25)
+    def show(parent, result, *, current):
+        assert threading.get_ident() == e.ui_thread and current()
+        assert parent is e.dialog
+        text = inspection.result_text(result)
+        assert 'frames [2000, 6000)' in text and result['source']['sha256'] in text
+        seen.shown.append(result)
+    monkeypatch.setattr(inspection, 'choose_criteria', choose)
+    monkeypatch.setattr(inspection, 'show_result', show)
+    return seen
+
+
+def _change_book_inspection_owner(e, change):
+    if change == 'library':
+        e.frame.library = SimpleNamespace(root=e.app.root)
+    elif change == 'scope':
+        e.frame.active = (e.workspace, 'another-topic')
+    elif change == 'fields':
+        e.find('Reviewed output folder').ChangeValue('changed without a native event')
+    elif change == 'cancel':
+        e.press('Cancel inspection')
+    elif change == 'close':
+        e.close()
+    elif change == 'destroy':
+        e.dialog.Destroy()
+    else:
+        raise AssertionError(change)
+
+
+def test_book_silence_button_requires_saved_plan_and_never_prepares_implicitly(handlers, monkeypatch):
+    e = handlers
+    plan, _ = preview(e)
+    button = e.find('Inspect long silences...')
+    assert not button.enabled and e.service.saved() == ()
+    monkeypatch.setattr(e.service, 'inspect_silence',
+                        lambda *a, **k: pytest.fail('An unsaved preview reached inspection.'))
+    button.bindings[e.wx.EVT_BUTTON](None)
+    assert not e.state['queue'] and not e.production.jobs()
+    assert 'existing saved Book plan' in e.find('Book split preview and saved job status').value
+    assert e.service.saved() == ()
+
+
+def test_book_silence_uses_exact_saved_part_on_worker_without_output_choice(handlers, monkeypatch):
+    e = handlers
+    plan = _prepared_for_silence(e)
+    e.find('Reviewed output folder').ChangeValue('')
+    seen = _book_inspection_dialogs(e, plan, monkeypatch)
+    before = _book_inspection_bytes(e, plan)
+    requests, result = [], _book_inspection_report(plan)
+    def inspect(plan_id, index, **options):
+        assert threading.get_ident() != e.ui_thread
+        options['guard']()
+        assert not options['cancelled']()
+        requests.append((plan_id, index, options['threshold_dbfs'], options['minimum_seconds']))
+        return result
+    monkeypatch.setattr(e.service, 'inspect_silence', inspect)
+    e.press('Inspect long silences...')
+    assert not requests and len(e.state['queue']) == 1
+    assert e.find('Cancel inspection').enabled
+    assert not e.find('Inspect long silences...').enabled
+    assert e.complete() is result
+    assert requests == [(plan.id, 2, -50.0, .25)] and seen.shown == [result]
+    assert e.find('Pause').label == 'Pa&use' and not e.find('Pause').enabled
+    assert _book_inspection_bytes(e, plan) == before
+    assert not list(e.output.iterdir())
+    assert not list(e.production.jobs_root.glob('*/control.json'))
+
+
+@pytest.mark.parametrize('at', ['part', 'criteria'])
+@pytest.mark.parametrize('change', ['library', 'scope', 'fields', 'close', 'destroy'])
+def test_book_silence_modal_return_rechecks_exact_owner(handlers, monkeypatch, at, change):
+    e = handlers
+    plan = _prepared_for_silence(e)
+    kwargs = {'during_' + at: lambda: _change_book_inspection_owner(e, change)}
+    seen = _book_inspection_dialogs(e, plan, monkeypatch, **kwargs)
+    monkeypatch.setattr(e.service, 'inspect_silence',
+                        lambda *a, **k: pytest.fail('A stale modal reached inspection.'))
+    e.press('Inspect long silences...')
+    assert not e.state['queue'] and not seen.shown
+    assert len(seen.criteria) == int(at == 'criteria')
+    assert len(seen.destroyed) == int(not (at == 'part' and change == 'destroy'))
+
+
+def test_book_silence_cancelled_criteria_does_not_queue_any_work(handlers, monkeypatch):
+    e = handlers
+    plan = _prepared_for_silence(e)
+    seen = _book_inspection_dialogs(e, plan, monkeypatch, criteria_cancel=True)
+    e.press('Inspect long silences...')
+    assert len(seen.criteria) == 1 and not e.state['queue'] and not seen.shown
+    assert e.find('Pause').label == 'Pa&use'
+
+
+@pytest.mark.parametrize('change', ['library', 'scope', 'cancel', 'close', 'destroy'])
+def test_book_silence_revoked_queued_request_never_enters_service(handlers, monkeypatch, change):
+    e = handlers
+    plan = _prepared_for_silence(e)
+    seen = _book_inspection_dialogs(e, plan, monkeypatch)
+    before = _book_inspection_bytes(e, plan)
+    calls = []
+    def forbidden(*args, **options):
+        calls.append(True)
+        raise AssertionError('A revoked queued inspection reached the service.')
+    monkeypatch.setattr(e.service, 'inspect_silence', forbidden)
+    e.press('Inspect long silences...')
+    _change_book_inspection_owner(e, change)
+    result = e.complete()
+    assert isinstance(result, (InterruptedError, ValueError))
+    assert not calls and not seen.shown
+    assert _book_inspection_bytes(e, plan) == before
+    assert not list(e.production.jobs_root.glob('*/control.json'))
+
+
+@pytest.mark.parametrize('change', ['library', 'scope', 'fields', 'cancel', 'close', 'destroy'])
+def test_book_silence_late_report_cannot_retarget_or_touch_closed_owner(handlers, monkeypatch, change):
+    e = handlers
+    plan = _prepared_for_silence(e)
+    seen = _book_inspection_dialogs(e, plan, monkeypatch)
+    result = _book_inspection_report(plan)
+    monkeypatch.setattr(e.service, 'inspect_silence', lambda *a, **k: result)
+    e.press('Inspect long silences...')
+    _, operation, done, failed = e.state['queue'].pop()
+    returned = []
+    def work():
+        returned.append(operation())
+    thread = threading.Thread(target=work)
+    thread.start(); thread.join(10)
+    assert not thread.is_alive() and returned == [result]
+    _change_book_inspection_owner(e, change)
+    e.frame.working = False
+    done(returned[0])
+    assert not seen.shown and not e.state['queue']
+    assert not list(e.production.jobs_root.glob('*/control.json'))
+
+
+def test_book_silence_wrong_part_result_is_not_shown(handlers, monkeypatch):
+    e = handlers
+    plan = _prepared_for_silence(e)
+    seen = _book_inspection_dialogs(e, plan, monkeypatch)
+    monkeypatch.setattr(e.service, 'inspect_silence',
+                        lambda *a, **k: _book_inspection_report(plan, 1))
+    e.press('Inspect long silences...')
+    e.complete()
+    assert not seen.shown
+    assert 'different Book part' in e.find('Book split preview and saved job status').value
+    assert e.find('Pause').label == 'Pa&use'
+
+
+@pytest.mark.parametrize('rejected', ['false', 'raised'])
+def test_book_silence_submission_failure_restores_normal_pause_policy(handlers, monkeypatch, rejected):
+    e = handlers
+    plan = _prepared_for_silence(e)
+    seen = _book_inspection_dialogs(e, plan, monkeypatch)
+    original = e.frame.run_job
+    def refuse(*args, **kwargs):
+        if rejected == 'raised':
+            raise RuntimeError('Modeled worker admission failure.')
+        return False
+    e.frame.run_job = refuse
+    e.press('Inspect long silences...')
+    assert not seen.shown and not e.state['queue']
+    assert e.find('Pause').label == 'Pa&use' and not e.find('Pause').enabled
+    assert e.find('Inspect long silences...').enabled
+    e.frame.run_job = original
+    e.press('Discover local voices')
+    assert e.find('Pause').enabled and e.find('Pause').label == 'Pa&use'
+    e.complete()
+    assert not e.find('Pause').enabled
+
+
+def test_book_silence_actual_prepared_but_unrendered_part_is_refused_read_only(handlers, monkeypatch):
+    e = handlers
+    plan = _prepared_for_silence(e)
+    seen = _book_inspection_dialogs(e, plan, monkeypatch)
+    before = _book_inspection_bytes(e, plan)
+    e.press('Inspect long silences...')
+    result = e.complete()
+    assert isinstance(result, ValueError) and 'exact Book part' in str(result)
+    assert not seen.shown and _book_inspection_bytes(e, plan) == before
+    assert not list(e.output.iterdir())
+    assert not list(e.production.jobs_root.glob('*/control.json'))
+    assert not e.production.broker.snapshot()['leases']

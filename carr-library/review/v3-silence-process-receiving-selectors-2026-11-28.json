@@ -1,0 +1,116 @@
+{
+  "schema": 1,
+  "application_basis": "f8311d17fa960448b350cb739b5a90584c30c74b",
+  "status": "SOURCE_REVIEWED; NOT_RUN; not yet dispatched",
+  "purpose": "Exercise canonical CSL fixture reuse, actual completed-PCM long-silence inspection and observed owned staging-directory race through unchanged receiving gates.",
+  "files": [
+    {
+      "path": ".github/workflows/carr-component-followup-evaluation.yml",
+      "preimage": "301d45feca0338e48a49a7e96e606fc38a72dec7"
+    },
+    {
+      "path": ".github/workflows/carr-windows.yml",
+      "preimage": "029cf775f6acdf7407ddeaab196949451698ead9"
+    },
+    {
+      "path": ".github/workflows/carr-v3.yml",
+      "preimage": "a454322a63b25e46f13f817a9c8594521a9cf7b8"
+    }
+  ],
+  "component_csl_overlay": {
+    "workflow": "6a0916509ba4dbe13e8be6645ca480f8f3bd0936",
+    "sparse_tree": "8dec79bf3ee1a4748518d6856a8803f5610d8c99",
+    "paired_test": "eab5b324ba623021a7fb20cb47fc22a85164d490",
+    "independent_exact_inverse": true
+  },
+  "selector_changes": {
+    "component": {
+      "both_modes_add": [
+        "tests/citations/test_csl.py",
+        "tests/audio/test_silence_inspection.py",
+        "tests/studio/test_silence_inspection.py",
+        "tests/ui/test_studio_silence_inspection.py",
+        "tests/audio/test_local_runtime_cli.py",
+        "tests/studio/test_book_silence.py",
+        "tests/studio/test_director_silence.py",
+        "tests/studio/test_publishing_handlers.py"
+      ],
+      "windows_common_before": 80,
+      "windows_common_after": 88,
+      "linux_before": 81,
+      "linux_after": 89
+    },
+    "main": {
+      "source_and_installed_add": [
+        "tests/audio/test_silence_inspection.py",
+        "tests/studio/test_silence_inspection.py",
+        "tests/ui/test_studio_silence_inspection.py",
+        "tests/studio/test_book_silence.py",
+        "tests/studio/test_director_silence.py"
+      ],
+      "source_selectors_before": 445,
+      "source_selectors_after": 450
+    },
+    "v3": {
+      "installed_add": [
+        "tests/audio/test_silence_inspection.py",
+        "tests/studio/test_silence_inspection.py",
+        "tests/ui/test_studio_silence_inspection.py",
+        "tests/studio/test_book_silence.py",
+        "tests/studio/test_director_silence.py",
+        "tests/ui/test_book_audio_dialog.py",
+        "tests/studio/test_publishing_handlers.py"
+      ],
+      "source_directory_selection_already_covers": [
+        "tests/audio/test_silence_inspection.py",
+        "tests/studio/test_silence_inspection.py",
+        "tests/studio/test_book_silence.py",
+        "tests/studio/test_director_silence.py",
+        "tests/studio/test_publishing_handlers.py"
+      ],
+      "source_explicit_add": [
+        "tests/ui/test_studio_silence_inspection.py",
+        "tests/ui/test_book_audio_dialog.py"
+      ],
+      "installed_required_presence_added": [
+        "audio.test_silence_inspection",
+        "studio.test_silence_inspection",
+        "ui.test_studio_silence_inspection",
+        "studio.test_book_silence",
+        "studio.test_director_silence",
+        "ui.test_book_audio_dialog",
+        "studio.test_publishing_handlers"
+      ],
+      "installed_selectors_before": 65,
+      "installed_selectors_after": 72
+    }
+  },
+  "preserved": [
+    "Every original selector in its original order",
+    "All original assertions and strict zero failure/error/skip checks",
+    "All per-test, per-module, step and job deadlines",
+    "Concurrency, trigger, endpoint/device, permission and source-origin guards",
+    "Existing component process and source-page benchmark selectors"
+  ],
+  "checks": {
+    "component_addition_inverse_exact": true,
+    "main_addition_inverse_exact": true,
+    "v3_addition_inverse_exact": true,
+    "book_director_ui_addition_inverse_exact": true
+  },
+  "execution_claim": false,
+  "native_addition": {
+    "script": "scripts/windows_v3_smoke.py",
+    "scope": "Windows installed component; existing actual completed Studio and native control probe, with additive silence inspection scenario.",
+    "timeout_minutes": 5,
+    "conditions": "Existing installed Windows inventory/audio success; not cancelled.",
+    "dependencies": "Existing test/desktop/sync installation and pinned FFmpeg; local SAPI and existing QuickJS/DOCX; no optional translator/model/account/endpoint setup added.",
+    "limits": "Does not substitute for V3 runtime firewall/offline qualification, human listening or NVDA.",
+    "inverse_exact": true
+  },
+  "existing_main_selectors_preserved_for_ui": [
+    "tests/ui/test_book_audio_dialog.py",
+    "tests/studio/test_publishing_handlers.py"
+  ],
+  "extended_source_scope": "Completed Book and primary Director inspection reuses original source/provenance and publication locks; existing Book/publication UI modules exercise their new guarded actions."
+}

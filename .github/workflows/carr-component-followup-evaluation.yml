@@ -133,6 +133,7 @@ jobs:
         run: |
           $suites = @(
             'tests/academic_integration/test_formatting.py',
+            'tests/citations/test_csl.py',
             'tests/assistant/test_local_planning.py',
             'tests/assistant/test_state_io.py',
             'tests/catalog/test_archive_portability.py',
@@ -181,12 +182,19 @@ jobs:
             'tests/audio/test_model_voices.py',
             'tests/storage/test_backup_book_plan_bindings.py',
             'tests/ui/test_book_audio_dialog.py',
+            'tests/studio/test_publishing_handlers.py',
             'tests/speech/test_python_helper.py',
             'tests/storage/test_python_helper_backup.py',
             'tests/speech/test_runtime_settings_restore.py',
             'tests/ui/test_engine_settings_review.py',
             'tests/audio/test_cleanup_contexts.py',
             'tests/audio/test_audio_process.py',
+            'tests/audio/test_silence_inspection.py',
+            'tests/studio/test_silence_inspection.py',
+            'tests/studio/test_book_silence.py',
+            'tests/studio/test_director_silence.py',
+            'tests/ui/test_studio_silence_inspection.py',
+            'tests/audio/test_local_runtime_cli.py',
             'tests/audio/test_process_deadline.py',
             'tests/audio/test_capture_access_diagnostic.py',
             'tests/audio/test_recording_windows_process.py',
@@ -223,6 +231,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $suites = @(
             'tests/academic_integration/test_formatting.py',
+            'tests/citations/test_csl.py',
             'tests/assistant/test_local_planning.py',
             'tests/assistant/test_state_io.py',
             'tests/catalog/test_archive_portability.py',
@@ -271,12 +280,19 @@ jobs:
             'tests/audio/test_model_voices.py',
             'tests/storage/test_backup_book_plan_bindings.py',
             'tests/ui/test_book_audio_dialog.py',
+            'tests/studio/test_publishing_handlers.py',
             'tests/speech/test_python_helper.py',
             'tests/storage/test_python_helper_backup.py',
             'tests/speech/test_runtime_settings_restore.py',
             'tests/ui/test_engine_settings_review.py',
             'tests/audio/test_cleanup_contexts.py',
             'tests/audio/test_audio_process.py',
+            'tests/audio/test_silence_inspection.py',
+            'tests/studio/test_silence_inspection.py',
+            'tests/studio/test_book_silence.py',
+            'tests/studio/test_director_silence.py',
+            'tests/ui/test_studio_silence_inspection.py',
+            'tests/audio/test_local_runtime_cli.py',
             'tests/audio/test_process_deadline.py',
             'tests/audio/test_capture_access_diagnostic.py',
             'tests/audio/test_recording_windows_process.py',
@@ -341,6 +357,12 @@ jobs:
         timeout-minutes: 5
         run: |
           python -I -B -X utf8 scripts/windows_clip_editor_smoke.py 2>&1 | Tee-Object ci-component-results/installed-native-clip-editor.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Require installed native completed-audio silence inspection
+        if: ${{ !cancelled() && matrix.mode == 'installed' && runner.os == 'Windows' && steps.inventory.outcome == 'success' && steps.audio.outcome == 'success' }}
+        timeout-minutes: 5
+        run: |
+          python -I -B -X utf8 scripts/windows_v3_smoke.py 2>&1 | Tee-Object ci-component-results/installed-native-studio-inspection.txt
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Retain public synthetic source and installed evidence
         if: ${{ always() }}

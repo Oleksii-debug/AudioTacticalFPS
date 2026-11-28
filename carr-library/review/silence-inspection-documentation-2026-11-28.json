@@ -1,0 +1,40 @@
+{
+  "schema": 1,
+  "source_basis": "f8311d17fa960448b350cb739b5a90584c30c74b",
+  "status": "SOURCE_REVIEWED; NOT_RUN",
+  "files": [
+    {
+      "path": "carr-library/docs/STUDIO_OUTPUT_REVIEW.md",
+      "preimage": "99ffb2321164cfaee6964b16da32516d958da898",
+      "operation": "append; existing source history unchanged"
+    },
+    {
+      "path": "carr-library/docs/START_UK.txt",
+      "preimage": "401942f4bdc84d9a71aac487a4b2bcde5a1baaec",
+      "operation": "insert one inspection section; existing text unchanged"
+    },
+    {
+      "path": "carr-library/docs/V3_RELEASE_READINESS.md",
+      "preimage": "d3f3be29cf477b9170e4050339098b1d6a7bac30",
+      "operation": "append source checkpoint and exact parent receiving; no successor PASS"
+    }
+  ],
+  "ui_basis": {
+    "scene_tree": "156c9df7c04d8e39f1487db440c979bdffbdaea7",
+    "book_and_publication": {
+      "tree": "23c553c1133112dc6b0b3f3c1d3c2c3c8b3c5c65",
+      "book_blob": "0e16e240dbf6f6d84a3f27e3c296d00bbdff0175",
+      "publication_blob": "d28205d7c82bc811bee2908698e05c8b0b75750d",
+      "menu_labels": "Verified against exact current ui/audio_studio.py and ui/book_audio_dialog.py",
+      "status": "SOURCE_REVIEWED; NOT_RUN"
+    },
+    "shared_criteria": "-192..0 dBFS, >0..31536000 seconds, inclusive every-channel comparison"
+  },
+  "cli_entry": "research-library studio --data-dir LIBRARY inspect-silence JOB_ID --threshold-dbfs -50 --minimum-seconds 2",
+  "manual_checks": {
+    "count": 11,
+    "status": "NOT_RUN",
+    "nvda_qualification": false
+  },
+  "qualification_transfer": false
+}

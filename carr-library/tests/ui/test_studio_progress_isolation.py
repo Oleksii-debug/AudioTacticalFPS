@@ -56,6 +56,7 @@ def studio():
     factory = ast.parse('''
 def make(progress, executor, wx, report, service):
     busy, alive = False, True
+    active_production = False
     current_job = 'saved-production'
     cancel = threading.Event()
     controls = lambda: None
@@ -217,6 +218,7 @@ def test_studio_close_retains_parent_observer_when_device_and_local_feedback_bot
     factory = ast.parse('''
 def make(autosave, cancel, service, timer, dialog, progress, parent_progress, report, executor):
     alive, busy = True, False
+    active_production = False
     current_job = None
     return close
 ''')

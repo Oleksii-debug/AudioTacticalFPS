@@ -515,6 +515,12 @@ class AudioRuntime:
                             bit_depth=widths[info.codec], sources=(source,),
                             cancelled=cancelled, progress=progress, before_publish=verify)
 
+    def inspect_silence(self, source, *, threshold_dbfs, minimum_seconds,
+                        cancelled=lambda: False, progress=None, deadline=None):
+        from .silence import inspect_silence
+        return inspect_silence(self, source, threshold_dbfs=threshold_dbfs,
+            minimum_seconds=minimum_seconds, cancelled=cancelled, progress=progress, deadline=deadline)
+
     def audiobook(self, source, output, *, chapters, title, sample_rate=24000,
                   channels=2, bitrate=192, cancelled=lambda: False, progress=None):
         from .audiobook import publish_m4b

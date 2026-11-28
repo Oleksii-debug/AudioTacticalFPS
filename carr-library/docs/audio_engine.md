@@ -321,3 +321,55 @@ A complete corresponding-source package for all linked third-party components
 is a separate obligation. CI publishes evidence only, not these binaries.
 See [LOCAL_AUDIO_RUNTIME.md](LOCAL_AUDIO_RUNTIME.md) for the integrated runtime,
 long-duration evidence and exact engine limitations.
+
+
+## Inspect long silence in a completed Scene master
+
+Open the saved completed job in the existing Scene Studio and choose
+**Inspect long silences...**. Enter an amplitude threshold in dBFS and a minimum
+duration in seconds, then explicitly start the inspection. The initial values,
+-50 dBFS and 2 seconds, are editable review criteria rather than a quality
+standard. No playback starts automatically.
+
+The result describes frames whose absolute sample amplitude is **at or below**
+the threshold in **every channel**. Opposite left/right samples do not cancel
+each other for this measurement. A stereo frame with a louder sample in either
+channel is outside the interval. Reports include the original master hash,
+sample rate, channel count, exact half-open frame ranges
+`[start_frame, end_frame)` and their corresponding seconds. A range ending at
+the total frame count includes the last retained audio frame.
+
+The minimum duration is rounded up to whole frames using the exact shortest
+decimal representation of the submitted finite number. For example,
+0.0001251 seconds at 8,000 Hz requires two frames. The PCM samples are never
+downquantized or resampled: RIFF/RF64 integer PCM is decoded to signed 32-bit
+samples with the original rate and channel count. Floating-point, compressed
+and unmeasurable input is refused by this inspection route.
+
+At most 4,096 matching intervals are retained in one report. The total match
+count and omitted count remain explicit. An empty list means no interval met
+these selected criteria. A match may be an intentional pause. This amplitude
+measurement does not establish speech presence, intelligibility, word accuracy,
+clipping, normalized loudness or human listening quality.
+
+The same operation is available from the existing CLI. From an installed
+application or the project environment, use its explicitly selected local
+audio runtime:
+
+```text
+python -m carr_library.studio.cli --data-dir LIBRARY inspect-silence JOB_ID --threshold-dbfs -50 --minimum-seconds 2
+```
+
+Both criteria are required on the CLI. It emits a bounded JSON report to
+standard output; phase messages go to standard error. The operation verifies
+the current completed master and its canonical artifact receipts before and
+after measurement. It holds the existing render lock and shared CPU, memory
+and staging reservation, and keeps checking cancellation and the total runtime
+budget through decoding, scanning and final hashes.
+
+Inspection writes no project, node, saved job, completion receipt or published
+audio. Cancel leaves the saved job and original audio intact. A restored job
+must first receive a new explicitly reviewed output. A source-bound Book job
+requires its original source authority; the general Scene inspection entry
+does not recreate that authority from a historical receipt. Corrupt or changed
+artifacts are refused rather than reported as inspected audio.

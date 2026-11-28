@@ -268,7 +268,7 @@ def test_studio_preview_waits_for_both_controllers_and_close_invalidates_start(t
         get=lambda job: {'destination': str(tmp_path)}), dialog=dialog,
         progress=local, parent_progress=parent, wx=SimpleNamespace(CallLater=scheduler, ID_CLOSE=3),
         report=lambda message, focus=False: reports.append(message), alive=True,
-        autosave=lambda: None, cancel=threading.Event(), busy=False,
+        autosave=lambda: None, cancel=threading.Event(), busy=False, active_production=False,
         timer=Mock(), executor=Mock())
     handlers = callbacks('studio_dialog.py', 'show_studio', ['preview', 'close'], values)
     handlers.preview()

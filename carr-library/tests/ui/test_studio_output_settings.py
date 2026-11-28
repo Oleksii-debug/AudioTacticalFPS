@@ -16,6 +16,10 @@ class StudioOptionControl:
         self.enabled = True
     def Enable(self, enabled=True):
         self.enabled = bool(enabled)
+    def SetLabel(self, label):
+        self.label = label
+    def SetName(self, name):
+        self.name = name
     def GetSelection(self):
         return self.value
     def GetValue(self):
@@ -83,7 +87,7 @@ def studio_output_fixture(project=None, store=None):
     library = N(root=store.root.parent if store is not None else Path('/synthetic-library'))
     frame = N(library=library, _closing=False)
     buttons = {name: StudioOptionControl(None) for name in
-               ('render', 'open', 'roles', 'jobs', 'pause', 'preview', 'progress_voice')}
+               ('render', 'open', 'roles', 'jobs', 'pause', 'preview', 'progress_voice', 'inspect_silence')}
     voice_choice = StudioOptionControl(-1)
     env = dict(wx=N(DirDialog=Dialog, SingleChoiceDialog=Dialog, ID_OK=1),
                Path=Path, dialog=None, service=service, save=save,
@@ -105,6 +109,7 @@ def studio_output_fixture(project=None, store=None):
     control_source = source[source.index('    def controls():'):
                             source.index('    def run(operation, complete,')]
     exec('def factory():\n    current_job = None\n    busy = False\n    alive = True\n'
+         + '    active_production = True\n'
          + '    draft_dirty = False\n    saved_signature = None\n'
          + control_source + methods
          + '    def lifetime(*, open_=True, working=False):\n'

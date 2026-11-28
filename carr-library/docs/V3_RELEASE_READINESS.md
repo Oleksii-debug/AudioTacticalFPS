@@ -841,3 +841,43 @@ capture remains an unresolved acceptance item, and active full Windows/V3
 runs must retain their own terminal results. No earlier PASS qualifies this
 follow-up or a final wheel, archive, signed installer, real model/language
 quality, NVDA, or distribution rights.
+
+## Next composition: measured silence inspection and receiving corrections
+
+This source checkpoint follows exact application head
+`f8311d17fa960448b350cb739b5a90584c30c74b`. Its current completed
+qualification remains tied to that parent. See the immutable
+[completed receiving index](https://github.com/Oleksii-debug/AudioTacticalFPS/blob/c46718b4b3b90786c6290b04e34e51e38db84781/carr-library/review/receiving-evidence-f8311d17-2026-11-28.json).
+
+The parent has completed all four Reader modes (746 cases each; 80 additional
+native checks in each Windows mode), canonical compatibility (1,186 source and
+1,186 installed cases with seven subtests and seven native gates), bibliography,
+both supplied-bridge platforms, native launchers, and standard installation.
+Both standard-installation jobs passed 345 source and 345 installed cases with
+22 subtests; the actual Windows Install / Repair / Uninstall path passed all
+12 checks and preserved a populated external library. Those results do not
+qualify the following changed application modules or a final release artifact.
+
+The updated V3-20 silence requirement is implemented through the existing audio,
+production, Book, Director, publication and desktop boundaries. Explicit criteria
+measure actual integer-PCM amplitudes and return bounded warning intervals with
+exact sample frames and source hashes. The workflow retains original-source
+authority, saved-job locks, resource admission and native cleanup ownership.
+It makes no speech-accuracy, pronunciation, clipping or listening-quality verdict.
+Read [the inspection controls and manual checks](STUDIO_OUTPUT_REVIEW.md).
+
+The adjacent process correction handles an actually disappearing owned staging
+directory only when a fresh non-following identity read confirms it is absent.
+Permission failures, replacements, other I/O errors and iterator errors remain
+failures. Existing cancellation and process deadlines are unchanged. The second
+canonical CSL fixture now names UTF-8 for the same pinned license/manifest files;
+its assertions and upstream identities are unchanged.
+
+At this composition checkpoint, these changes are **SOURCE_REVIEWED / NOT_RUN**.
+The ordinary source/installed lanes and complete Windows gates include the
+affected modules explicitly. Actual results must be recorded against the new
+commit and its own installed artifact. All historical failures remain in their
+original receipts, including the old clip fixture, temporary-path fixture,
+selected capture failure and interrupted full installed bundle. Human
+Windows 11/NVDA, acoustic/model/language quality, private signing and distribution
+rights remain separate acceptance dimensions.

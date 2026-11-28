@@ -1,0 +1,219 @@
+{
+  "schema": "carr-source-component-review/1",
+  "status": "SOURCE_REVIEWED",
+  "execution": "NOT_RUN",
+  "basis": {
+    "commit": "f8311d17fa960448b350cb739b5a90584c30c74b",
+    "tree": "905201ae02b07c4899e542f3eb19ac2b059ef92c"
+  },
+  "source_tree": "716ab87db2c8bd508a22913f483ba3548733c329",
+  "requirement": {
+    "finalization_blob": "db8adbdc483a03c262885928c7ed214ca70bbaa7",
+    "audio_agent_blob": "d0b2761dd22b33233b311d4800230fb47f5d3d8b",
+    "scope": "V3-20 warning-only long-silence inspection of actual completed PCM through existing DSP/Studio/CLI"
+  },
+  "files": [
+    {
+      "path": "carr-library/src/carr_library/audio/silence.py",
+      "before_blob": null,
+      "after_blob": "6a50070b2f1e41237ee81b03ae017a5860d589d8",
+      "bytes": 12143,
+      "sha256": "b6afdeb4fd0dcb3e5575c60fbe333af1c88d7c4d556ca18dc0e582313459c280",
+      "inverse_exact": null,
+      "old_bytes_are_prefix": null
+    },
+    {
+      "path": "carr-library/src/carr_library/audio/dsp.py",
+      "before_blob": "f6892a649b51e9670744dabedaee8322a889f564",
+      "after_blob": "d336957bbd017891a9686797077c953f52023e64",
+      "bytes": 43870,
+      "sha256": "9290b14d73dee6f09b0d982120052c2622945df1b4ccd96ffa54e0c363ca6fe7",
+      "inverse_exact": true,
+      "old_bytes_are_prefix": false
+    },
+    {
+      "path": "carr-library/src/carr_library/studio/silence_inspection.py",
+      "before_blob": null,
+      "after_blob": "6c89ecb645bfb6c11c9d4f948314c284620b4ab2",
+      "bytes": 8585,
+      "sha256": "1c56da9de5c2c1349b01cde13cbfabc378a948f4d1738ffb653adf8119e210d8",
+      "inverse_exact": null,
+      "old_bytes_are_prefix": null
+    },
+    {
+      "path": "carr-library/src/carr_library/studio/render.py",
+      "before_blob": "4b5a04ca80e881ed7fbcfb07392d4332cfdaf280",
+      "after_blob": "4a2b750195ffda21a688da19a0df6551549c46bc",
+      "bytes": 73347,
+      "sha256": "66bbe35025a68ab780860bd5d4831d1b28e9dd40173f5fed7b5dd640abd50075",
+      "inverse_exact": true,
+      "old_bytes_are_prefix": false
+    },
+    {
+      "path": "carr-library/src/carr_library/studio/cli.py",
+      "before_blob": "8dcece0364823f8d2514ced6cd50455ffc8d4cf6",
+      "after_blob": "16e5d0de8543351f3a0d0987b3780b0b7edc7012",
+      "bytes": 19364,
+      "sha256": "8235f8dfdfd4304465b621f7b625b6a02028f6cc4443c9bc44ab25a0109c95d3",
+      "inverse_exact": true,
+      "old_bytes_are_prefix": false
+    },
+    {
+      "path": "carr-library/tests/audio/test_silence_inspection.py",
+      "before_blob": null,
+      "after_blob": "257bd69857b82a34373910aa880f33b03feb2380",
+      "bytes": 16380,
+      "sha256": "9947343c1b3a8568db8a9cac4a83f776766f0119a42dcfb17123a3dd0e926c1b",
+      "inverse_exact": null,
+      "old_bytes_are_prefix": null
+    },
+    {
+      "path": "carr-library/tests/studio/test_silence_inspection.py",
+      "before_blob": null,
+      "after_blob": "7391de5d4386fa98ca71792a18cb5123b5b50043",
+      "bytes": 21592,
+      "sha256": "d3fb7419b9d56e80423a5cafa9076656a0874704108fa4db6be3db73d3e03107",
+      "inverse_exact": null,
+      "old_bytes_are_prefix": null
+    },
+    {
+      "path": "carr-library/tests/audio/test_local_runtime_cli.py",
+      "before_blob": "99c903cc9be1a27fe45c7f3bc628ca4b39c219c2",
+      "after_blob": "54a489426b69179c14eb26897c25bec5eafc5754",
+      "bytes": 11312,
+      "sha256": "b87629784d1980978e09883941ac9fcc481dcb6c46f7f2ebbd56f5d03a3b986e",
+      "inverse_exact": true,
+      "old_bytes_are_prefix": true
+    },
+    {
+      "path": "carr-library/docs/audio_engine.md",
+      "before_blob": "7a23ee00fb1aea871085e76ec0641761f7a94c9f",
+      "after_blob": "0f2f3583e643e0f3bcb6c8a6fb4aec95944ab795",
+      "bytes": 22882,
+      "sha256": "924b0317643a0b87f459c208ddc9122c225268bb5c64e0f34d6de6d5b101199d",
+      "inverse_exact": true,
+      "old_bytes_are_prefix": true
+    }
+  ],
+  "api": {
+    "criteria": "SilenceCriteria(threshold_dbfs, minimum_seconds): finite explicit values; ValueError on invalid input",
+    "runtime": "AudioRuntime.inspect_silence(source, *, threshold_dbfs, minimum_seconds, cancelled=lambda: False, progress=None, deadline=None)",
+    "service": "ProductionService.inspect_silence(job_id, *, threshold_dbfs, minimum_seconds, cancelled=lambda: False, progress=None, source_guard=None, budget=None, runtime_binding=None)",
+    "pcm_runtime_helper": "runtime_for_inspection(directory, *, state_root, input_roots=(), budget=None, cancelled=lambda: False, runtime_factory=None)",
+    "factory": "The existing injected call remains runtime_factory(directory, input_roots=...). Its returned AudioRuntime/AudioBudget must fit the declared budget and is not silently overwritten.",
+    "cli": "python -m carr_library.studio.cli --data-dir LIBRARY inspect-silence JOB_ID --threshold-dbfs -50 --minimum-seconds 2",
+    "report_schema": "carr-silence-inspection/1"
+  },
+  "measurement": {
+    "accepted": "RIFF/RF64, measurable mono/stereo integer PCM8/16/24/32; no resampling, downmix, effects or integer downquantization",
+    "threshold": "Every channel must satisfy abs(s32_sample) <= floor(2**31 * 10**(threshold_dbfs/20)); threshold range[-192,0], 64-digit Decimal evaluation",
+    "minimum": "0 < seconds <=31536000; ceil(Fraction(str(normalized_finite_float))*measured_sample_rate)",
+    "intervals": "Exact maximal half-open [start_frame,end_frame) ranges; EOF included; retained cap4096, complete total/omitted counts",
+    "bounds": "1MiB raw reads, cancellation/deadline checks at least each4096frames; captured source hash before/after and exact raw PCM hash",
+    "warnings": "No VAD, acoustic word accuracy, intended-pause inference, clipping, loudness-normalization, human-listening or NVDA qualification"
+  },
+  "ownership": {
+    "admission": "Existing service.audio_work/ResourceBroker, render NativeLock and retained cleanup contexts; no new broker or process framework",
+    "disk_reservation": "min(declared AudioBudget.max_output_bytes, typed saved master receipt.size * 4) +65536; actual frame bytes also must fit source.size*4 and runtime max_output before decode",
+    "cpu_memory": "Existing audio_work declaration: budget.threads CPU slots and max(512MiB,2*max_alloc_bytes) memory",
+    "runtime_setup": "Only selected PCM tools, settings restore/seal and local-volume guards after shared admission; unused music models/voices/SoundFonts are not configured or read",
+    "deadline": "One absolute start before admission; all selected-tool checks, native decode, Python scan, source hashes and final saved-state checks use it; an injected shorter timeout only tightens that original deadline",
+    "cli_binding": "Strict selected local runtime is entered through runtime_binding(cancelled=check) inside the admitted lease. The existing outer retained stack closes only after producer.close and all causal native owners.",
+    "retention": "Verified source handle, raw private stage, render lock and lease survive both exception cause/context chains; CLI synchronously drains existing owners before interpreter exit",
+    "read_only": "No project/job/node/cache-file/completion receipt/original/output mutation; restored/noncomplete/unguarded Book jobs refuse before external output resolution"
+  },
+  "preservation": {
+    "dsp_existing_body": "One additive method only; inverse to f6892a64 exact",
+    "renderer_existing_body": "One additive method only; inverse to4b5a04ca exact, including unchanged _runtime",
+    "cli_existing_routes": "Four exact hunks add explicit inspection; original ordinary routes preserved",
+    "old_cli_tests": "5488-character original is exact prefix; nine old cases and their assertions unchanged",
+    "guide": "Entire old guide is exact prefix",
+    "full_cloud_readback": "All nine source/test/help blobs compared byte-for-byte to authored contents"
+  },
+  "tests": {
+    "schema": "carr-source-test-inventory/1",
+    "status": "PLANNED_NOT_RUN",
+    "modules": [
+      {
+        "path": "tests/audio/test_silence_inspection.py",
+        "planned_cases": 41,
+        "functions": [
+          "test_actual_integer_pcm_keeps_exact_frames_channels_and_source",
+          "test_lowest_integer_bits_are_not_downquantized_into_silence",
+          "test_exact_decimal_minimum_ceil_and_trailing_frame_interval",
+          "test_no_matching_interval_is_only_the_selected_measurement",
+          "test_zero_dbfs_includes_both_signed_full_scale_limits",
+          "test_interval_retention_is_bounded_but_total_count_includes_omitted",
+          "test_invalid_explicit_criteria_refuse_before_source_or_native_access",
+          "test_actual_decoded_missing_extra_or_misaligned_bytes_refuse_report",
+          "test_total_deadline_still_applies_after_real_decoder_exit",
+          "test_cancellation_inside_python_scan_follows_actual_decode",
+          "test_source_write_during_actual_decode_is_refused_or_detected",
+          "test_decoder_staging_budget_refuses_before_ffmpeg",
+          "test_actual_owned_child_keeps_decoded_stage_and_verified_source_until_quiet",
+          "test_non_integer_or_unmeasurable_wav_never_reaches_integer_decoder",
+          "test_actual_pcm_scan_crosses_real_block_boundaries"
+        ],
+        "requires": [
+          "actual ffmpeg",
+          "actual ffprobe"
+        ],
+        "notes": "39 original candidate cases plus two adapted donor real cross-block cases; no fake decoder."
+      },
+      {
+        "path": "tests/studio/test_silence_inspection.py",
+        "planned_cases": 19,
+        "functions": [
+          "test_actual_completed_master_is_measured_under_one_lease_without_state_or_cache_changes",
+          "test_inert_or_invalid_job_refuses_before_any_external_or_runtime_access",
+          "test_source_bound_job_without_its_original_guard_refuses_before_external_reads",
+          "test_tampered_master_is_rejected_before_decoder_and_keeps_failed_source",
+          "test_saved_job_change_after_actual_measurement_refuses_the_report",
+          "test_after_final_artifact_hash_source_write_cannot_be_accepted",
+          "test_cancellation_after_real_scan_cannot_report_completion_or_change_receipts",
+          "test_two_actual_native_families_retain_job_lock_stage_source_and_shared_lease",
+          "test_runtime_construction_waits_for_actual_shared_admission",
+          "test_injected_runtime_cannot_exceed_the_already_admitted_budget",
+          "test_pcm_only_runtime_preserves_selected_settings_and_never_opens_unused_music_assets"
+        ],
+        "requires": [
+          "actual ffmpeg",
+          "actual ffprobe"
+        ],
+        "notes": "Actual completed master, real shared broker and retained NativeLock, real two-family ownership in both release orders; typed refusals and PCM-only runtime under admission."
+      },
+      {
+        "path": "tests/audio/test_local_runtime_cli.py",
+        "existing_cases": 9,
+        "added_cases": 6,
+        "planned_cases": 15,
+        "functions": [
+          "test_scene_data_inspection_does_not_require_selected_audio",
+          "test_scene_resume_binds_and_releases_the_actual_execution_lifetime",
+          "test_transcript_inspection_and_export_survive_unavailable_audio",
+          "test_transcription_run_holds_selected_runtime_until_worker_returns",
+          "test_assistant_preview_does_not_activate_media_or_inspect_a_runtime",
+          "test_silence_cli_requires_explicit_criteria_and_keeps_selected_runtime_through_inspection",
+          "test_silence_cli_does_not_guess_missing_criteria",
+          "test_silence_cli_cancellation_does_not_offer_production_resume",
+          "test_silence_cli_waits_for_both_existing_owners_before_releasing_runtime"
+        ],
+        "old_prefix_exact": true,
+        "notes": "All existing bytes retained; explicit criteria, under-lease strict binding callback, original close order, direct/masked two-owner synchronous CLI drain."
+      }
+    ],
+    "new_cases": 66,
+    "execution": "NOT_RUN; no host or CI execution was performed by this component."
+  },
+  "peer_review": {
+    "locate": "e05e43 PCM-only admitted runtime, shared helper/factory, restored _runtime, declared budget and all updated real PCM/owner cases CLEAR; two donor cross-block additions257bd698 CLEAR.",
+    "root": "Original core/receipt-bound reservation and under-lease strict binding design CLEAR; final composition remains root-owned.",
+    "ui": "Distinct Scene156c9df7 worker/current-owner/native/API review CLEAR; separate tree, not included in this package."
+  },
+  "limits": [
+    "All new source and tests are NOT_RUN in this checkpoint.",
+    "No workflows or refs are changed by this package.",
+    "Book/Director wrappers and Scene UI/native are separate reviewed components; this package does not claim their execution.",
+    "No executed result is transferred from donor PR209/210 or older application heads."
+  ]
+}

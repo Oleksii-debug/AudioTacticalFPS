@@ -621,6 +621,58 @@ class BookAudioService:
                     break
             return tuple(results)
 
+    def inspect_silence(self, plan_id, index, *, threshold_dbfs, minimum_seconds,
+                        budget=None, cancelled=lambda: False, guard=lambda: None, progress=None):
+        """Inspect one completed part while retaining its original Book authority."""
+        from time import monotonic
+        from ..audio import AudioBudget, AudioCancelled
+        from ..audio.silence import SilenceCriteria
+
+        criteria = SilenceCriteria(threshold_dbfs, minimum_seconds)
+        selected_budget = AudioBudget() if budget is None else budget
+        if not isinstance(selected_budget, AudioBudget):
+            raise TypeError('Use the existing AudioBudget for silence inspection.')
+        deadline = monotonic() + selected_budget.timeout
+
+        def stopped():
+            return (self._closed.is_set() or self.production._closed
+                    or bool(cancelled()) or monotonic() >= deadline)
+
+        try:
+            _check(stopped, guard)
+            with retained_state_lock(self.plans, 'book-' + _identity(plan_id)):
+                plan = self.load(plan_id)
+                job_id = plan.job_id(index)
+                expected_job = None
+
+                def original_source():
+                    nonlocal expected_job
+                    self._validate(plan, stopped, guard)
+                    if self.load(plan.id).fingerprint != plan.fingerprint:
+                        raise ValueError('The saved Book plan changed during silence inspection.')
+                    state = self._job(plan, index)
+                    if (state is None or state['status'] != 'complete'
+                            or state.get('restore_requires_new_output') is True):
+                        raise ValueError('Run and verify this exact Book part before silence inspection.')
+                    current = encode(state)
+                    if expected_job is not None and current != expected_job:
+                        raise ValueError('The completed Book job changed during silence inspection.')
+                    expected_job = current
+                    return plan.provenance(index)
+
+                original_source()
+                result = self.production.inspect_silence(job_id,
+                    threshold_dbfs=criteria.threshold_dbfs,
+                    minimum_seconds=criteria.minimum_seconds, budget=selected_budget,
+                    source_guard=original_source, cancelled=stopped, progress=progress)
+                original_source()
+                _check(stopped, guard)
+                return result
+        except (InterruptedError, AudioCancelled) as exc:
+            if monotonic() >= deadline and not cancelled():
+                raise TimeoutError('Book silence inspection exceeded its selected time budget.') from exc
+            raise
+
     def _measured_publication(self, plan_id, index, output, *, maximum_ms, name_template,
                               publish, approval, budget, cancelled, guard, progress):
         from time import monotonic

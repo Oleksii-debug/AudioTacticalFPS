@@ -251,6 +251,125 @@ class DirectorPublicationSource:
         _segments(view, timeline, check)
         return view, timeline, paths
 
+    def inspect_silence(self, job_id, *, threshold_dbfs, minimum_seconds,
+                        budget=None, broker=None, cancelled=lambda: False, progress=None):
+        """Measure the existing primary master through its publication authority."""
+        from time import monotonic
+        from ..audio import AudioBudget, AudioCancelled, AudioError
+        from ..audio.cleanup import retained_context, retained_temporary_directory
+        from ..audio.recording import _file_identity, _verified_reader
+        from ..audio.silence import SilenceCriteria, runtime_for_inspection
+        from ..operations import ResourceBroker, ResourceRequest
+        from .publishing import _HASH, _json, _read
+
+        criteria = SilenceCriteria(threshold_dbfs, minimum_seconds)
+        selected = AudioBudget() if budget is None else budget
+        if not isinstance(selected, AudioBudget):
+            raise TypeError('Use the existing AudioBudget for silence inspection.')
+        started, lease = monotonic(), None
+        deadline = started + selected.timeout
+
+        def base_check():
+            if cancelled():
+                raise AudioCancelled('Primary Studio silence inspection cancelled.')
+            if monotonic() >= deadline:
+                raise AudioError('Silence inspection exceeded its total time budget.')
+            return False
+
+        def check():
+            base_check()
+            if lease is not None:
+                lease.checkpoint()
+            return False
+
+        def phase(message):
+            check()
+            if progress is not None:
+                progress(message)
+            check()
+
+        base_check()
+        self.get(job_id)  # Unknown identities must not create a job or output.
+        with retained_context(self.publication_lock(job_id)):
+            job_file = self.folder / 'jobs' / (job_id + '.json')
+            stamp = _file_identity(plain(job_file))
+            state = self.get(job_id)
+            if _file_identity(plain(job_file)) != stamp:
+                raise ValueError('The primary Studio job changed before silence inspection.')
+            restored = state.get('restore_requires_new_output', False)
+            if type(restored) is not bool or restored or state['state'] != 'complete':
+                raise ValueError('Choose a completed primary Studio job with a newly reviewed output.')
+            saved = encode(state)
+            outputs = state.get('outputs')
+            if not isinstance(outputs, list) or not 3 <= len(outputs) <= 100000:
+                raise ValueError('The completed primary job lacks its bounded artifact receipts.')
+            masters = [item for item in outputs
+                       if type(item) is dict and item.get('file') == 'master.wav']
+            if len(masters) != 1:
+                raise ValueError('The completed primary job needs one exact master PCM receipt.')
+            master = masters[0]
+            if (set(master) != {'file', 'sha256', 'size_bytes'}
+                    or type(master['size_bytes']) is not int or master['size_bytes'] <= 0
+                    or not isinstance(master['sha256'], str)
+                    or _HASH.fullmatch(master['sha256']) is None):
+                raise ValueError('Invalid primary master PCM receipt.')
+            cache = self.folder / 'cache'
+            plain(cache, directory=True)
+            request = ResourceRequest(cpu_slots=selected.threads,
+                memory_bytes=max(512 * 1024**2, 2 * selected.max_alloc_bytes),
+                disk_bytes=min(selected.max_output_bytes, master['size_bytes'] * 4) + 65536,
+                disk_path=cache)
+            owner = broker if broker is not None else ResourceBroker.for_app(self.private_root)
+            if not isinstance(owner, ResourceBroker):
+                raise TypeError('Use the existing shared ResourceBroker for silence inspection.')
+
+            def unchanged_job():
+                check()
+                if (encode(self.get(job_id)) != saved
+                        or _file_identity(plain(job_file)) != stamp):
+                    raise ValueError('The completed primary Studio job changed during silence inspection.')
+                check()
+
+            base_check()
+            with retained_context(owner.reserve(request,
+                    operation_id='director-silence:' + self.project_id + ':' + job_id,
+                    cancelled=base_check,
+                    timeout=min(60, max(0, deadline - monotonic())))) as lease:
+                unchanged_job()
+                phase('Verifying the completed primary Studio artifact receipts.')
+                project, timeline, paths = self.publication_snapshot(state, selected, check, phase)
+                source, receipt = paths['master.wav']
+                metadata_path, metadata_receipt = paths['production.json']
+                metadata = _json(_read(metadata_path, metadata_receipt, check, collect=True))
+                with retained_temporary_directory(prefix='.carr-inspect-', dir=cache) as temporary:
+                    runtime = runtime_for_inspection(Path(temporary), state_root=self.root.parent,
+                        input_roots=(source.parent,), budget=selected, cancelled=check,
+                        runtime_factory=self.runtime_factory)
+                    deadline = min(deadline, started + runtime.budget.timeout)
+                    check()
+                    # Keep the source bound through the last whole-artifact and
+                    # journal checks, including deferred native cleanup.
+                    with retained_context(_verified_reader(source)):
+                        result = runtime.inspect_silence(source,
+                            threshold_dbfs=criteria.threshold_dbfs,
+                            minimum_seconds=criteria.minimum_seconds,
+                            cancelled=check, progress=phase, deadline=deadline)
+                        if (result['source']['sha256'] != receipt['sha256']
+                                or result['source']['size'] != receipt['size']
+                                or result['audio']['frames'] != metadata['frames']
+                                or result['audio']['sample_rate'] != timeline['sample_rate']
+                                or result['audio']['channels'] != timeline['channels']):
+                            raise ValueError('The measured primary PCM differs from its completed source receipts.')
+                        phase('Rechecking the primary artifacts and saved job after measurement.')
+                        if self.publication_snapshot(state, selected, check, phase) != (project, timeline, paths):
+                            raise ValueError('The completed primary source changed during silence inspection.')
+                        unchanged_job()
+                        check()
+                        result.update(job_id=job_id, project_fingerprint=project.fingerprint,
+                                      source_family='director')
+        base_check()
+        return result
+
     def publication_audio_name(self, state, paths):
         return 'audio.mp3' if state['project']['settings']['format'] == 'mp3' and 'audio.mp3' in paths else 'master.wav'
 
@@ -303,6 +422,33 @@ class LibraryPublicationService:
             source = DirectorPublicationSource(self.library_root, parts[1])
             return PublicationService(source, budget=self.budget).export_daisy(parts[2], output, **options)
         raise ValueError('Unknown publication source family or job identity.')
+
+    def inspect_silence(self, selection, *, threshold_dbfs, minimum_seconds,
+                        cancelled=lambda: False, progress=None):
+        """Route an explicitly selected existing job without changing its family."""
+        self.production._check_open()
+        if not isinstance(selection, str):
+            raise ValueError('Explicitly select one completed Studio job.')
+        parts = selection.split(':')
+        options = dict(threshold_dbfs=threshold_dbfs, minimum_seconds=minimum_seconds,
+            budget=self.budget, cancelled=lambda: self.production._closed or bool(cancelled()),
+            progress=progress)
+        if len(parts) == 2 and parts[0] == 'scene':
+            expected_id = _id(parts[1])
+            result = self.production.inspect_silence(expected_id, **options)
+            expected_family = None
+        elif len(parts) == 3 and parts[0] == 'director':
+            source = DirectorPublicationSource(self.library_root, parts[1])
+            expected_id = identity(parts[2], 'job identity')
+            result = source.inspect_silence(expected_id, broker=self.production.broker, **options)
+            expected_family = 'director'
+        else:
+            raise ValueError('Unknown inspection source family or job identity.')
+        if (type(result) is not dict or result.get('job_id') != expected_id
+                or result.get('source_family') != expected_family
+                or ('selected_source_id' in result and result['selected_source_id'] != selection)):
+            raise ValueError('The inspection result belongs to another selected source.')
+        return dict(result, selected_source_id=selection)
 
     def close(self):
         self.production.close()

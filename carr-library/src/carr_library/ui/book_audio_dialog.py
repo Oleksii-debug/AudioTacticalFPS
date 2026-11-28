@@ -92,6 +92,7 @@ def create_book_audio_dialog(frame, *, service=None, wx_module=None, edition_id=
     layout.Add(form, 0, wx.ALL | wx.EXPAND, 6)
     alive, busy, selected_source, plan, review, reviewed_fields = True, False, None, None, None, None
     locked_plan, voices = False, ()
+    inspection_active = False
     dialog_destroyed, owner_id = False, dialog.GetId()
     dialog._book_destroyed = False
     selected_bookmarks = ()
@@ -140,7 +141,8 @@ def create_book_audio_dialog(frame, *, service=None, wx_module=None, edition_id=
         [('bookmarks', 'Choose reading &bookmarks...')],
         [('prepare', '&Prepare saved items'), ('run', '&Run or resume saved items'),
          ('pause', 'Pa&use'), ('saved', 'Saved &book plans'), ('fresh', 'New output review'), ('help', '&Help'), ('close', '&Close')],
-        *([[('batch', '&Multiple books...'), ('duration', 'Measured &duration parts...')]]
+        *([[('batch', '&Multiple books...'), ('duration', 'Measured &duration parts...'),
+            ('silence', 'Inspect long silences...')]]
           if on_reviewed is None else []),
     ]:
         row = wx.BoxSizer(wx.HORIZONTAL)
@@ -186,6 +188,9 @@ def create_book_audio_dialog(frame, *, service=None, wx_module=None, edition_id=
         for name, button in buttons.items():
             button.Enable(not busy or name in ('pause', 'close'))
         buttons['pause'].Enable(busy)
+        pause_label = 'Cancel inspection' if busy and inspection_active else 'Pa&use'
+        buttons['pause'].SetLabel(pause_label)
+        buttons['pause'].SetName(pause_label.replace('&', ''))
         buttons['prepare'].Enable(not busy and review is not None)
         buttons['run'].Enable(not busy and review is not None and review.prepared)
         buttons['voices'].Enable(not busy and not locked_plan)
@@ -193,6 +198,9 @@ def create_book_audio_dialog(frame, *, service=None, wx_module=None, edition_id=
         buttons['bookmarks'].Enable(not busy and not locked_plan and selected_source is not None)
         if 'duration' in buttons:
             buttons['duration'].Enable(not busy and plan is not None)
+        if 'silence' in buttons:
+            buttons['silence'].Enable(not busy and plan is not None and
+                                      (locked_plan or (review is not None and review.prepared)))
         if on_reviewed is not None:
             buttons['run'].Enable(False)
             buttons['saved'].Enable(False)
@@ -234,8 +242,8 @@ def create_book_audio_dialog(frame, *, service=None, wx_module=None, edition_id=
                       failed=lambda error: frame.report('Book audio cleanup needs attention: ' + str(error)))
         return True
 
-    def begin(title, operation, done):
-        nonlocal busy
+    def begin(title, operation, done, *, inspection=False):
+        nonlocal busy, inspection_active
         if busy:
             return
         try:
@@ -247,6 +255,7 @@ def create_book_audio_dialog(frame, *, service=None, wx_module=None, edition_id=
             return
         cancel.clear()
         busy = True
+        inspection_active = inspection
         controls()
         def checked():
             try:
@@ -261,8 +270,9 @@ def create_book_audio_dialog(frame, *, service=None, wx_module=None, edition_id=
                 if not alive or getattr(frame, '_closing', False):
                     cleanup_owned()
         def finished(value):
-            nonlocal busy
+            nonlocal busy, inspection_active
             busy = False
+            inspection_active = False
             controls()
             if not alive:
                 queue_cleanup()
@@ -276,8 +286,9 @@ def create_book_audio_dialog(frame, *, service=None, wx_module=None, edition_id=
                 if alive:
                     status.SetFocus()
         def failed(error):
-            nonlocal busy
+            nonlocal busy, inspection_active
             busy = False
+            inspection_active = False
             controls()
             if not alive:
                 queue_cleanup()
@@ -285,8 +296,16 @@ def create_book_audio_dialog(frame, *, service=None, wx_module=None, edition_id=
             report(error)
             if alive:
                 status.SetFocus()
-        if frame.run_job(title, checked, done=finished, failed=failed) is False:
+        try:
+            accepted = frame.run_job(title, checked, done=finished, failed=failed)
+        except Exception:
             busy = False
+            inspection_active = False
+            controls()
+            raise
+        if accepted is False:
+            busy = False
+            inspection_active = False
             controls()
 
     def load_source(event=None):
@@ -572,6 +591,66 @@ def create_book_audio_dialog(frame, *, service=None, wx_module=None, edition_id=
         except Exception as exc:
             report(exc)
 
+    def inspect_silence(event=None):
+        try:
+            guard()
+            if busy or getattr(frame, 'working', False) or getattr(frame, '_closing', False):
+                raise ValueError('Finish the current operation before inspecting completed Book audio.')
+            if plan is None or not (locked_plan or (review is not None and review.prepared)):
+                raise ValueError('Choose an existing saved Book plan first.')
+            captured, signature = plan, fields()
+
+            def current():
+                try:
+                    guard()
+                    return plan is captured
+                except (ValueError, OSError, RuntimeError):
+                    return False
+
+            def current_ui():
+                return current() and fields() == signature
+
+            chooser = wx.SingleChoiceDialog(dialog,
+                'Choose one completed part from this saved Book plan. The audio will not be changed.',
+                'Book part for silence inspection',
+                [f'{index}. {part.label}' for index, part in enumerate(captured.parts, 1)])
+            try:
+                decision = chooser.ShowModal()
+                if not current_ui() or decision != wx.ID_OK:
+                    return
+                index = chooser.GetSelection() + 1
+            finally:
+                if not dialog_destroyed:
+                    chooser.Destroy()
+            if not 1 <= index <= len(captured.parts):
+                raise ValueError('Choose one part in this saved Book plan.')
+            from .studio_silence_inspection import choose_criteria, show_result
+            criteria = choose_criteria(dialog, current=current_ui)
+            if criteria is None:
+                return
+            if not current_ui():
+                raise ValueError('The Book plan changed while choosing inspection criteria.')
+            expected_job = captured.job_id(index)
+
+            def operation():
+                if stopped() or not current():
+                    raise InterruptedError('Book silence inspection was cancelled before starting.')
+                return service.inspect_silence(captured.id, index,
+                    threshold_dbfs=criteria.threshold_dbfs, minimum_seconds=criteria.minimum_seconds,
+                    cancelled=stopped, guard=guard)
+
+            def completed(value):
+                if stopped() or not current_ui():
+                    raise InterruptedError('The Book plan changed; the late inspection was discarded.')
+                if value.get('job_id') != expected_job:
+                    raise ValueError('The inspection belongs to a different Book part.')
+                show_result(dialog, value, current=lambda: not stopped() and current_ui())
+
+            begin('Inspecting completed Book audio for long silences',
+                  operation, completed, inspection=True)
+        except Exception as exc:
+            report(exc)
+
     def measured_duration(event=None):
         try:
             guard()
@@ -608,6 +687,8 @@ def create_book_audio_dialog(frame, *, service=None, wx_module=None, edition_id=
         buttons['batch'].Bind(wx.EVT_BUTTON, multiple)
     if 'duration' in buttons:
         buttons['duration'].Bind(wx.EVT_BUTTON, measured_duration)
+    if 'silence' in buttons:
+        buttons['silence'].Bind(wx.EVT_BUTTON, inspect_silence)
     for widget in plan_controls + (output,):
         widget.Bind(wx.EVT_CHOICE if widget in (modes, ignore_case, voice, formats) else wx.EVT_TEXT, invalidate)
     def destroyed(event):

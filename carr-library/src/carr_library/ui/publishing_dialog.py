@@ -20,8 +20,10 @@ def create_publishing_dialog(frame, *, wx_module=None):
             super().__init__(frame, title='EPUB3 and DAISY publication — measured Studio line synchronization',
                 size=(920, 760), style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
             self.library_root = local_path(frame.library.root, exists=True)
+            self.library_owner = frame.library
             self.service = LibraryPublicationService(self.library_root)
             self.alive, self.busy = True, False
+            self.inspection_active, self._inspection_cancel = False, None
             self.destroyed, self._cleanup_queued = False, False
             self._owner_id = self.GetId()
             register = getattr(frame, 'register_worker_cleanup', None)
@@ -59,7 +61,13 @@ def create_publishing_dialog(frame, *, wx_module=None):
                 ('cancel', '&Cancel operation', self.on_cancel), ('close', '&Close', self.on_close)):
                 button = wx.Button(self, label=label); button.Bind(wx.EVT_BUTTON, handler)
                 self.buttons[key] = button; row.Add(button, 0, wx.ALL, 3)
-            layout.Add(row, 0, wx.ALL, 3); self.SetSizer(layout)
+            layout.Add(row, 0, wx.ALL, 3)
+            inspection = wx.Button(self, label='Inspect long silences...')
+            inspection.SetName('Inspect long silences in the selected completed job')
+            inspection.Bind(wx.EVT_BUTTON, self.on_inspect_silence)
+            self.buttons['silence'] = inspection
+            layout.Add(inspection, 0, wx.ALL, 3)
+            self.SetSizer(layout)
             panel.FitInside()
             self.Bind(wx.EVT_CLOSE, self.on_close)
             self.Bind(wx.EVT_WINDOW_DESTROY, self.on_destroy)
@@ -76,7 +84,7 @@ def create_publishing_dialog(frame, *, wx_module=None):
                 return
             for control in (self.job_choice,self.language,self.creator,self.publisher,self.output,self.max_gib,self.minutes,self.receipt_choice):
                 control.Enable(not self.busy)
-            for key in ('refresh','choose','export','daisy','verify'):
+            for key in ('refresh','choose','export','daisy','verify','silence'):
                 self.buttons[key].Enable(not self.busy)
             self.buttons['cancel'].Enable(self.busy)
 
@@ -88,7 +96,7 @@ def create_publishing_dialog(frame, *, wx_module=None):
             return AudioBudget(max_output_bytes=int(self.max_gib.GetValue()) * 1024**3,
                                timeout=float(self.minutes.GetValue()) * 60)
 
-        def begin(self, title, operation, complete):
+        def begin(self, title, operation, complete, *, inspection_cancel=None):
             if self.busy or not self.alive:
                 return False
             if local_path(frame.library.root, exists=True) != self.library_root:
@@ -96,20 +104,44 @@ def create_publishing_dialog(frame, *, wx_module=None):
             if getattr(frame, 'working', False) or getattr(frame, '_closing', False):
                 self.report('Another operation is active. Finish or cancel it before publishing.')
                 return False
-            self.cancel.clear(); self.busy = True; self.controls()
+            self.cancel.clear(); self.busy = True
+            self.inspection_active = inspection_cancel is not None
+            self._inspection_cancel = inspection_cancel
+            self.controls()
+            def settled():
+                if inspection_cancel is not None:
+                    inspection_cancel.set()
+                self.inspection_active, self._inspection_cancel = False, None
             def done(value):
                 self.busy = False
-                if self.alive and not getattr(frame, '_closing', False):
-                    if frame.library.root == self.library_root:
-                        complete(value)
-                    else:
-                        self.report('The library location changed. Reopen EPUB publication to review its records.')
-                    self.controls(); self.status.SetFocus()
+                self.inspection_active = False
+                try:
+                    if self.alive and not getattr(frame, '_closing', False):
+                        if frame.library.root == self.library_root:
+                            complete(value)
+                        else:
+                            self.report('The library location changed. Reopen EPUB publication to review its records.')
+                        if self.alive and not getattr(frame, '_closing', False):
+                            self.controls(); self.status.SetFocus()
+                finally:
+                    settled()
             def failed(error):
                 self.busy = False
+                settled()
                 if self.alive and not getattr(frame, '_closing', False):
                     self.report(str(error)); self.controls(); self.status.SetFocus()
-            frame.run_job(title, operation, done=done, failed=failed)
+            try:
+                accepted = frame.run_job(title, operation, done=done, failed=failed)
+            except Exception:
+                self.busy = False
+                settled()
+                self.controls()
+                raise
+            if accepted is False:
+                self.busy = False
+                settled()
+                self.controls()
+                return False
             return True
 
         def on_refresh(self, event=None):
@@ -175,6 +207,91 @@ def create_publishing_dialog(frame, *, wx_module=None):
             except Exception as exc:
                 self.report(exc)
 
+        def on_inspect_silence(self, event=None):
+            try:
+                if (not self.alive or self.destroyed or getattr(frame, '_closing', False)
+                        or frame.library is not self.library_owner
+                        or frame.library.root != self.library_root):
+                    raise ValueError('The library or publication window changed. Reopen it before inspection.')
+                if self.busy or getattr(frame, 'working', False):
+                    raise ValueError('Finish the current operation before inspecting completed audio.')
+                index = self.job_choice.GetSelection()
+                if not 0 <= index < len(self.jobs):
+                    raise ValueError('Load and explicitly choose a completed Studio job first.')
+                jobs, selected = self.jobs, self.jobs[index]['id']
+                parts = selected.split(':') if isinstance(selected, str) else ()
+                if not ((len(parts) == 2 and parts[0] == 'scene')
+                        or (len(parts) == 3 and parts[0] == 'director')):
+                    raise ValueError('Choose an existing Scene Studio or Audio Studio job.')
+                expected_job = parts[-1]
+                expected_family = 'director' if parts[0] == 'director' else None
+                root, library = self.library_root, self.library_owner
+                limits = self.max_gib.GetValue(), self.minutes.GetValue()
+                budget, revoked = self.budget(), Event()
+
+                def current():
+                    return (not revoked.is_set() and self.alive and not self.destroyed
+                            and not getattr(frame, '_closing', False)
+                            and frame.library is library and frame.library.root == root
+                            and self.jobs is jobs and jobs[index]['id'] == selected)
+
+                def current_ui():
+                    return (current() and self.job_choice.GetSelection() == index
+                            and (self.max_gib.GetValue(), self.minutes.GetValue()) == limits)
+
+                from .studio_silence_inspection import choose_criteria, show_result
+                criteria = choose_criteria(self, current=current_ui)
+                if criteria is None:
+                    return
+                if not current_ui():
+                    raise ValueError('The selected job or inspection limits changed while choosing criteria.')
+
+                def cancelled():
+                    return (not current() or self.cancel.is_set()
+                            or frame.cancel_event.is_set())
+
+                def deliver_phase(message):
+                    if self.busy and self.inspection_active and current_ui():
+                        self.report(message)
+
+                def operation():
+                    if cancelled():
+                        raise InterruptedError('Silence inspection cancelled before starting.')
+                    token = frame.operation_progress.event.token
+                    def progress(message):
+                        if cancelled():
+                            raise InterruptedError('Silence inspection cancelled.')
+                        frame.operation_progress.update(phase=message, token=token)
+                        wx.CallAfter(deliver_phase, message)
+                    from contextlib import ExitStack
+                    from ..audio.cleanup import retained_context
+                    with retained_context(ExitStack()) as retained:
+                        service = LibraryPublicationService(root, budget=budget)
+                        retained.callback(service.close)
+                        return service.inspect_silence(selected,
+                            threshold_dbfs=criteria.threshold_dbfs,
+                            minimum_seconds=criteria.minimum_seconds,
+                            cancelled=cancelled, progress=progress)
+
+                def completed(value):
+                    try:
+                        if cancelled() or not current_ui():
+                            raise InterruptedError('The selected job changed; the late inspection was discarded.')
+                        if (type(value) is not dict or value.get('job_id') != expected_job
+                                or value.get('selected_source_id') != selected
+                                or value.get('source_family') != expected_family):
+                            raise ValueError('The inspection belongs to a different selected Studio job.')
+                        show_result(self, value,
+                                    current=lambda: not cancelled() and current_ui())
+                    except Exception as exc:
+                        self.report(exc)
+
+                if not self.begin('Inspecting completed audio for long silences',
+                                  operation, completed, inspection_cancel=revoked):
+                    revoked.set()
+            except Exception as exc:
+                self.report(exc)
+
         def on_verify(self, event=None):
             try:
                 index = self.receipt_choice.GetSelection()
@@ -200,7 +317,12 @@ def create_publishing_dialog(frame, *, wx_module=None):
         def on_cancel(self, event=None):
             if self.busy:
                 self.cancel.set(); frame.cancel_event.set()
-                self.report('Cancellation requested. A completed EPUB and its prepared receipt remain available for verification.')
+                if self._inspection_cancel is not None:
+                    self._inspection_cancel.set()
+                if self.inspection_active:
+                    self.report('Silence inspection cancellation requested. The completed audio and job remain unchanged.')
+                else:
+                    self.report('Cancellation requested. A completed EPUB and its prepared receipt remain available for verification.')
 
         def _queue_cleanup(self):
             if self._cleanup_queued:
@@ -222,6 +344,8 @@ def create_publishing_dialog(frame, *, wx_module=None):
                 self.destroyed = True
                 self.alive = False
                 self.cancel.set()
+                if self._inspection_cancel is not None:
+                    self._inspection_cancel.set()
                 if self.busy:
                     frame.cancel_event.set()
                 self._queue_cleanup()
@@ -233,6 +357,8 @@ def create_publishing_dialog(frame, *, wx_module=None):
             if self.busy:
                 self.on_cancel()
             self.alive = False
+            if self._inspection_cancel is not None:
+                self._inspection_cancel.set()
             self._queue_cleanup()
             if self.destroyed:
                 return
