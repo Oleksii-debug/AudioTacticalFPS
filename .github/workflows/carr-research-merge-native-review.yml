@@ -1,0 +1,169 @@
+name: Actual native reviewed research-content merge
+on:
+  push:
+    branches: [carr/research-merge-native-review-20261128]
+    paths: ['carr-library/**', '.github/workflows/carr-research-merge-native-review.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: research-merge-native-review-${{ github.ref_name }}
+  cancel-in-progress: true
+jobs:
+  native:
+    name: Native research graph, explicit conflicts and owner withdrawal / installed Windows
+    runs-on: windows-2022
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: carr-library
+        shell: pwsh
+    env:
+      CARR_RESEARCH_MERGE_HEAD: ${{ github.sha }}
+      PYTHONUTF8: '1'
+      PYTHONDONTWRITEBYTECODE: '1'
+      HF_HUB_OFFLINE: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      DO_NOT_TRACK: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+          architecture: x64
+      - name: Install the actual pinned standard runtime and composed package
+        run: |
+          New-Item -ItemType Directory -Force ci-research-merge-native | Out-Null
+          $lock = 'packaging/windows-cp311.lock'
+          python -m pip install --only-binary=:all: --require-hashes -r $lock
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m pip install --no-deps .
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Bind complete installed source, native probe and selected runtime
+        run: |
+          @'
+          from hashlib import sha256
+          import importlib.util
+          import json
+          import os
+          from pathlib import Path
+          import subprocess
+          import sys
+          import sysconfig
+
+          assert sys.flags.isolated and not os.environ.get("PYTHONPATH")
+          ROOT = Path.cwd().resolve()
+          OUT = ROOT / "ci-research-merge-native"
+          SOURCE = ROOT / "src" / "carr_library"
+          INSTALLED = Path(sysconfig.get_path("purelib")).resolve() / "carr_library"
+          assert SOURCE.resolve() != INSTALLED.resolve()
+          LOCK = "packaging/windows-cp311.lock"
+          FILES = ("scripts/windows_research_merge_smoke.py", "scripts/windows_publishing_smoke.py",
+                   "scripts/windows_backup_import_access_smoke.py", "scripts/research_merge_native_oracle.json", LOCK)
+          NAMES = ["carr_library.application","carr_library.durable_state","carr_library.library_backup","carr_library.backup_budget","carr_library.research_merge","carr_library.catalog.intake","carr_library.ingest.retained_assets","carr_library.ingest.catalog_asset_copy","carr_library.operations.broker","carr_library.research.academic_library","carr_library.storage.revisions","carr_library.storage.publication","carr_library.storage.schema_identity","carr_library.ui.desktop_app","carr_library.ui.research_merge_dialog","carr_library.ui.backup_actions","carr_library.ui.backup_incremental_dialog","carr_library.ui.backup_resources","carr_library.ui.command_registry","carr_library.ui.keyboard_settings","carr_library.audio.cleanup","carr_library.audio.process"]
+
+          def inventory(root):
+              assert root.is_dir() and not root.is_symlink()
+              value = {}
+              for path in sorted(root.rglob("*.py")):
+                  assert path.is_file() and not path.is_symlink(), str(path)
+                  value[path.relative_to(root).as_posix()] = sha256(path.read_bytes()).hexdigest()
+              assert value and "__init__.py" in value
+              return value
+
+          def identity():
+              head = subprocess.run(["git", "rev-parse", "HEAD"], check=True, capture_output=True, text=True, timeout=10).stdout.strip()
+              assert head == os.environ["CARR_RESEARCH_MERGE_HEAD"]
+              expected = inventory(SOURCE)
+              assert inventory(INSTALLED) == expected
+              origins = {}
+              for name in NAMES:
+                  spec = importlib.util.find_spec(name)
+                  assert spec and spec.origin
+                  path = Path(spec.origin).resolve()
+                  relative = Path(*name.split(".")[1:]).with_suffix(".py")
+                  assert path == (INSTALLED / relative).resolve()
+                  digest = sha256(path.read_bytes()).hexdigest()
+                  assert digest == expected[relative.as_posix()]
+                  origins[name] = {"path": str(path), "sha256": digest}
+              return {"head": head, "package": expected, "origins": origins,
+                      "files": {path: sha256((ROOT / path).read_bytes()).hexdigest() for path in FILES},
+                      "helper": sha256(Path(__file__).read_bytes()).hexdigest()}
+
+          current = identity()
+          for path in FILES[:3]:
+              compile((ROOT / path).read_bytes(), path, "exec")
+          if sys.argv[1] == "before":
+              (OUT / "identity-before.json").write_text(json.dumps(current, sort_keys=True) + "\n", encoding="utf-8")
+          elif sys.argv[1] == "after":
+              before = json.loads((OUT / "identity-before.json").read_text(encoding="utf-8"))
+              assert current == before, "Complete implementation/probe/runtime identity changed."
+              raw = (OUT / "native.txt").read_text(encoding="utf-8-sig")
+              reports = [json.loads(line) for line in raw.splitlines() if line.lstrip().startswith("{")]
+              assert reports, "No actual native report."
+              report = reports[-1]
+              oracle = json.loads((ROOT / FILES[3]).read_bytes())
+              assert oracle["schema"] == "carr-native-research-merge-oracle/1"
+              assert type(oracle["checks"]) is list and len(oracle["checks"]) == len(set(oracle["checks"])) == 12
+              assert report["schema"] == "carr-native-research-merge/1" and report["result"] == "PASS"
+              assert report["checks"] == oracle["checks"], "The fixed business oracle must be complete."
+              assert type(report["native_checks"]) is int and 1 <= report["native_checks"] <= 2000
+              statuses = ("native_keyboard", "exact_research_graph", "whole_workspace_conflicts",
+                  "reviewed_omissions", "current_library_unchanged", "actual_cancel_and_owner_withdrawal",
+                  "unchanged_input_backups", "same_desktop_executor")
+              assert all(report[name] == "PASS" for name in statuses)
+              assert all(report[name] == "NOT_RUN" for name in ("native_file_picker", "NVDA", "physical_keyboard"))
+              assert report["source_identity"] == current["origins"]
+              assert report["probe_and_binding"] == {
+                  str((ROOT / path).resolve()): current["files"][path] for path in FILES[:4]}
+              report.update(source_commit=current["head"],
+                            package_python_files=len(current["package"]),
+                            package_inventory_sha256=sha256(json.dumps(current["package"], sort_keys=True, separators=(",", ":")).encode()).hexdigest(),
+                            proof_helper_sha256=current["helper"], selected_file_sha256=current["files"],
+                            qualification="ACTUAL_NATIVE_RESEARCH_CONTENT_MERGE_COMPONENT_ONLY",
+                            offline_firewall="NOT_ASSERTED_BY_THIS_COMPONENT; final full bundle gate remains required")
+              (OUT / "identity-after.json").write_text(json.dumps(current, sort_keys=True) + "\n", encoding="utf-8")
+              (OUT / "native-proof.json").write_text(json.dumps(report, sort_keys=True) + "\n", encoding="utf-8")
+              print("CARR_RESEARCH_MERGE_NATIVE_PROOF " + json.dumps(report, sort_keys=True), flush=True)
+          else:
+              raise AssertionError("Unknown proof mode")
+          '@ | Set-Content -Encoding utf8 ci-research-merge-native/native_binding.py
+          python -I -B -X utf8 ci-research-merge-native/native_binding.py before
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Require actual native conflict review, exact graph and owner withdrawals
+        timeout-minutes: 10
+        run: |
+          $proofHelper = 'ci-research-merge-native/native_binding.py'
+          $beforeReceipt = 'ci-research-merge-native/identity-before.json'
+          $proofHelperSha = (Get-FileHash -Algorithm SHA256 $proofHelper).Hash
+          $beforeReceiptSha = (Get-FileHash -Algorithm SHA256 $beforeReceipt).Hash
+          python -I -B -X utf8 scripts/windows_research_merge_smoke.py 2>&1 | Tee-Object ci-research-merge-native/native.txt
+          $probeExit = $LASTEXITCODE
+          if ((Get-FileHash -Algorithm SHA256 $proofHelper).Hash -ne $proofHelperSha) {
+            throw 'The native proof helper changed while the owned probe ran.'
+          }
+          if ((Get-FileHash -Algorithm SHA256 $beforeReceipt).Hash -ne $beforeReceiptSha) {
+            throw 'The retained pre-native identity receipt changed while the owned probe ran.'
+          }
+          if ($probeExit -ne 0) { exit $probeExit }
+      - name: Require actual native results and unchanged full source
+        if: always()
+        run: |
+          python -I -B -X utf8 ci-research-merge-native/native_binding.py after
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Preserve actual dependency and commit identity
+        if: always()
+        run: |
+          New-Item -ItemType Directory -Force ci-research-merge-native | Out-Null
+          git rev-parse HEAD | Set-Content ci-research-merge-native/commit.txt
+          git rev-parse 'HEAD^{tree}' | Set-Content ci-research-merge-native/tree.txt
+          python -m pip freeze | Set-Content ci-research-merge-native/packages.txt
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always()
+        with:
+          name: research-merge-native-${{ github.sha }}
+          path: carr-library/ci-research-merge-native
+          if-no-files-found: error
