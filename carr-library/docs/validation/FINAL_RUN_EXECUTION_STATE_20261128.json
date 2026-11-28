@@ -1,6 +1,6 @@
 {
   "schema": "carr-final-run-execution-state/1",
-  "updated_utc": "2026-11-28 06:51:28 UTC",
+  "updated_utc": "2026-11-28 07:06:30 UTC",
   "product": "Resonance",
   "repository": "Oleksii-debug/AudioTacticalFPS",
   "canonical_branch": "carr-library",
@@ -123,8 +123,9 @@
     "branch": "carr/final-evidence-d3a-20261127",
     "warning": "Evidence tree retains historical application source; never promote it as the application candidate.",
     "checkpoint_path": "carr-library/docs/validation/FINAL_RUN_EXECUTION_STATE_20261128.json",
-    "observed_head_before_this_checkpoint": "f44b995b3ab6e465c3c15dba0f525065164a83bc",
-    "observed_tree_before_this_checkpoint": "3278eab965153ace7035902b10bcd8db236be1ad"
+    "head_observed_before_this_checkpoint": "5e7d706b138769a3edc3a318ed5b0240b9ad403c",
+    "tree_observed_before_this_checkpoint": "cd3c95d9b35375ab27b2f4fb2e096b654d484d04",
+    "checkpoint_note": "This metadata-only checkpoint records queued exact7c focused runs. The immutable application source is7c; this evidence tree retains historical source and must never be promoted as the application."
   },
   "finish_requirements": [
     "Review final composed source and additive focused gate independently.",
@@ -137,11 +138,37 @@
   "full_platform_status": "NOT_QUALIFIED",
   "external_acceptance": "Real owner engines/models/authorized samples, language/acoustics, Windows11/NVDA and physical devices, lawful corpora, private authority/signing and distribution rights.",
   "next_repair": {
-    "status": "IN_PREPARATION_NOT_EXECUTED",
+    "status": "SOURCE_COMPOSED_NOT_EXECUTED",
     "scope": "Basic native fixture only; preserve14 assertions,45-second timer,4-minute workflow and13-field PASS receipt.",
     "observed": "Silent Basic process reached workflow timeout; actual blocked phase remains UNKNOWN.",
     "source_inference": "Basic posts app.ExitMainLoop from inside its modal callback. Existing Advanced/local probes wait until show_translation returns before posting outer-loop exit.",
     "planned": "Reuse the existing owned-modal final exit plus bounded phase/worker/cleanup diagnostics and a single35-second all-thread trace. Require actual new-source execution."
   },
-  "checkpoint_binding": "This observation binds the explicit application commits and runs. The evidence tree retains historical application source and is never the application promotion target."
+  "next_candidate": {
+    "commit": "7c991dac1581faa63cb32eaaa5e21cf548287b38",
+    "tree": "4929a01d460a1184d0552fdcda0fe392f1e7e21b",
+    "files": 1810,
+    "status": "FOCUSED_QUEUED",
+    "component": "d12884890335518721e109459819c2352e2ab38f",
+    "root_review": "SOURCE_GO_NOT_EXECUTED",
+    "peer_review": "durable_native_composition SOURCE_GO_NOT_EXECUTED",
+    "planned_focused_branches": {
+      "basic": "carr/local-translation-final-7c991-20261128-d3a",
+      "inspection": "carr/silence-inspection-final-7c991-20261128-d3a"
+    },
+    "basic_focus": {
+      "run": 46119546281,
+      "job": 140900801416,
+      "attempt": 1,
+      "status": "queued",
+      "conclusion": null
+    },
+    "inspection_focus": {
+      "run": 46119552088,
+      "job": 140900816853,
+      "attempt": 1,
+      "status": "queued",
+      "conclusion": null
+    }
+  }
 }
