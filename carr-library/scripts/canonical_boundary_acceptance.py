@@ -80,7 +80,7 @@ def finalize(results):
                     == gate['qualification_adapter_sha256'], 'The qualification adapter changed.')
         gate.update(status='PASS', wheel_sha256=installed['wheel_sha256'],
                     actual_ffmpeg=runtime, actual_windows_file_handles='PASS',
-                    existing_boundary_cases_retained=36, new_boundary_cases=16)
+                    existing_boundary_cases_retained=36, new_boundary_cases=ORACLE['added_cases'])
     except Exception as error:
         print(''.join(traceback.format_exception(type(error), error, error.__traceback__)),
               file=sys.stderr, flush=True)
