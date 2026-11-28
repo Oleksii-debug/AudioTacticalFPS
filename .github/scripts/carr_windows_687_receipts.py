@@ -116,6 +116,9 @@ JUNIT_REQUIRED = frozenset((
     "test_application_exports_the_selected_topic_with_readable_title[" + format + "]"
     for format in ("docx", "html")
 )
+JUNIT_NATIVE_LOOKUP_PREFIX = "test_windows_native_dialog_async_lookup_focus_and_close"
+JUNIT_NATIVE_LOOKUP = frozenset(JUNIT_NATIVE_LOOKUP_PREFIX + "[" + kind + "]"
+                              for kind in ("doi", "isbn"))
 JUNIT_OCR = frozenset((
     "test_empty_directory_inventory_has_a_bound",
     "test_directory_inventory_checks_budget_between_entries",
@@ -145,6 +148,7 @@ def junit_summary(raw):
             raise ValueError("JUnit evidence declares a non-UTF8 encoding")
     modules = {name: [] for name in JUNIT_MODULES}
     observed = set()
+    native_lookup, native_unexpected, native_failed_or_skipped = [], 0, 0
     count = failed = errors = failed_or_error = skipped = depth = elements = 0
     for event, element in ET.iterparse(io.StringIO(text), events=("start", "end")):
         if event == "start":
@@ -177,6 +181,15 @@ def junit_summary(raw):
             errors += has_error
             failed_or_error += has_failure or has_error
             skipped += element.find("skipped") is not None
+            if module == "test_native_acquisition" and name.startswith(JUNIT_NATIVE_LOOKUP_PREFIX):
+                if name in JUNIT_NATIVE_LOOKUP:
+                    if len(native_lookup) >= len(JUNIT_NATIVE_LOOKUP) + 16:
+                        raise ValueError("Native lookup rows exceed diagnostic headroom")
+                    native_lookup.append(name)
+                else:
+                    native_unexpected += 1
+                native_failed_or_skipped += (has_failure or has_error
+                                             or element.find("skipped") is not None)
         element.clear()
         depth -= 1
     if depth != 0 or count < 1:
@@ -200,6 +213,16 @@ def junit_summary(raw):
         "guarded_modules": {
             name: {"count": len(names), "unique": len(set(names)), "names": sorted(names)}
             for name, names in modules.items()},
+        "native_acquisition": {
+            "module": "test_native_acquisition",
+            "expected_names": sorted(JUNIT_NATIVE_LOOKUP),
+            "actual_names": sorted(native_lookup), "count": len(native_lookup),
+            "unique": len(set(native_lookup)), "unexpected_variant_count": native_unexpected,
+            "failed_error_or_skipped_rows": native_failed_or_skipped,
+            "exact_two_current_variants": (len(native_lookup) == len(JUNIT_NATIVE_LOOKUP)
+                and set(native_lookup) == JUNIT_NATIVE_LOOKUP and native_unexpected == 0
+                and native_failed_or_skipped == 0),
+        },
         "missing_required_names": missing, "predicates": predicates,
         "all_guarded_predicates": all(predicates.values()),
         "application_acceptance": "NOT_ASSESSED", "raw_xml_emitted": False,
