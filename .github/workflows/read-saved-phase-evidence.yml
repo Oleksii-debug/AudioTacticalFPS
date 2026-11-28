@@ -114,6 +114,52 @@ jobs:
               "text_members": len(decoded), "text_bytes": total,
               "scope": "readback of saved public diagnostics; no application execution"
           }, ensure_ascii=True), flush=True)
+          # The original XML member remains hash-bound; report only bounded JUnit facts.
+          import xml.etree.ElementTree as ElementTree
+          junit_members = [(name, content) for name, content, text in decoded
+                           if PurePosixPath(name).name == "v3-tests.xml"]
+          if len(junit_members) != 1:
+              raise ValueError("A single exact broad-service JUnit member is required.")
+          junit_name, junit_bytes = junit_members[0]
+          if b"<!DOCTYPE" in junit_bytes.upper() or b"<!ENTITY" in junit_bytes.upper():
+              raise ValueError("JUnit declarations are not accepted.")
+          junit_root = ElementTree.fromstring(junit_bytes)
+          cases = list(junit_root.iter("testcase"))
+          if not 0 < len(cases) <= 100000:
+              raise ValueError("JUnit testcase count is outside its read bound.")
+          skipped, failures, passed = [], [], 0
+          for case in cases:
+              identity = {"classname": case.get("classname", ""), "name": case.get("name", "")}
+              if any(len(value) > 2048 for value in identity.values()):
+                  raise ValueError("JUnit testcase identity is outside its read bound.")
+              skip = case.find("skipped")
+              failed = any(case.find(tag) is not None for tag in ("failure", "error"))
+              if skip is not None and failed:
+                  raise ValueError("JUnit testcase has contradictory terminal outcomes.")
+              if skip is not None:
+                  reason = skip.get("message", "")
+                  kind = skip.get("type", "")
+                  if len(reason) > 4096 or len(kind) > 512:
+                      raise ValueError("JUnit skip reason is outside its read bound.")
+                  skipped.append({**identity, "type": kind, "reason": reason})
+              elif failed:
+                  failures.append(identity)
+              else:
+                  passed += 1
+          report = {"artifact_id": ARTIFACT_ID, "source_run": SOURCE_RUN,
+                    "source_head": SOURCE_HEAD, "member": junit_name,
+                    "member_bytes": len(junit_bytes),
+                    "member_sha256": hashlib.sha256(junit_bytes).hexdigest(),
+                    "testcases": len(cases), "passed": passed,
+                    "failed": len(failures), "skipped": len(skipped),
+                    "skip_cases": skipped, "failed_cases": failures,
+                    "scope": "derived from the exact saved JUnit member; no new application execution"}
+          payload = json.dumps(report, sort_keys=True, ensure_ascii=True, separators=(",", ":"))
+          if len(payload.encode("utf-8")) > 65536:
+              raise ValueError("Structured JUnit facts exceed their output bound.")
+          print(json.dumps({"broad_junit_report_json": payload,
+                            "report_sha256": hashlib.sha256(payload.encode("utf-8")).hexdigest()},
+                           ensure_ascii=True), flush=True)
           for name, content, text in sorted(decoded, key=lambda item: item[0]):
               count = (len(text) + CHUNK_CHARACTERS - 1) // CHUNK_CHARACTERS
               print(json.dumps({
