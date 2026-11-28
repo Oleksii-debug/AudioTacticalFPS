@@ -881,3 +881,260 @@ def test_bootstrap_constructor_failure_is_uncertain_before_a_handle_is_returned(
     with pytest.raises(service.BootstrapCleanupError, match='launch cleanup is unconfirmed') as failure:
         service._bootstrap(tmp_path / 'program')
     assert isinstance(failure.value.__cause__, OSError)
+
+
+# CI orchestration is checked separately from the real Inno lifecycle above.
+bundle_gate = load('windows_bundle_acceptance_test', ROOT / 'scripts/windows_bundle_acceptance.py')
+BUNDLE_WORKFLOW = ROOT.parent / '.github/workflows/carr-windows.yml'
+
+
+def bundle_exit_report():
+    return dict(schema=1, checks=[
+        dict(name=name, exit_code=0) for name in bundle_gate.REQUIRED_CHECKS
+    ])
+
+
+def bundle_workflow_block():
+    value = BUNDLE_WORKFLOW.read_text(encoding='utf-8')
+    marker = '      - name: Build, install and exercise the complete bundle with runtime egress blocked\n'
+    assert value.count(marker) == 1
+    return value, value.split(marker, 1)[1].split('\n      - name:', 1)[0]
+
+
+def bundle_workflow_schedule(block):
+    import re
+    loop = re.search(r"foreach \(\$probe in @\(([^\n]+)\)\) \{", block)
+    assert loop is not None
+    probes = re.findall(r"'([^']+)'", loop.group(1))
+    names = []
+    for name, variable in re.findall(r"^\s+Add-BundleCheck (?:'([^']+)'|(\$probe)) \$LASTEXITCODE$", block, re.M):
+        names.extend(probes if variable else [name])
+    return names
+
+
+def test_bundle_workflow_keeps_all_checks_before_required_verdict_and_publication():
+    value, block = bundle_workflow_block()
+    assert bundle_workflow_schedule(block) == list(bundle_gate.REQUIRED_CHECKS)
+    assert len(bundle_gate.NATIVE_CHECKS) == 20
+    assert len(bundle_gate.VALIDATION_CHECKS) == 8
+    ledger = block.index('$bundleChecks = ')
+    aggregate = block.index('& $python -I -B scripts/windows_bundle_acceptance.py ')
+    pending = block[ledger:aggregate]
+    assert 'if ($LASTEXITCODE -ne 0)' not in pending
+    assert 'exit $LASTEXITCODE' not in pending
+    for required in (
+        'installed-epubcheck.json', 'installed-daisy-schemas.json',
+        '$runInstalledTests = @', '--import-mode=importlib',
+        'full-bundle-workflows.xml', 'full-bundle-workflows.json',
+        'full-bundle-canonical-workflows.json', 'full-bundle-owned-lifetime.json',
+        'sealed bundle unchanged after native inference and OCR workflows',
+        'source-wheel-proof.json',
+    ):
+        assert required in pending
+    verdict_tail = block[aggregate:]
+    assert verdict_tail.index('if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }') < verdict_tail.index(
+        "Copy-Item -LiteralPath $testedManifestPath")
+    assert verdict_tail.index('if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }') < verdict_tail.index(
+        "installed_bundle='PASS'")
+    assert 'timeout-minutes: 35' in block
+    assert '    timeout-minutes: 120\n' in value
+    assert 'continue-on-error:' not in block
+
+
+def test_independent_package_gates_require_verified_build_not_native_success():
+    value, block = bundle_workflow_block()
+    ready = '"verified_bundle_ready=true" | Out-File -FilePath $env:GITHUB_OUTPUT'
+    assert block.count(ready) == 1
+    before_ready = block.split(ready, 1)[0]
+    assert before_ready.index("ci-results/full-bundle-verified.json") < before_ready.rindex(
+        'if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }')
+    assert 'module.verify(root)' in before_ready
+    assert "manifest['bundled_model'] and manifest['bundled_ocr']" in before_ready
+    assert "manifest['bundled_native_runtime'] and manifest['bundled_audio_runtime']" in before_ready
+    assert '$manifestBefore' in before_ready
+    assert '"CARR_CI_BUNDLE=$bundle"' in before_ready
+    assert before_ready.index('module.verify(root)') < before_ready.index('"CARR_CI_BUNDLE=$bundle"')
+    condition = ("        if: ${{ !cancelled() && "
+                 "steps.complete_bundle.outputs.verified_bundle_ready == 'true' }}")
+    for title, timeout in (
+        ('Qualify the transferable library bundle without an audio payload', 15),
+        ('Build pinned standard setup and execute actual install, repair and uninstall', 20),
+    ):
+        body = value.split('      - name: ' + title + '\n', 1)[1].split('\n      - name:', 1)[0]
+        assert body.count(condition) == 1
+        assert 'timeout-minutes: ' + str(timeout) in body
+        assert 'steps.complete_bundle.conclusion' not in body
+        assert "if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }" in body
+    assert '$bundle = $env:CARR_CI_TRANSFER_BUNDLE' in value
+    assert '$bundle = $env:CARR_CI_BUNDLE' in value
+
+
+def test_complete_zero_exit_inventory_allows_only_its_own_acceptance():
+    result = bundle_gate.verdict(bundle_exit_report())
+    assert result == dict(schema=1, status='PASS', completed=28, required=28,
+                          native_required=20, validation_required=8, failed=[])
+    assert 'installed_bundle' not in result
+
+
+@pytest.mark.parametrize('name,code', [
+    ('windows_transcription_smoke.py', 1),
+    ('windows_epub_reading_smoke.py', 77),
+    ('windows_desktop_integration_smoke.py', -1),
+    ('epubcheck_acceptance.py', 1),
+    ('daisy_schema_acceptance.py', 77),
+    ('installed_pytest', 1),
+    ('canonical_junit', 1),
+    ('final_bundle_seal', 1),
+    ('source_wheel_proof', 1),
+])
+def test_required_native_or_independent_failure_never_becomes_pass(name, code):
+    report = bundle_exit_report()
+    row = next(row for row in report['checks'] if row['name'] == name)
+    row['exit_code'] = code
+    result = bundle_gate.verdict(report)
+    assert result['status'] == 'FAIL'
+    assert result['completed'] == result['required'] == 28
+    assert result['failed'] == [dict(name=name, exit_code=code)]
+
+
+@pytest.mark.parametrize('mutation', [
+    'missing', 'duplicate', 'reorder', 'unknown', 'boolean-exit',
+    'string-exit', 'float-exit', 'large-exit', 'extra-field', 'boolean-schema',
+])
+def test_incomplete_or_ambiguous_bundle_exit_inventory_is_refused(mutation):
+    report = bundle_exit_report()
+    rows = report['checks']
+    if mutation == 'missing':
+        rows.pop(8)
+    elif mutation == 'duplicate':
+        rows[8] = dict(rows[0])
+    elif mutation == 'reorder':
+        rows[0], rows[1] = rows[1], rows[0]
+    elif mutation == 'unknown':
+        rows[0]['name'] = 'unreviewed_probe.py'
+    elif mutation == 'extra-field':
+        rows[0]['ignored_failure'] = True
+    elif mutation == 'boolean-schema':
+        report['schema'] = True
+    else:
+        rows[0]['exit_code'] = {
+            'boolean-exit': False, 'string-exit': '0',
+            'float-exit': 0.0, 'large-exit': 2 ** 80,
+        }[mutation]
+    with pytest.raises(ValueError):
+        bundle_gate.verdict(report)
+
+
+@pytest.mark.parametrize('kind', ['pass', 'failed-native', 'missing', 'duplicate-field', 'oversize'])
+def test_actual_bundle_gate_cli_refuses_false_acceptance(tmp_path, kind):
+    report = bundle_exit_report()
+    expected = 0
+    if kind == 'failed-native':
+        report['checks'][8]['exit_code'] = 77
+        expected = 1
+    elif kind == 'missing':
+        report['checks'].pop()
+        expected = 1
+    raw = json.dumps(report).encode('utf-8')
+    if kind == 'duplicate-field':
+        raw = raw.replace(b'"schema": 1', b'"schema": 1, "schema": 1', 1)
+        expected = 1
+    elif kind == 'oversize':
+        raw = b' ' * (bundle_gate.MAX_REPORT_BYTES + 1)
+        expected = 1
+    selected = tmp_path / 'required-exits.json'
+    selected.write_bytes(raw)
+    result = subprocess.run(
+        [sys.executable, '-I', '-B', str(ROOT / 'scripts/windows_bundle_acceptance.py'),
+         str(selected)], capture_output=True, timeout=10, check=False,
+    )
+    assert result.returncode == expected, result.stderr
+    response = json.loads(result.stdout)
+    assert response['status'] == ('PASS' if expected == 0 else 'FAIL')
+    assert selected.read_bytes() == raw
+    assert len(result.stdout) < 2048
+
+
+def bundle_powershell_harness(block):
+    """Use the actual ledger, loop, recording calls and final gate with controlled children."""
+    import re
+    import textwrap
+    body = textwrap.dedent(block.split('        run: |\n', 1)[1])
+    first = body.index('$bundleChecks = ')
+    begin = body.index('# Retain every native failure', first)
+    setup = body[first:begin]
+    lines = body[begin:].splitlines()
+    result = [setup]
+    in_string = False
+    for index, line in enumerate(lines):
+        stripped = line.strip()
+        if stripped.endswith("= @'"):
+            in_string = True
+            continue
+        if in_string:
+            if stripped == "'@":
+                in_string = False
+            continue
+        if stripped.startswith('& $python -I -B scripts/windows_bundle_acceptance.py '):
+            result.extend([line, lines[index + 1]])
+            break
+        if stripped.startswith('foreach ($probe in @(') or stripped == '}':
+            result.append(line)
+        elif index + 1 < len(lines) and re.fullmatch(
+                r"\s*Add-BundleCheck (?:'[^']+'|\$probe) \$LASTEXITCODE", lines[index + 1]):
+            actual = lines[index + 1]
+            name = re.search(r"Add-BundleCheck (.+) \$LASTEXITCODE", actual).group(1)
+            indent = line[:len(line) - len(line.lstrip())]
+            result.append(indent + "& $python -I -B 'controlled-child.py' " + name + " $failedName")
+            result.append(actual)
+    else:
+        raise AssertionError('Actual required-check gate was not found.')
+    program = '\n'.join(result) + '\n'
+    assert bundle_workflow_schedule(block) == list(bundle_gate.REQUIRED_CHECKS)
+    assert program.count('Add-BundleCheck ') == 14  # function plus twelve fixed calls and loop call
+    return program
+
+
+if sys.platform == 'win32':
+    @pytest.mark.parametrize('failed', [
+        '', 'windows_epub_reading_smoke.py', 'epubcheck_acceptance.py',
+        'installed_pytest', 'source_wheel_proof',
+    ], ids=['all-pass', 'native-failure', 'validator-failure', 'pytest-failure', 'wheel-failure'])
+    def test_actual_powershell_keeps_independent_tail_and_refuses_false_wheel_pass(tmp_path, failed):
+        _, block = bundle_workflow_block()
+        script = bundle_powershell_harness(block)
+        (tmp_path / 'scripts').mkdir()
+        (tmp_path / 'ci-results').mkdir()
+        (tmp_path / 'scripts/windows_bundle_acceptance.py').write_bytes(
+            (ROOT / 'scripts/windows_bundle_acceptance.py').read_bytes())
+        (tmp_path / 'controlled-child.py').write_text(
+            "import json,pathlib,sys\n"
+            "name=sys.argv[1]; failed=sys.argv[2] if len(sys.argv)>2 else ''\n"
+            "with pathlib.Path('executed.jsonl').open('a',encoding='utf-8') as out:\n"
+            " out.write(json.dumps(name)+'\\n')\n"
+            "print(name,flush=True)\n"
+            "raise SystemExit(77 if name==failed else 0)\n", encoding='utf-8')
+        escaped_python = sys.executable.replace("'", "''")
+        prefix = ("$ErrorActionPreference = 'Stop'\n"
+                  "$python = '" + escaped_python + "'\n"
+                  "$failedName = '" + failed + "'\n")
+        target = tmp_path / 'actual-orchestration.ps1'
+        target.write_text(prefix + script +
+            "Set-Content 'tested-application-wheel.json' '{\"installed_bundle\":\"PASS\"}'\n",
+            encoding='utf-8')
+        result = subprocess.run(
+            ['pwsh', '-NoLogo', '-NoProfile', '-File', str(target)],
+            cwd=tmp_path, capture_output=True, timeout=60, check=False,
+        )
+        assert result.returncode == (1 if failed else 0), result.stdout + result.stderr
+        executed = [json.loads(line) for line in
+                    (tmp_path / 'executed.jsonl').read_text(encoding='utf-8').splitlines()]
+        assert executed == list(bundle_gate.REQUIRED_CHECKS)
+        report = json.loads((tmp_path / 'ci-results/full-bundle-required-exits.json').read_text(
+            encoding='utf-8'))
+        assert len(report['checks']) == 28
+        response = json.loads((tmp_path / 'ci-results/full-bundle-required-verdict.json').read_text(
+            encoding='utf-8'))
+        assert response['status'] == ('FAIL' if failed else 'PASS')
+        assert response['failed'] == ([dict(name=failed, exit_code=77)] if failed else [])
+        assert (tmp_path / 'tested-application-wheel.json').exists() is (not failed)

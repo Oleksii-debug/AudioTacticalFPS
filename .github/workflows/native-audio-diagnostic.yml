@@ -119,31 +119,73 @@ jobs:
           "CARR_V3_AUDIO=$audioRuntime" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
           (Join-Path $audioRuntime 'bin') | Out-File $env:GITHUB_PATH -Encoding utf8 -Append
 
-      - name: Require native driver recovery regression controls
+      - name: Require native recovery and Windows acceptance regression controls
         if: ${{ !cancelled() && steps.install-runtime.outcome == 'success' && steps.installed-origin.outcome == 'success' && steps.audio-runtime.outcome == 'success' }}
         timeout-minutes: 3
         run: |
-          $suites = @('tests/ui/test_native_reading_presentation_driver.py', 'tests/ui/test_reader_navigation.py', 'tests/ui/test_operations_dialog.py', 'tests/library_assistant/test_library_workflow_ui.py')
+          $suites = @('tests/ui/test_native_reading_presentation_driver.py', 'tests/ui/test_reader_navigation.py', 'tests/ui/test_operations_dialog.py', 'tests/library_assistant/test_library_workflow_ui.py', 'tests/packaging/test_standard_installer.py', 'tests/packaging/test_windows_source_suites.py')
           & $env:CARR_PYTHON scripts/ci_check.py --jobs 1 @suites 2>&1 | Tee-Object 'ci-native-audio-diagnostic/native-driver-recovery-source.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-      - name: Exercise independent installed reader Studio and task controls
+      - name: Exercise installed native reader pronunciation
         if: ${{ !cancelled() && steps.install-runtime.outcome == 'success' && steps.installed-origin.outcome == 'success' && steps.audio-runtime.outcome == 'success' }}
         timeout-minutes: 12
         run: |
-          $probes = @('windows_pronunciation_smoke.py', 'windows_studio_pronunciation_smoke.py', 'windows_operations_smoke.py', 'windows_effect_chain_smoke.py', 'windows_reading_presentation_smoke.py')
-          $probeResults = @()
-          $failed = $false
-          foreach ($probe in $probes) {
-            & $env:CARR_PYTHON -I -B (Join-Path scripts $probe) 2>&1 | Tee-Object (Join-Path ci-native-audio-diagnostic ('native-' + $probe + '.txt'))
-            $probeExit = $LASTEXITCODE
-            $status = 'PASS'
-            if ($probeExit -ne 0) { $status = 'FAIL'; $failed = $true }
-            $probeResults += [pscustomobject]@{ probe = $probe; exit_code = $probeExit; status = $status; scope = 'installed native component only' }
-            ConvertTo-Json -InputObject $probeResults -Depth 4 | Set-Content 'ci-native-audio-diagnostic/independent-native-probe-exits.json'
-          }
-          if ($probeResults.Count -ne 5) { throw 'All five independent native probes must report an exit.' }
-          if ($failed) { exit 1 }
+          $probe = 'windows_pronunciation_smoke.py'
+          & $env:CARR_PYTHON -I -B (Join-Path scripts $probe) 2>&1 | Tee-Object (Join-Path ci-native-audio-diagnostic ('native-' + $probe + '.txt'))
+          $probeExit = $LASTEXITCODE
+          $status = 'PASS'
+          if ($probeExit -ne 0) { $status = 'FAIL' }
+          @{ probe = $probe; exit_code = $probeExit; status = $status; scope = 'installed native component only' } | ConvertTo-Json | Set-Content (Join-Path ci-native-audio-diagnostic ($probe + '-exit.json'))
+          if ($probeExit -ne 0) { exit $probeExit }
+
+      - name: Exercise installed native Studio pronunciation
+        if: ${{ !cancelled() && steps.install-runtime.outcome == 'success' && steps.installed-origin.outcome == 'success' && steps.audio-runtime.outcome == 'success' }}
+        timeout-minutes: 12
+        run: |
+          $probe = 'windows_studio_pronunciation_smoke.py'
+          & $env:CARR_PYTHON -I -B (Join-Path scripts $probe) 2>&1 | Tee-Object (Join-Path ci-native-audio-diagnostic ('native-' + $probe + '.txt'))
+          $probeExit = $LASTEXITCODE
+          $status = 'PASS'
+          if ($probeExit -ne 0) { $status = 'FAIL' }
+          @{ probe = $probe; exit_code = $probeExit; status = $status; scope = 'installed native component only' } | ConvertTo-Json | Set-Content (Join-Path ci-native-audio-diagnostic ($probe + '-exit.json'))
+          if ($probeExit -ne 0) { exit $probeExit }
+
+      - name: Exercise installed native Tasks and resources
+        if: ${{ !cancelled() && steps.install-runtime.outcome == 'success' && steps.installed-origin.outcome == 'success' && steps.audio-runtime.outcome == 'success' }}
+        timeout-minutes: 12
+        run: |
+          $probe = 'windows_operations_smoke.py'
+          & $env:CARR_PYTHON -I -B (Join-Path scripts $probe) 2>&1 | Tee-Object (Join-Path ci-native-audio-diagnostic ('native-' + $probe + '.txt'))
+          $probeExit = $LASTEXITCODE
+          $status = 'PASS'
+          if ($probeExit -ne 0) { $status = 'FAIL' }
+          @{ probe = $probe; exit_code = $probeExit; status = $status; scope = 'installed native component only' } | ConvertTo-Json | Set-Content (Join-Path ci-native-audio-diagnostic ($probe + '-exit.json'))
+          if ($probeExit -ne 0) { exit $probeExit }
+
+      - name: Exercise installed native effect chain and batch resume
+        if: ${{ !cancelled() && steps.install-runtime.outcome == 'success' && steps.installed-origin.outcome == 'success' && steps.audio-runtime.outcome == 'success' }}
+        timeout-minutes: 12
+        run: |
+          $probe = 'windows_effect_chain_smoke.py'
+          & $env:CARR_PYTHON -I -B (Join-Path scripts $probe) 2>&1 | Tee-Object (Join-Path ci-native-audio-diagnostic ('native-' + $probe + '.txt'))
+          $probeExit = $LASTEXITCODE
+          $status = 'PASS'
+          if ($probeExit -ne 0) { $status = 'FAIL' }
+          @{ probe = $probe; exit_code = $probeExit; status = $status; scope = 'installed native component only' } | ConvertTo-Json | Set-Content (Join-Path ci-native-audio-diagnostic ($probe + '-exit.json'))
+          if ($probeExit -ne 0) { exit $probeExit }
+
+      - name: Exercise installed native reading appearance
+        if: ${{ !cancelled() && steps.install-runtime.outcome == 'success' && steps.installed-origin.outcome == 'success' && steps.audio-runtime.outcome == 'success' }}
+        timeout-minutes: 12
+        run: |
+          $probe = 'windows_reading_presentation_smoke.py'
+          & $env:CARR_PYTHON -I -B (Join-Path scripts $probe) 2>&1 | Tee-Object (Join-Path ci-native-audio-diagnostic ('native-' + $probe + '.txt'))
+          $probeExit = $LASTEXITCODE
+          $status = 'PASS'
+          if ($probeExit -ne 0) { $status = 'FAIL' }
+          @{ probe = $probe; exit_code = $probeExit; status = $status; scope = 'installed native component only' } | ConvertTo-Json | Set-Content (Join-Path ci-native-audio-diagnostic ($probe + '-exit.json'))
+          if ($probeExit -ne 0) { exit $probeExit }
 
       - name: Exercise installed native voice preferences
         if: ${{ !cancelled() && steps.install-runtime.outcome == 'success' && steps.installed-origin.outcome == 'success' && steps.audio-runtime.outcome == 'success' }}

@@ -638,7 +638,15 @@ def show_command_launcher(parent, manager, *, context='main', invoke=None, avail
             choice[:] = [rows[index].command_id]
             dialog.EndModal(wx.ID_OK)
 
+    def enter(event):
+        if event.GetKeyCode() in (wx.WXK_RETURN, wx.WXK_NUMPAD_ENTER):
+            accept()
+        else:
+            event.Skip()
+
     search.Bind(wx.EVT_TEXT, rebuild)
+    search.Bind(wx.EVT_KEY_DOWN, enter)
+    results.Bind(wx.EVT_KEY_DOWN, enter)
     results.Bind(wx.EVT_LISTBOX, selected)
     results.Bind(wx.EVT_LISTBOX_DCLICK, accept)
     run.Bind(wx.EVT_BUTTON, accept)

@@ -49,7 +49,7 @@ def main():
     class ProbeApp(wx.App):
         def OnExceptionInMainLoop(self):
             abort(traceback.format_exc())
-            return False
+            return True  # Keep the queued failure-only modal unwind runnable.
 
     application = ProbeApp(False)
     simulator = wx.UIActionSimulator()
@@ -58,6 +58,7 @@ def main():
     phase = ['start', monotonic()]
     deadline = monotonic() + 120
     detached_state = {}
+    frame_identity, owner_loop, aborting = {}, [None], [False]
 
     def advance(name):
         phase[:] = [name, monotonic()]
@@ -96,34 +97,132 @@ def main():
             raise
         return True
 
+    def owned_dialogs():
+        return tuple(item for item in wx.GetTopLevelWindows()
+                     if item and isinstance(item, wx.Dialog)
+                     and item.GetTitle() in ('Find a command', 'Tasks and resources')
+                     and item.GetParent()
+                     and item.GetParent().GetId() == frame_identity.get('id')
+                     and int(item.GetParent().GetHandle()) == frame_identity.get('handle'))
+
     def window(title):
-        return next((item for item in wx.GetTopLevelWindows()
-                     if item and isinstance(item, wx.Dialog) and item.GetParent() is frame
-                     and item.GetTitle() == title and item.IsShown()), None)
+        matches = [item for item in owned_dialogs()
+                   if item.GetTitle() == title and item.IsShown() and item.IsModal()
+                   and not item.IsBeingDeleted()]
+        if len(matches) > 1:
+            raise AssertionError('More than one live owned native dialog: ' + title)
+        return matches[0] if matches else None
 
     def named(window, name):
         control, = [child for child in window.GetChildren() if child.GetName() == name]
         return control
 
+    def failure_state():
+        def observed(callback):
+            try:
+                value = callback()
+                return value[:512] if isinstance(value, str) else value
+            except Exception as exc:
+                return type(exc).__name__ + ': ' + str(exc)[:128]
+        def describe(item):
+            if not item:
+                return {'live': False}
+            parent = observed(item.GetParent)
+            data = {'id': observed(item.GetId), 'title': observed(item.GetTitle),
+                    'handle': observed(lambda: int(item.GetHandle())),
+                    'shown': observed(item.IsShown),
+                    'parent_id': observed(lambda: parent.GetId() if parent else None),
+                    'parent_handle': observed(lambda: int(parent.GetHandle()) if parent else None)}
+            if isinstance(item, wx.Dialog):
+                data['modal'] = observed(item.IsModal)
+            controller = getattr(item, 'controller', None)
+            if controller is not None:
+                data.update(busy=observed(lambda: controller.busy),
+                            closed=observed(lambda: controller.closed),
+                            policy_loaded=observed(lambda: controller.policy is not None),
+                            status=observed(lambda: str(controller.status)))
+            return data
+        active = wx.EventLoopBase.GetActive()
+        focus = wx.Window.FindFocus()
+        value = {'stage': phase[0], 'stage_seconds': monotonic() - phase[1],
+                 'frame_identity': dict(frame_identity),
+                 'frame_working': observed(lambda: frame.working),
+                 'frame_closing': observed(lambda: frame._closing),
+                 'focus_id': observed(lambda: focus.GetId() if focus else None),
+                 'focus_name': observed(lambda: focus.GetName() if focus else None),
+                 'active_loop': observed(lambda: repr(active)),
+                 'active_loop_running': observed(lambda: active.IsRunning() if active else False),
+                 'owner_loop': observed(lambda: repr(owner_loop[0])),
+                 'owner_loop_running': observed(lambda: owner_loop[0].IsRunning()
+                                                if owner_loop[0] else False),
+                 'windows': [describe(item) for item in wx.GetTopLevelWindows()[:16]]}
+        print('TASKS_FAILURE_STATE: ' + json.dumps(value, ensure_ascii=False), flush=True)
+
     def abort(detail):
         errors.append(detail)
         print('FAIL:', detail, flush=True)
-        if timer is not None:
-            timer.Stop()
+        if aborting[0]:
+            return
+        aborting[0] = True
+
+        def failed_cleanup():
+            value = traceback.format_exc()
+            errors.append(value)
+            print('TASKS_CLEANUP_FAILURE:', value, flush=True)
+
+        try:
+            failure_state()
+        except Exception:
+            failed_cleanup()
+        try:
+            if timer is not None:
+                timer.Stop()
+        except Exception:
+            failed_cleanup()
         try:
             release()
         except Exception:
-            errors.append(traceback.format_exc())
-        for item in wx.GetTopLevelWindows():
-            if item and isinstance(item, wx.Dialog) and item.GetParent() is frame:
-                controller = getattr(item, 'controller', None)
-                if controller is not None:
-                    controller.dispose()
-                if item.IsModal():
-                    item.EndModal(wx.ID_CANCEL)
-        if gate is not None and gate.held:
-            gate.release()
-        wx.CallAfter(application.ExitMainLoop)
+            failed_cleanup()
+
+        def unwind():
+            try:
+                for item in reversed(owned_dialogs()):
+                    try:
+                        controller = getattr(item, 'controller', None)
+                        if controller is not None:
+                            controller.dispose()
+                    except Exception:
+                        failed_cleanup()
+                    finally:
+                        try:
+                            # EndModal may have hidden a closing dialog before its
+                            # nested loop returns. Do not overwrite that result.
+                            if item and item.IsModal() and item.IsShown():
+                                item.EndModal(wx.ID_CANCEL)
+                        except Exception:
+                            failed_cleanup()
+            except Exception:
+                failed_cleanup()
+            finally:
+                try:
+                    if gate is not None and gate.held:
+                        gate.release()
+                except Exception:
+                    failed_cleanup()
+                finally:
+                    try:
+                        loop = owner_loop[0]
+                        if loop is None:
+                            loop = application.GetMainLoop()
+                        if loop is None:
+                            raise RuntimeError('The native Tasks owner event loop is unavailable.')
+                        # Schedule the captured outer loop, even while a modal
+                        # loop is still returning. Failure remains recorded.
+                        loop.ScheduleExit(1)
+                    except Exception:
+                        failed_cleanup()
+
+        wx.CallAfter(unwind)
 
     def open_palette(next_phase):
         return key(frame.status, ord('P'), next_phase, wx.MOD_CONTROL | wx.MOD_SHIFT)
@@ -147,7 +246,8 @@ def main():
                 check('Tasks action belongs to the existing native command inventory',
                       command.context == 'main' and command.label == 'Tasks and resources'
                       and binding.item.GetItemLabel().replace('&', '') == 'Tasks and resources...')
-                check('actual wx main event loop is active', application.GetMainLoop() is not None)
+                owner_loop[0] = application.GetMainLoop()
+                check('actual wx main event loop is active', owner_loop[0] is not None)
                 advance('open')
             elif name in ('open', 'open_blocked'):
                 open_palette('palette' if name == 'open' else 'palette_blocked')
@@ -283,6 +383,7 @@ def main():
             broker = ResourceBroker.for_app(library.root, limits=ResourceLimits(cpu_slots=1,
                 memory_bytes=1024**3, disk_bytes=2*1024**3, min_free_disk_bytes=0))
             frame = DesktopFrame(library)
+            frame_identity.update(id=frame.GetId(), handle=int(frame.GetHandle()))
             try:
                 application.SetTopWindow(frame)
                 frame.Show()
