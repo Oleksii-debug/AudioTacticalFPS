@@ -1,0 +1,98 @@
+{
+  "schema": 1,
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "head": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7",
+  "run_id": 46111569593,
+  "job_id": 140876044080,
+  "event": "push",
+  "branch": "carr/ci-endpoint-evaluation-20261127",
+  "attempt": 1,
+  "conclusion": "failure",
+  "started_at": "2026-11-28T05:51:35Z",
+  "completed_at": "2026-11-28T08:25:25Z",
+  "captured_after_completion": true,
+  "log_sha256": "884c3e8b355a04235ab72b7555428bf69cf6516c875b631dff3a4daa2f756a83",
+  "log_utf8_bytes": 1988750,
+  "source": {
+    "step": 70,
+    "started_at": "2026-11-28T07:31:03Z",
+    "completed_at": "2026-11-28T08:25:18Z",
+    "required_selectors": 450,
+    "unique_selectors": 450,
+    "verdicts": 450,
+    "selector_multiset_equal": true,
+    "completion_order_equal": false,
+    "execution_order_claim": "None. ci_check --jobs 2 completes independent suites out of declaration order.",
+    "junit": {
+      "passed": 11755,
+      "failed": 0,
+      "skipped": 0
+    },
+    "subtests_inferred_or_added": false
+  },
+  "failed_steps": [
+    {
+      "name": "Require measured capture from the explicitly reviewed virtual input",
+      "status": "completed",
+      "conclusion": "failure",
+      "number": 26,
+      "started_at": "2026-11-28T05:54:43Z",
+      "completed_at": "2026-11-28T05:54:45Z"
+    },
+    {
+      "name": "Build, install and exercise the complete bundle with runtime egress blocked",
+      "status": "completed",
+      "conclusion": "failure",
+      "number": 66,
+      "started_at": "2026-11-28T06:04:20Z",
+      "completed_at": "2026-11-28T07:31:01Z"
+    }
+  ],
+  "skipped_steps": [
+    {
+      "number": 67,
+      "name": "Build pinned standard setup and execute actual install, repair and uninstall"
+    },
+    {
+      "number": 68,
+      "name": "Require the retained bundle local proposal through actual loopback HTTP"
+    },
+    {
+      "number": 71,
+      "name": "Retain the exact wheel only after the full Windows aggregate succeeds"
+    },
+    {
+      "number": 143,
+      "name": "Post Set up native x64 CPython"
+    }
+  ],
+  "final_artifact": {
+    "id": 15255756131,
+    "name": "carr-windows-2dfc5d32558c722ba05068dfff9ebb19eeae52f7-1",
+    "size_in_bytes": 499984,
+    "url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15255756131",
+    "archive_download_url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15255756131/zip",
+    "expired": false,
+    "created_at": "2026-11-28T08:25:19Z",
+    "expires_at": "2026-12-05T08:25:18Z",
+    "updated_at": "2026-11-28T08:25:19Z",
+    "digest": "sha256:85cb591b45c4685c0dfeb9fd894f72ec50acabc3cccd475d762b46544400fdb7",
+    "workflow_run": {
+      "id": 46111569593,
+      "repository_id": 1341777614,
+      "head_repository_id": 1341777614,
+      "head_branch": "carr/ci-endpoint-evaluation-20261127",
+      "head_sha": "2dfc5d32558c722ba05068dfff9ebb19eeae52f7"
+    }
+  },
+  "earlier_immutable_artifact_evidence": {
+    "tree": "ef02cd5fa1f117f65bb3e9495e03e1b48173b087",
+    "scope": "Same run/head. Full-bundle9312 passed/2 known stdin multiprocessing spawn failures; selected capture failure with exact endpoint/consent diagnostics. That evidence remains unchanged."
+  },
+  "limitations": [
+    "Overall integrated run failed; no release/sealed aggregate qualification.",
+    "Native standard installer and local proposal steps were skipped after the bundle failure.",
+    "This exact historical source trial does not replace newer-head execution or erase different failing trials.",
+    "No private binary, wheel, model or audio content is included."
+  ]
+}

@@ -1,0 +1,286 @@
+{
+  "schema": "carr-root-terminal-receiving/1",
+  "status": "HISTORICAL_EVIDENCE_ONLY",
+  "source_mutations": 0,
+  "workflow_mutations": 0,
+  "basis": "Every listed raw blob was independently fetched and checked as exact UTF-8 bytes including BOM and original line endings. Failure states remain failures. No result is transferred to the 69214167 or later successor.",
+  "trees": [
+    {
+      "scope": "943_v3",
+      "tree": "650a3f3a8c90579d0b706c86dc6744448d918a2c"
+    },
+    {
+      "scope": "943_main",
+      "tree": "98d4fed46d85fbae49404a77d94fb24d108a36e5"
+    },
+    {
+      "scope": "3eb_components",
+      "tree": "fcd2e67f5c753e42a153c0eb6ff619fc64921347"
+    },
+    {
+      "scope": "3eb_installed",
+      "tree": "26ac4a5e2316a9ead61bb098e9e6fb8d5efb97dc"
+    },
+    {
+      "scope": "943_xml",
+      "tree": "94af55f92c7b3e6b93d05693a8ce17f67b239914"
+    },
+    {
+      "scope": "943_partial",
+      "tree": "296c1955c9f66163a5456ca69132cfad6605ee1b"
+    },
+    {
+      "scope": "2df_main",
+      "tree": "09c88b27598413e3c4ebac21a6757f143e8ed2c7"
+    },
+    {
+      "scope": "2df_v3",
+      "tree": "1f1fb7e07697b266350c17870ade0d470ed54c71"
+    },
+    {
+      "scope": "943_doi_variants",
+      "tree": "342a0679d93197bdc4aac9941fee73d7e2a10cdc"
+    },
+    {
+      "scope": "1c_linux",
+      "tree": "89ca70df56230d59552fa015dbb1adcd254da91e"
+    },
+    {
+      "scope": "936_linux",
+      "tree": "4cbfde9669cc9cd6617ed51ac99c5531eb948db7"
+    }
+  ],
+  "raw_logs": [
+    {
+      "key": "943_v3",
+      "git_blob": "b23fbf6bab6d7b8975ca7a20f1d066b29467193c",
+      "utf8_bytes": 228742,
+      "sha256": "5cb6f0f0d0d11632b79a76651c5fadaba3b63bb404be01ac954e2f8452e719f9"
+    },
+    {
+      "key": "943_main",
+      "git_blob": "7c78f0afc509a464055556aeb9bad66821ce45fe",
+      "utf8_bytes": 1968287,
+      "sha256": "c68736fcd0f6f5fadb0e7fc4d42f8b822b89c35b069e9c441c0c7e147fec88ce"
+    },
+    {
+      "key": "3eb_installed",
+      "git_blob": "d3302fa3c02619308fbcd333e6b7d87175898fff",
+      "utf8_bytes": 148248,
+      "sha256": "0a7e8163870f22278497e62e5e13c19b51ca26c1c866f0a495ce6af962002122"
+    },
+    {
+      "key": "943_xml",
+      "git_blob": "c6110a548d74c7bb62291896aa7143d95a4d451f",
+      "utf8_bytes": 199224,
+      "sha256": "cba46958e33b7a7c006ba0985579f5223aa645dabd63d8265878de18cbc5207d"
+    },
+    {
+      "key": "943_partial",
+      "git_blob": "efbfbaa627e18eb617099939f704c9e32fe5b868",
+      "utf8_bytes": 1013655,
+      "sha256": "ac921051cab84551a789e2037a56804288ce61f081e99fd1425c804b80e9aa11"
+    },
+    {
+      "key": "2df_main",
+      "git_blob": "df099c418c6cb6f7a618368f48a1c24cd45f3e43",
+      "utf8_bytes": 1988750,
+      "sha256": "884c3e8b355a04235ab72b7555428bf69cf6516c875b631dff3a4daa2f756a83"
+    },
+    {
+      "key": "2df_v3",
+      "git_blob": "18391b65c6994a30c52d539621fe7fd7ea066c60",
+      "utf8_bytes": 228726,
+      "sha256": "8bd92dfa106c37578f3eeeda29f90e0bfb8c5f5ffc0818ccaf2aaeb225bed92c"
+    },
+    {
+      "key": "linux-installed",
+      "git_blob": "31b6c45bf6f748a30ad3afac4872a1e642e8744a",
+      "utf8_bytes": 149212,
+      "sha256": "920e109ea411fd433956421a4faf9ca3e3b73586d5c5a3cdfcd4ec8e24f23d88"
+    },
+    {
+      "key": "linux-source",
+      "git_blob": "71fd772ab3b124052461dfefdf4e2e56bc7d4289",
+      "utf8_bytes": 229513,
+      "sha256": "2d5406cf89c09187f7c8b0778b750d785c7b78e7358d68cf66ef65a5a48069e6"
+    },
+    {
+      "key": "windows-source",
+      "git_blob": "9437ddbc4553f5c69e9beb1dea19272c7125b92a",
+      "utf8_bytes": 205970,
+      "sha256": "d01fa1a5a0915b58838f1d78a2998c7af1eb233eb4eb3b575e0e03077b72bb43"
+    },
+    {
+      "key": "943_doi_variants",
+      "git_blob": "a78a069ef5b25aea0b4e5a14bc14ee7c920bcece",
+      "utf8_bytes": 199695,
+      "sha256": "b207691c960af1c53313fdab01b5dcc5c2f840a16e62fc3111688a3f2d75a9a9"
+    },
+    {
+      "key": "1c_linux",
+      "git_blob": "6bfe90628e212e2c64adb3922e4a31edf4bb790a",
+      "utf8_bytes": 1397296,
+      "sha256": "f91e70003bb581ae6f0cdda67fc7f0a2fafa456637e702a35e0cae85a5adc629"
+    },
+    {
+      "key": "936_linux",
+      "git_blob": "0373a6b06208ed29f084ad3a9501bd3f1c501080",
+      "utf8_bytes": 973690,
+      "sha256": "5461adf530a8cabfa59ab21785af6c36f81123f868e49f1a50213e5261002344"
+    }
+  ],
+  "independent_source_selectors": {
+    "head_943": {
+      "modules": 450,
+      "unique": 450,
+      "passed": 11760,
+      "strict": true
+    },
+    "head_2df": {
+      "modules": 450,
+      "unique": 450,
+      "passed": 11755,
+      "strict": true
+    },
+    "method": "Final 450 strict per-suite verdicts match the exact recorded selector multiset, all zero failures/skips and exit zero; the 9 earlier overlapping prerequisites are excluded from counts."
+  },
+  "whole_python_namespaces": {
+    "head_943_and_2df": {
+      "files": 383,
+      "compact_mapping_sha256": "02991995fd42510e0967435ef2c78f60485c4068ddfa7dad22fe743257673fa6",
+      "basis": "Fresh complete trees differ from the exact 3eb383 reference only at audio/windows_process.py; old blob32c38bdf fetched and independently hashed."
+    },
+    "head_3eb": {
+      "files": 383,
+      "compact_mapping_sha256": "b0f32f8135e23e22317ecbca04ce997445a60154d699be6d6bac075b4d6e7f40",
+      "component_verdicts": [
+        {
+          "lane": "linux-source",
+          "passed": 3242,
+          "failed": 0,
+          "skipped": 0
+        },
+        {
+          "lane": "linux-installed",
+          "passed": 3242,
+          "failed": 0,
+          "skipped": 0,
+          "subtests_passed": 12
+        },
+        {
+          "lane": "windows-source",
+          "passed": 3239,
+          "failed": 2,
+          "skipped": 0
+        },
+        {
+          "lane": "windows-installed",
+          "passed": 3239,
+          "failed": 2,
+          "skipped": 0,
+          "subtests_passed": 12
+        }
+      ],
+      "limit": "These historical component workflows emit full namespace digest/equality, not all per-file rows or complete wheel RECORD evidence."
+    }
+  },
+  "head_943_main": {
+    "overall": "FAIL",
+    "source": {
+      "passed": 11760,
+      "failed": 0,
+      "skipped": 0
+    },
+    "bundle": {
+      "pytest_passed": 9319,
+      "pytest_failed": 0,
+      "pytest_skipped": 0,
+      "aggregate": "FAIL",
+      "post_pytest_seal": "NOT_REACHED"
+    },
+    "capture": "FAIL: selected device open denied; no OS policy changed"
+  },
+  "native_acquisition_diagnostic": {
+    "scope": "Historical 943 bundle XML only",
+    "xml_bytes": 1495285,
+    "xml_sha256": "a4425cc38f8879b77473943199fbc3fd86ae00f3cc29048fa4392dbcc5615b50",
+    "exact_two_current_variants": {
+      "module": "test_native_acquisition",
+      "expected_names": [
+        "test_windows_native_dialog_async_lookup_focus_and_close[doi]",
+        "test_windows_native_dialog_async_lookup_focus_and_close[isbn]"
+      ],
+      "actual_names": [
+        "test_windows_native_dialog_async_lookup_focus_and_close[doi]",
+        "test_windows_native_dialog_async_lookup_focus_and_close[isbn]"
+      ],
+      "count": 2,
+      "unique": 2,
+      "unexpected_variant_count": 0,
+      "failed_error_or_skipped_rows": 0,
+      "exact_two_current_variants": true
+    },
+    "original_unsuffixed_predicate": false,
+    "implication": "Supports the source repair naming both required variants; does not make the historical MAIN pass."
+  },
+  "feature_1c_linux": {
+    "source": {
+      "passed": 1053,
+      "failed": 50,
+      "errors": 55,
+      "skipped": 0
+    },
+    "installed": {
+      "passed": 1053,
+      "failed": 50,
+      "errors": 55,
+      "skipped": 0
+    },
+    "note": "Teardown/setup errors can overlap collected cases; counts are not summed into a unique-case claim."
+  },
+  "capacity_936_linux": {
+    "schema": "carr-observed-capacity-regression/1",
+    "tested_head": "936dc6cd65b15fa0a89ae9d01f66709437b1783b",
+    "run_id": 46132576738,
+    "job_id": 140940769223,
+    "status": "FAIL",
+    "source": {
+      "passed": 950,
+      "failed": 25,
+      "skipped": 0,
+      "seconds": 223.66
+    },
+    "installed": {
+      "passed": 950,
+      "failed": 25,
+      "skipped": 0,
+      "seconds": 209.36
+    },
+    "causes": [
+      {
+        "cases_per_mode": 22,
+        "cause": "Two new import callers reference absent config_from_dict; use existing Config decoder.",
+        "owner": "locate_project",
+        "state": "repair in progress"
+      },
+      {
+        "cases_per_mode": 1,
+        "cause": "Declared carr-backup-incremental console entrypoint absent from package metadata.",
+        "repair": "Register existing installed_entrypoint-guarded backup_incremental_cli.main."
+      },
+      {
+        "cases_per_mode": 2,
+        "cause": "One large logical page copies many bytes but validation performs fewer SQLite VM operations than the existing 10000-op progress interval.",
+        "repair": "Add 2000 actual distinct source rows only in cancellation-during-validation fixture. Preserve all assertions, callback identity, production interval and deadlines."
+      }
+    ],
+    "claim": "Historical failure; successor source reviewed only until exact-head rerun completes."
+  },
+  "excluded": [
+    "No current-head PASS",
+    "No final artifact",
+    "No acoustic quality or manual NVDA",
+    "No distribution or signing clearance"
+  ]
+}

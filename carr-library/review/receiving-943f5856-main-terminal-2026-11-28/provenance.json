@@ -1,0 +1,85 @@
+{
+  "schema": "carr-scoped-terminal-receipt/1",
+  "scope": "943f guarded Windows MAIN terminal; source phase and failed aggregate preserved separately",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "head": "943f585659c55481046266338f428e4a1043a9bd",
+  "branch": "carr/ci-endpoint-evaluation-20261127",
+  "event": "push",
+  "run": 46119978375,
+  "attempt": 1,
+  "job": 140902138753,
+  "job_status": "completed",
+  "job_conclusion": "failure",
+  "started_at": "2026-11-28T07:11:14Z",
+  "completed_at": "2026-11-28T09:55:59Z",
+  "raw_log": {
+    "file": "terminal.log",
+    "utf8_bytes": 1968287,
+    "sha256": "c68736fcd0f6f5fadb0e7fc4d42f8b822b89c35b069e9c441c0c7e147fec88ce"
+  },
+  "workflow": {
+    "path": ".github/workflows/carr-windows.yml",
+    "head": "943f585659c55481046266338f428e4a1043a9bd",
+    "snapshot": "workflow-source.yml",
+    "sha256": "4f81c552deb3bf91d5a7fd102d351d6e0658671e4cbf18f947ab89db6922774b"
+  },
+  "source": {
+    "step": 70,
+    "started_at": "2026-11-28T08:57:57Z",
+    "completed_at": "2026-11-28T09:55:53Z",
+    "status": "PASS",
+    "required_modules": 450,
+    "completed_unique_modules": 450,
+    "exact_selector_multiset": true,
+    "execution_completion_order_matches_declaration": false,
+    "parallel_jobs": 2,
+    "passed": 11760,
+    "failed": 0,
+    "skipped": 0,
+    "all_pytest_exit_zero": true,
+    "inventory": "source-inventory.json"
+  },
+  "failed_steps": [
+    {
+      "number": 26,
+      "name": "Require measured capture from the explicitly reviewed virtual input",
+      "started_at": "2026-11-28T07:14:48Z",
+      "completed_at": "2026-11-28T07:14:50Z"
+    },
+    {
+      "number": 66,
+      "name": "Build, install and exercise the complete bundle with runtime egress blocked",
+      "started_at": "2026-11-28T07:25:05Z",
+      "completed_at": "2026-11-28T08:57:56Z"
+    }
+  ],
+  "bundle": {
+    "pytest_passed": 9319,
+    "pytest_failed": 0,
+    "pytest_skipped": 0,
+    "pytest_elapsed_seconds": 5120.42,
+    "step_elapsed_seconds": 5571,
+    "aggregate_status": "FAIL",
+    "failure_boundary": "Post-pytest native acquisition identity predicate expects an unsuffixed name; prior bounded XML diagnosis found that required name absent. The independently dispatched two-variant diagnostic remains pending.",
+    "sealed_after_pytest_and_success_wheel_publication": "NOT_REACHED"
+  },
+  "capture": {
+    "status": "FAIL",
+    "boundary": "Actual selected DirectShow input open failed; no permission, device or OS-policy changes were made."
+  },
+  "standard_installer_in_this_main": {
+    "status": "SKIPPED",
+    "reason": "Dependent on complete_bundle success; no other-head lifecycle result is transferred."
+  },
+  "prior_exact_pre_source_evidence": {
+    "tree": "296c1955c9f66163a5456ca69132cfad6605ee1b",
+    "xml_predicate_tree": "94af55f92c7b3e6b93d05693a8ce17f67b239914"
+  },
+  "qualification_exclusions": [
+    "No overall MAIN PASS",
+    "No sealed full-bundle qualification",
+    "No source-head result transfer",
+    "No acoustic quality, physical capture, NVDA or final-download identity claim"
+  ],
+  "artifact_metadata": "artifacts.json"
+}

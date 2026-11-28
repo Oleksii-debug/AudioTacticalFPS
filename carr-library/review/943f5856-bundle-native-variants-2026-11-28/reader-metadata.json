@@ -1,0 +1,69 @@
+[
+  {
+    "type": "CARR_WINDOWS_READER",
+    "value": {
+      "run": 46119978375,
+      "head": "943f585659c55481046266338f428e4a1043a9bd",
+      "attempt": 1,
+      "python": "3.12.3 (main, Aug 31 2026, 10:18:26) [GCC 13.3.0]",
+      "source_run_status": "completed",
+      "source_run_conclusion": "failure",
+      "scope": "read-only immutable public bundle/capture receipts; no application execution"
+    }
+  },
+  {
+    "type": "CARR_WINDOWS_ARTIFACT",
+    "value": {
+      "id": 15256851282,
+      "name": "carr-windows-pre-source-943f585659c55481046266338f428e4a1043a9bd-1",
+      "bytes": 475789,
+      "sha256": "62b88af6bb0a2df3c90b9f4dfbcbe2de9e16e84642d008eb5b4bb98b110ddb65",
+      "created_at": "2026-11-28T08:57:57Z",
+      "updated_at": "2026-11-28T08:57:57Z",
+      "run": 46119978375,
+      "head": "943f585659c55481046266338f428e4a1043a9bd",
+      "mode": "junit-summary"
+    }
+  },
+  {
+    "type": "CARR_WINDOWS_ARTIFACT",
+    "value": {
+      "id": 15253625504,
+      "name": "carr-windows-audio-endpoint-943f585659c55481046266338f428e4a1043a9bd-1",
+      "bytes": 3942,
+      "sha256": "d7eff7a55f29ba4d5e95b3a266267acdaadd4ba680634f2c7bcf1437f557ef98",
+      "created_at": "2026-11-28T07:12:08Z",
+      "updated_at": "2026-11-28T07:12:08Z",
+      "run": 46119978375,
+      "head": "943f585659c55481046266338f428e4a1043a9bd",
+      "mode": "endpoint"
+    }
+  },
+  {
+    "type": "CARR_WINDOWS_ARTIFACT",
+    "value": {
+      "id": 15253256509,
+      "name": "carr-windows-recording-943f585659c55481046266338f428e4a1043a9bd-1",
+      "bytes": 16780,
+      "sha256": "2db6ce9c98482128246425b098a39c2f417c3a8fd270277516b75523cdf5a293",
+      "created_at": "2026-11-28T07:14:53Z",
+      "updated_at": "2026-11-28T07:14:53Z",
+      "run": 46119978375,
+      "head": "943f585659c55481046266338f428e4a1043a9bd",
+      "mode": "recording"
+    }
+  },
+  {
+    "type": "CARR_WINDOWS_COMPLETE",
+    "value": {
+      "run": 46119978375,
+      "head": "943f585659c55481046266338f428e4a1043a9bd",
+      "artifacts": 3,
+      "selected_files": 16,
+      "zip_digests_verified": true,
+      "application_acceptance": "NOT_ASSESSED",
+      "long_logs": "bounded excerpts; full member hashes retained",
+      "private_assets": "NOT_READ"
+    }
+  }
+]

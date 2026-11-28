@@ -1,0 +1,171 @@
+python -I -B -X utf8 scripts/windows_reading_tabs_smoke.py --source . --output ci-v3-results/source-reading-tabs.json
+if ($LASTEXITCODE -ne 0) { $failures += 'source-reading-tabs' }
+python -I -B -X utf8 scripts/windows_reading_tabs_smoke.py --expect-installed --output ci-v3-results/installed-reading-tabs.json
+if ($LASTEXITCODE -ne 0) { $failures += 'installed-reading-tabs' }
+python -I -B -X utf8 scripts/windows_clipboard_reader_smoke.py --source . --report ci-v3-results/source-clipboard-reader.json
+if ($LASTEXITCODE -ne 0) { $failures += 'source-clipboard-reader' }
+python -I -B -X utf8 scripts/windows_clipboard_reader_smoke.py --expect-installed --report ci-v3-results/installed-clipboard-reader.json
+if ($LASTEXITCODE -ne 0) { $failures += 'installed-clipboard-reader' }
+if ($failures.Count) { throw ('Native reading tabs failed: ' + ($failures -join ', ')) }
+shell: C:\Program Files\PowerShell\7\pwsh.EXE -command ". '{0}'"
+env:
+  PYTHONUTF8: 1
+  PYTHONUNBUFFERED: 1
+  HF_HUB_OFFLINE: 1
+  TRANSFORMERS_OFFLINE: 1
+  DO_NOT_TRACK: 1
+  pythonLocation: C:\hostedtoolcache\windows\Python\3.11.9\x64
+  PKG_CONFIG_PATH: C:\hostedtoolcache\windows\Python\3.11.9\x64/lib/pkgconfig
+  Python_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+  Python2_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+  Python3_ROOT_DIR: C:\hostedtoolcache\windows\Python\3.11.9\x64
+  CARR_V3_AUDIO: D:\a\_temp\carr-v3-audio
+  CARR_OCR_DIR: D:\a\_temp\carr-v3-ocr\runtime
+##[endgroup]
+READING_TABS_PHASE starting
+READING_TABS_PHASE exact imported module: carr_library.durable_state
+READING_TABS_PHASE exact imported module: carr_library.speech.reading
+READING_TABS_PHASE exact imported module: carr_library.speech.session
+READING_TABS_PHASE exact imported module: carr_library.speech.tabs
+READING_TABS_PHASE exact imported module: carr_library.speech.focus
+READING_TABS_PHASE exact imported module: carr_library.speech.reading_tools
+READING_TABS_PHASE exact imported module: carr_library.ui.reader_tabs
+READING_TABS_PHASE exact imported module: carr_library.ui.reading_focus
+READING_TABS_PHASE exact imported module: carr_library.ui.speech_dialog
+READING_TABS_PHASE exact imported module: carr_library.ui.reader_presentation
+READING_TABS_PHASE exact imported module: carr_library.ui.keyboard_settings
+READING_TABS_PHASE exact imported module: carr_library.ui.save_all
+READING_TABS_PHASE exact imported module: carr_library.ui.productivity
+READING_TABS_PHASE actual Windows native controls
+READING_TABS_PHASE one recovered native notebook page has the exact original
+READING_TABS_PHASE recovery preparation ran on the existing reader worker
+READING_TABS_PHASE an unavailable remembered voice stays passive without fallback
+READING_TABS_PHASE actual keyboard editing changes only the first reading copy
+READING_TABS_PHASE actual Ctrl+S completed its guarded reader save
+READING_TABS_PHASE new native tab is a distinct blank with no automatic speech
+READING_TABS_PHASE actual Ctrl+S completed its guarded reader save
+READING_TABS_PHASE two durable identities retain separate originals and undo histories
+READING_TABS_PHASE an intentionally erased copy remains a dirty edit
+READER: All 1 open drafts saved.
+READING_TABS_PHASE native shared Save All persists the erased copy and all histories
+READING_TABS_PHASE the erased tab has its own real undo history
+READING_TABS_PHASE actual Ctrl+S completed its guarded reader save
+READING_TABS_PHASE native Control Tab restores first text and saved Unicode cursor
+READING_TABS_PHASE appearance follows the active editor without replacing its text
+READING_TABS_PHASE paced reading opens paused and leaves source text intact
+READING_TABS_PHASE the actual native timer advances only after explicit Start
+READING_TABS_PHASE native Pause stops paced movement without moving editor focus
+READING_TABS_PHASE explicit focus cursor return uses verified native Unicode offsets
+READING_TABS_PHASE audio follow refuses to invent a recording or word timings
+READING_TABS_PHASE the replaced default Stop binding is inactive in focus
+READING_TABS_PHASE the shared remapped Stop remains reachable after source revocation
+READING_TABS_PHASE actual Ctrl+S completed its guarded reader save
+READING_TABS_PHASE all first-session tab drafts are clean before native Close
+READING_TABS_PHASE closed reader unregistered its shared save participant
+READING_TABS_PHASE fresh reader restores both durable identities and active tab
+READING_TABS_PHASE fresh reader retains source bytes, other history and passive voice identity
+READING_TABS_PHASE first tab undo after restart does not alter the second copy
+READER: All 1 open drafts saved.
+READING_TABS_PHASE recovered dirty histories save through the existing coordinator
+READING_TABS_PHASE closed reader unregistered its shared save participant
+READING_TABS_PHASE source-linked reader remains a separately guarded single editor
+READING_TABS_PHASE actual Ctrl+S completed its guarded reader save
+READING_TABS_PHASE closed reader unregistered its shared save participant
+READING_TABS_PHASE immutable original fixture bytes remain unchanged
+READING_TABS_PHASE complete
+READING_TABS_PHASE starting
+READING_TABS_PHASE exact imported module: carr_library.durable_state
+READING_TABS_PHASE exact imported module: carr_library.speech.reading
+READING_TABS_PHASE exact imported module: carr_library.speech.session
+READING_TABS_PHASE exact imported module: carr_library.speech.tabs
+READING_TABS_PHASE exact imported module: carr_library.speech.focus
+READING_TABS_PHASE exact imported module: carr_library.speech.reading_tools
+READING_TABS_PHASE exact imported module: carr_library.ui.reader_tabs
+READING_TABS_PHASE exact imported module: carr_library.ui.reading_focus
+READING_TABS_PHASE exact imported module: carr_library.ui.speech_dialog
+READING_TABS_PHASE exact imported module: carr_library.ui.reader_presentation
+READING_TABS_PHASE exact imported module: carr_library.ui.keyboard_settings
+READING_TABS_PHASE exact imported module: carr_library.ui.save_all
+READING_TABS_PHASE exact imported module: carr_library.ui.productivity
+READING_TABS_PHASE actual Windows native controls
+READING_TABS_PHASE one recovered native notebook page has the exact original
+READING_TABS_PHASE recovery preparation ran on the existing reader worker
+READING_TABS_PHASE an unavailable remembered voice stays passive without fallback
+READING_TABS_PHASE actual keyboard editing changes only the first reading copy
+READING_TABS_PHASE actual Ctrl+S completed its guarded reader save
+READING_TABS_PHASE new native tab is a distinct blank with no automatic speech
+READING_TABS_PHASE actual Ctrl+S completed its guarded reader save
+READING_TABS_PHASE two durable identities retain separate originals and undo histories
+READING_TABS_PHASE an intentionally erased copy remains a dirty edit
+READER: All 1 open drafts saved.
+READING_TABS_PHASE native shared Save All persists the erased copy and all histories
+READING_TABS_PHASE the erased tab has its own real undo history
+READING_TABS_PHASE actual Ctrl+S completed its guarded reader save
+READING_TABS_PHASE native Control Tab restores first text and saved Unicode cursor
+READING_TABS_PHASE appearance follows the active editor without replacing its text
+READING_TABS_PHASE paced reading opens paused and leaves source text intact
+READING_TABS_PHASE the actual native timer advances only after explicit Start
+READING_TABS_PHASE native Pause stops paced movement without moving editor focus
+READING_TABS_PHASE explicit focus cursor return uses verified native Unicode offsets
+READING_TABS_PHASE audio follow refuses to invent a recording or word timings
+READING_TABS_PHASE the replaced default Stop binding is inactive in focus
+READING_TABS_PHASE the shared remapped Stop remains reachable after source revocation
+READING_TABS_PHASE actual Ctrl+S completed its guarded reader save
+READING_TABS_PHASE all first-session tab drafts are clean before native Close
+READING_TABS_PHASE closed reader unregistered its shared save participant
+READING_TABS_PHASE fresh reader restores both durable identities and active tab
+READING_TABS_PHASE fresh reader retains source bytes, other history and passive voice identity
+READING_TABS_PHASE first tab undo after restart does not alter the second copy
+READER: All 1 open drafts saved.
+READING_TABS_PHASE recovered dirty histories save through the existing coordinator
+READING_TABS_PHASE closed reader unregistered its shared save participant
+READING_TABS_PHASE source-linked reader remains a separately guarded single editor
+READING_TABS_PHASE actual Ctrl+S completed its guarded reader save
+READING_TABS_PHASE closed reader unregistered its shared save participant
+READING_TABS_PHASE immutable original fixture bytes remain unchanged
+READING_TABS_PHASE complete
+PASS: native Unicode read preserves exact fixture whitespace
+PASS: installing the native menu starts no reader or audio
+PASS: native command retains its window owner
+PASS: clipboard ownership ends before reader handoff
+PASS: actual native menu dispatch uses the independent recoverable reading slot
+PASS: reading leaves actual clipboard bytes unchanged
+PASS: later clipboard changes do not start a watcher or another reader
+PASS: empty native clipboard text cannot enter the reader
+PASS: closing owner rejects native command admission
+PASS: native Unicode read preserves exact fixture whitespace
+PASS: installing the native menu starts no reader or audio
+PASS: native command retains its window owner
+PASS: clipboard ownership ends before reader handoff
+PASS: actual native menu dispatch uses the independent recoverable reading slot
+PASS: reading leaves actual clipboard bytes unchanged
+PASS: later clipboard changes do not start a watcher or another reader
+PASS: empty native clipboard text cannot enter the reader
+PASS: closing owner rejects native command admission
+##[group]Run $python = (Get-Command python.exe).Source
+$python = (Get-Command python.exe).Source
+$basePython = (& $python -I -c "import sys; print(sys._base_executable)").Trim()
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+$programs = @($python, $basePython, (Get-Command node.exe).Source,
+  (Join-Path $env:SystemRoot 'System32/WindowsPowerShell/v1.0/powershell.exe'),
+  (Join-Path $env:SystemRoot 'SysWOW64/WindowsPowerShell/v1.0/powershell.exe'),
+  (Join-Path $env:CARR_V3_AUDIO 'bin/ffmpeg.exe'),
+  (Join-Path $env:CARR_V3_AUDIO 'bin/ffprobe.exe')) | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } | ForEach-Object { [System.IO.Path]::GetFullPath($_) } | Sort-Object -Unique
+$rulePrefix = 'CARR-v3-offline-' + [guid]::NewGuid().ToString('N')
+$ruleNames = @()
+$profilesBefore = @(Get-NetFirewallProfile -ErrorAction Stop | Select-Object Name, Enabled)
+try {
+  Set-NetFirewallProfile -Profile Domain, Private, Public -Enabled True -ErrorAction Stop
+  foreach ($program in $programs) {
+    $ruleName = $rulePrefix + '-' + $ruleNames.Count
+    $ruleNames += $ruleName
+    New-NetFirewallRule -Name $ruleName -DisplayName $ruleName -Direction Outbound -Action Block -Profile Any -Program $program -Enabled True -ErrorAction Stop | Out-Null
+  }
+  $profiles = @(Get-NetFirewallProfile -ErrorAction Stop)
+  if (@($profiles | Where-Object { $_.Enabled -ne 'True' }).Count -ne 0) { throw 'Offline native checks require enabled firewall profiles.' }
+  $active = @(Get-NetFirewallRule -PolicyStore ActiveStore -Name $ruleNames -ErrorAction Stop)
+  if ($active.Count -ne $programs.Count -or @($active | Where-Object { $_.Enabled -ne 'True' -or $_.Direction -ne 'Outbound' -or $_.Action -ne 'Block' }).Count -ne 0) { throw 'Offline runtime rules are not active.' }
+  $filters = @($active | Get-NetFirewallApplicationFilter -ErrorAction Stop | Select-Object -ExpandProperty Program | ForEach-Object { [System.IO.Path]::GetFullPath($_) })
+  if (@(Compare-Object ($programs | Sort-Object) ($filters | Sort-Object)).Count -ne 0) { throw 'Offline rules do not cover the selected runtime programs.' }
+  @{ status='PASS'; blocked_programs=$filters; scope='tested runtime executables, not a whole-machine network claim' } | ConvertTo-Json -Depth 4 | Set-Content 'ci-v3-results/runtime-firewall.json'
+  & $python -I -B 

@@ -1,0 +1,214 @@
+=========================== short test summary info ============================
+FAILED tests/storage/test_cue_interchange_backup.py::test_actual_backup_retains_exact_cue_declaration_and_revokes_output_authority[False-native-format5] - AttributeError: 'LibraryApp' object has no attribute 'close_search'
+FAILED tests/storage/test_cue_interchange_backup.py::test_actual_backup_retains_exact_cue_declaration_and_revokes_output_authority[False-legacy-flat4] - AttributeError: 'LibraryApp' object has no attribute 'close_search'
+FAILED tests/storage/test_cue_interchange_backup.py::test_actual_backup_retains_exact_cue_declaration_and_revokes_output_authority[True-native-format5] - AttributeError: 'LibraryApp' object has no attribute 'close_search'
+FAILED tests/storage/test_cue_interchange_backup.py::test_actual_backup_retains_exact_cue_declaration_and_revokes_output_authority[True-legacy-flat4] - AttributeError: 'LibraryApp' object has no attribute 'close_search'
+FAILED tests/audio/test_director_effects.py::test_effect_project_publishes_through_the_existing_primary_source_validator - ValueError: Primary Studio timeline does not belong to the original project and completed artifacts.
+FAILED tests/storage/test_director_effects_backup.py::test_typed_effects_survive_real_backup_without_restoring_execution_authority[foreign-flat4] - carr_library.ingest.restore.RestoreError: No validated backup adapter is installed for studio/projects/cac1c08c7ed1441ab6269148c93dbc40/jobs/125e2dfed01f4e1c9c9062bf082a515c.json. Save and pause its producer; this backup was not completed.
+FAILED tests/assistant/test_translation_partition.py::test_partition_reuses_one_job_and_retains_accepted_receipts_across_pause - ValueError: Invalid authorized task.
+FAILED tests/assistant/test_translation_partition.py::test_changed_saved_partition_is_refused_before_credentials_or_next_request[mapping] - ValueError: Invalid authorized task.
+FAILED tests/assistant/test_translation_partition.py::test_changed_saved_partition_is_refused_before_credentials_or_next_request[boundaries] - ValueError: Invalid authorized task.
+FAILED tests/assistant/test_translation_partition.py::test_changed_saved_partition_is_refused_before_credentials_or_next_request[null] - ValueError: Invalid authorized task.
+FAILED tests/assistant/test_translation_partition.py::test_changed_saved_partition_is_refused_before_credentials_or_next_request[removed] - ValueError: Invalid authorized task.
+FAILED tests/assistant/test_translation_partition.py::test_partition_is_detached_before_a_live_guard_mutates_the_caller_mapping - ValueError: Invalid authorized task.
+FAILED tests/assistant/test_translation_layout.py::test_review_binds_one_job_to_exact_structure_without_provider_or_credentials - ValueError: Invalid authorized task.
+FAILED tests/assistant/test_translation_layout.py::test_real_completed_docx_preserves_tables_styles_links_and_every_other_zip_member - ValueError: Invalid authorized task.
+FAILED tests/assistant/test_translation_layout.py::test_partial_job_cannot_publish_and_resumes_only_unaccepted_requests - ValueError: Invalid authorized task.
+FAILED tests/assistant/test_translation_layout.py::test_final_publication_keeps_exact_source_destination_and_new_file_authority[source] - ValueError: Invalid authorized task.
+FAILED tests/assistant/test_translation_layout.py::test_final_publication_keeps_exact_source_destination_and_new_file_authority[same-byte-competitor] - ValueError: Invalid authorized task.
+FAILED tests/assistant/test_translation_layout.py::test_final_publication_keeps_exact_source_destination_and_new_file_authority[parent] - ValueError: Invalid authorized task.
+FAILED tests/assistant/test_translation_layout.py::test_final_publication_keeps_exact_source_destination_and_new_file_authority[private-target] - ValueError: Invalid authorized task.
+FAILED tests/assistant/test_translation_layout.py::test_stop_after_actual_publication_preserves_completed_new_file_receipt - ValueError: Invalid authorized task.
+FAILED tests/assistant/test_translation_layout.py::test_actual_worker_cancel_reaps_child_before_lease_and_stage_release - carr_library.operations.models.ResourceCancelled: Operation cancelled; finish native worker cleanup before leaving the reservation.
+FAILED tests/assistant/test_translation_layout.py::test_explicit_cli_review_submit_and_new_file_export_share_the_same_saved_job - ValueError: Invalid authorized task.
+FAILED tests/assistant/test_translation_layout.py::test_portable_cli_process_keeps_actual_pending_families_and_stage_until_both_quiet[first-family-direct-operation] - AssertionError: The portable CLI never reached its actual pending native families.
+FAILED tests/assistant/test_translation_layout.py::test_portable_cli_process_keeps_actual_pending_families_and_stage_until_both_quiet[first-family-direct-runtime-close] - AssertionError: The portable CLI never reached its actual pending native families.
+FAILED tests/assistant/test_translation_layout.py::test_portable_cli_process_keeps_actual_pending_families_and_stage_until_both_quiet[first-family-causal-operation] - AssertionError: The portable CLI never reached its actual pending native families.
+FAILED tests/assistant/test_translation_layout.py::test_portable_cli_process_keeps_actual_pending_families_and_stage_until_both_quiet[first-family-causal-runtime-close] - AssertionError: The portable CLI never reached its actual pending native families.
+FAILED tests/assistant/test_translation_layout.py::test_portable_cli_process_keeps_actual_pending_families_and_stage_until_both_quiet[second-family-direct-operation] - AssertionError: The portable CLI never reached its actual pending native families.
+FAILED tests/assistant/test_translation_layout.py::test_portable_cli_process_keeps_actual_pending_families_and_stage_until_both_quiet[second-family-direct-runtime-close] - AssertionError: The portable CLI never reached its actual pending native families.
+FAILED tests/assistant/test_translation_layout.py::test_portable_cli_process_keeps_actual_pending_families_and_stage_until_both_quiet[second-family-causal-operation] - AssertionError: The portable CLI never reached its actual pending native families.
+FAILED tests/assistant/test_translation_layout.py::test_portable_cli_process_keeps_actual_pending_families_and_stage_until_both_quiet[second-family-causal-runtime-close] - AssertionError: The portable CLI never reached its actual pending native families.
+FAILED tests/assistant/test_translation_epub_layout.py::test_actual_epub_capture_and_review_bind_one_whole_original_without_external_calls - ValueError: Invalid authorized task.
+FAILED tests/assistant/test_translation_epub_layout.py::test_actual_epub_export_preserves_dom_links_styles_media_and_canonical_source - ValueError: Invalid authorized task.
+FAILED tests/assistant/test_translation_epub_layout.py::test_translated_markup_remains_literal_text_not_active_xhtml - ValueError: Invalid authorized task.
+FAILED tests/assistant/test_translation_epub_layout.py::test_rendered_whitespace_identity_does_not_rewrite_accepted_provider_receipts - ValueError: Invalid authorized task.
+FAILED tests/assistant/test_translation_epub_layout.py::test_paused_epub_reuses_only_accepted_blocks_without_duplicate_calls - ValueError: Invalid authorized task.
+FAILED tests/assistant/test_translation_epub_layout.py::test_many_chapters_keep_one_existing_job_and_bounded_source_positions - ValueError: Invalid authorized task.
+FAILED tests/assistant/test_translation_epub_layout.py::test_committed_epub_receipt_survives_a_stop_after_the_atomic_publisher_return - ValueError: Invalid authorized task.
+FAILED tests/storage/test_translation_layout_backup.py::test_actual_recovery_preserves_partition_receipts_and_exports_without_original_paths_or_credentials[docx-native5] - ValueError: Invalid authorized task.
+FAILED tests/storage/test_translation_layout_backup.py::test_actual_recovery_preserves_partition_receipts_and_exports_without_original_paths_or_credentials[docx-flat4] - ValueError: Invalid authorized task.
+FAILED tests/storage/test_translation_layout_backup.py::test_actual_recovery_preserves_partition_receipts_and_exports_without_original_paths_or_credentials[epub-native5] - ValueError: Invalid authorized task.
+FAILED tests/storage/test_translation_layout_backup.py::test_actual_recovery_preserves_partition_receipts_and_exports_without_original_paths_or_credentials[epub-flat4] - ValueError: Invalid authorized task.
+FAILED tests/storage/test_translation_layout_backup.py::test_rehashed_partition_damage_is_rejected_before_restore_publication[null-native5] - ValueError: Invalid authorized task.
+FAILED tests/storage/test_translation_layout_backup.py::test_rehashed_partition_damage_is_rejected_before_restore_publication[null-flat4] - ValueError: Invalid authorized task.
+FAILED tests/storage/test_translation_layout_backup.py::test_rehashed_partition_damage_is_rejected_before_restore_publication[boundaries-native5] - ValueError: Invalid authorized task.
+FAILED tests/storage/test_translation_layout_backup.py::test_rehashed_partition_damage_is_rejected_before_restore_publication[boundaries-flat4] - ValueError: Invalid authorized task.
+FAILED tests/storage/test_translation_layout_backup.py::test_rehashed_partition_damage_is_rejected_before_restore_publication[profile-native5] - ValueError: Invalid authorized task.
+FAILED tests/storage/test_translation_layout_backup.py::test_rehashed_partition_damage_is_rejected_before_restore_publication[profile-flat4] - ValueError: Invalid authorized task.
+FAILED tests/storage/test_translation_layout_backup.py::test_rehashed_partition_damage_is_rejected_before_restore_publication[mapping-native5] - ValueError: Invalid authorized task.
+FAILED tests/storage/test_translation_layout_backup.py::test_rehashed_partition_damage_is_rejected_before_restore_publication[mapping-flat4] - ValueError: Invalid authorized task.
+FAILED tests/audio/test_dsp.py::test_converter_chorus_retains_its_real_tail_and_mixer_refuses_implicit_truncation - assert False
+ERROR tests/studio/test_interchange.py::test_completed_replay_requires_exact_cue_bytes_and_declared_source[missing-receipt] - assert None
+ERROR tests/studio/test_interchange.py::test_completed_replay_requires_exact_cue_bytes_and_declared_source[rehashed-bytes] - assert None
+ERROR tests/studio/test_interchange.py::test_completed_replay_requires_exact_cue_bytes_and_declared_source[false-index] - assert None
+ERROR tests/studio/test_interchange.py::test_completed_replay_requires_exact_cue_bytes_and_declared_source[false-qualification] - assert None
+ERROR tests/studio/test_interchange.py::test_new_cue_private_staging_is_disposable_and_legacy_completed_jobs_stay_valid - assert None
+ERROR tests/storage/test_cue_interchange_backup.py::test_actual_backup_retains_exact_cue_declaration_and_revokes_output_authority[False-native-format5] - assert None
+ERROR tests/storage/test_cue_interchange_backup.py::test_actual_backup_retains_exact_cue_declaration_and_revokes_output_authority[False-legacy-flat4] - assert None
+ERROR tests/storage/test_cue_interchange_backup.py::test_actual_backup_retains_exact_cue_declaration_and_revokes_output_authority[True-native-format5] - assert None
+ERROR tests/storage/test_cue_interchange_backup.py::test_actual_backup_retains_exact_cue_declaration_and_revokes_output_authority[True-legacy-flat4] - assert None
+ERROR tests/storage/test_cue_interchange_backup.py::test_rehashed_cue_metadata_cannot_replace_its_project_or_measured_timeline[false-index-native-format5] - assert None
+ERROR tests/storage/test_cue_interchange_backup.py::test_rehashed_cue_metadata_cannot_replace_its_project_or_measured_timeline[false-index-legacy-flat4] - assert None
+ERROR tests/storage/test_cue_interchange_backup.py::test_rehashed_cue_metadata_cannot_replace_its_project_or_measured_timeline[false-source-native-format5] - assert None
+ERROR tests/storage/test_cue_interchange_backup.py::test_rehashed_cue_metadata_cannot_replace_its_project_or_measured_timeline[false-source-legacy-flat4] - assert None
+ERROR tests/storage/test_cue_interchange_backup.py::test_rehashed_cue_metadata_cannot_replace_its_project_or_measured_timeline[false-project-native-format5] - assert None
+ERROR tests/storage/test_cue_interchange_backup.py::test_rehashed_cue_metadata_cannot_replace_its_project_or_measured_timeline[false-project-legacy-flat4] - assert None
+ERROR tests/storage/test_cue_interchange_backup.py::test_rehashed_cue_metadata_cannot_replace_its_project_or_measured_timeline[false-qualification-native-format5] - assert None
+ERROR tests/storage/test_cue_interchange_backup.py::test_rehashed_cue_metadata_cannot_replace_its_project_or_measured_timeline[false-qualification-legacy-flat4] - assert None
+ERROR tests/storage/test_cue_interchange_backup.py::test_rehashed_cue_metadata_cannot_replace_its_project_or_measured_timeline[false-schema-native-format5] - assert None
+ERROR tests/storage/test_cue_interchange_backup.py::test_rehashed_cue_metadata_cannot_replace_its_project_or_measured_timeline[false-schema-legacy-flat4] - assert None
+ERROR tests/storage/test_cue_interchange_backup.py::test_cue_timeline_requires_its_retained_project_checkpoint[native-format5] - assert None
+ERROR tests/storage/test_cue_interchange_backup.py::test_cue_timeline_requires_its_retained_project_checkpoint[legacy-flat4] - assert None
+ERROR tests/storage/test_cue_interchange_backup.py::test_legacy_timeline_without_interchange_keeps_its_original_bytes[native-format5] - assert None
+ERROR tests/storage/test_cue_interchange_backup.py::test_legacy_timeline_without_interchange_keeps_its_original_bytes[legacy-flat4] - assert None
+ERROR tests/storage/test_cue_interchange_backup.py::test_cancellation_during_real_cue_metadata_validation_publishes_no_backup - assert None
+ERROR tests/assistant/test_translation_layout.py::test_actual_worker_maps_exact_retained_body_and_cells_under_the_real_lease - AttributeError: 'LibraryApp' object has no attribute 'close_search'
+ERROR tests/assistant/test_translation_layout.py::test_review_binds_one_job_to_exact_structure_without_provider_or_credentials - AttributeError: 'LibraryApp' object has no attribute 'close_search'
+ERROR tests/assistant/test_translation_layout.py::test_real_completed_docx_preserves_tables_styles_links_and_every_other_zip_member - AttributeError: 'LibraryApp' object has no attribute 'close_search'
+ERROR tests/assistant/test_translation_layout.py::test_mixed_hyperlink_is_refused_by_actual_worker_before_jobs_or_requests - AttributeError: 'LibraryApp' object has no attribute 'close_search'
+ERROR tests/assistant/test_translation_layout.py::test_same_size_modified_worker_request_is_refused_by_actual_snapshot - AttributeError: 'LibraryApp' object has no attribute 'close_search'
+ERROR tests/assistant/test_translation_layout.py::test_wrong_actual_worker_origin_is_refused_before_parsing - AttributeError: 'LibraryApp' object has no attribute 'close_search'
+ERROR tests/assistant/test_translation_layout.py::test_forged_mapping_cannot_reuse_original_review - AttributeError: 'LibraryApp' object has no attribute 'close_search'
+ERROR tests/assistant/test_translation_layout.py::test_partial_job_cannot_publish_and_resumes_only_unaccepted_requests - AttributeError: 'LibraryApp' object has no attribute 'close_search'
+ERROR tests/assistant/test_translation_layout.py::test_final_publication_keeps_exact_source_destination_and_new_file_authority[source] - AttributeError: 'LibraryApp' object has no attribute 'close_search'
+ERROR tests/assistant/test_translation_layout.py::test_final_publication_keeps_exact_source_destination_and_new_file_authority[same-byte-competitor] - AttributeError: 'LibraryApp' object has no attribute 'close_search'
+ERROR tests/assistant/test_translation_layout.py::test_final_publication_keeps_exact_source_destination_and_new_file_authority[parent] - AttributeError: 'LibraryApp' object has no attribute 'close_search'
+ERROR tests/assistant/test_translation_layout.py::test_final_publication_keeps_exact_source_destination_and_new_file_authority[private-target] - AttributeError: 'LibraryApp' object has no attribute 'close_search'
+ERROR tests/assistant/test_translation_layout.py::test_stop_after_actual_publication_preserves_completed_new_file_receipt - AttributeError: 'LibraryApp' object has no attribute 'close_search'
+ERROR tests/assistant/test_translation_layout.py::test_declared_resource_refusal_precedes_parser_and_provider - AttributeError: 'LibraryApp' object has no attribute 'close_search'
+ERROR tests/assistant/test_translation_layout.py::test_actual_worker_cancel_reaps_child_before_lease_and_stage_release - AttributeError: 'LibraryApp' object has no attribute 'close_search'
+ERROR tests/assistant/test_translation_layout.py::test_two_actual_pending_families_retain_one_stage_and_lease_until_both_quiet[first-child-direct] - AttributeError: 'LibraryApp' object has no attribute 'close_search'
+ERROR tests/assistant/test_translation_layout.py::test_two_actual_pending_families_retain_one_stage_and_lease_until_both_quiet[first-child-causal] - AttributeError: 'LibraryApp' object has no attribute 'close_search'
+ERROR tests/assistant/test_translation_layout.py::test_two_actual_pending_families_retain_one_stage_and_lease_until_both_quiet[second-child-direct] - AttributeError: 'LibraryApp' object has no attribute 'close_search'
+ERROR tests/assistant/test_translation_layout.py::test_two_actual_pending_families_retain_one_stage_and_lease_until_both_quiet[second-child-causal] - AttributeError: 'LibraryApp' object has no attribute 'close_search'
+ERROR tests/assistant/test_translation_layout.py::test_explicit_cli_review_submit_and_new_file_export_share_the_same_saved_job - AttributeError: 'LibraryApp' object has no attribute 'close_search'
+ERROR tests/assistant/test_translation_layout.py::test_cli_format_mode_refuses_partial_or_multiple_documents_before_parsing[arguments0] - AttributeError: 'LibraryApp' object has no attribute 'close_search'
+ERROR tests/assistant/test_translation_layout.py::test_cli_format_mode_refuses_partial_or_multiple_documents_before_parsing[arguments1] - AttributeError: 'LibraryApp' object has no attribute 'close_search'
+ERROR tests/assistant/test_translation_epub_layout.py::test_actual_epub_capture_and_review_bind_one_whole_original_without_external_calls - AttributeError: 'LibraryApp' object has no attribute 'close_search'
+ERROR tests/assistant/test_translation_epub_layout.py::test_actual_epub_export_preserves_dom_links_styles_media_and_canonical_source - AttributeError: 'LibraryApp' object has no attribute 'close_search'
+ERROR tests/assistant/test_translation_epub_layout.py::test_translated_markup_remains_literal_text_not_active_xhtml - AttributeError: 'LibraryApp' object has no attribute 'close_search'
+ERROR tests/assistant/test_translation_epub_layout.py::test_rendered_whitespace_identity_does_not_rewrite_accepted_provider_receipts - AttributeError: 'LibraryApp' object has no attribute 'close_search'
+ERROR tests/assistant/test_translation_epub_layout.py::test_current_epub_mapping_is_revalidated_before_approving_requests - AttributeError: 'LibraryApp' object has no attribute 'close_search'
+ERROR tests/assistant/test_translation_epub_layout.py::test_changed_request_snapshot_is_refused_by_the_actual_epub_worker - AttributeError: 'LibraryApp' object has no attribute 'close_search'
+ERROR tests/assistant/test_translation_epub_layout.py::test_paused_epub_reuses_only_accepted_blocks_without_duplicate_calls - AttributeError: 'LibraryApp' object has no attribute 'close_search'
+ERROR tests/assistant/test_translation_epub_layout.py::test_many_chapters_keep_one_existing_job_and_bounded_source_positions - AttributeError: 'LibraryApp' object has no attribute 'close_search'
+ERROR tests/assistant/test_translation_epub_layout.py::test_committed_epub_receipt_survives_a_stop_after_the_atomic_publisher_return - AttributeError: 'LibraryApp' object has no attribute 'close_search'
+============ 50 failed, 1053 passed, 55 errors in 248.79s (0:04:08) ============
+=========================== short test summary info ============================
+FAILED tests/storage/test_cue_interchange_backup.py::test_actual_backup_retains_exact_cue_declaration_and_revokes_output_authority[False-native-format5] - AttributeError: 'LibraryApp' object has no attribute 'close_search'
+FAILED tests/storage/test_cue_interchange_backup.py::test_actual_backup_retains_exact_cue_declaration_and_revokes_output_authority[False-legacy-flat4] - AttributeError: 'LibraryApp' object has no attribute 'close_search'
+FAILED tests/storage/test_cue_interchange_backup.py::test_actual_backup_retains_exact_cue_declaration_and_revokes_output_authority[True-native-format5] - AttributeError: 'LibraryApp' object has no attribute 'close_search'
+FAILED tests/storage/test_cue_interchange_backup.py::test_actual_backup_retains_exact_cue_declaration_and_revokes_output_authority[True-legacy-flat4] - AttributeError: 'LibraryApp' object has no attribute 'close_search'
+FAILED tests/audio/test_director_effects.py::test_effect_project_publishes_through_the_existing_primary_source_validator - ValueError: Primary Studio timeline does not belong to the original project and completed artifacts.
+FAILED tests/storage/test_director_effects_backup.py::test_typed_effects_survive_real_backup_without_restoring_execution_authority[foreign-flat4] - carr_library.ingest.restore.RestoreError: No validated backup adapter is installed for studio/projects/01032fb8ee11415f8fc7567b8b6d5081/jobs/f6a5660ab44b45ecb822464515ba9bf3.json. Save and pause its producer; this backup was not completed.
+FAILED tests/assistant/test_translation_partition.py::test_partition_reuses_one_job_and_retains_accepted_receipts_across_pause - ValueError: Invalid authorized task.
+FAILED tests/assistant/test_translation_partition.py::test_changed_saved_partition_is_refused_before_credentials_or_next_request[mapping] - ValueError: Invalid authorized task.
+FAILED tests/assistant/test_translation_partition.py::test_changed_saved_partition_is_refused_before_credentials_or_next_request[boundaries] - ValueError: Invalid authorized task.
+FAILED tests/assistant/test_translation_partition.py::test_changed_saved_partition_is_refused_before_credentials_or_next_request[null] - ValueError: Invalid authorized task.
+FAILED tests/assistant/test_translation_partition.py::test_changed_saved_partition_is_refused_before_credentials_or_next_request[removed] - ValueError: Invalid authorized task.
+FAILED tests/assistant/test_translation_partition.py::test_partition_is_detached_before_a_live_guard_mutates_the_caller_mapping - ValueError: Invalid authorized task.
+FAILED tests/assistant/test_translation_layout.py::test_review_binds_one_job_to_exact_structure_without_provider_or_credentials - ValueError: Invalid authorized task.
+FAILED tests/assistant/test_translation_layout.py::test_real_completed_docx_preserves_tables_styles_links_and_every_other_zip_member - ValueError: Invalid authorized task.
+FAILED tests/assistant/test_translation_layout.py::test_partial_job_cannot_publish_and_resumes_only_unaccepted_requests - ValueError: Invalid authorized task.
+FAILED tests/assistant/test_translation_layout.py::test_final_publication_keeps_exact_source_destination_and_new_file_authority[source] - ValueError: Invalid authorized task.
+FAILED tests/assistant/test_translation_layout.py::test_final_publication_keeps_exact_source_destination_and_new_file_authority[same-byte-competitor] - ValueError: Invalid authorized task.
+FAILED tests/assistant/test_translation_layout.py::test_final_publication_keeps_exact_source_destination_and_new_file_authority[parent] - ValueError: Invalid authorized task.
+FAILED tests/assistant/test_translation_layout.py::test_final_publication_keeps_exact_source_destination_and_new_file_authority[private-target] - ValueError: Invalid authorized task.
+FAILED tests/assistant/test_translation_layout.py::test_stop_after_actual_publication_preserves_completed_new_file_receipt - ValueError: Invalid authorized task.
+FAILED tests/assistant/test_translation_layout.py::test_actual_worker_cancel_reaps_child_before_lease_and_stage_release - carr_library.operations.models.ResourceCancelled: Operation cancelled; finish native worker cleanup before leaving the reservation.
+FAILED tests/assistant/test_translation_layout.py::test_explicit_cli_review_submit_and_new_file_export_share_the_same_saved_job - ValueError: Invalid authorized task.
+FAILED tests/assistant/test_translation_layout.py::test_portable_cli_process_keeps_actual_pending_families_and_stage_until_both_quiet[first-family-direct-operation] - AssertionError: The portable CLI never reached its actual pending native families.
+FAILED tests/assistant/test_translation_layout.py::test_portable_cli_process_keeps_actual_pending_families_and_stage_until_both_quiet[first-family-direct-runtime-close] - AssertionError: The portable CLI never reached its actual pending native families.
+FAILED tests/assistant/test_translation_layout.py::test_portable_cli_process_keeps_actual_pending_families_and_stage_until_both_quiet[first-family-causal-operation] - AssertionError: The portable CLI never reached its actual pending native families.
+FAILED tests/assistant/test_translation_layout.py::test_portable_cli_process_keeps_actual_pending_families_and_stage_until_both_quiet[first-family-causal-runtime-close] - AssertionError: The portable CLI never reached its actual pending native families.
+FAILED tests/assistant/test_translation_layout.py::test_portable_cli_process_keeps_actual_pending_families_and_stage_until_both_quiet[second-family-direct-operation] - AssertionError: The portable CLI never reached its actual pending native families.
+FAILED tests/assistant/test_translation_layout.py::test_portable_cli_process_keeps_actual_pending_families_and_stage_until_both_quiet[second-family-direct-runtime-close] - AssertionError: The portable CLI never reached its actual pending native families.
+FAILED tests/assistant/test_translation_layout.py::test_portable_cli_process_keeps_actual_pending_families_and_stage_until_both_quiet[second-family-causal-operation] - AssertionError: The portable CLI never reached its actual pending native families.
+FAILED tests/assistant/test_translation_layout.py::test_portable_cli_process_keeps_actual_pending_families_and_stage_until_both_quiet[second-family-causal-runtime-close] - AssertionError: The portable CLI never reached its actual pending native families.
+FAILED tests/assistant/test_translation_epub_layout.py::test_actual_epub_capture_and_review_bind_one_whole_original_without_external_calls - ValueError: Invalid authorized task.
+FAILED tests/assistant/test_translation_epub_layout.py::test_actual_epub_export_preserves_dom_links_styles_media_and_canonical_source - ValueError: Invalid authorized task.
+FAILED tests/assistant/test_translation_epub_layout.py::test_translated_markup_remains_literal_text_not_active_xhtml - ValueError: Invalid authorized task.
+FAILED tests/assistant/test_translation_epub_layout.py::test_rendered_whitespace_identity_does_not_rewrite_accepted_provider_receipts - ValueError: Invalid authorized task.
+FAILED tests/assistant/test_translation_epub_layout.py::test_paused_epub_reuses_only_accepted_blocks_without_duplicate_calls - ValueError: Invalid authorized task.
+FAILED tests/assistant/test_translation_epub_layout.py::test_many_chapters_keep_one_existing_job_and_bounded_source_positions - ValueError: Invalid authorized task.
+FAILED tests/assistant/test_translation_epub_layout.py::test_committed_epub_receipt_survives_a_stop_after_the_atomic_publisher_return - ValueError: Invalid authorized task.
+FAILED tests/storage/test_translation_layout_backup.py::test_actual_recovery_preserves_partition_receipts_and_exports_without_original_paths_or_credentials[docx-native5] - ValueError: Invalid authorized task.
+FAILED tests/storage/test_translation_layout_backup.py::test_actual_recovery_preserves_partition_receipts_and_exports_without_original_paths_or_credentials[docx-flat4] - ValueError: Invalid authorized task.
+FAILED tests/storage/test_translation_layout_backup.py::test_actual_recovery_preserves_partition_receipts_and_exports_without_original_paths_or_credentials[epub-native5] - ValueError: Invalid authorized task.
+FAILED tests/storage/test_translation_layout_backup.py::test_actual_recovery_preserves_partition_receipts_and_exports_without_original_paths_or_credentials[epub-flat4] - ValueError: Invalid authorized task.
+FAILED tests/storage/test_translation_layout_backup.py::test_rehashed_partition_damage_is_rejected_before_restore_publication[null-native5] - ValueError: Invalid authorized task.
+FAILED tests/storage/test_translation_layout_backup.py::test_rehashed_partition_damage_is_rejected_before_restore_publication[null-flat4] - ValueError: Invalid authorized task.
+FAILED tests/storage/test_translation_layout_backup.py::test_rehashed_partition_damage_is_rejected_before_restore_publication[boundaries-native5] - ValueError: Invalid authorized task.
+FAILED tests/storage/test_translation_layout_backup.py::test_rehashed_partition_damage_is_rejected_before_restore_publication[boundaries-flat4] - ValueError: Invalid authorized task.
+FAILED tests/storage/test_translation_layout_backup.py::test_rehashed_partition_damage_is_rejected_before_restore_publication[profile-native5] - ValueError: Invalid authorized task.
+FAILED tests/storage/test_translation_layout_backup.py::test_rehashed_partition_damage_is_rejected_before_restore_publication[profile-flat4] - ValueError: Invalid authorized task.
+FAILED tests/storage/test_translation_layout_backup.py::test_rehashed_partition_damage_is_rejected_before_restore_publication[mapping-native5] - ValueError: Invalid authorized task.
+FAILED tests/storage/test_translation_layout_backup.py::test_rehashed_partition_damage_is_rejected_before_restore_publication[mapping-flat4] - ValueError: Invalid authorized task.
+FAILED tests/audio/test_dsp.py::test_converter_chorus_retains_its_real_tail_and_mixer_refuses_implicit_truncation - assert False
+ERROR tests/studio/test_interchange.py::test_completed_replay_requires_exact_cue_bytes_and_declared_source[missing-receipt] - assert None
+ERROR tests/studio/test_interchange.py::test_completed_replay_requires_exact_cue_bytes_and_declared_source[rehashed-bytes] - assert None
+ERROR tests/studio/test_interchange.py::test_completed_replay_requires_exact_cue_bytes_and_declared_source[false-index] - assert None
+ERROR tests/studio/test_interchange.py::test_completed_replay_requires_exact_cue_bytes_and_declared_source[false-qualification] - assert None
+ERROR tests/studio/test_interchange.py::test_new_cue_private_staging_is_disposable_and_legacy_completed_jobs_stay_valid - assert None
+ERROR tests/storage/test_cue_interchange_backup.py::test_actual_backup_retains_exact_cue_declaration_and_revokes_output_authority[False-native-format5] - assert None
+ERROR tests/storage/test_cue_interchange_backup.py::test_actual_backup_retains_exact_cue_declaration_and_revokes_output_authority[False-legacy-flat4] - assert None
+ERROR tests/storage/test_cue_interchange_backup.py::test_actual_backup_retains_exact_cue_declaration_and_revokes_output_authority[True-native-format5] - assert None
+ERROR tests/storage/test_cue_interchange_backup.py::test_actual_backup_retains_exact_cue_declaration_and_revokes_output_authority[True-legacy-flat4] - assert None
+ERROR tests/storage/test_cue_interchange_backup.py::test_rehashed_cue_metadata_cannot_replace_its_project_or_measured_timeline[false-index-native-format5] - assert None
+ERROR tests/storage/test_cue_interchange_backup.py::test_rehashed_cue_metadata_cannot_replace_its_project_or_measured_timeline[false-index-legacy-flat4] - assert None
+ERROR tests/storage/test_cue_interchange_backup.py::test_rehashed_cue_metadata_cannot_replace_its_project_or_measured_timeline[false-source-native-format5] - assert None
+ERROR tests/storage/test_cue_interchange_backup.py::test_rehashed_cue_metadata_cannot_replace_its_project_or_measured_timeline[false-source-legacy-flat4] - assert None
+ERROR tests/storage/test_cue_interchange_backup.py::test_rehashed_cue_metadata_cannot_replace_its_project_or_measured_timeline[false-project-native-format5] - assert None
+ERROR tests/storage/test_cue_interchange_backup.py::test_rehashed_cue_metadata_cannot_replace_its_project_or_measured_timeline[false-project-legacy-flat4] - assert None
+ERROR tests/storage/test_cue_interchange_backup.py::test_rehashed_cue_metadata_cannot_replace_its_project_or_measured_timeline[false-qualification-native-format5] - assert None
+ERROR tests/storage/test_cue_interchange_backup.py::test_rehashed_cue_metadata_cannot_replace_its_project_or_measured_timeline[false-qualification-legacy-flat4] - assert None
+ERROR tests/storage/test_cue_interchange_backup.py::test_rehashed_cue_metadata_cannot_replace_its_project_or_measured_timeline[false-schema-native-format5] - assert None
+ERROR tests/storage/test_cue_interchange_backup.py::test_rehashed_cue_metadata_cannot_replace_its_project_or_measured_timeline[false-schema-legacy-flat4] - assert None
+ERROR tests/storage/test_cue_interchange_backup.py::test_cue_timeline_requires_its_retained_project_checkpoint[native-format5] - assert None
+ERROR tests/storage/test_cue_interchange_backup.py::test_cue_timeline_requires_its_retained_project_checkpoint[legacy-flat4] - assert None
+ERROR tests/storage/test_cue_interchange_backup.py::test_legacy_timeline_without_interchange_keeps_its_original_bytes[native-format5] - assert None
+ERROR tests/storage/test_cue_interchange_backup.py::test_legacy_timeline_without_interchange_keeps_its_original_bytes[legacy-flat4] - assert None
+ERROR tests/storage/test_cue_interchange_backup.py::test_cancellation_during_real_cue_metadata_validation_publishes_no_backup - assert None
+ERROR tests/assistant/test_translation_layout.py::test_actual_worker_maps_exact_retained_body_and_cells_under_the_real_lease - AttributeError: 'LibraryApp' object has no attribute 'close_search'
+ERROR tests/assistant/test_translation_layout.py::test_review_binds_one_job_to_exact_structure_without_provider_or_credentials - AttributeError: 'LibraryApp' object has no attribute 'close_search'
+ERROR tests/assistant/test_translation_layout.py::test_real_completed_docx_preserves_tables_styles_links_and_every_other_zip_member - AttributeError: 'LibraryApp' object has no attribute 'close_search'
+ERROR tests/assistant/test_translation_layout.py::test_mixed_hyperlink_is_refused_by_actual_worker_before_jobs_or_requests - AttributeError: 'LibraryApp' object has no attribute 'close_search'
+ERROR tests/assistant/test_translation_layout.py::test_same_size_modified_worker_request_is_refused_by_actual_snapshot - AttributeError: 'LibraryApp' object has no attribute 'close_search'
+ERROR tests/assistant/test_translation_layout.py::test_wrong_actual_worker_origin_is_refused_before_parsing - AttributeError: 'LibraryApp' object has no attribute 'close_search'
+ERROR tests/assistant/test_translation_layout.py::test_forged_mapping_cannot_reuse_original_review - AttributeError: 'LibraryApp' object has no attribute 'close_search'
+ERROR tests/assistant/test_translation_layout.py::test_partial_job_cannot_publish_and_resumes_only_unaccepted_requests - AttributeError: 'LibraryApp' object has no attribute 'close_search'
+ERROR tests/assistant/test_translation_layout.py::test_final_publication_keeps_exact_source_destination_and_new_file_authority[source] - AttributeError: 'LibraryApp' object has no attribute 'close_search'
+ERROR tests/assistant/test_translation_layout.py::test_final_publication_keeps_exact_source_destination_and_new_file_authority[same-byte-competitor] - AttributeError: 'LibraryApp' object has no attribute 'close_search'
+ERROR tests/assistant/test_translation_layout.py::test_final_publication_keeps_exact_source_destination_and_new_file_authority[parent] - AttributeError: 'LibraryApp' object has no attribute 'close_search'
+ERROR tests/assistant/test_translation_layout.py::test_final_publication_keeps_exact_source_destination_and_new_file_authority[private-target] - AttributeError: 'LibraryApp' object has no attribute 'close_search'
+ERROR tests/assistant/test_translation_layout.py::test_stop_after_actual_publication_preserves_completed_new_file_receipt - AttributeError: 'LibraryApp' object has no attribute 'close_search'
+ERROR tests/assistant/test_translation_layout.py::test_declared_resource_refusal_precedes_parser_and_provider - AttributeError: 'LibraryApp' object has no attribute 'close_search'
+ERROR tests/assistant/test_translation_layout.py::test_actual_worker_cancel_reaps_child_before_lease_and_stage_release - AttributeError: 'LibraryApp' object has no attribute 'close_search'
+ERROR tests/assistant/test_translation_layout.py::test_two_actual_pending_families_retain_one_stage_and_lease_until_both_quiet[first-child-direct] - AttributeError: 'LibraryApp' object has no attribute 'close_search'
+ERROR tests/assistant/test_translation_layout.py::test_two_actual_pending_families_retain_one_stage_and_lease_until_both_quiet[first-child-causal] - AttributeError: 'LibraryApp' object has no attribute 'close_search'
+ERROR tests/assistant/test_translation_layout.py::test_two_actual_pending_families_retain_one_stage_and_lease_until_both_quiet[second-child-direct] - AttributeError: 'LibraryApp' object has no attribute 'close_search'
+ERROR tests/assistant/test_translation_layout.py::test_two_actual_pending_families_retain_one_stage_and_lease_until_both_quiet[second-child-causal] - AttributeError: 'LibraryApp' object has no attribute 'close_search'
+ERROR tests/assistant/test_translation_layout.py::test_explicit_cli_review_submit_and_new_file_export_share_the_same_saved_job - AttributeError: 'LibraryApp' object has no attribute 'close_search'
+ERROR tests/assistant/test_translation_layout.py::test_cli_format_mode_refuses_partial_or_multiple_documents_before_parsing[arguments0] - AttributeError: 'LibraryApp' object has no attribute 'close_search'
+ERROR tests/assistant/test_translation_layout.py::test_cli_format_mode_refuses_partial_or_multiple_documents_before_parsing[arguments1] - AttributeError: 'LibraryApp' object has no attribute 'close_search'
+ERROR tests/assistant/test_translation_epub_layout.py::test_actual_epub_capture_and_review_bind_one_whole_original_without_external_calls - AttributeError: 'LibraryApp' object has no attribute 'close_search'
+ERROR tests/assistant/test_translation_epub_layout.py::test_actual_epub_export_preserves_dom_links_styles_media_and_canonical_source - AttributeError: 'LibraryApp' object has no attribute 'close_search'
+ERROR tests/assistant/test_translation_epub_layout.py::test_translated_markup_remains_literal_text_not_active_xhtml - AttributeError: 'LibraryApp' object has no attribute 'close_search'
+ERROR tests/assistant/test_translation_epub_layout.py::test_rendered_whitespace_identity_does_not_rewrite_accepted_provider_receipts - AttributeError: 'LibraryApp' object has no attribute 'close_search'
+ERROR tests/assistant/test_translation_epub_layout.py::test_current_epub_mapping_is_revalidated_before_approving_requests - AttributeError: 'LibraryApp' object has no attribute 'close_search'
+ERROR tests/assistant/test_translation_epub_layout.py::test_changed_request_snapshot_is_refused_by_the_actual_epub_worker - AttributeError: 'LibraryApp' object has no attribute 'close_search'
+ERROR tests/assistant/test_translation_epub_layout.py::test_paused_epub_reuses_only_accepted_blocks_without_duplicate_calls - AttributeError: 'LibraryApp' object has no attribute 'close_search'
+ERROR tests/assistant/test_translation_epub_layout.py::test_many_chapters_keep_one_existing_job_and_bounded_source_positions - AttributeError: 'LibraryApp' object has no attribute 'close_search'
+ERROR tests/assistant/test_translation_epub_layout.py::test_committed_epub_receipt_survives_a_stop_after_the_atomic_publisher_return - AttributeError: 'LibraryApp' object has no attribute 'close_search'
+============ 50 failed, 1053 passed, 55 errors in 239.07s (0:03:59) ============

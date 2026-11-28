@@ -1,0 +1,1176 @@
+[
+  {
+    "artifact": 15256851282,
+    "path": "audio-endpoint.json",
+    "bytes": 949,
+    "sha256": "ab5e05fdbf1cb3d9f87b44ee051afea22f29b42da6dfce91b509fa078316bee1",
+    "summary": {
+      "status": "READY"
+    },
+    "scope": "reader-produced summary; not original member bytes"
+  },
+  {
+    "artifact": 15256851282,
+    "path": "audio-services.json",
+    "bytes": 376,
+    "sha256": "2bff8c31f77c549a729a0c05eb32447a9b69c88bed0331237736dfdc1311804a",
+    "summary": {
+      "errors": []
+    },
+    "scope": "reader-produced summary; not original member bytes"
+  },
+  {
+    "artifact": 15256851282,
+    "path": "bundle-assistant-domains.json",
+    "bytes": 6391,
+    "sha256": "2b1e84f50d0569bc127f04cdd7b70c43e4e479d1efbd00ef702431d66e9d17c7",
+    "summary": {
+      "status": "PASS",
+      "phase": "complete",
+      "check_count": 23,
+      "last_checks": [
+        "native reviewed Pause and Stop retain the same stopped player",
+        "both safe native actions have durable exact dispatch acknowledgements",
+        "the reader copy and retained original remain unchanged",
+        "the nested native assistant returned to its original reader",
+        "closing the assistant withdraws only its queued player authority",
+        "the real reading-copy Save persists its unchanged recovery document",
+        "reader destruction detaches the exact desktop playback authority",
+        "the original source remains unchanged after both modal lifetimes"
+      ]
+    },
+    "scope": "reader-produced summary; not original member bytes"
+  },
+  {
+    "artifact": 15256851282,
+    "path": "bundle-audio-metadata.json",
+    "bytes": 3885,
+    "sha256": "bef9b2219965ef756ca22e08c403df1f4394975d5bef8f2d61fd4a9b332fc430",
+    "summary": {},
+    "scope": "reader-produced summary; not original member bytes"
+  },
+  {
+    "artifact": 15256851282,
+    "path": "bundle-audio-runtime-setup.json",
+    "bytes": 2700,
+    "sha256": "5bd0a8b913b316ed781b470253f381fd2174354fee2cbb08dae37d2d5107bb59",
+    "summary": {
+      "status": "PASS",
+      "check_count": 35,
+      "last_checks": [
+        "cancelled verification retains exact settings bytes",
+        "cancelled verification retains the previous active owner",
+        "cancellation has a readable native result",
+        "selected FFmpeg remains the same actual executable",
+        "native key dispatch 32",
+        "closing setup keeps the frame-owned runtime active",
+        "actual fixed native version commands passed",
+        "frame close releases its audio binding"
+      ]
+    },
+    "scope": "reader-produced summary; not original member bytes"
+  },
+  {
+    "artifact": 15256851282,
+    "path": "bundle-automatic-ocr.json",
+    "bytes": 2379,
+    "sha256": "b4ef8d89fa40c8bdc5627ed4b36709e5a6993947acb86f1f73a1be6e83e9eda6",
+    "summary": {
+      "errors": [],
+      "check_count": 26,
+      "last_checks": [
+        "named native automatic-language checkbox",
+        "explicit automatic option is restored into the next dialog",
+        "keyboard toggle changes the current setting",
+        "keyboard opt-in returns automatic config",
+        "opt-in preserves explicit selected model and limits",
+        "choosing OCR settings does not silently persist a preset",
+        "keyboard manual override preserves exact model choice",
+        "Escape discards an unaccepted automatic choice"
+      ]
+    },
+    "scope": "reader-produced summary; not original member bytes"
+  },
+  {
+    "artifact": 15256851282,
+    "path": "bundle-book-audio.json",
+    "bytes": 5761,
+    "sha256": "f814df48b0438ee71452fb4f88da054efe272e75528f0b175191dad1aaa86a9c",
+    "summary": {
+      "status": "PASS",
+      "phase": "complete",
+      "check_count": 72,
+      "last_checks": [
+        "batch Prepare retained ordinary Studio jobs",
+        "batch retained exactly two independently reviewed plans",
+        "real explicit native confirmation: Run reviewed book batch",
+        "ordered batch completed through the same renderer",
+        "all ordered batch items completed",
+        "saved order and literal originals remain unchanged",
+        "native Book voice work never ran on the GUI thread",
+        "borrowed voice registry survives all Book window closes"
+      ]
+    },
+    "scope": "reader-produced summary; not original member bytes"
+  },
+  {
+    "artifact": 15256851282,
+    "path": "bundle-clipboard-reader.json",
+    "bytes": 2286,
+    "sha256": "109ee937435640b040df10fa9be3e178877dcb6a6e67487b0822a96974f9914c",
+    "summary": {
+      "status": "PASS",
+      "phase": "completed",
+      "source_commit": "943f585659c55481046266338f428e4a1043a9bd",
+      "installed": true,
+      "check_count": 9,
+      "last_checks": [
+        "installing the native menu starts no reader or audio",
+        "native command retains its window owner",
+        "clipboard ownership ends before reader handoff",
+        "actual native menu dispatch uses the independent recoverable reading slot",
+        "reading leaves actual clipboard bytes unchanged",
+        "later clipboard changes do not start a watcher or another reader",
+        "empty native clipboard text cannot enter the reader",
+        "closing owner rejects native command admission"
+      ]
+    },
+    "scope": "reader-produced summary; not original member bytes"
+  },
+  {
+    "artifact": 15256851282,
+    "path": "bundle-conversion-batch.json",
+    "bytes": 7780,
+    "sha256": "3bec76e66916859a85db29b61228dfd81f42b0e3d243edd0016b8b8536d1df3b",
+    "summary": {
+      "check_count": 147,
+      "last_checks": [
+        "native Space up: Convert reviewed files",
+        "actual batch has two durable completed receipts",
+        "batch output uses actual measured sample counts",
+        "batch receipt matches actual output bytes",
+        "batch output uses actual measured sample counts",
+        "batch receipt matches actual output bytes",
+        "batch keeps both selected originals unchanged",
+        "explicit native resume preserves completed output bytes and timestamps"
+      ]
+    },
+    "scope": "reader-produced summary; not original member bytes"
+  },
+  {
+    "artifact": 15256851282,
+    "path": "bundle-draft-timer.json",
+    "bytes": 1436,
+    "sha256": "dc31b50dab2144921f2964f4af5dff5ca259aa51af30473f4854a2499239212f",
+    "summary": {
+      "status": "PASS",
+      "phase": "complete",
+      "check_count": 4,
+      "last_checks": [
+        "Both actual draft timers initially target their own DesktopFrame",
+        "Child destruction preserved actual live 3000 ms timer delivery",
+        "Close and direct Destroy stopped their native draft and active progress timers",
+        "MainLoop remained usable without new ticks beyond the original timer period"
+      ]
+    },
+    "scope": "reader-produced summary; not original member bytes"
+  },
+  {
+    "artifact": 15256851282,
+    "path": "bundle-ebook-daisy.json",
+    "bytes": 6625,
+    "sha256": "181c1c1246565218c3b1d662c2cd0646d11a3ecdbaf461469b1cdba31e879f94",
+    "summary": {
+      "status": "PASS",
+      "phase": "complete",
+      "check_count": 67,
+      "last_checks": [
+        "native Space up: Where am I in recorded audio?",
+        "recorded position report keeps source timing limitations explicit",
+        "native Space down: Close recorded audio",
+        "native Space up: Close recorded audio",
+        "recorded modal returned without source or quotation mutation",
+        "recorded source and PCM stages are closed",
+        "native Space down: Close reader",
+        "native Space up: Close reader"
+      ]
+    },
+    "scope": "reader-produced summary; not original member bytes"
+  },
+  {
+    "artifact": 15256851282,
+    "path": "bundle-incremental-backup.json",
+    "bytes": 1905,
+    "sha256": "1a61ca2e7ca1d1ea990ff1e8fb5ca46483bdcbfc66c4215ac66152365b18bb08",
+    "summary": {
+      "status": "PASS",
+      "check_count": 31,
+      "last_checks": [
+        "native action choices stay on UI thread",
+        "native action choices stay on UI thread",
+        "native completion returns to UI thread",
+        "real readable completion text",
+        "real completion focus",
+        "actual independent library restored",
+        "actual reader bookmark and exact missing voice retained",
+        "all heavy operations used existing background worker"
+      ]
+    },
+    "scope": "reader-produced summary; not original member bytes"
+  },
+  {
+    "artifact": 15256851282,
+    "path": "bundle-portable-sync.json",
+    "bytes": 5615,
+    "sha256": "48ab0e54769ba91c63156b30a92f4f12d82ce27f1e059220a2b4fee69e45ad58",
+    "summary": {
+      "status": "PASS",
+      "phase": "completed",
+      "check_count": 52,
+      "last_checks": [
+        "parent drops the closed modeless window",
+        "native command is enabled: Verify code…",
+        "password entry uses named native masked controls",
+        "native button event: Verify code…",
+        "worker reaches actual forced-destruction boundary",
+        "forced native destruction revokes scope and callbacks",
+        "closed owner acknowledges exact worker completion",
+        "borrowed desktop executor remains usable after dialog destruction"
+      ]
+    },
+    "scope": "reader-produced summary; not original member bytes"
+  },
+  {
+    "artifact": 15256851282,
+    "path": "bundle-protected-voice.json",
+    "bytes": 5503,
+    "sha256": "6cde7c453d21c8e2219dd8dd34c8a59e0e4a9f5fd8cfbc130ba9ccedc6465b80",
+    "summary": {
+      "status": "PASS",
+      "phase": "completed",
+      "source_commit": "943f585659c55481046266338f428e4a1043a9bd",
+      "installed": true,
+      "check_count": 48,
+      "last_checks": [
+        "native password entry has the explicit requested field count",
+        "native password field is initially empty and masked",
+        "native password field accepts keyboard focus",
+        "native password text keys were delivered",
+        "native Return confirms the password entry",
+        "actual inspection reaches a queued-result destruction boundary",
+        "the original native owner destruction revokes GUI adoption",
+        "the completed worker cannot revive a destroyed review or retain plaintext"
+      ]
+    },
+    "scope": "reader-produced summary; not original member bytes"
+  },
+  {
+    "artifact": 15256851282,
+    "path": "bundle-reader-appearance.json",
+    "bytes": 3997,
+    "sha256": "00f6d2813dff8e864bdc2817d0507a7b8a34ab66fe95f3ca4e521cf058a723c5",
+    "summary": {
+      "status": "PASS",
+      "check_count": 65,
+      "last_checks": [
+        "all original source bytes and text remain unchanged",
+        "native focus reaches Reading copy (editable; Ctrl+S saves)",
+        "native key dispatch: Reading copy (editable; Ctrl+S saves)",
+        "native Ctrl+S retains the exact reading copy and source",
+        "native focus reaches Reading copy (editable; Ctrl+S saves)",
+        "native key dispatch: Reading copy (editable; Ctrl+S saves)",
+        "reopened reader closes using native Escape",
+        "library source survives both appearance sessions"
+      ]
+    },
+    "scope": "reader-produced summary; not original member bytes"
+  },
+  {
+    "artifact": 15256851282,
+    "path": "bundle-reader-controls.json",
+    "bytes": 6692,
+    "sha256": "0144791fb342d952be5ec3f900cc42eb52a3f8858e4bf74105299a00f73f40aa",
+    "summary": {
+      "status": "PASS",
+      "check_count": 108,
+      "last_checks": [
+        "OS key dispatch 32",
+        "native Save marks the reading copy saved",
+        "native Save persists the unchanged reading copy",
+        "OS key dispatch 32",
+        "close: close releases the actual device",
+        "close: native polling timer is closed",
+        "close: player is removed from shared progress",
+        "close: source PCM remains byte-identical"
+      ]
+    },
+    "scope": "reader-produced summary; not original member bytes"
+  },
+  {
+    "artifact": 15256851282,
+    "path": "bundle-reader-keymap.json",
+    "bytes": 3491,
+    "sha256": "1f90185117282c601bd6efa2b181712642820adb203f0d09175cd6478ca3469e",
+    "summary": {
+      "status": "PASS",
+      "phase": "complete",
+      "check_count": 35,
+      "last_checks": [
+        "a reopened native Reader restores the measured source location",
+        "the reopened source has native focus",
+        "reopen preserves removal of the old default key",
+        "persisted custom key drives the reopened production dialog",
+        "reopened Reader closes through actual Escape",
+        "all original source pages remain unchanged after remap, clear, reset and reopen",
+        "host accepts native keyboard focus after Reader closes",
+        "same chord invokes the host context only after Reader closes"
+      ]
+    },
+    "scope": "reader-produced summary; not original member bytes"
+  },
+  {
+    "artifact": 15256851282,
+    "path": "bundle-reader-navigation.json",
+    "bytes": 6393,
+    "sha256": "14d1e1841a093f5bf35f15fdbb6e75ca8160a26dbb34ae8172ffdb83db84308c",
+    "summary": {
+      "status": "PASS",
+      "phase": "complete",
+      "source_commit": "943f585659c55481046266338f428e4a1043a9bd",
+      "check_count": 50,
+      "last_checks": [
+        "existing Save persists reading cursor and exact immutable source",
+        "close fixture owns an actual reader-worker request",
+        "Close cancels this request while retaining the active modal until completion",
+        "Close never begins the cancelled scoped narration",
+        "the returned modal has revoked its reader host after worker completion",
+        "reader shutdown leaves no retained playback or listening owner",
+        "scoped speech preserves exact original bytes and saved quotation records",
+        "existing shared keyboard adapters detach when the reader closes"
+      ]
+    },
+    "scope": "reader-produced summary; not original member bytes"
+  },
+  {
+    "artifact": 15256851282,
+    "path": "bundle-reader-output.json",
+    "bytes": 3544,
+    "sha256": "8f0e9cf486a87c92e6695f546ebbc9e34de4ee81b04c71490bef4e54a76ba86b",
+    "summary": {
+      "status": "PASS",
+      "check_count": 47,
+      "last_checks": [
+        "a separate player retains its independent selection",
+        "actual key 32 to button",
+        "routing retains the exact original and editable text",
+        "actual key 32 to button",
+        "reader close releases the selected MCI endpoint",
+        "output controller is closed before reader destruction",
+        "reader close unregisters its player",
+        "source PCM is byte-identical after all routes"
+      ]
+    },
+    "scope": "reader-produced summary; not original member bytes"
+  },
+  {
+    "artifact": 15256851282,
+    "path": "bundle-reader-player.json",
+    "bytes": 13973,
+    "sha256": "2a7958c56ad447800e9c12cfd2a6334fb551e18ddfa9976fd5c27dd16ca6f8dd",
+    "summary": {
+      "status": "PASS",
+      "check_count": 198,
+      "last_checks": [
+        "native playback Space down",
+        "native playback Space up",
+        "explicit saved review restores cursor silently",
+        "actual direct modal destruction releases its playback owner",
+        "selected original PCM remains byte-identical",
+        "native queue and direct-destruction scenario completed",
+        "native Close confirms all owned output closure",
+        "closed PCM is unchanged and releasable"
+      ]
+    },
+    "scope": "reader-produced summary; not original member bytes"
+  },
+  {
+    "artifact": 15256851282,
+    "path": "bundle-reading-preparation.json",
+    "bytes": 4780,
+    "sha256": "2be38e1f4ae861868112d55c8f6df342bf90ece36a767fa53e99f5729e174389",
+    "summary": {
+      "errors": [],
+      "check_count": 55,
+      "last_checks": [
+        "custom native shortcut opens preparation with no implicit options",
+        "native Save completes before reader Close",
+        "durable copy retains the exact source and accepted derivative",
+        "actual reader modal completes after its worker cleanup",
+        "reopened reader inventory completes",
+        "saved prepared copy reopens with unchanged original identity",
+        "language and flags remain explicit after reopen",
+        "all original bytes survive both complete native reader sessions"
+      ]
+    },
+    "scope": "reader-produced summary; not original member bytes"
+  },
+  {
+    "artifact": 15256851282,
+    "path": "bundle-reading-tabs.json",
+    "bytes": 4731,
+    "sha256": "650e0b5c6d01102fbc8c1ebaadd5dde8b72c19a61b7c069f1e1d712879c06b67",
+    "summary": {
+      "status": "PASS",
+      "phase": "complete",
+      "check_count": 47,
+      "last_checks": [
+        "fresh reader retains source bytes, other history and passive voice identity",
+        "first tab undo after restart does not alter the second copy",
+        "recovered dirty histories save through the existing coordinator",
+        "closed reader unregistered its shared save participant",
+        "source-linked reader remains a separately guarded single editor",
+        "actual Ctrl+S completed its guarded reader save",
+        "closed reader unregistered its shared save participant",
+        "immutable original fixture bytes remain unchanged"
+      ]
+    },
+    "scope": "reader-produced summary; not original member bytes"
+  },
+  {
+    "artifact": 15256851282,
+    "path": "bundle-reading-tools.json",
+    "bytes": 6379,
+    "sha256": "78ce07a7788037f47b7ee4410954a4214ba6e79f66a7495bcfaba44ffc896631",
+    "summary": {
+      "status": "PASS",
+      "phase": "complete",
+      "check_count": 61,
+      "last_checks": [
+        "native text Undo remains available",
+        "Stop remains available after source revocation",
+        "real Ctrl+S persists the reviewed copy and exact original source",
+        "reopened reader finishes its local inventory",
+        "reopen restores saved pronunciation edits and original source identity",
+        "stored Voice reader binding survives reopen",
+        "remapped default no longer opens a competing tools dialog",
+        "original source bytes are unchanged after both real reader sessions"
+      ]
+    },
+    "scope": "reader-produced summary; not original member bytes"
+  },
+  {
+    "artifact": 15256851282,
+    "path": "bundle-recording-controls.json",
+    "bytes": 4320,
+    "sha256": "de97437fc6ed4de9d87d72313ca6a766ffaaec10f9233f593eda94889648b195",
+    "summary": {
+      "status": "PASS",
+      "check_count": 65,
+      "last_checks": [
+        "Cancel is announced distinctly",
+        "native focus reaches Start recording",
+        "native key dispatch: Start recording",
+        "native focus reaches Stop and save recording",
+        "native key dispatch: Stop and save recording",
+        "native recording owner window actually destroyed",
+        "Escape closes only after active capture cleanup",
+        "closing preserves exactly the verified originals"
+      ]
+    },
+    "scope": "reader-produced summary; not original member bytes"
+  },
+  {
+    "artifact": 15256851282,
+    "path": "bundle-recording-monitor.json",
+    "bytes": 1576,
+    "sha256": "27275ab8c1a5a3ce1fd6d735f547c6746b6fd41d2ecbd232bed0c9931a923784",
+    "summary": {
+      "status": "PASS",
+      "check_count": 13,
+      "last_checks": [
+        "actual native handle is bound to the chosen output",
+        "native submission and dropped-frame counters cover the actual fixture",
+        "native queued PCM remains within the four-buffer allowance",
+        "actual completed buffers were unprepared before context close",
+        "monitoring leaves the generated recording PCM unchanged",
+        "actual native monitor handle and growing-file reader are closed",
+        "completed capture bytes remain unchanged after monitor cleanup",
+        "private capture is deletable after actual resource cleanup"
+      ]
+    },
+    "scope": "reader-produced summary; not original member bytes"
+  },
+  {
+    "artifact": 15256851282,
+    "path": "bundle-save-all-recovery.json",
+    "bytes": 3766,
+    "sha256": "202b9d46030f1e5a8ef9d100b740d7f06c430668be6f31646484ccbddebd6fe5",
+    "summary": {
+      "status": "PASS"
+    },
+    "scope": "reader-produced summary; not original member bytes"
+  },
+  {
+    "artifact": 15256851282,
+    "path": "bundle-search-pagination.json",
+    "bytes": 2954,
+    "sha256": "655b39a420360ccb77128153fdf2be8fae5d7bb2869c6cd8ddf8ab41b0ca1b23",
+    "summary": {
+      "status": "PASS",
+      "phase": "complete",
+      "source_commit": "943f585659c55481046266338f428e4a1043a9bd",
+      "installed": true,
+      "check_count": 18,
+      "last_checks": [
+        "paged result retains current exact quotation authority",
+        "native result control is enabled: Next search results page",
+        "changed source scope rejects continuation and preserves prior visible results",
+        "editing the query revokes both paging directions and stale hits",
+        "native result control is enabled: button",
+        "fresh query starts at page one using the same worker",
+        "original retained source bytes remain unchanged",
+        "worker controls return after all result page operations"
+      ]
+    },
+    "scope": "reader-produced summary; not original member bytes"
+  },
+  {
+    "artifact": 15256851282,
+    "path": "bundle-source-pagination.json",
+    "bytes": 3594,
+    "sha256": "60a1a5458522c249fa25e2e03187a957045ac3ef574837ab812f00c8a331418b",
+    "summary": {
+      "status": "PASS",
+      "phase": "complete",
+      "source_commit": "943f585659c55481046266338f428e4a1043a9bd",
+      "installed": true,
+      "check_count": 16,
+      "last_checks": [
+        "source search executes on the existing background worker",
+        "native Next reaches only the five remaining libraries",
+        "previous page source handles are revoked",
+        "current-page quotation uses the native verified clipboard action",
+        "searching another library never replaces the active notebook",
+        "native selected-library dialog closes after its shared worker completes",
+        "every retained original remains byte-identical",
+        "main scope and worker controls are retained after both paging workflows"
+      ]
+    },
+    "scope": "reader-produced summary; not original member bytes"
+  },
+  {
+    "artifact": 15256851282,
+    "path": "bundle-spelling.json",
+    "bytes": 2931,
+    "sha256": "6fd3b862ad1405ce72a6a4a2859c7de8bc028e76932895db2474a107c36abfc1",
+    "summary": {
+      "check_count": 7,
+      "last_checks": [
+        "installed inventory has no implicit language selection",
+        "native Check submits to the existing single reader worker",
+        "actual OS error spans map exactly after a non-BMP character",
+        "native Preview selects exact text without editing",
+        "native Apply changes only the reviewed reading-copy span",
+        "existing ReadingDocument undo restores the exact original copy",
+        "native Close invalidates unaccepted spelling work"
+      ]
+    },
+    "scope": "reader-produced summary; not original member bytes"
+  },
+  {
+    "artifact": 15256851282,
+    "path": "bundle-streamed-import.json",
+    "bytes": 4142,
+    "sha256": "9feef2e3150fb0a8e0ebd38968ad0c3cb9c4cf4a511dcbe63c9101df8e0fc989",
+    "summary": {
+      "status": "PASS",
+      "phase": "completed",
+      "source_commit": "943f585659c55481046266338f428e4a1043a9bd",
+      "installed": true,
+      "check_count": 9,
+      "last_checks": [
+        "native focus and Tab to import action",
+        "real existing frame worker and owned import child",
+        "controls disabled until settlement",
+        "captured byte allowance",
+        "canonical request and completed result",
+        "original-byte verified quotation",
+        "unchanged original",
+        "owned native close and destruction"
+      ]
+    },
+    "scope": "reader-produced summary; not original member bytes"
+  },
+  {
+    "artifact": 15256851282,
+    "path": "bundle-translation-v3.json",
+    "bytes": 3884,
+    "sha256": "f70736e76eea294e8303f11b3b382712fcd0a42e399146fdce7b647dcfa227cc",
+    "summary": {
+      "status": "PASS",
+      "phase": "complete",
+      "check_count": 54,
+      "last_checks": [
+        "foreground focus: Translate / resume",
+        "native Space down: Translate / resume",
+        "native Space up: Translate / resume",
+        "changed glossary requires fresh review without transfer",
+        "named native control: Close",
+        "foreground focus: Close",
+        "native Space down: Close",
+        "native Space up: Close"
+      ]
+    },
+    "scope": "reader-produced summary; not original member bytes"
+  },
+  {
+    "artifact": 15256851282,
+    "path": "bundle-voice-preferences.json",
+    "bytes": 6405,
+    "sha256": "4a11ebbb37ff94fc438ecaad819ebdad85f1d1ede4031fa117156ad597ae507f",
+    "summary": {
+      "status": "PASS",
+      "phase": "completed",
+      "source_commit": "943f585659c55481046266338f428e4a1043a9bd",
+      "installed": true,
+      "check_count": 80,
+      "last_checks": [
+        "explicit native default reset makes Apply available",
+        "native control: Apply native voice options",
+        "native Space down",
+        "native Space up",
+        "native reset retains rate and volume without starting another render",
+        "native synthesis options own the current modal",
+        "direct native modal destruction cannot publish pending options",
+        "all native settings operations leave the shared worker idle"
+      ]
+    },
+    "scope": "reader-produced summary; not original member bytes"
+  },
+  {
+    "artifact": 15256851282,
+    "path": "bundle-voice-reference.json",
+    "bytes": 3602,
+    "sha256": "c78483d88bccbb5ab332ce1bc6cfa705478b6deb9f615c15d3cd54a31fecd510",
+    "summary": {
+      "status": "PASS",
+      "check_count": 20,
+      "last_checks": [
+        "package contains only its data manifest, PCM and transcript",
+        "saved PCM and transcript match the reviewed exact inputs",
+        "creation did not change registration or install references",
+        "the native status clearly labels the unencrypted local result",
+        "parent receives the saved path through its actual inspect worker",
+        "parent inspection does not grant rights or languages",
+        "source stays unchanged after publication and parent inspection",
+        "the isolated synthetic owner actually ran"
+      ]
+    },
+    "scope": "reader-produced summary; not original member bytes"
+  },
+  {
+    "artifact": 15256851282,
+    "path": "bundle-word-apa.json",
+    "bytes": 4408,
+    "sha256": "98f4c84767176e588ba7e2fcb0e87ba9e4884b6e40452bd4bc499cfebcaba391",
+    "summary": {
+      "status": "PASS",
+      "phase": "direct native destruction revokes queued inspection and disposes its exact owner",
+      "check_count": 35,
+      "last_checks": [
+        "selective refresh completes without a bridge Save call",
+        "actual native button ready: Inspect open Word and references",
+        "final native fields retain IDs and locator data",
+        "native Word work leaves exact original source and quotation unchanged",
+        "existing GUI loop remains live during worker operations",
+        "actual native button ready: Close Word review",
+        "native proxies close on the existing worker after the dialog",
+        "direct native destruction revokes queued inspection and disposes its exact owner"
+      ]
+    },
+    "scope": "reader-produced summary; not original member bytes"
+  },
+  {
+    "artifact": 15256851282,
+    "path": "bundle-word-chicago-notes.json",
+    "bytes": 4408,
+    "sha256": "98f4c84767176e588ba7e2fcb0e87ba9e4884b6e40452bd4bc499cfebcaba391",
+    "summary": {
+      "status": "PASS",
+      "phase": "direct native destruction revokes queued inspection and disposes its exact owner",
+      "check_count": 35,
+      "last_checks": [
+        "selective refresh completes without a bridge Save call",
+        "actual native button ready: Inspect open Word and references",
+        "final native fields retain IDs and locator data",
+        "native Word work leaves exact original source and quotation unchanged",
+        "existing GUI loop remains live during worker operations",
+        "actual native button ready: Close Word review",
+        "native proxies close on the existing worker after the dialog",
+        "direct native destruction revokes queued inspection and disposes its exact owner"
+      ]
+    },
+    "scope": "reader-produced summary; not original member bytes"
+  },
+  {
+    "artifact": 15256851282,
+    "path": "core-bundle-self-test.json",
+    "bytes": 272,
+    "sha256": "20e78b8dd6e565795b5678bb6d31130401207540cf16b20b77ab1d58b02c97bc",
+    "summary": {
+      "status": "PASS",
+      "check_count": 9,
+      "last_checks": [
+        "scoped search",
+        "exact quotation",
+        "workspace isolation",
+        "saved research",
+        "reopen persistence",
+        "academic reading list",
+        "bibliography export",
+        "backup and restore"
+      ]
+    },
+    "scope": "reader-produced summary; not original member bytes"
+  },
+  {
+    "artifact": 15256851282,
+    "path": "endpoint-evaluation.json",
+    "bytes": 5259,
+    "sha256": "79f9c1b511c9c04efebab8ff158bfc7dbe4524e3fc6a1df2fd73af0a6ddd9dcf",
+    "summary": {
+      "status": "PASS",
+      "phase": "complete"
+    },
+    "scope": "reader-produced summary; not original member bytes"
+  },
+  {
+    "artifact": 15256851282,
+    "path": "full-bundle-audio-effects.json",
+    "bytes": 656,
+    "sha256": "b7bb3749b4f7820f148abd74123ceb2cbee6003a965571b4da95e088a2d053c7",
+    "summary": {
+      "status": "PASS",
+      "check_count": 11,
+      "last_checks": [
+        "native forward keyboard traversal",
+        "ordered preset and explicit move",
+        "bypass retained",
+        "native numeric parameter dialog and return focus",
+        "asynchronous conversion and cancellable focus",
+        "real verified local FLAC output",
+        "unchanged source bytes and unsaved parent note",
+        "completed status focus"
+      ]
+    },
+    "scope": "reader-produced summary; not original member bytes"
+  },
+  {
+    "artifact": 15256851282,
+    "path": "full-bundle-audio-studio.json",
+    "bytes": 561,
+    "sha256": "c4824e917cb96e25ac35e6db3cb6bd53c204709fce16b354dfb3cfaeb23ad5c7",
+    "summary": {
+      "status": "PASS",
+      "check_count": 10,
+      "last_checks": [
+        "Ctrl+S handler saves a revision",
+        "three native voice assignments",
+        "background speech and music production",
+        "actual chapter/subtitle/stem files",
+        "original script unchanged",
+        "native source reading copy preserves exact CRLF and treats directives as text",
+        "reviewed assistant plan executes actual selected-library search",
+        "literal quotation and retained source remain unchanged"
+      ]
+    },
+    "scope": "reader-produced summary; not original member bytes"
+  },
+  {
+    "artifact": 15256851282,
+    "path": "full-bundle-build.json",
+    "bytes": 1641,
+    "sha256": "086e0b69b47acd181c3428a195ca7c071ac7031e3413cd8319e00d14a0412be0",
+    "summary": {},
+    "scope": "reader-produced summary; not original member bytes"
+  },
+  {
+    "artifact": 15256851282,
+    "path": "full-bundle-firewall.json",
+    "bytes": 1063,
+    "sha256": "8e190d3cc35b48e64c5a10dec6a4d5f88d7da90ced4693d1d67905213fc33135",
+    "summary": {
+      "status": "PASS",
+      "phase": "installation, native desktop, multilingual inference and scanned-source research"
+    },
+    "scope": "reader-produced summary; not original member bytes"
+  },
+  {
+    "artifact": 15256851282,
+    "path": "full-bundle-native-runtime.json",
+    "bytes": 637,
+    "sha256": "9b0ba1158cd35d5825b8de06efce9b6ff11c15a0b5bbbbf844d5e023db10ef37",
+    "summary": {},
+    "scope": "reader-produced summary; not original member bytes"
+  },
+  {
+    "artifact": 15256851282,
+    "path": "full-bundle-verified.json",
+    "bytes": 255,
+    "sha256": "6a47d87a778a80abad41571f703f60813c5a71c841dec9a6cce90d7edc714f2b",
+    "summary": {
+      "status": "PASS"
+    },
+    "scope": "reader-produced summary; not original member bytes"
+  },
+  {
+    "artifact": 15256851282,
+    "path": "full-bundle-voice-settings.json",
+    "bytes": 279,
+    "sha256": "978f5c34787f4198a3c464effc35e0ba353fea3b0253376c1998845654bf9dcd",
+    "summary": {
+      "status": "PASS",
+      "check_count": 2,
+      "last_checks": [
+        "named native controls save pinned installation metadata and select the declared profile language",
+        "native reset detaches the registration without deleting external assets"
+      ]
+    },
+    "scope": "reader-produced summary; not original member bytes"
+  },
+  {
+    "artifact": 15256851282,
+    "path": "installed-reader-navigation.json",
+    "bytes": 6218,
+    "sha256": "06235c5f4c634fc911465138127edd23b80986aac19b1783396f350d9dabc8d9",
+    "summary": {
+      "status": "PASS",
+      "phase": "complete",
+      "source_commit": "943f585659c55481046266338f428e4a1043a9bd",
+      "check_count": 50,
+      "last_checks": [
+        "existing Save persists reading cursor and exact immutable source",
+        "close fixture owns an actual reader-worker request",
+        "Close cancels this request while retaining the active modal until completion",
+        "Close never begins the cancelled scoped narration",
+        "the returned modal has revoked its reader host after worker completion",
+        "reader shutdown leaves no retained playback or listening owner",
+        "scoped speech preserves exact original bytes and saved quotation records",
+        "existing shared keyboard adapters detach when the reader closes"
+      ]
+    },
+    "scope": "reader-produced summary; not original member bytes"
+  },
+  {
+    "artifact": 15256851282,
+    "path": "native-audio-preview.json",
+    "bytes": 198,
+    "sha256": "790881c1bee7424cb111069bf4da18b05fd9a1442054fbad9861c4f2023f162a",
+    "summary": {
+      "status": "PASS",
+      "check_count": 7,
+      "last_checks": [
+        "open",
+        "play",
+        "pause",
+        "seek",
+        "resume",
+        "stop",
+        "close"
+      ]
+    },
+    "scope": "reader-produced summary; not original member bytes"
+  },
+  {
+    "artifact": 15256851282,
+    "path": "native-audio-runtime-setup.json",
+    "bytes": 2700,
+    "sha256": "5bd0a8b913b316ed781b470253f381fd2174354fee2cbb08dae37d2d5107bb59",
+    "summary": {
+      "status": "PASS",
+      "check_count": 35,
+      "last_checks": [
+        "cancelled verification retains exact settings bytes",
+        "cancelled verification retains the previous active owner",
+        "cancellation has a readable native result",
+        "selected FFmpeg remains the same actual executable",
+        "native key dispatch 32",
+        "closing setup keeps the frame-owned runtime active",
+        "actual fixed native version commands passed",
+        "frame close releases its audio binding"
+      ]
+    },
+    "scope": "reader-produced summary; not original member bytes"
+  },
+  {
+    "artifact": 15256851282,
+    "path": "native-draft-timer.json",
+    "bytes": 1398,
+    "sha256": "7a5161d4607b6dee8f40b6aef907047e145d270959fd89c6a4a88822e396a20a",
+    "summary": {
+      "status": "PASS",
+      "phase": "complete",
+      "check_count": 4,
+      "last_checks": [
+        "Both actual draft timers initially target their own DesktopFrame",
+        "Child destruction preserved actual live 3000 ms timer delivery",
+        "Close and direct Destroy stopped their native draft and active progress timers",
+        "MainLoop remained usable without new ticks beyond the original timer period"
+      ]
+    },
+    "scope": "reader-produced summary; not original member bytes"
+  },
+  {
+    "artifact": 15256851282,
+    "path": "native-reader-controls.json",
+    "bytes": 6692,
+    "sha256": "b884eee58fe9049fb8ca8b38435626f77c95122af4bdcfb4e021b9a28f186e1d",
+    "summary": {
+      "status": "PASS",
+      "check_count": 108,
+      "last_checks": [
+        "OS key dispatch 32",
+        "native Save marks the reading copy saved",
+        "native Save persists the unchanged reading copy",
+        "OS key dispatch 32",
+        "close: close releases the actual device",
+        "close: native polling timer is closed",
+        "close: player is removed from shared progress",
+        "close: source PCM remains byte-identical"
+      ]
+    },
+    "scope": "reader-produced summary; not original member bytes"
+  },
+  {
+    "artifact": 15256851282,
+    "path": "native-reader-keymap.json",
+    "bytes": 3377,
+    "sha256": "2a8824481da719e65947e75d4b720a1c11ae62a262e17101450a2e9e1b8907bd",
+    "summary": {
+      "status": "PASS",
+      "phase": "complete",
+      "check_count": 35,
+      "last_checks": [
+        "a reopened native Reader restores the measured source location",
+        "the reopened source has native focus",
+        "reopen preserves removal of the old default key",
+        "persisted custom key drives the reopened production dialog",
+        "reopened Reader closes through actual Escape",
+        "all original source pages remain unchanged after remap, clear, reset and reopen",
+        "host accepts native keyboard focus after Reader closes",
+        "same chord invokes the host context only after Reader closes"
+      ]
+    },
+    "scope": "reader-produced summary; not original member bytes"
+  },
+  {
+    "artifact": 15256851282,
+    "path": "native-sapi-speech.json",
+    "bytes": 2747,
+    "sha256": "a9caeb99392c31014159f9c7d67d44694a3c0b08e5218a4dd9a595099e78f514",
+    "summary": {
+      "status": "PASS"
+    },
+    "scope": "reader-produced summary; not original member bytes"
+  },
+  {
+    "artifact": 15256851282,
+    "path": "native-save-all-recovery.json",
+    "bytes": 3671,
+    "sha256": "4f520bbe6b0a3954df450c0ba0fa4e8cf5056881dd055627b8b56ebc3da0e967",
+    "summary": {
+      "status": "PASS"
+    },
+    "scope": "reader-produced summary; not original member bytes"
+  },
+  {
+    "artifact": 15256851282,
+    "path": "offline-bundle-daisy-schema.json",
+    "bytes": 6058,
+    "sha256": "c91cd9c2558dc01fae456d02f2b677d57747ccda1a30faa8374e00d0d401f158",
+    "summary": {
+      "status": "PASS"
+    },
+    "scope": "reader-produced summary; not original member bytes"
+  },
+  {
+    "artifact": 15256851282,
+    "path": "offline-bundle-epubcheck.json",
+    "bytes": 3398,
+    "sha256": "9f01aaca18ea121055d3188e38e07ee11f603c0fa14a4e629acd078dd3e5f01c",
+    "summary": {
+      "status": "PASS"
+    },
+    "scope": "reader-produced summary; not original member bytes"
+  },
+  {
+    "artifact": 15256851282,
+    "path": "offline-bundle-ocr-catalogue.json",
+    "bytes": 199,
+    "sha256": "d2cd30f557cac19e35077f597b692c8dc7ea1a8d84164a86cc8dbb3a2d3cb751",
+    "summary": {
+      "status": "PASS"
+    },
+    "scope": "reader-produced summary; not original member bytes"
+  },
+  {
+    "artifact": 15256851282,
+    "path": "recording-access-diagnostic.json",
+    "bytes": 10216,
+    "sha256": "7a8cd11f4630b9847b1386bedafcb52fec3f5f81849414f9c7aa914ab87f6ff1",
+    "summary": {
+      "status": "DIAGNOSED",
+      "source_commit": "943f585659c55481046266338f428e4a1043a9bd"
+    },
+    "scope": "reader-produced summary; not original member bytes"
+  },
+  {
+    "artifact": 15256851282,
+    "path": "source-reader-navigation.json",
+    "bytes": 6288,
+    "sha256": "43c7f7a8bb985583b4643a805bfa4532366a9853c7abf85706a64c559abac499",
+    "summary": {
+      "status": "PASS",
+      "phase": "complete",
+      "source_commit": "943f585659c55481046266338f428e4a1043a9bd",
+      "check_count": 50,
+      "last_checks": [
+        "existing Save persists reading cursor and exact immutable source",
+        "close fixture owns an actual reader-worker request",
+        "Close cancels this request while retaining the active modal until completion",
+        "Close never begins the cancelled scoped narration",
+        "the returned modal has revoked its reader host after worker completion",
+        "reader shutdown leaves no retained playback or listening owner",
+        "scoped speech preserves exact original bytes and saved quotation records",
+        "existing shared keyboard adapters detach when the reader closes"
+      ]
+    },
+    "scope": "reader-produced summary; not original member bytes"
+  },
+  {
+    "artifact": 15253625504,
+    "path": "audio-endpoint.json",
+    "bytes": 949,
+    "sha256": "ab5e05fdbf1cb3d9f87b44ee051afea22f29b42da6dfce91b509fa078316bee1",
+    "summary": {
+      "status": "READY"
+    },
+    "scope": "reader-produced summary; not original member bytes"
+  },
+  {
+    "artifact": 15253625504,
+    "path": "audio-services.json",
+    "bytes": 376,
+    "sha256": "2bff8c31f77c549a729a0c05eb32447a9b69c88bed0331237736dfdc1311804a",
+    "summary": {
+      "errors": []
+    },
+    "scope": "reader-produced summary; not original member bytes"
+  },
+  {
+    "artifact": 15253625504,
+    "path": "endpoint-evaluation.json",
+    "bytes": 5259,
+    "sha256": "79f9c1b511c9c04efebab8ff158bfc7dbe4524e3fc6a1df2fd73af0a6ddd9dcf",
+    "summary": {
+      "status": "PASS",
+      "phase": "complete"
+    },
+    "scope": "reader-produced summary; not original member bytes"
+  },
+  {
+    "artifact": 15253256509,
+    "path": "installed-recording-controls.json",
+    "bytes": 4292,
+    "sha256": "d63294548c0d5263aeafc8f4da289e62f3beacb1638f98fc4d8c1f1b83b329aa",
+    "summary": {
+      "status": "PASS",
+      "check_count": 65,
+      "last_checks": [
+        "Cancel is announced distinctly",
+        "native focus reaches Start recording",
+        "native key dispatch: Start recording",
+        "native focus reaches Stop and save recording",
+        "native key dispatch: Stop and save recording",
+        "native recording owner window actually destroyed",
+        "Escape closes only after active capture cleanup",
+        "closing preserves exactly the verified originals"
+      ]
+    },
+    "scope": "reader-produced summary; not original member bytes"
+  },
+  {
+    "artifact": 15253256509,
+    "path": "native-recording-device.json",
+    "bytes": 2773,
+    "sha256": "cbe329cd83a02d6f04a6a80a198738251995f5c1abadd3e5a3d1ecf24f77046a",
+    "summary": {
+      "status": "FAILED",
+      "error": "Traceback (most recent call last):\n  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_recording_device_probe.py\", line 160, in main\n    run(args, report)\n  File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_recording_device_probe.py\", line 114, in run\n    future.result()\n  File \"C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\concurrent\\futures\\_base.py\", line 449, in result\n    return self.__get_result()\n           ^^^^^^^^^^^^^^^^^^^\n  File \"C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\concurrent\\futures\\_base.py\", line 401, in __get_result\n    raise self._exception\n  File \"C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\concurrent\\futures\\thread.py\", line 58, in run\n    result = self.fn(*self.args, **self.kwargs)\n             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"D:\\a\\_temp\\carr-windows-python\\Lib\\site-packages\\carr_library\\audio\\recording.py\", line 552, in capture\n    return self._capture(device, title, options, stop_requested, checked,\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"D:\\a\\_temp\\carr-windows-python\\Lib\\site-packages\\carr_library\\audio\\recording.py\", line 650, in _capture\n    result = run_process(command, budget=budget, cancelled=cancelled,\n             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"D:\\a\\_temp\\carr-windows-python\\Lib\\site-packages\\carr_library\\audio\\process.py\", line 568, in run_process\n    raise AudioError(f'Local audio worker failed (exit {process.returncode}): {message.strip()}')\ncarr_library.audio.models.AudioError: Local audio worker failed (exit 4294967291): [in#0 @ 000001a531d98680] Could not find output pin from audio only capture device.\r\n[in#0 @ 000001a531d98680] Could not enumerate audio only devices (or none found).\r\n[in#0 @ 000001a531d980c0] Error opening input: I/O error\r\nError opening input file audio=@device_cm_{33D9A762-90C8-11D0-BD43-00A0C911CE86}\\wave_{7891A99A-9BCB-4C2D-9FB2-51C5E1818EA7}.\r\nError opening input files: I/O error\n"
+    },
+    "scope": "reader-produced summary; not original member bytes"
+  },
+  {
+    "artifact": 15253256509,
+    "path": "native-recording-process.json",
+    "bytes": 2420,
+    "sha256": "9a70a60169d7e8171d01ba19c781b9df24dbce4a06e46322f6a9010baee19b40",
+    "summary": {
+      "status": "PASS",
+      "check_count": 15,
+      "last_checks": [
+        "unrelated concurrent native process remains outside capture ownership",
+        "native short-worker venv is created without acquiring dependencies",
+        "short venv worker preserves the explicitly selected environment",
+        "short venv uses the real base interpreter behind its redirector",
+        "short venv lifetime members and native streams finish before return",
+        "nested-short venv worker preserves the explicitly selected environment",
+        "nested-short venv uses the real base interpreter behind its redirector",
+        "nested-short venv lifetime members and native streams finish before return"
+      ]
+    },
+    "scope": "reader-produced summary; not original member bytes"
+  },
+  {
+    "artifact": 15253256509,
+    "path": "recording-access-diagnostic.json",
+    "bytes": 10216,
+    "sha256": "7a8cd11f4630b9847b1386bedafcb52fec3f5f81849414f9c7aa914ab87f6ff1",
+    "summary": {
+      "status": "DIAGNOSED",
+      "source_commit": "943f585659c55481046266338f428e4a1043a9bd"
+    },
+    "scope": "reader-produced summary; not original member bytes"
+  },
+  {
+    "artifact": 15253256509,
+    "path": "recording-device-inventory.json",
+    "bytes": 414,
+    "sha256": "c2f96e095dfc98ac630c38b0b59edc228e1d617f463834f56f6cec05a756d90c",
+    "summary": {
+      "status": "PASS"
+    },
+    "scope": "reader-produced summary; not original member bytes"
+  },
+  {
+    "artifact": 15253256509,
+    "path": "source-recording-controls.json",
+    "bytes": 4292,
+    "sha256": "d63294548c0d5263aeafc8f4da289e62f3beacb1638f98fc4d8c1f1b83b329aa",
+    "summary": {
+      "status": "PASS",
+      "check_count": 65,
+      "last_checks": [
+        "Cancel is announced distinctly",
+        "native focus reaches Start recording",
+        "native key dispatch: Start recording",
+        "native focus reaches Stop and save recording",
+        "native key dispatch: Stop and save recording",
+        "native recording owner window actually destroyed",
+        "Escape closes only after active capture cleanup",
+        "closing preserves exactly the verified originals"
+      ]
+    },
+    "scope": "reader-produced summary; not original member bytes"
+  }
+]

@@ -1,0 +1,85 @@
+{
+  "schema": "carr-bounded-artifact-diagnostic/1",
+  "status": "COMPLETE",
+  "application_acceptance": "NOT_ASSESSED",
+  "source_head": "943f585659c55481046266338f428e4a1043a9bd",
+  "source_run": 46119978375,
+  "source_attempt": 1,
+  "source_aggregate": "FAIL",
+  "helper_head": "ace890731967e065de2c0527ff70132403d5c690",
+  "helper_tree": "99be922065e4b7d89527efb94dc227520416eac0",
+  "helper_branch": "carr/windows-687-receipts-20261127",
+  "helper_run": 46130843660,
+  "helper_job": 140935407245,
+  "helper_job_conclusion": "success",
+  "helper_script_blob": "fb25fc5f101ff97d1f9e334515883e112663914a",
+  "helper_workflow_blob": "000d4e554a14bd6cd47e51e6d2e4a2e83c0363a1",
+  "raw_log": {
+    "file": "helper-terminal.log",
+    "utf8_bytes": 199695,
+    "sha256": "b207691c960af1c53313fdab01b5dcc5c2f840a16e62fc3111688a3f2d75a9a9"
+  },
+  "pinned_xml": {
+    "artifact": 15256851282,
+    "archive_sha256": "62b88af6bb0a2df3c90b9f4dfbcbe2de9e16e84642d008eb5b4bb98b110ddb65",
+    "path": "full-bundle-workflows.xml",
+    "bytes": 1495285,
+    "sha256": "a4425cc38f8879b77473943199fbc3fd86ae00f3cc29048fa4392dbcc5615b50"
+  },
+  "actual_module_rows": {
+    "module": "test_native_acquisition",
+    "expected_names": [
+      "test_windows_native_dialog_async_lookup_focus_and_close[doi]",
+      "test_windows_native_dialog_async_lookup_focus_and_close[isbn]"
+    ],
+    "actual_names": [
+      "test_windows_native_dialog_async_lookup_focus_and_close[doi]",
+      "test_windows_native_dialog_async_lookup_focus_and_close[isbn]"
+    ],
+    "count": 2,
+    "unique": 2,
+    "unexpected_variant_count": 0,
+    "failed_error_or_skipped_rows": 0,
+    "exact_two_current_variants": true
+  },
+  "totals": {
+    "testcases": 9319,
+    "passed": 9319,
+    "failed": 0,
+    "errors": 0,
+    "failed_or_error": 0,
+    "skipped": 0
+  },
+  "historical_predicates": {
+    "missing_required_names": [
+      "test_windows_native_dialog_async_lookup_focus_and_close"
+    ],
+    "predicates": {
+      "metadata_exact_58_unique": true,
+      "ocr_exact_names": true,
+      "state_inventory_exact_names": true,
+      "required_names_present": false,
+      "zero_failed_error_skipped": true
+    },
+    "all_guarded_predicates": false
+  },
+  "preserves_previous_evidence": {
+    "original_xml_diagnostic_tree": "94af55f92c7b3e6b93d05693a8ce17f67b239914",
+    "terminal_main_tree": "98d4fed46d85fbae49404a77d94fb24d108a36e5",
+    "note": "Append-only evidence. The missing unsuffixed identity remains a failed historical predicate; the exact two current variants are now positively identified."
+  },
+  "bounds": {
+    "zip_members": 512,
+    "member_bytes": 4194304,
+    "expanded_bytes": 33554432,
+    "output_bytes": 2097152,
+    "raw_xml_emitted": false,
+    "archive_extracted": false,
+    "artifact_code_or_private_assets_executed": false
+  },
+  "limitations": [
+    "This is a read-only diagnostic of the immutable943 trial, not execution of the corrected MAIN gate or any later application head.",
+    "The final sealed-bundle/wheel/native installation stages gated by the original failed step were not retroactively executed.",
+    "Actual capture remains failed and no device, consent or OS policy was changed."
+  ]
+}

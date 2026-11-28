@@ -1,0 +1,1526 @@
+{
+  "schema": "carr-pytest-console-observations/1",
+  "note": "Module outcome counts reconcile with the two exact pytest summaries. ERROR rows may be teardown errors for a case also reported PASSED or FAILED, so these are phase outcomes, not an additive count of distinct collected cases. Nineteen output-split PASSED rows per lane are bound to their immediately current verbose module. Only the emitted top20 durations are retained; they are not complete module runtimes.",
+  "modes": {
+    "source": {
+      "summary": "50 failed, 1053 passed, 55 errors in 248.79s (0:04:08)",
+      "collection": [
+        "collecting ... collected 1103 items"
+      ],
+      "rows": 1158,
+      "modules": 37,
+      "groups": {
+        "tests/studio/test_interchange.py": {
+          "PASSED": 38,
+          "FAILED": 0,
+          "ERROR": 5,
+          "SKIPPED": 0
+        },
+        "tests/storage/test_cue_interchange_backup.py": {
+          "PASSED": 15,
+          "FAILED": 4,
+          "ERROR": 19,
+          "SKIPPED": 0
+        },
+        "tests/audio/test_director_effects.py": {
+          "PASSED": 38,
+          "FAILED": 1,
+          "ERROR": 0,
+          "SKIPPED": 0
+        },
+        "tests/storage/test_director_effects_backup.py": {
+          "PASSED": 13,
+          "FAILED": 1,
+          "ERROR": 0,
+          "SKIPPED": 0
+        },
+        "tests/assistant/test_translation_partition.py": {
+          "PASSED": 22,
+          "FAILED": 6,
+          "ERROR": 0,
+          "SKIPPED": 0
+        },
+        "tests/assistant/test_translation_layout.py": {
+          "PASSED": 23,
+          "FAILED": 18,
+          "ERROR": 22,
+          "SKIPPED": 0
+        },
+        "tests/assistant/test_translation_epub_layout.py": {
+          "PASSED": 22,
+          "FAILED": 7,
+          "ERROR": 9,
+          "SKIPPED": 0
+        },
+        "tests/ui/test_translation_layout.py": {
+          "PASSED": 58,
+          "FAILED": 0,
+          "ERROR": 0,
+          "SKIPPED": 0
+        },
+        "tests/storage/test_translation_layout_backup.py": {
+          "PASSED": 0,
+          "FAILED": 12,
+          "ERROR": 0,
+          "SKIPPED": 0
+        },
+        "tests/audio/test_effects.py": {
+          "PASSED": 39,
+          "FAILED": 0,
+          "ERROR": 0,
+          "SKIPPED": 0
+        },
+        "tests/audio/test_dsp.py": {
+          "PASSED": 48,
+          "FAILED": 1,
+          "ERROR": 0,
+          "SKIPPED": 0
+        },
+        "tests/audio/test_effect_presets.py": {
+          "PASSED": 37,
+          "FAILED": 0,
+          "ERROR": 0,
+          "SKIPPED": 0
+        },
+        "tests/audio/test_render.py": {
+          "PASSED": 24,
+          "FAILED": 0,
+          "ERROR": 0,
+          "SKIPPED": 0
+        },
+        "tests/ui/test_audio_effects.py": {
+          "PASSED": 40,
+          "FAILED": 0,
+          "ERROR": 0,
+          "SKIPPED": 0
+        },
+        "tests/studio/test_project_effects.py": {
+          "PASSED": 20,
+          "FAILED": 0,
+          "ERROR": 0,
+          "SKIPPED": 0
+        },
+        "tests/audio/test_director.py": {
+          "PASSED": 10,
+          "FAILED": 0,
+          "ERROR": 0,
+          "SKIPPED": 0
+        },
+        "tests/audio/test_director_resources.py": {
+          "PASSED": 10,
+          "FAILED": 0,
+          "ERROR": 0,
+          "SKIPPED": 0
+        },
+        "tests/audio/test_director_path_identity.py": {
+          "PASSED": 5,
+          "FAILED": 0,
+          "ERROR": 0,
+          "SKIPPED": 0
+        },
+        "tests/audio/test_projects.py": {
+          "PASSED": 17,
+          "FAILED": 0,
+          "ERROR": 0,
+          "SKIPPED": 0
+        },
+        "tests/ui/test_audio_studio.py": {
+          "PASSED": 20,
+          "FAILED": 0,
+          "ERROR": 0,
+          "SKIPPED": 0
+        },
+        "tests/studio/test_publishing_primary.py": {
+          "PASSED": 20,
+          "FAILED": 0,
+          "ERROR": 0,
+          "SKIPPED": 0
+        },
+        "tests/studio/test_director_silence.py": {
+          "PASSED": 16,
+          "FAILED": 0,
+          "ERROR": 0,
+          "SKIPPED": 0
+        },
+        "tests/assistant/test_translation.py": {
+          "PASSED": 89,
+          "FAILED": 0,
+          "ERROR": 0,
+          "SKIPPED": 0
+        },
+        "tests/assistant/test_translation_v3.py": {
+          "PASSED": 58,
+          "FAILED": 0,
+          "ERROR": 0,
+          "SKIPPED": 0
+        },
+        "tests/assistant/test_library_translation.py": {
+          "PASSED": 37,
+          "FAILED": 0,
+          "ERROR": 0,
+          "SKIPPED": 0
+        },
+        "tests/ui/test_translation_selection.py": {
+          "PASSED": 10,
+          "FAILED": 0,
+          "ERROR": 0,
+          "SKIPPED": 0
+        },
+        "tests/ui/test_library_translation_dialog.py": {
+          "PASSED": 20,
+          "FAILED": 0,
+          "ERROR": 0,
+          "SKIPPED": 0
+        },
+        "tests/storage/test_translation_runtime_recovery.py": {
+          "PASSED": 12,
+          "FAILED": 0,
+          "ERROR": 0,
+          "SKIPPED": 0
+        },
+        "tests/studio/test_production.py": {
+          "PASSED": 11,
+          "FAILED": 0,
+          "ERROR": 0,
+          "SKIPPED": 0
+        },
+        "tests/studio/test_production_cancellation_outcomes.py": {
+          "PASSED": 24,
+          "FAILED": 0,
+          "ERROR": 0,
+          "SKIPPED": 0
+        },
+        "tests/studio/test_production_hardening.py": {
+          "PASSED": 5,
+          "FAILED": 0,
+          "ERROR": 0,
+          "SKIPPED": 0
+        },
+        "tests/studio/test_publishing.py": {
+          "PASSED": 49,
+          "FAILED": 0,
+          "ERROR": 0,
+          "SKIPPED": 0
+        },
+        "tests/storage/test_production_operation_backup.py": {
+          "PASSED": 18,
+          "FAILED": 0,
+          "ERROR": 0,
+          "SKIPPED": 0
+        },
+        "tests/storage/test_studio_timeline_backup.py": {
+          "PASSED": 41,
+          "FAILED": 0,
+          "ERROR": 0,
+          "SKIPPED": 0
+        },
+        "tests/storage/test_canonical_backup_compat.py": {
+          "PASSED": 68,
+          "FAILED": 0,
+          "ERROR": 0,
+          "SKIPPED": 0
+        },
+        "tests/audio/test_cleanup_contexts.py": {
+          "PASSED": 27,
+          "FAILED": 0,
+          "ERROR": 0,
+          "SKIPPED": 0
+        },
+        "tests/packaging/test_managed_launch_boundary.py": {
+          "PASSED": 49,
+          "FAILED": 0,
+          "ERROR": 0,
+          "SKIPPED": 0
+        }
+      },
+      "top20": [
+        "9.52s call     tests/audio/test_director.py::test_more_than_128_sequential_lines_render_with_bounded_graph_and_keep_pan",
+        "8.57s call     tests/audio/test_director_effects.py::test_actual_role_scene_master_edits_reuse_only_unaffected_cached_nodes",
+        "6.03s setup    tests/studio/test_production.py::test_actual_three_role_music_chapters_stems_and_text_invariance",
+        "5.59s call     tests/audio/test_director_effects.py::test_actual_dynamics_order_changes_pcm_without_changing_time_or_synthesizing_again",
+        "5.31s call     tests/studio/test_project_effects.py::test_actual_speech_cache_survives_role_and_master_effect_edits",
+        "5.23s call     tests/studio/test_project_effects.py::test_actual_clip_scene_master_processing_preview_and_backup_restore",
+        "4.70s call     tests/audio/test_director_effects.py::test_processed_cache_tamper_regenerates_that_node_without_new_synthesis",
+        "4.58s call     tests/audio/test_director.py::test_actual_three_voice_music_production_preserves_text_stereo_chapters_and_outputs",
+        "4.11s call     tests/audio/test_director_effects.py::test_pause_reopen_and_resume_keeps_accepted_effect_nodes_and_raw_speech",
+        "4.04s call     tests/audio/test_director_effects.py::test_master_reverb_is_processed_once_and_chapters_copy_exact_master_frames",
+        "4.04s call     tests/audio/test_director_effects.py::test_actual_effect_worker_retains_pcm_stage_lock_and_broker_until_native_retry[direct-pending]",
+        "4.04s call     tests/audio/test_director_effects.py::test_actual_effect_worker_retains_pcm_stage_lock_and_broker_until_native_retry[masked-pending]",
+        "4.03s call     tests/audio/test_director_effects.py::test_wholly_bypassed_chain_keeps_legacy_pcm_without_starting_effect_runtime[scene]",
+        "4.03s call     tests/audio/test_director_effects.py::test_wholly_bypassed_chain_keeps_legacy_pcm_without_starting_effect_runtime[role]",
+        "4.02s call     tests/audio/test_director_effects.py::test_wholly_bypassed_chain_keeps_legacy_pcm_without_starting_effect_runtime[master]",
+        "3.53s call     tests/audio/test_director_effects.py::test_effect_project_publishes_through_the_existing_primary_source_validator",
+        "3.47s call     tests/studio/test_production.py::test_edit_one_scene_reuses_unchanged_speech_and_source_original",
+        "3.39s call     tests/audio/test_director_effects.py::test_changed_accepted_input_cannot_publish_an_effect_cache_receipt[master-chapter-input]",
+        "2.97s call     tests/audio/test_director.py::test_change_one_scene_preserves_other_scene_audio",
+        "2.79s call     tests/studio/test_production.py::test_pause_restart_and_one_corrupt_speech_chunk_repaired"
+      ],
+      "failureRows": [
+        {
+          "node": "tests/studio/test_interchange.py::test_completed_replay_requires_exact_cue_bytes_and_declared_source[missing-receipt]",
+          "outcome": "ERROR"
+        },
+        {
+          "node": "tests/studio/test_interchange.py::test_completed_replay_requires_exact_cue_bytes_and_declared_source[rehashed-bytes]",
+          "outcome": "ERROR"
+        },
+        {
+          "node": "tests/studio/test_interchange.py::test_completed_replay_requires_exact_cue_bytes_and_declared_source[false-index]",
+          "outcome": "ERROR"
+        },
+        {
+          "node": "tests/studio/test_interchange.py::test_completed_replay_requires_exact_cue_bytes_and_declared_source[false-qualification]",
+          "outcome": "ERROR"
+        },
+        {
+          "node": "tests/studio/test_interchange.py::test_new_cue_private_staging_is_disposable_and_legacy_completed_jobs_stay_valid",
+          "outcome": "ERROR"
+        },
+        {
+          "node": "tests/storage/test_cue_interchange_backup.py::test_actual_backup_retains_exact_cue_declaration_and_revokes_output_authority[False-native-format5]",
+          "outcome": "FAILED"
+        },
+        {
+          "node": "tests/storage/test_cue_interchange_backup.py::test_actual_backup_retains_exact_cue_declaration_and_revokes_output_authority[False-native-format5]",
+          "outcome": "ERROR"
+        },
+        {
+          "node": "tests/storage/test_cue_interchange_backup.py::test_actual_backup_retains_exact_cue_declaration_and_revokes_output_authority[False-legacy-flat4]",
+          "outcome": "FAILED"
+        },
+        {
+          "node": "tests/storage/test_cue_interchange_backup.py::test_actual_backup_retains_exact_cue_declaration_and_revokes_output_authority[False-legacy-flat4]",
+          "outcome": "ERROR"
+        },
+        {
+          "node": "tests/storage/test_cue_interchange_backup.py::test_actual_backup_retains_exact_cue_declaration_and_revokes_output_authority[True-native-format5]",
+          "outcome": "FAILED"
+        },
+        {
+          "node": "tests/storage/test_cue_interchange_backup.py::test_actual_backup_retains_exact_cue_declaration_and_revokes_output_authority[True-native-format5]",
+          "outcome": "ERROR"
+        },
+        {
+          "node": "tests/storage/test_cue_interchange_backup.py::test_actual_backup_retains_exact_cue_declaration_and_revokes_output_authority[True-legacy-flat4]",
+          "outcome": "FAILED"
+        },
+        {
+          "node": "tests/storage/test_cue_interchange_backup.py::test_actual_backup_retains_exact_cue_declaration_and_revokes_output_authority[True-legacy-flat4]",
+          "outcome": "ERROR"
+        },
+        {
+          "node": "tests/storage/test_cue_interchange_backup.py::test_rehashed_cue_metadata_cannot_replace_its_project_or_measured_timeline[false-index-native-format5]",
+          "outcome": "ERROR"
+        },
+        {
+          "node": "tests/storage/test_cue_interchange_backup.py::test_rehashed_cue_metadata_cannot_replace_its_project_or_measured_timeline[false-index-legacy-flat4]",
+          "outcome": "ERROR"
+        },
+        {
+          "node": "tests/storage/test_cue_interchange_backup.py::test_rehashed_cue_metadata_cannot_replace_its_project_or_measured_timeline[false-source-native-format5]",
+          "outcome": "ERROR"
+        },
+        {
+          "node": "tests/storage/test_cue_interchange_backup.py::test_rehashed_cue_metadata_cannot_replace_its_project_or_measured_timeline[false-source-legacy-flat4]",
+          "outcome": "ERROR"
+        },
+        {
+          "node": "tests/storage/test_cue_interchange_backup.py::test_rehashed_cue_metadata_cannot_replace_its_project_or_measured_timeline[false-project-native-format5]",
+          "outcome": "ERROR"
+        },
+        {
+          "node": "tests/storage/test_cue_interchange_backup.py::test_rehashed_cue_metadata_cannot_replace_its_project_or_measured_timeline[false-project-legacy-flat4]",
+          "outcome": "ERROR"
+        },
+        {
+          "node": "tests/storage/test_cue_interchange_backup.py::test_rehashed_cue_metadata_cannot_replace_its_project_or_measured_timeline[false-qualification-native-format5]",
+          "outcome": "ERROR"
+        },
+        {
+          "node": "tests/storage/test_cue_interchange_backup.py::test_rehashed_cue_metadata_cannot_replace_its_project_or_measured_timeline[false-qualification-legacy-flat4]",
+          "outcome": "ERROR"
+        },
+        {
+          "node": "tests/storage/test_cue_interchange_backup.py::test_rehashed_cue_metadata_cannot_replace_its_project_or_measured_timeline[false-schema-native-format5]",
+          "outcome": "ERROR"
+        },
+        {
+          "node": "tests/storage/test_cue_interchange_backup.py::test_rehashed_cue_metadata_cannot_replace_its_project_or_measured_timeline[false-schema-legacy-flat4]",
+          "outcome": "ERROR"
+        },
+        {
+          "node": "tests/storage/test_cue_interchange_backup.py::test_cue_timeline_requires_its_retained_project_checkpoint[native-format5]",
+          "outcome": "ERROR"
+        },
+        {
+          "node": "tests/storage/test_cue_interchange_backup.py::test_cue_timeline_requires_its_retained_project_checkpoint[legacy-flat4]",
+          "outcome": "ERROR"
+        },
+        {
+          "node": "tests/storage/test_cue_interchange_backup.py::test_legacy_timeline_without_interchange_keeps_its_original_bytes[native-format5]",
+          "outcome": "ERROR"
+        },
+        {
+          "node": "tests/storage/test_cue_interchange_backup.py::test_legacy_timeline_without_interchange_keeps_its_original_bytes[legacy-flat4]",
+          "outcome": "ERROR"
+        },
+        {
+          "node": "tests/storage/test_cue_interchange_backup.py::test_cancellation_during_real_cue_metadata_validation_publishes_no_backup",
+          "outcome": "ERROR"
+        },
+        {
+          "node": "tests/audio/test_director_effects.py::test_effect_project_publishes_through_the_existing_primary_source_validator",
+          "outcome": "FAILED"
+        },
+        {
+          "node": "tests/storage/test_director_effects_backup.py::test_typed_effects_survive_real_backup_without_restoring_execution_authority[foreign-flat4]",
+          "outcome": "FAILED"
+        },
+        {
+          "node": "tests/assistant/test_translation_partition.py::test_partition_reuses_one_job_and_retains_accepted_receipts_across_pause",
+          "outcome": "FAILED"
+        },
+        {
+          "node": "tests/assistant/test_translation_partition.py::test_changed_saved_partition_is_refused_before_credentials_or_next_request[mapping]",
+          "outcome": "FAILED"
+        },
+        {
+          "node": "tests/assistant/test_translation_partition.py::test_changed_saved_partition_is_refused_before_credentials_or_next_request[boundaries]",
+          "outcome": "FAILED"
+        },
+        {
+          "node": "tests/assistant/test_translation_partition.py::test_changed_saved_partition_is_refused_before_credentials_or_next_request[null]",
+          "outcome": "FAILED"
+        },
+        {
+          "node": "tests/assistant/test_translation_partition.py::test_changed_saved_partition_is_refused_before_credentials_or_next_request[removed]",
+          "outcome": "FAILED"
+        },
+        {
+          "node": "tests/assistant/test_translation_partition.py::test_partition_is_detached_before_a_live_guard_mutates_the_caller_mapping",
+          "outcome": "FAILED"
+        },
+        {
+          "node": "tests/assistant/test_translation_layout.py::test_actual_worker_maps_exact_retained_body_and_cells_under_the_real_lease",
+          "outcome": "ERROR"
+        },
+        {
+          "node": "tests/assistant/test_translation_layout.py::test_review_binds_one_job_to_exact_structure_without_provider_or_credentials",
+          "outcome": "FAILED"
+        },
+        {
+          "node": "tests/assistant/test_translation_layout.py::test_review_binds_one_job_to_exact_structure_without_provider_or_credentials",
+          "outcome": "ERROR"
+        },
+        {
+          "node": "tests/assistant/test_translation_layout.py::test_real_completed_docx_preserves_tables_styles_links_and_every_other_zip_member",
+          "outcome": "FAILED"
+        },
+        {
+          "node": "tests/assistant/test_translation_layout.py::test_real_completed_docx_preserves_tables_styles_links_and_every_other_zip_member",
+          "outcome": "ERROR"
+        },
+        {
+          "node": "tests/assistant/test_translation_layout.py::test_mixed_hyperlink_is_refused_by_actual_worker_before_jobs_or_requests",
+          "outcome": "ERROR"
+        },
+        {
+          "node": "tests/assistant/test_translation_layout.py::test_same_size_modified_worker_request_is_refused_by_actual_snapshot",
+          "outcome": "ERROR"
+        },
+        {
+          "node": "tests/assistant/test_translation_layout.py::test_wrong_actual_worker_origin_is_refused_before_parsing",
+          "outcome": "ERROR"
+        },
+        {
+          "node": "tests/assistant/test_translation_layout.py::test_forged_mapping_cannot_reuse_original_review",
+          "outcome": "ERROR"
+        },
+        {
+          "node": "tests/assistant/test_translation_layout.py::test_partial_job_cannot_publish_and_resumes_only_unaccepted_requests",
+          "outcome": "FAILED"
+        },
+        {
+          "node": "tests/assistant/test_translation_layout.py::test_partial_job_cannot_publish_and_resumes_only_unaccepted_requests",
+          "outcome": "ERROR"
+        },
+        {
+          "node": "tests/assistant/test_translation_layout.py::test_final_publication_keeps_exact_source_destination_and_new_file_authority[source]",
+          "outcome": "FAILED"
+        },
+        {
+          "node": "tests/assistant/test_translation_layout.py::test_final_publication_keeps_exact_source_destination_and_new_file_authority[source]",
+          "outcome": "ERROR"
+        },
+        {
+          "node": "tests/assistant/test_translation_layout.py::test_final_publication_keeps_exact_source_destination_and_new_file_authority[same-byte-competitor]",
+          "outcome": "FAILED"
+        },
+        {
+          "node": "tests/assistant/test_translation_layout.py::test_final_publication_keeps_exact_source_destination_and_new_file_authority[same-byte-competitor]",
+          "outcome": "ERROR"
+        },
+        {
+          "node": "tests/assistant/test_translation_layout.py::test_final_publication_keeps_exact_source_destination_and_new_file_authority[parent]",
+          "outcome": "FAILED"
+        },
+        {
+          "node": "tests/assistant/test_translation_layout.py::test_final_publication_keeps_exact_source_destination_and_new_file_authority[parent]",
+          "outcome": "ERROR"
+        },
+        {
+          "node": "tests/assistant/test_translation_layout.py::test_final_publication_keeps_exact_source_destination_and_new_file_authority[private-target]",
+          "outcome": "FAILED"
+        },
+        {
+          "node": "tests/assistant/test_translation_layout.py::test_final_publication_keeps_exact_source_destination_and_new_file_authority[private-target]",
+          "outcome": "ERROR"
+        },
+        {
+          "node": "tests/assistant/test_translation_layout.py::test_stop_after_actual_publication_preserves_completed_new_file_receipt",
+          "outcome": "FAILED"
+        },
+        {
+          "node": "tests/assistant/test_translation_layout.py::test_stop_after_actual_publication_preserves_completed_new_file_receipt",
+          "outcome": "ERROR"
+        },
+        {
+          "node": "tests/assistant/test_translation_layout.py::test_declared_resource_refusal_precedes_parser_and_provider",
+          "outcome": "ERROR"
+        },
+        {
+          "node": "tests/assistant/test_translation_layout.py::test_actual_worker_cancel_reaps_child_before_lease_and_stage_release",
+          "outcome": "FAILED"
+        },
+        {
+          "node": "tests/assistant/test_translation_layout.py::test_actual_worker_cancel_reaps_child_before_lease_and_stage_release",
+          "outcome": "ERROR"
+        },
+        {
+          "node": "tests/assistant/test_translation_layout.py::test_two_actual_pending_families_retain_one_stage_and_lease_until_both_quiet[first-child-direct]",
+          "outcome": "ERROR"
+        },
+        {
+          "node": "tests/assistant/test_translation_layout.py::test_two_actual_pending_families_retain_one_stage_and_lease_until_both_quiet[first-child-causal]",
+          "outcome": "ERROR"
+        },
+        {
+          "node": "tests/assistant/test_translation_layout.py::test_two_actual_pending_families_retain_one_stage_and_lease_until_both_quiet[second-child-direct]",
+          "outcome": "ERROR"
+        },
+        {
+          "node": "tests/assistant/test_translation_layout.py::test_two_actual_pending_families_retain_one_stage_and_lease_until_both_quiet[second-child-causal]",
+          "outcome": "ERROR"
+        },
+        {
+          "node": "tests/assistant/test_translation_layout.py::test_explicit_cli_review_submit_and_new_file_export_share_the_same_saved_job",
+          "outcome": "FAILED"
+        },
+        {
+          "node": "tests/assistant/test_translation_layout.py::test_explicit_cli_review_submit_and_new_file_export_share_the_same_saved_job",
+          "outcome": "ERROR"
+        },
+        {
+          "node": "tests/assistant/test_translation_layout.py::test_cli_format_mode_refuses_partial_or_multiple_documents_before_parsing[arguments0]",
+          "outcome": "ERROR"
+        },
+        {
+          "node": "tests/assistant/test_translation_layout.py::test_cli_format_mode_refuses_partial_or_multiple_documents_before_parsing[arguments1]",
+          "outcome": "ERROR"
+        },
+        {
+          "node": "tests/assistant/test_translation_layout.py::test_portable_cli_process_keeps_actual_pending_families_and_stage_until_both_quiet[first-family-direct-operation]",
+          "outcome": "FAILED"
+        },
+        {
+          "node": "tests/assistant/test_translation_layout.py::test_portable_cli_process_keeps_actual_pending_families_and_stage_until_both_quiet[first-family-direct-runtime-close]",
+          "outcome": "FAILED"
+        },
+        {
+          "node": "tests/assistant/test_translation_layout.py::test_portable_cli_process_keeps_actual_pending_families_and_stage_until_both_quiet[first-family-causal-operation]",
+          "outcome": "FAILED"
+        },
+        {
+          "node": "tests/assistant/test_translation_layout.py::test_portable_cli_process_keeps_actual_pending_families_and_stage_until_both_quiet[first-family-causal-runtime-close]",
+          "outcome": "FAILED"
+        },
+        {
+          "node": "tests/assistant/test_translation_layout.py::test_portable_cli_process_keeps_actual_pending_families_and_stage_until_both_quiet[second-family-direct-operation]",
+          "outcome": "FAILED"
+        },
+        {
+          "node": "tests/assistant/test_translation_layout.py::test_portable_cli_process_keeps_actual_pending_families_and_stage_until_both_quiet[second-family-direct-runtime-close]",
+          "outcome": "FAILED"
+        },
+        {
+          "node": "tests/assistant/test_translation_layout.py::test_portable_cli_process_keeps_actual_pending_families_and_stage_until_both_quiet[second-family-causal-operation]",
+          "outcome": "FAILED"
+        },
+        {
+          "node": "tests/assistant/test_translation_layout.py::test_portable_cli_process_keeps_actual_pending_families_and_stage_until_both_quiet[second-family-causal-runtime-close]",
+          "outcome": "FAILED"
+        },
+        {
+          "node": "tests/assistant/test_translation_epub_layout.py::test_actual_epub_capture_and_review_bind_one_whole_original_without_external_calls",
+          "outcome": "FAILED"
+        },
+        {
+          "node": "tests/assistant/test_translation_epub_layout.py::test_actual_epub_capture_and_review_bind_one_whole_original_without_external_calls",
+          "outcome": "ERROR"
+        },
+        {
+          "node": "tests/assistant/test_translation_epub_layout.py::test_actual_epub_export_preserves_dom_links_styles_media_and_canonical_source",
+          "outcome": "FAILED"
+        },
+        {
+          "node": "tests/assistant/test_translation_epub_layout.py::test_actual_epub_export_preserves_dom_links_styles_media_and_canonical_source",
+          "outcome": "ERROR"
+        },
+        {
+          "node": "tests/assistant/test_translation_epub_layout.py::test_translated_markup_remains_literal_text_not_active_xhtml",
+          "outcome": "FAILED"
+        },
+        {
+          "node": "tests/assistant/test_translation_epub_layout.py::test_translated_markup_remains_literal_text_not_active_xhtml",
+          "outcome": "ERROR"
+        },
+        {
+          "node": "tests/assistant/test_translation_epub_layout.py::test_rendered_whitespace_identity_does_not_rewrite_accepted_provider_receipts",
+          "outcome": "FAILED"
+        },
+        {
+          "node": "tests/assistant/test_translation_epub_layout.py::test_rendered_whitespace_identity_does_not_rewrite_accepted_provider_receipts",
+          "outcome": "ERROR"
+        },
+        {
+          "node": "tests/assistant/test_translation_epub_layout.py::test_current_epub_mapping_is_revalidated_before_approving_requests",
+          "outcome": "ERROR"
+        },
+        {
+          "node": "tests/assistant/test_translation_epub_layout.py::test_changed_request_snapshot_is_refused_by_the_actual_epub_worker",
+          "outcome": "ERROR"
+        },
+        {
+          "node": "tests/assistant/test_translation_epub_layout.py::test_paused_epub_reuses_only_accepted_blocks_without_duplicate_calls",
+          "outcome": "FAILED"
+        },
+        {
+          "node": "tests/assistant/test_translation_epub_layout.py::test_paused_epub_reuses_only_accepted_blocks_without_duplicate_calls",
+          "outcome": "ERROR"
+        },
+        {
+          "node": "tests/assistant/test_translation_epub_layout.py::test_many_chapters_keep_one_existing_job_and_bounded_source_positions",
+          "outcome": "FAILED"
+        },
+        {
+          "node": "tests/assistant/test_translation_epub_layout.py::test_many_chapters_keep_one_existing_job_and_bounded_source_positions",
+          "outcome": "ERROR"
+        },
+        {
+          "node": "tests/assistant/test_translation_epub_layout.py::test_committed_epub_receipt_survives_a_stop_after_the_atomic_publisher_return",
+          "outcome": "FAILED"
+        },
+        {
+          "node": "tests/assistant/test_translation_epub_layout.py::test_committed_epub_receipt_survives_a_stop_after_the_atomic_publisher_return",
+          "outcome": "ERROR"
+        },
+        {
+          "node": "tests/storage/test_translation_layout_backup.py::test_actual_recovery_preserves_partition_receipts_and_exports_without_original_paths_or_credentials[docx-native5]",
+          "outcome": "FAILED"
+        },
+        {
+          "node": "tests/storage/test_translation_layout_backup.py::test_actual_recovery_preserves_partition_receipts_and_exports_without_original_paths_or_credentials[docx-flat4]",
+          "outcome": "FAILED"
+        },
+        {
+          "node": "tests/storage/test_translation_layout_backup.py::test_actual_recovery_preserves_partition_receipts_and_exports_without_original_paths_or_credentials[epub-native5]",
+          "outcome": "FAILED"
+        },
+        {
+          "node": "tests/storage/test_translation_layout_backup.py::test_actual_recovery_preserves_partition_receipts_and_exports_without_original_paths_or_credentials[epub-flat4]",
+          "outcome": "FAILED"
+        },
+        {
+          "node": "tests/storage/test_translation_layout_backup.py::test_rehashed_partition_damage_is_rejected_before_restore_publication[null-native5]",
+          "outcome": "FAILED"
+        },
+        {
+          "node": "tests/storage/test_translation_layout_backup.py::test_rehashed_partition_damage_is_rejected_before_restore_publication[null-flat4]",
+          "outcome": "FAILED"
+        },
+        {
+          "node": "tests/storage/test_translation_layout_backup.py::test_rehashed_partition_damage_is_rejected_before_restore_publication[boundaries-native5]",
+          "outcome": "FAILED"
+        },
+        {
+          "node": "tests/storage/test_translation_layout_backup.py::test_rehashed_partition_damage_is_rejected_before_restore_publication[boundaries-flat4]",
+          "outcome": "FAILED"
+        },
+        {
+          "node": "tests/storage/test_translation_layout_backup.py::test_rehashed_partition_damage_is_rejected_before_restore_publication[profile-native5]",
+          "outcome": "FAILED"
+        },
+        {
+          "node": "tests/storage/test_translation_layout_backup.py::test_rehashed_partition_damage_is_rejected_before_restore_publication[profile-flat4]",
+          "outcome": "FAILED"
+        },
+        {
+          "node": "tests/storage/test_translation_layout_backup.py::test_rehashed_partition_damage_is_rejected_before_restore_publication[mapping-native5]",
+          "outcome": "FAILED"
+        },
+        {
+          "node": "tests/storage/test_translation_layout_backup.py::test_rehashed_partition_damage_is_rejected_before_restore_publication[mapping-flat4]",
+          "outcome": "FAILED"
+        },
+        {
+          "node": "tests/audio/test_dsp.py::test_converter_chorus_retains_its_real_tail_and_mixer_refuses_implicit_truncation",
+          "outcome": "FAILED"
+        }
+      ],
+      "reported_status_rows": {
+        "PASSED": 1053,
+        "FAILED": 50,
+        "ERROR": 55,
+        "SKIPPED": 0
+      },
+      "split_outcome_rows": [
+        {
+          "module": "tests/assistant/test_translation_layout.py",
+          "status": "PASSED"
+        },
+        {
+          "module": "tests/assistant/test_translation_layout.py",
+          "status": "PASSED"
+        },
+        {
+          "module": "tests/packaging/test_managed_launch_boundary.py",
+          "status": "PASSED"
+        },
+        {
+          "module": "tests/packaging/test_managed_launch_boundary.py",
+          "status": "PASSED"
+        },
+        {
+          "module": "tests/packaging/test_managed_launch_boundary.py",
+          "status": "PASSED"
+        },
+        {
+          "module": "tests/packaging/test_managed_launch_boundary.py",
+          "status": "PASSED"
+        },
+        {
+          "module": "tests/packaging/test_managed_launch_boundary.py",
+          "status": "PASSED"
+        },
+        {
+          "module": "tests/packaging/test_managed_launch_boundary.py",
+          "status": "PASSED"
+        },
+        {
+          "module": "tests/packaging/test_managed_launch_boundary.py",
+          "status": "PASSED"
+        },
+        {
+          "module": "tests/packaging/test_managed_launch_boundary.py",
+          "status": "PASSED"
+        },
+        {
+          "module": "tests/packaging/test_managed_launch_boundary.py",
+          "status": "PASSED"
+        },
+        {
+          "module": "tests/packaging/test_managed_launch_boundary.py",
+          "status": "PASSED"
+        },
+        {
+          "module": "tests/packaging/test_managed_launch_boundary.py",
+          "status": "PASSED"
+        },
+        {
+          "module": "tests/packaging/test_managed_launch_boundary.py",
+          "status": "PASSED"
+        },
+        {
+          "module": "tests/packaging/test_managed_launch_boundary.py",
+          "status": "PASSED"
+        },
+        {
+          "module": "tests/packaging/test_managed_launch_boundary.py",
+          "status": "PASSED"
+        },
+        {
+          "module": "tests/packaging/test_managed_launch_boundary.py",
+          "status": "PASSED"
+        },
+        {
+          "module": "tests/packaging/test_managed_launch_boundary.py",
+          "status": "PASSED"
+        },
+        {
+          "module": "tests/packaging/test_managed_launch_boundary.py",
+          "status": "PASSED"
+        }
+      ]
+    },
+    "installed": {
+      "summary": "50 failed, 1053 passed, 55 errors in 239.07s (0:03:59)",
+      "collection": [
+        "collecting ... collected 1103 items"
+      ],
+      "rows": 1158,
+      "modules": 37,
+      "groups": {
+        "tests/studio/test_interchange.py": {
+          "PASSED": 38,
+          "FAILED": 0,
+          "ERROR": 5,
+          "SKIPPED": 0
+        },
+        "tests/storage/test_cue_interchange_backup.py": {
+          "PASSED": 15,
+          "FAILED": 4,
+          "ERROR": 19,
+          "SKIPPED": 0
+        },
+        "tests/audio/test_director_effects.py": {
+          "PASSED": 38,
+          "FAILED": 1,
+          "ERROR": 0,
+          "SKIPPED": 0
+        },
+        "tests/storage/test_director_effects_backup.py": {
+          "PASSED": 13,
+          "FAILED": 1,
+          "ERROR": 0,
+          "SKIPPED": 0
+        },
+        "tests/assistant/test_translation_partition.py": {
+          "PASSED": 22,
+          "FAILED": 6,
+          "ERROR": 0,
+          "SKIPPED": 0
+        },
+        "tests/assistant/test_translation_layout.py": {
+          "PASSED": 23,
+          "FAILED": 18,
+          "ERROR": 22,
+          "SKIPPED": 0
+        },
+        "tests/assistant/test_translation_epub_layout.py": {
+          "PASSED": 22,
+          "FAILED": 7,
+          "ERROR": 9,
+          "SKIPPED": 0
+        },
+        "tests/ui/test_translation_layout.py": {
+          "PASSED": 58,
+          "FAILED": 0,
+          "ERROR": 0,
+          "SKIPPED": 0
+        },
+        "tests/storage/test_translation_layout_backup.py": {
+          "PASSED": 0,
+          "FAILED": 12,
+          "ERROR": 0,
+          "SKIPPED": 0
+        },
+        "tests/audio/test_effects.py": {
+          "PASSED": 39,
+          "FAILED": 0,
+          "ERROR": 0,
+          "SKIPPED": 0
+        },
+        "tests/audio/test_dsp.py": {
+          "PASSED": 48,
+          "FAILED": 1,
+          "ERROR": 0,
+          "SKIPPED": 0
+        },
+        "tests/audio/test_effect_presets.py": {
+          "PASSED": 37,
+          "FAILED": 0,
+          "ERROR": 0,
+          "SKIPPED": 0
+        },
+        "tests/audio/test_render.py": {
+          "PASSED": 24,
+          "FAILED": 0,
+          "ERROR": 0,
+          "SKIPPED": 0
+        },
+        "tests/ui/test_audio_effects.py": {
+          "PASSED": 40,
+          "FAILED": 0,
+          "ERROR": 0,
+          "SKIPPED": 0
+        },
+        "tests/studio/test_project_effects.py": {
+          "PASSED": 20,
+          "FAILED": 0,
+          "ERROR": 0,
+          "SKIPPED": 0
+        },
+        "tests/audio/test_director.py": {
+          "PASSED": 10,
+          "FAILED": 0,
+          "ERROR": 0,
+          "SKIPPED": 0
+        },
+        "tests/audio/test_director_resources.py": {
+          "PASSED": 10,
+          "FAILED": 0,
+          "ERROR": 0,
+          "SKIPPED": 0
+        },
+        "tests/audio/test_director_path_identity.py": {
+          "PASSED": 5,
+          "FAILED": 0,
+          "ERROR": 0,
+          "SKIPPED": 0
+        },
+        "tests/audio/test_projects.py": {
+          "PASSED": 17,
+          "FAILED": 0,
+          "ERROR": 0,
+          "SKIPPED": 0
+        },
+        "tests/ui/test_audio_studio.py": {
+          "PASSED": 20,
+          "FAILED": 0,
+          "ERROR": 0,
+          "SKIPPED": 0
+        },
+        "tests/studio/test_publishing_primary.py": {
+          "PASSED": 20,
+          "FAILED": 0,
+          "ERROR": 0,
+          "SKIPPED": 0
+        },
+        "tests/studio/test_director_silence.py": {
+          "PASSED": 16,
+          "FAILED": 0,
+          "ERROR": 0,
+          "SKIPPED": 0
+        },
+        "tests/assistant/test_translation.py": {
+          "PASSED": 89,
+          "FAILED": 0,
+          "ERROR": 0,
+          "SKIPPED": 0
+        },
+        "tests/assistant/test_translation_v3.py": {
+          "PASSED": 58,
+          "FAILED": 0,
+          "ERROR": 0,
+          "SKIPPED": 0
+        },
+        "tests/assistant/test_library_translation.py": {
+          "PASSED": 37,
+          "FAILED": 0,
+          "ERROR": 0,
+          "SKIPPED": 0
+        },
+        "tests/ui/test_translation_selection.py": {
+          "PASSED": 10,
+          "FAILED": 0,
+          "ERROR": 0,
+          "SKIPPED": 0
+        },
+        "tests/ui/test_library_translation_dialog.py": {
+          "PASSED": 20,
+          "FAILED": 0,
+          "ERROR": 0,
+          "SKIPPED": 0
+        },
+        "tests/storage/test_translation_runtime_recovery.py": {
+          "PASSED": 12,
+          "FAILED": 0,
+          "ERROR": 0,
+          "SKIPPED": 0
+        },
+        "tests/studio/test_production.py": {
+          "PASSED": 11,
+          "FAILED": 0,
+          "ERROR": 0,
+          "SKIPPED": 0
+        },
+        "tests/studio/test_production_cancellation_outcomes.py": {
+          "PASSED": 24,
+          "FAILED": 0,
+          "ERROR": 0,
+          "SKIPPED": 0
+        },
+        "tests/studio/test_production_hardening.py": {
+          "PASSED": 5,
+          "FAILED": 0,
+          "ERROR": 0,
+          "SKIPPED": 0
+        },
+        "tests/studio/test_publishing.py": {
+          "PASSED": 49,
+          "FAILED": 0,
+          "ERROR": 0,
+          "SKIPPED": 0
+        },
+        "tests/storage/test_production_operation_backup.py": {
+          "PASSED": 18,
+          "FAILED": 0,
+          "ERROR": 0,
+          "SKIPPED": 0
+        },
+        "tests/storage/test_studio_timeline_backup.py": {
+          "PASSED": 41,
+          "FAILED": 0,
+          "ERROR": 0,
+          "SKIPPED": 0
+        },
+        "tests/storage/test_canonical_backup_compat.py": {
+          "PASSED": 68,
+          "FAILED": 0,
+          "ERROR": 0,
+          "SKIPPED": 0
+        },
+        "tests/audio/test_cleanup_contexts.py": {
+          "PASSED": 27,
+          "FAILED": 0,
+          "ERROR": 0,
+          "SKIPPED": 0
+        },
+        "tests/packaging/test_managed_launch_boundary.py": {
+          "PASSED": 49,
+          "FAILED": 0,
+          "ERROR": 0,
+          "SKIPPED": 0
+        }
+      },
+      "top20": [
+        "9.52s call     tests/audio/test_director.py::test_more_than_128_sequential_lines_render_with_bounded_graph_and_keep_pan",
+        "8.53s call     tests/audio/test_director_effects.py::test_actual_role_scene_master_edits_reuse_only_unaffected_cached_nodes",
+        "6.07s setup    tests/studio/test_production.py::test_actual_three_role_music_chapters_stems_and_text_invariance",
+        "5.52s call     tests/audio/test_director_effects.py::test_actual_dynamics_order_changes_pcm_without_changing_time_or_synthesizing_again",
+        "5.42s call     tests/studio/test_project_effects.py::test_actual_speech_cache_survives_role_and_master_effect_edits",
+        "5.41s call     tests/studio/test_project_effects.py::test_actual_clip_scene_master_processing_preview_and_backup_restore",
+        "4.62s call     tests/audio/test_director_effects.py::test_processed_cache_tamper_regenerates_that_node_without_new_synthesis",
+        "4.58s call     tests/audio/test_director.py::test_actual_three_voice_music_production_preserves_text_stereo_chapters_and_outputs",
+        "4.07s call     tests/audio/test_director_effects.py::test_pause_reopen_and_resume_keeps_accepted_effect_nodes_and_raw_speech",
+        "4.04s call     tests/audio/test_director_effects.py::test_master_reverb_is_processed_once_and_chapters_copy_exact_master_frames",
+        "3.99s call     tests/audio/test_director_effects.py::test_wholly_bypassed_chain_keeps_legacy_pcm_without_starting_effect_runtime[role]",
+        "3.99s call     tests/audio/test_director_effects.py::test_wholly_bypassed_chain_keeps_legacy_pcm_without_starting_effect_runtime[scene]",
+        "3.98s call     tests/audio/test_director_effects.py::test_wholly_bypassed_chain_keeps_legacy_pcm_without_starting_effect_runtime[master]",
+        "3.98s call     tests/audio/test_director_effects.py::test_actual_effect_worker_retains_pcm_stage_lock_and_broker_until_native_retry[masked-pending]",
+        "3.97s call     tests/audio/test_director_effects.py::test_actual_effect_worker_retains_pcm_stage_lock_and_broker_until_native_retry[direct-pending]",
+        "3.51s call     tests/audio/test_director_effects.py::test_effect_project_publishes_through_the_existing_primary_source_validator",
+        "3.48s call     tests/studio/test_production.py::test_edit_one_scene_reuses_unchanged_speech_and_source_original",
+        "3.34s call     tests/audio/test_director_effects.py::test_changed_accepted_input_cannot_publish_an_effect_cache_receipt[master-chapter-input]",
+        "3.08s call     tests/audio/test_director.py::test_change_one_scene_preserves_other_scene_audio",
+        "2.77s call     tests/studio/test_production.py::test_pause_restart_and_one_corrupt_speech_chunk_repaired"
+      ],
+      "failureRows": [
+        {
+          "node": "tests/studio/test_interchange.py::test_completed_replay_requires_exact_cue_bytes_and_declared_source[missing-receipt]",
+          "outcome": "ERROR"
+        },
+        {
+          "node": "tests/studio/test_interchange.py::test_completed_replay_requires_exact_cue_bytes_and_declared_source[rehashed-bytes]",
+          "outcome": "ERROR"
+        },
+        {
+          "node": "tests/studio/test_interchange.py::test_completed_replay_requires_exact_cue_bytes_and_declared_source[false-index]",
+          "outcome": "ERROR"
+        },
+        {
+          "node": "tests/studio/test_interchange.py::test_completed_replay_requires_exact_cue_bytes_and_declared_source[false-qualification]",
+          "outcome": "ERROR"
+        },
+        {
+          "node": "tests/studio/test_interchange.py::test_new_cue_private_staging_is_disposable_and_legacy_completed_jobs_stay_valid",
+          "outcome": "ERROR"
+        },
+        {
+          "node": "tests/storage/test_cue_interchange_backup.py::test_actual_backup_retains_exact_cue_declaration_and_revokes_output_authority[False-native-format5]",
+          "outcome": "FAILED"
+        },
+        {
+          "node": "tests/storage/test_cue_interchange_backup.py::test_actual_backup_retains_exact_cue_declaration_and_revokes_output_authority[False-native-format5]",
+          "outcome": "ERROR"
+        },
+        {
+          "node": "tests/storage/test_cue_interchange_backup.py::test_actual_backup_retains_exact_cue_declaration_and_revokes_output_authority[False-legacy-flat4]",
+          "outcome": "FAILED"
+        },
+        {
+          "node": "tests/storage/test_cue_interchange_backup.py::test_actual_backup_retains_exact_cue_declaration_and_revokes_output_authority[False-legacy-flat4]",
+          "outcome": "ERROR"
+        },
+        {
+          "node": "tests/storage/test_cue_interchange_backup.py::test_actual_backup_retains_exact_cue_declaration_and_revokes_output_authority[True-native-format5]",
+          "outcome": "FAILED"
+        },
+        {
+          "node": "tests/storage/test_cue_interchange_backup.py::test_actual_backup_retains_exact_cue_declaration_and_revokes_output_authority[True-native-format5]",
+          "outcome": "ERROR"
+        },
+        {
+          "node": "tests/storage/test_cue_interchange_backup.py::test_actual_backup_retains_exact_cue_declaration_and_revokes_output_authority[True-legacy-flat4]",
+          "outcome": "FAILED"
+        },
+        {
+          "node": "tests/storage/test_cue_interchange_backup.py::test_actual_backup_retains_exact_cue_declaration_and_revokes_output_authority[True-legacy-flat4]",
+          "outcome": "ERROR"
+        },
+        {
+          "node": "tests/storage/test_cue_interchange_backup.py::test_rehashed_cue_metadata_cannot_replace_its_project_or_measured_timeline[false-index-native-format5]",
+          "outcome": "ERROR"
+        },
+        {
+          "node": "tests/storage/test_cue_interchange_backup.py::test_rehashed_cue_metadata_cannot_replace_its_project_or_measured_timeline[false-index-legacy-flat4]",
+          "outcome": "ERROR"
+        },
+        {
+          "node": "tests/storage/test_cue_interchange_backup.py::test_rehashed_cue_metadata_cannot_replace_its_project_or_measured_timeline[false-source-native-format5]",
+          "outcome": "ERROR"
+        },
+        {
+          "node": "tests/storage/test_cue_interchange_backup.py::test_rehashed_cue_metadata_cannot_replace_its_project_or_measured_timeline[false-source-legacy-flat4]",
+          "outcome": "ERROR"
+        },
+        {
+          "node": "tests/storage/test_cue_interchange_backup.py::test_rehashed_cue_metadata_cannot_replace_its_project_or_measured_timeline[false-project-native-format5]",
+          "outcome": "ERROR"
+        },
+        {
+          "node": "tests/storage/test_cue_interchange_backup.py::test_rehashed_cue_metadata_cannot_replace_its_project_or_measured_timeline[false-project-legacy-flat4]",
+          "outcome": "ERROR"
+        },
+        {
+          "node": "tests/storage/test_cue_interchange_backup.py::test_rehashed_cue_metadata_cannot_replace_its_project_or_measured_timeline[false-qualification-native-format5]",
+          "outcome": "ERROR"
+        },
+        {
+          "node": "tests/storage/test_cue_interchange_backup.py::test_rehashed_cue_metadata_cannot_replace_its_project_or_measured_timeline[false-qualification-legacy-flat4]",
+          "outcome": "ERROR"
+        },
+        {
+          "node": "tests/storage/test_cue_interchange_backup.py::test_rehashed_cue_metadata_cannot_replace_its_project_or_measured_timeline[false-schema-native-format5]",
+          "outcome": "ERROR"
+        },
+        {
+          "node": "tests/storage/test_cue_interchange_backup.py::test_rehashed_cue_metadata_cannot_replace_its_project_or_measured_timeline[false-schema-legacy-flat4]",
+          "outcome": "ERROR"
+        },
+        {
+          "node": "tests/storage/test_cue_interchange_backup.py::test_cue_timeline_requires_its_retained_project_checkpoint[native-format5]",
+          "outcome": "ERROR"
+        },
+        {
+          "node": "tests/storage/test_cue_interchange_backup.py::test_cue_timeline_requires_its_retained_project_checkpoint[legacy-flat4]",
+          "outcome": "ERROR"
+        },
+        {
+          "node": "tests/storage/test_cue_interchange_backup.py::test_legacy_timeline_without_interchange_keeps_its_original_bytes[native-format5]",
+          "outcome": "ERROR"
+        },
+        {
+          "node": "tests/storage/test_cue_interchange_backup.py::test_legacy_timeline_without_interchange_keeps_its_original_bytes[legacy-flat4]",
+          "outcome": "ERROR"
+        },
+        {
+          "node": "tests/storage/test_cue_interchange_backup.py::test_cancellation_during_real_cue_metadata_validation_publishes_no_backup",
+          "outcome": "ERROR"
+        },
+        {
+          "node": "tests/audio/test_director_effects.py::test_effect_project_publishes_through_the_existing_primary_source_validator",
+          "outcome": "FAILED"
+        },
+        {
+          "node": "tests/storage/test_director_effects_backup.py::test_typed_effects_survive_real_backup_without_restoring_execution_authority[foreign-flat4]",
+          "outcome": "FAILED"
+        },
+        {
+          "node": "tests/assistant/test_translation_partition.py::test_partition_reuses_one_job_and_retains_accepted_receipts_across_pause",
+          "outcome": "FAILED"
+        },
+        {
+          "node": "tests/assistant/test_translation_partition.py::test_changed_saved_partition_is_refused_before_credentials_or_next_request[mapping]",
+          "outcome": "FAILED"
+        },
+        {
+          "node": "tests/assistant/test_translation_partition.py::test_changed_saved_partition_is_refused_before_credentials_or_next_request[boundaries]",
+          "outcome": "FAILED"
+        },
+        {
+          "node": "tests/assistant/test_translation_partition.py::test_changed_saved_partition_is_refused_before_credentials_or_next_request[null]",
+          "outcome": "FAILED"
+        },
+        {
+          "node": "tests/assistant/test_translation_partition.py::test_changed_saved_partition_is_refused_before_credentials_or_next_request[removed]",
+          "outcome": "FAILED"
+        },
+        {
+          "node": "tests/assistant/test_translation_partition.py::test_partition_is_detached_before_a_live_guard_mutates_the_caller_mapping",
+          "outcome": "FAILED"
+        },
+        {
+          "node": "tests/assistant/test_translation_layout.py::test_actual_worker_maps_exact_retained_body_and_cells_under_the_real_lease",
+          "outcome": "ERROR"
+        },
+        {
+          "node": "tests/assistant/test_translation_layout.py::test_review_binds_one_job_to_exact_structure_without_provider_or_credentials",
+          "outcome": "FAILED"
+        },
+        {
+          "node": "tests/assistant/test_translation_layout.py::test_review_binds_one_job_to_exact_structure_without_provider_or_credentials",
+          "outcome": "ERROR"
+        },
+        {
+          "node": "tests/assistant/test_translation_layout.py::test_real_completed_docx_preserves_tables_styles_links_and_every_other_zip_member",
+          "outcome": "FAILED"
+        },
+        {
+          "node": "tests/assistant/test_translation_layout.py::test_real_completed_docx_preserves_tables_styles_links_and_every_other_zip_member",
+          "outcome": "ERROR"
+        },
+        {
+          "node": "tests/assistant/test_translation_layout.py::test_mixed_hyperlink_is_refused_by_actual_worker_before_jobs_or_requests",
+          "outcome": "ERROR"
+        },
+        {
+          "node": "tests/assistant/test_translation_layout.py::test_same_size_modified_worker_request_is_refused_by_actual_snapshot",
+          "outcome": "ERROR"
+        },
+        {
+          "node": "tests/assistant/test_translation_layout.py::test_wrong_actual_worker_origin_is_refused_before_parsing",
+          "outcome": "ERROR"
+        },
+        {
+          "node": "tests/assistant/test_translation_layout.py::test_forged_mapping_cannot_reuse_original_review",
+          "outcome": "ERROR"
+        },
+        {
+          "node": "tests/assistant/test_translation_layout.py::test_partial_job_cannot_publish_and_resumes_only_unaccepted_requests",
+          "outcome": "FAILED"
+        },
+        {
+          "node": "tests/assistant/test_translation_layout.py::test_partial_job_cannot_publish_and_resumes_only_unaccepted_requests",
+          "outcome": "ERROR"
+        },
+        {
+          "node": "tests/assistant/test_translation_layout.py::test_final_publication_keeps_exact_source_destination_and_new_file_authority[source]",
+          "outcome": "FAILED"
+        },
+        {
+          "node": "tests/assistant/test_translation_layout.py::test_final_publication_keeps_exact_source_destination_and_new_file_authority[source]",
+          "outcome": "ERROR"
+        },
+        {
+          "node": "tests/assistant/test_translation_layout.py::test_final_publication_keeps_exact_source_destination_and_new_file_authority[same-byte-competitor]",
+          "outcome": "FAILED"
+        },
+        {
+          "node": "tests/assistant/test_translation_layout.py::test_final_publication_keeps_exact_source_destination_and_new_file_authority[same-byte-competitor]",
+          "outcome": "ERROR"
+        },
+        {
+          "node": "tests/assistant/test_translation_layout.py::test_final_publication_keeps_exact_source_destination_and_new_file_authority[parent]",
+          "outcome": "FAILED"
+        },
+        {
+          "node": "tests/assistant/test_translation_layout.py::test_final_publication_keeps_exact_source_destination_and_new_file_authority[parent]",
+          "outcome": "ERROR"
+        },
+        {
+          "node": "tests/assistant/test_translation_layout.py::test_final_publication_keeps_exact_source_destination_and_new_file_authority[private-target]",
+          "outcome": "FAILED"
+        },
+        {
+          "node": "tests/assistant/test_translation_layout.py::test_final_publication_keeps_exact_source_destination_and_new_file_authority[private-target]",
+          "outcome": "ERROR"
+        },
+        {
+          "node": "tests/assistant/test_translation_layout.py::test_stop_after_actual_publication_preserves_completed_new_file_receipt",
+          "outcome": "FAILED"
+        },
+        {
+          "node": "tests/assistant/test_translation_layout.py::test_stop_after_actual_publication_preserves_completed_new_file_receipt",
+          "outcome": "ERROR"
+        },
+        {
+          "node": "tests/assistant/test_translation_layout.py::test_declared_resource_refusal_precedes_parser_and_provider",
+          "outcome": "ERROR"
+        },
+        {
+          "node": "tests/assistant/test_translation_layout.py::test_actual_worker_cancel_reaps_child_before_lease_and_stage_release",
+          "outcome": "FAILED"
+        },
+        {
+          "node": "tests/assistant/test_translation_layout.py::test_actual_worker_cancel_reaps_child_before_lease_and_stage_release",
+          "outcome": "ERROR"
+        },
+        {
+          "node": "tests/assistant/test_translation_layout.py::test_two_actual_pending_families_retain_one_stage_and_lease_until_both_quiet[first-child-direct]",
+          "outcome": "ERROR"
+        },
+        {
+          "node": "tests/assistant/test_translation_layout.py::test_two_actual_pending_families_retain_one_stage_and_lease_until_both_quiet[first-child-causal]",
+          "outcome": "ERROR"
+        },
+        {
+          "node": "tests/assistant/test_translation_layout.py::test_two_actual_pending_families_retain_one_stage_and_lease_until_both_quiet[second-child-direct]",
+          "outcome": "ERROR"
+        },
+        {
+          "node": "tests/assistant/test_translation_layout.py::test_two_actual_pending_families_retain_one_stage_and_lease_until_both_quiet[second-child-causal]",
+          "outcome": "ERROR"
+        },
+        {
+          "node": "tests/assistant/test_translation_layout.py::test_explicit_cli_review_submit_and_new_file_export_share_the_same_saved_job",
+          "outcome": "FAILED"
+        },
+        {
+          "node": "tests/assistant/test_translation_layout.py::test_explicit_cli_review_submit_and_new_file_export_share_the_same_saved_job",
+          "outcome": "ERROR"
+        },
+        {
+          "node": "tests/assistant/test_translation_layout.py::test_cli_format_mode_refuses_partial_or_multiple_documents_before_parsing[arguments0]",
+          "outcome": "ERROR"
+        },
+        {
+          "node": "tests/assistant/test_translation_layout.py::test_cli_format_mode_refuses_partial_or_multiple_documents_before_parsing[arguments1]",
+          "outcome": "ERROR"
+        },
+        {
+          "node": "tests/assistant/test_translation_layout.py::test_portable_cli_process_keeps_actual_pending_families_and_stage_until_both_quiet[first-family-direct-operation]",
+          "outcome": "FAILED"
+        },
+        {
+          "node": "tests/assistant/test_translation_layout.py::test_portable_cli_process_keeps_actual_pending_families_and_stage_until_both_quiet[first-family-direct-runtime-close]",
+          "outcome": "FAILED"
+        },
+        {
+          "node": "tests/assistant/test_translation_layout.py::test_portable_cli_process_keeps_actual_pending_families_and_stage_until_both_quiet[first-family-causal-operation]",
+          "outcome": "FAILED"
+        },
+        {
+          "node": "tests/assistant/test_translation_layout.py::test_portable_cli_process_keeps_actual_pending_families_and_stage_until_both_quiet[first-family-causal-runtime-close]",
+          "outcome": "FAILED"
+        },
+        {
+          "node": "tests/assistant/test_translation_layout.py::test_portable_cli_process_keeps_actual_pending_families_and_stage_until_both_quiet[second-family-direct-operation]",
+          "outcome": "FAILED"
+        },
+        {
+          "node": "tests/assistant/test_translation_layout.py::test_portable_cli_process_keeps_actual_pending_families_and_stage_until_both_quiet[second-family-direct-runtime-close]",
+          "outcome": "FAILED"
+        },
+        {
+          "node": "tests/assistant/test_translation_layout.py::test_portable_cli_process_keeps_actual_pending_families_and_stage_until_both_quiet[second-family-causal-operation]",
+          "outcome": "FAILED"
+        },
+        {
+          "node": "tests/assistant/test_translation_layout.py::test_portable_cli_process_keeps_actual_pending_families_and_stage_until_both_quiet[second-family-causal-runtime-close]",
+          "outcome": "FAILED"
+        },
+        {
+          "node": "tests/assistant/test_translation_epub_layout.py::test_actual_epub_capture_and_review_bind_one_whole_original_without_external_calls",
+          "outcome": "FAILED"
+        },
+        {
+          "node": "tests/assistant/test_translation_epub_layout.py::test_actual_epub_capture_and_review_bind_one_whole_original_without_external_calls",
+          "outcome": "ERROR"
+        },
+        {
+          "node": "tests/assistant/test_translation_epub_layout.py::test_actual_epub_export_preserves_dom_links_styles_media_and_canonical_source",
+          "outcome": "FAILED"
+        },
+        {
+          "node": "tests/assistant/test_translation_epub_layout.py::test_actual_epub_export_preserves_dom_links_styles_media_and_canonical_source",
+          "outcome": "ERROR"
+        },
+        {
+          "node": "tests/assistant/test_translation_epub_layout.py::test_translated_markup_remains_literal_text_not_active_xhtml",
+          "outcome": "FAILED"
+        },
+        {
+          "node": "tests/assistant/test_translation_epub_layout.py::test_translated_markup_remains_literal_text_not_active_xhtml",
+          "outcome": "ERROR"
+        },
+        {
+          "node": "tests/assistant/test_translation_epub_layout.py::test_rendered_whitespace_identity_does_not_rewrite_accepted_provider_receipts",
+          "outcome": "FAILED"
+        },
+        {
+          "node": "tests/assistant/test_translation_epub_layout.py::test_rendered_whitespace_identity_does_not_rewrite_accepted_provider_receipts",
+          "outcome": "ERROR"
+        },
+        {
+          "node": "tests/assistant/test_translation_epub_layout.py::test_current_epub_mapping_is_revalidated_before_approving_requests",
+          "outcome": "ERROR"
+        },
+        {
+          "node": "tests/assistant/test_translation_epub_layout.py::test_changed_request_snapshot_is_refused_by_the_actual_epub_worker",
+          "outcome": "ERROR"
+        },
+        {
+          "node": "tests/assistant/test_translation_epub_layout.py::test_paused_epub_reuses_only_accepted_blocks_without_duplicate_calls",
+          "outcome": "FAILED"
+        },
+        {
+          "node": "tests/assistant/test_translation_epub_layout.py::test_paused_epub_reuses_only_accepted_blocks_without_duplicate_calls",
+          "outcome": "ERROR"
+        },
+        {
+          "node": "tests/assistant/test_translation_epub_layout.py::test_many_chapters_keep_one_existing_job_and_bounded_source_positions",
+          "outcome": "FAILED"
+        },
+        {
+          "node": "tests/assistant/test_translation_epub_layout.py::test_many_chapters_keep_one_existing_job_and_bounded_source_positions",
+          "outcome": "ERROR"
+        },
+        {
+          "node": "tests/assistant/test_translation_epub_layout.py::test_committed_epub_receipt_survives_a_stop_after_the_atomic_publisher_return",
+          "outcome": "FAILED"
+        },
+        {
+          "node": "tests/assistant/test_translation_epub_layout.py::test_committed_epub_receipt_survives_a_stop_after_the_atomic_publisher_return",
+          "outcome": "ERROR"
+        },
+        {
+          "node": "tests/storage/test_translation_layout_backup.py::test_actual_recovery_preserves_partition_receipts_and_exports_without_original_paths_or_credentials[docx-native5]",
+          "outcome": "FAILED"
+        },
+        {
+          "node": "tests/storage/test_translation_layout_backup.py::test_actual_recovery_preserves_partition_receipts_and_exports_without_original_paths_or_credentials[docx-flat4]",
+          "outcome": "FAILED"
+        },
+        {
+          "node": "tests/storage/test_translation_layout_backup.py::test_actual_recovery_preserves_partition_receipts_and_exports_without_original_paths_or_credentials[epub-native5]",
+          "outcome": "FAILED"
+        },
+        {
+          "node": "tests/storage/test_translation_layout_backup.py::test_actual_recovery_preserves_partition_receipts_and_exports_without_original_paths_or_credentials[epub-flat4]",
+          "outcome": "FAILED"
+        },
+        {
+          "node": "tests/storage/test_translation_layout_backup.py::test_rehashed_partition_damage_is_rejected_before_restore_publication[null-native5]",
+          "outcome": "FAILED"
+        },
+        {
+          "node": "tests/storage/test_translation_layout_backup.py::test_rehashed_partition_damage_is_rejected_before_restore_publication[null-flat4]",
+          "outcome": "FAILED"
+        },
+        {
+          "node": "tests/storage/test_translation_layout_backup.py::test_rehashed_partition_damage_is_rejected_before_restore_publication[boundaries-native5]",
+          "outcome": "FAILED"
+        },
+        {
+          "node": "tests/storage/test_translation_layout_backup.py::test_rehashed_partition_damage_is_rejected_before_restore_publication[boundaries-flat4]",
+          "outcome": "FAILED"
+        },
+        {
+          "node": "tests/storage/test_translation_layout_backup.py::test_rehashed_partition_damage_is_rejected_before_restore_publication[profile-native5]",
+          "outcome": "FAILED"
+        },
+        {
+          "node": "tests/storage/test_translation_layout_backup.py::test_rehashed_partition_damage_is_rejected_before_restore_publication[profile-flat4]",
+          "outcome": "FAILED"
+        },
+        {
+          "node": "tests/storage/test_translation_layout_backup.py::test_rehashed_partition_damage_is_rejected_before_restore_publication[mapping-native5]",
+          "outcome": "FAILED"
+        },
+        {
+          "node": "tests/storage/test_translation_layout_backup.py::test_rehashed_partition_damage_is_rejected_before_restore_publication[mapping-flat4]",
+          "outcome": "FAILED"
+        },
+        {
+          "node": "tests/audio/test_dsp.py::test_converter_chorus_retains_its_real_tail_and_mixer_refuses_implicit_truncation",
+          "outcome": "FAILED"
+        }
+      ],
+      "reported_status_rows": {
+        "PASSED": 1053,
+        "FAILED": 50,
+        "ERROR": 55,
+        "SKIPPED": 0
+      },
+      "split_outcome_rows": [
+        {
+          "module": "tests/assistant/test_translation_layout.py",
+          "status": "PASSED"
+        },
+        {
+          "module": "tests/assistant/test_translation_layout.py",
+          "status": "PASSED"
+        },
+        {
+          "module": "tests/packaging/test_managed_launch_boundary.py",
+          "status": "PASSED"
+        },
+        {
+          "module": "tests/packaging/test_managed_launch_boundary.py",
+          "status": "PASSED"
+        },
+        {
+          "module": "tests/packaging/test_managed_launch_boundary.py",
+          "status": "PASSED"
+        },
+        {
+          "module": "tests/packaging/test_managed_launch_boundary.py",
+          "status": "PASSED"
+        },
+        {
+          "module": "tests/packaging/test_managed_launch_boundary.py",
+          "status": "PASSED"
+        },
+        {
+          "module": "tests/packaging/test_managed_launch_boundary.py",
+          "status": "PASSED"
+        },
+        {
+          "module": "tests/packaging/test_managed_launch_boundary.py",
+          "status": "PASSED"
+        },
+        {
+          "module": "tests/packaging/test_managed_launch_boundary.py",
+          "status": "PASSED"
+        },
+        {
+          "module": "tests/packaging/test_managed_launch_boundary.py",
+          "status": "PASSED"
+        },
+        {
+          "module": "tests/packaging/test_managed_launch_boundary.py",
+          "status": "PASSED"
+        },
+        {
+          "module": "tests/packaging/test_managed_launch_boundary.py",
+          "status": "PASSED"
+        },
+        {
+          "module": "tests/packaging/test_managed_launch_boundary.py",
+          "status": "PASSED"
+        },
+        {
+          "module": "tests/packaging/test_managed_launch_boundary.py",
+          "status": "PASSED"
+        },
+        {
+          "module": "tests/packaging/test_managed_launch_boundary.py",
+          "status": "PASSED"
+        },
+        {
+          "module": "tests/packaging/test_managed_launch_boundary.py",
+          "status": "PASSED"
+        },
+        {
+          "module": "tests/packaging/test_managed_launch_boundary.py",
+          "status": "PASSED"
+        },
+        {
+          "module": "tests/packaging/test_managed_launch_boundary.py",
+          "status": "PASSED"
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,190 @@
+{
+  "schema": 1,
+  "status": "DIAGNOSED",
+  "application_acceptance": "NOT_ASSESSED",
+  "source_head": "943f585659c55481046266338f428e4a1043a9bd",
+  "source_run": 46119978375,
+  "source_job": 140902138753,
+  "source_attempt": 1,
+  "reader": {
+    "head": "96a9e7681e9ccd0516aabbfd36cedf0a674d3450",
+    "tree": "4c756e43f3fe2f1bc121078a852f34d457ebc115",
+    "script": "a787696918258e3643db5af6c44e032f466cb0ef",
+    "workflow": "000d4e554a14bd6cd47e51e6d2e4a2e83c0363a1",
+    "run": 46130257762,
+    "job": 140933611152,
+    "conclusion": "success",
+    "decoded_log_utf8_bytes": 199224,
+    "decoded_log_sha256": "cba46958e33b7a7c006ba0985579f5223aa645dabd63d8265878de18cbc5207d"
+  },
+  "archive": {
+    "id": 15256851282,
+    "sha256": "62b88af6bb0a2df3c90b9f4dfbcbe2de9e16e84642d008eb5b4bb98b110ddb65"
+  },
+  "member": {
+    "path": "full-bundle-workflows.xml",
+    "bytes": 1495285,
+    "sha256": "a4425cc38f8879b77473943199fbc3fd86ae00f3cc29048fa4392dbcc5615b50",
+    "raw_xml_emitted": false,
+    "digest_authority": "derived from member bytes in the exact SHA256-verified immutable ZIP"
+  },
+  "actual": {
+    "artifact": 15256851282,
+    "archive_sha256": "62b88af6bb0a2df3c90b9f4dfbcbe2de9e16e84642d008eb5b4bb98b110ddb65",
+    "path": "full-bundle-workflows.xml",
+    "bytes": 1495285,
+    "sha256": "a4425cc38f8879b77473943199fbc3fd86ae00f3cc29048fa4392dbcc5615b50",
+    "encoding": "utf-8-sig",
+    "run": 46119978375,
+    "head": "943f585659c55481046266338f428e4a1043a9bd",
+    "attempt": 1,
+    "scope": "read-only reproduction of existing post-pytest JUnit predicates",
+    "totals": {
+      "testcases": 9319,
+      "passed": 9319,
+      "failed": 0,
+      "errors": 0,
+      "failed_or_error": 0,
+      "skipped": 0
+    },
+    "guarded_modules": {
+      "test_import_metadata_shape": {
+        "count": 58,
+        "unique": 58,
+        "names": [
+          "test_bounded_unicode_sequences_preserve_order_on_both_routes[0-list-pdf]",
+          "test_bounded_unicode_sequences_preserve_order_on_both_routes[0-list-txt]",
+          "test_bounded_unicode_sequences_preserve_order_on_both_routes[0-tuple-pdf]",
+          "test_bounded_unicode_sequences_preserve_order_on_both_routes[0-tuple-txt]",
+          "test_bounded_unicode_sequences_preserve_order_on_both_routes[100-list-pdf]",
+          "test_bounded_unicode_sequences_preserve_order_on_both_routes[100-list-txt]",
+          "test_bounded_unicode_sequences_preserve_order_on_both_routes[100-tuple-pdf]",
+          "test_bounded_unicode_sequences_preserve_order_on_both_routes[100-tuple-txt]",
+          "test_bounded_unicode_sequences_preserve_order_on_both_routes[2-list-pdf]",
+          "test_bounded_unicode_sequences_preserve_order_on_both_routes[2-list-txt]",
+          "test_bounded_unicode_sequences_preserve_order_on_both_routes[2-tuple-pdf]",
+          "test_bounded_unicode_sequences_preserve_order_on_both_routes[2-tuple-txt]",
+          "test_invalid_metadata_never_reaches_an_import_backend[bytes-authors-pdf]",
+          "test_invalid_metadata_never_reaches_an_import_backend[bytes-authors-txt]",
+          "test_invalid_metadata_never_reaches_an_import_backend[bytes-collections-pdf]",
+          "test_invalid_metadata_never_reaches_an_import_backend[bytes-collections-txt]",
+          "test_invalid_metadata_never_reaches_an_import_backend[generator-authors-pdf]",
+          "test_invalid_metadata_never_reaches_an_import_backend[generator-authors-txt]",
+          "test_invalid_metadata_never_reaches_an_import_backend[generator-collections-pdf]",
+          "test_invalid_metadata_never_reaches_an_import_backend[generator-collections-txt]",
+          "test_invalid_metadata_never_reaches_an_import_backend[iterable-authors-pdf]",
+          "test_invalid_metadata_never_reaches_an_import_backend[iterable-authors-txt]",
+          "test_invalid_metadata_never_reaches_an_import_backend[iterable-collections-pdf]",
+          "test_invalid_metadata_never_reaches_an_import_backend[iterable-collections-txt]",
+          "test_invalid_metadata_never_reaches_an_import_backend[long-list-authors-pdf]",
+          "test_invalid_metadata_never_reaches_an_import_backend[long-list-authors-txt]",
+          "test_invalid_metadata_never_reaches_an_import_backend[long-list-collections-pdf]",
+          "test_invalid_metadata_never_reaches_an_import_backend[long-list-collections-txt]",
+          "test_invalid_metadata_never_reaches_an_import_backend[long-tuple-authors-pdf]",
+          "test_invalid_metadata_never_reaches_an_import_backend[long-tuple-authors-txt]",
+          "test_invalid_metadata_never_reaches_an_import_backend[long-tuple-collections-pdf]",
+          "test_invalid_metadata_never_reaches_an_import_backend[long-tuple-collections-txt]",
+          "test_invalid_metadata_never_reaches_an_import_backend[mapping-authors-pdf]",
+          "test_invalid_metadata_never_reaches_an_import_backend[mapping-authors-txt]",
+          "test_invalid_metadata_never_reaches_an_import_backend[mapping-collections-pdf]",
+          "test_invalid_metadata_never_reaches_an_import_backend[mapping-collections-txt]",
+          "test_invalid_metadata_never_reaches_an_import_backend[none-authors-pdf]",
+          "test_invalid_metadata_never_reaches_an_import_backend[none-authors-txt]",
+          "test_invalid_metadata_never_reaches_an_import_backend[none-collections-pdf]",
+          "test_invalid_metadata_never_reaches_an_import_backend[none-collections-txt]",
+          "test_invalid_metadata_never_reaches_an_import_backend[number-authors-pdf]",
+          "test_invalid_metadata_never_reaches_an_import_backend[number-authors-txt]",
+          "test_invalid_metadata_never_reaches_an_import_backend[number-collections-pdf]",
+          "test_invalid_metadata_never_reaches_an_import_backend[number-collections-txt]",
+          "test_invalid_metadata_never_reaches_an_import_backend[range-authors-pdf]",
+          "test_invalid_metadata_never_reaches_an_import_backend[range-authors-txt]",
+          "test_invalid_metadata_never_reaches_an_import_backend[range-collections-pdf]",
+          "test_invalid_metadata_never_reaches_an_import_backend[range-collections-txt]",
+          "test_invalid_metadata_never_reaches_an_import_backend[set-authors-pdf]",
+          "test_invalid_metadata_never_reaches_an_import_backend[set-authors-txt]",
+          "test_invalid_metadata_never_reaches_an_import_backend[set-collections-pdf]",
+          "test_invalid_metadata_never_reaches_an_import_backend[set-collections-txt]",
+          "test_invalid_metadata_never_reaches_an_import_backend[string-authors-pdf]",
+          "test_invalid_metadata_never_reaches_an_import_backend[string-authors-txt]",
+          "test_invalid_metadata_never_reaches_an_import_backend[string-collections-pdf]",
+          "test_invalid_metadata_never_reaches_an_import_backend[string-collections-txt]",
+          "test_valid_unicode_metadata_is_stored_by_real_import[list]",
+          "test_valid_unicode_metadata_is_stored_by_real_import[tuple]"
+        ]
+      },
+      "test_ocr_runtime": {
+        "count": 3,
+        "unique": 3,
+        "names": [
+          "test_directory_inventory_checks_budget_between_entries",
+          "test_empty_directory_inventory_has_a_bound",
+          "test_unreadable_directory_rejects_entire_inventory"
+        ]
+      },
+      "test_state_backup_portability": {
+        "count": 6,
+        "unique": 6,
+        "names": [
+          "test_state_inventory_rejects_unreadable_subtree[restore]",
+          "test_state_inventory_rejects_unreadable_subtree[snapshot]",
+          "test_state_restore_rejects_unlisted_file_before_scanning_later_subtree",
+          "test_state_root_lookup_error_is_not_absence[NotADirectoryError]",
+          "test_state_root_lookup_error_is_not_absence[PermissionError]",
+          "test_state_root_missing_is_optional_only_when_requested"
+        ]
+      }
+    },
+    "missing_required_names": [
+      "test_windows_native_dialog_async_lookup_focus_and_close"
+    ],
+    "predicates": {
+      "metadata_exact_58_unique": true,
+      "ocr_exact_names": true,
+      "state_inventory_exact_names": true,
+      "required_names_present": false,
+      "zero_failed_error_skipped": true
+    },
+    "all_guarded_predicates": false,
+    "application_acceptance": "NOT_ASSESSED",
+    "raw_xml_emitted": false
+  },
+  "diagnosis": {
+    "observed_failed_predicate": "required_names_present",
+    "missing_unsuffixed_name": [
+      "test_windows_native_dialog_async_lookup_focus_and_close"
+    ],
+    "source_declares_native_cases": [
+      "test_windows_native_dialog_async_lookup_focus_and_close[doi]",
+      "test_windows_native_dialog_async_lookup_focus_and_close[isbn]"
+    ],
+    "source_file": "carr-library/tests/ui/test_native_acquisition.py",
+    "source_file_sha256": "4fbd8abc22e8a46d8684442b5eda4cdbca0d1773c977a5476450aaeab7101b6f",
+    "source_file_utf8_bytes": 48171,
+    "source_file_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/blob/943f585659c55481046266338f428e4a1043a9bd/carr-library/tests/ui/test_native_acquisition.py",
+    "native_case_rows_individually_emitted": false,
+    "classification": "The existing mandatory native lookup name is stale after DOI/ISBN parameterization. The source still selects the complete native module. Actual suffix rows were not emitted by this bounded diagnostic.",
+    "proposed_change": "Require both exact current DOI and ISBN native testcase identities; retain other strict predicates/selectors/deadlines.",
+    "gate_changed": false
+  },
+  "limits": {
+    "archive_members": 512,
+    "member_bytes": 4194304,
+    "expanded_bytes": 33554432,
+    "output_bytes": 2097152,
+    "xml_depth": 32,
+    "xml_elements": 38364,
+    "xml_testcases": 9575,
+    "xml_dtd_entity": "rejected",
+    "encoding": "UTF8 strict",
+    "raw_xml_output": false
+  },
+  "qualification": {
+    "all_9319_case_results": "PASS",
+    "complete_bundle_step": "FAILED",
+    "source_stage": "IN_PROGRESS at last observation",
+    "selected_capture": "FAILED separately; exact read-only diagnosis in296c1955",
+    "overall_main": "NOT_QUALIFIED",
+    "manual_nvda": "NOT_RUN"
+  },
+  "prior_receipt_tree": "296c1955c9f66163a5456ca69132cfad6605ee1b"
+}

@@ -1,0 +1,164 @@
+{
+  "schema": "carr-ci-endpoint-evaluation/1",
+  "status": "PASS",
+  "phase": "complete",
+  "evaluation_only": true,
+  "vendor_setup_exe_executed": false,
+  "trust_store_changed": false,
+  "security_policy_changed": false,
+  "service_startup_policy_changed": false,
+  "device_state": "started_retained_until_VM_teardown",
+  "package_state": "installed_retained_until_VM_teardown",
+  "handles_closed": true,
+  "input_handles_closed": true,
+  "uninstall_attempted": false,
+  "reboot_attempted": false,
+  "format": {
+    "sample_rate": 16000,
+    "bits": 16,
+    "channels": 1,
+    "block_align": 2,
+    "average_bytes_per_second": 32000
+  },
+  "events": [
+    {
+      "phase": "guard-passed"
+    },
+    {
+      "phase": "fresh-device-check"
+    },
+    {
+      "phase": "downloading"
+    },
+    {
+      "phase": "archive-verified"
+    },
+    {
+      "phase": "signatures-verified"
+    },
+    {
+      "phase": "registering-device"
+    },
+    {
+      "phase": "registered"
+    },
+    {
+      "phase": "installing-driver"
+    },
+    {
+      "phase": "driver-started"
+    },
+    {
+      "phase": "format-query"
+    },
+    {
+      "phase": "complete"
+    }
+  ],
+  "branch": "carr/ci-endpoint-evaluation-20261127",
+  "pins_sha256": "7c98e300b9dbfa83049eb351be2847f47cd06d8a2a0350d2307c1f8bb2b06218",
+  "source_sha256": "3fb999ca152408b567cc848ccba5e2582a106bfdb40fb9ae25fea5dfab65bb21",
+  "archive": {
+    "url": "https://download.vb-audio.com/Download_CABLE/VBCABLE_Driver_Pack46.zip",
+    "size": 1324680,
+    "sha256": "bc44e8974191a5a2427d6c979e2dab08dbb09925f3f435dfa2f0ba3e45b6eb90"
+  },
+  "license_url": "https://vb-audio.com/Services/licensing.htm",
+  "vendor_notice_sha256": "f865f3e78e37006d48e56c93f51eff4ca79acda9969854400d79bfa3db38a8d5",
+  "matching_hardware_ids": [],
+  "winmm_before": [],
+  "staged_files": {
+    "vbMmeCable64_win10.inf": {
+      "size": 11361,
+      "sha256": "cecf9181b6c85842d707330efc594824a749a1d9e01db46eba0e60e72f0a66ee"
+    },
+    "vbaudio_cable64_win10.sys": {
+      "size": 144632,
+      "sha256": "7ebcbbe7004d185f7b29613cd27fdc2dd71c1712224b767a74d2f66bdc33a7ef"
+    },
+    "vbaudio_cable64_win10.cat": {
+      "size": 12993,
+      "sha256": "5d24c17858b49ad83bb856c66c24c5c2aecdb89cbaae2f8179c15d351124fa9f"
+    },
+    "vbaudio_cable64arm_win10.sys": {
+      "size": 152824,
+      "sha256": "85c217af826c2e1d478b52afc7c2248889c8478030d44e8134bd4c23b8915216"
+    }
+  },
+  "signatures": [
+    {
+      "file": "vbaudio_cable64_win10.sys",
+      "status": "Valid",
+      "status_message": "Signature verified.",
+      "certificate_sha256": "03c73f8446369bdcbe07edbc2009e335d0fac3907d6550558d27ae11787ebc25",
+      "simple_name": "BUREL VINCENT Entrepreneur individuel",
+      "subject": "CN=BUREL VINCENT Entrepreneur individuel, O=BUREL VINCENT Entrepreneur individuel, STREET=21 avenue des Marguerites, L=Eymet, S=Dordogne, C=FR, OID.1.3.6.1.4.1.311.60.2.1.3=FR, SERIALNUMBER=423 734 177, OID.2.5.4.15=Private Organization",
+      "signature_type": "Authenticode"
+    },
+    {
+      "file": "vbaudio_cable64arm_win10.sys",
+      "status": "Valid",
+      "status_message": "Signature verified.",
+      "certificate_sha256": "03c73f8446369bdcbe07edbc2009e335d0fac3907d6550558d27ae11787ebc25",
+      "simple_name": "BUREL VINCENT Entrepreneur individuel",
+      "subject": "CN=BUREL VINCENT Entrepreneur individuel, O=BUREL VINCENT Entrepreneur individuel, STREET=21 avenue des Marguerites, L=Eymet, S=Dordogne, C=FR, OID.1.3.6.1.4.1.311.60.2.1.3=FR, SERIALNUMBER=423 734 177, OID.2.5.4.15=Private Organization",
+      "signature_type": "Authenticode"
+    },
+    {
+      "file": "vbaudio_cable64_win10.cat",
+      "status": "Valid",
+      "status_message": "Signature verified.",
+      "certificate_sha256": "735521239659d359cc4aaef67a4432d36ca585b4db26e93593905a77f5b3efa4",
+      "simple_name": "Microsoft Windows Hardware Compatibility Publisher",
+      "subject": "CN=Microsoft Windows Hardware Compatibility Publisher, O=Microsoft Corporation, L=Redmond, S=Washington, C=US",
+      "signature_type": "Authenticode"
+    }
+  ],
+  "device_instance": "ROOT\\MEDIA\\0000",
+  "registration_restart_flags": 0,
+  "install_flags": 4,
+  "update_returned": true,
+  "update_reboot_required": false,
+  "update_error": null,
+  "update_restart_flags": 0,
+  "devnode": {
+    "configret": 0,
+    "status": 25174027,
+    "problem": 0
+  },
+  "installed_identity": {
+    "published_inf": "oem13.inf",
+    "driver_version": "3.5.2.0",
+    "provider": "VB-Audio Software",
+    "service": "VBAudioVACMME",
+    "inf_sha256": "cecf9181b6c85842d707330efc594824a749a1d9e01db46eba0e60e72f0a66ee",
+    "sys_sha256": "7ebcbbe7004d185f7b29613cd27fdc2dd71c1712224b767a74d2f66bdc33a7ef"
+  },
+  "winmm_after": [
+    {
+      "id": 0,
+      "name": "Speakers (VB-Audio Virtual Cabl",
+      "channels": 2
+    },
+    {
+      "id": 1,
+      "name": "CABLE In 16 Ch (VB-Audio Virtua",
+      "channels": 2
+    }
+  ],
+  "format_queries": [
+    {
+      "device_id": 0,
+      "result": 0
+    },
+    {
+      "device_id": 1,
+      "result": 0
+    }
+  ],
+  "wave_mapper_result": 0,
+  "temporary_download_removed": true,
+  "qualification": "actual_WinMM_endpoint_and_format_only",
+  "actual_MCI_playback": "requires_unchanged_reader_probe",
+  "reboot_required": false
+}

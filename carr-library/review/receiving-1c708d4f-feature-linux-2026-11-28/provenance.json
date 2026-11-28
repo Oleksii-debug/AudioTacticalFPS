@@ -1,0 +1,109 @@
+{
+  "schema": "carr-terminal-feature-receipt/1",
+  "tested_head": "1c708d4f2b9f0cc278f258b8eb9b1dcc2edc55bf",
+  "run_id": 46129784287,
+  "job_id": 140932191897,
+  "run_attempt": 1,
+  "runner": "ubuntu-24.04",
+  "result": "FAIL",
+  "completed_at": "2026-11-28T10:14:15Z",
+  "raw_log": {
+    "bytes": 1397296,
+    "sha256": "f91e70003bb581ae6f0cdda67fc7f0a2fafa456637e702a35e0cae85a5adc629"
+  },
+  "source": {
+    "collected": 1103,
+    "passed": 1053,
+    "failed": 50,
+    "errors": 55,
+    "skipped": 0,
+    "seconds": 248.79,
+    "modules": 37
+  },
+  "installed": {
+    "collected": 1103,
+    "passed": 1053,
+    "failed": 50,
+    "errors": 55,
+    "skipped": 0,
+    "seconds": 239.07,
+    "modules": 37
+  },
+  "failed_and_error_node_groups": {
+    "tests/storage/test_cue_interchange_backup.py": {
+      "FAILED": 4,
+      "ERROR": 19
+    },
+    "tests/audio/test_director_effects.py": {
+      "FAILED": 1,
+      "ERROR": 0
+    },
+    "tests/storage/test_director_effects_backup.py": {
+      "FAILED": 1,
+      "ERROR": 0
+    },
+    "tests/assistant/test_translation_partition.py": {
+      "FAILED": 6,
+      "ERROR": 0
+    },
+    "tests/assistant/test_translation_layout.py": {
+      "FAILED": 18,
+      "ERROR": 22
+    },
+    "tests/assistant/test_translation_epub_layout.py": {
+      "FAILED": 7,
+      "ERROR": 9
+    },
+    "tests/storage/test_translation_layout_backup.py": {
+      "FAILED": 12,
+      "ERROR": 0
+    },
+    "tests/audio/test_dsp.py": {
+      "FAILED": 1,
+      "ERROR": 0
+    },
+    "tests/studio/test_interchange.py": {
+      "FAILED": 0,
+      "ERROR": 5
+    }
+  },
+  "comparison": {
+    "windows_job": 140932191681,
+    "unique_failed_or_error_nodes": 105,
+    "all_already_in_same_head_windows_failure_summary": true,
+    "no_new_failure_identity_seen": true,
+    "meaning": "This comparison does not prove any correction passed; later heads require their own receiving evidence."
+  },
+  "timings": {
+    "source_step_seconds": 251,
+    "installed_step_seconds": 240,
+    "per_case_top20_only": true,
+    "full_module_timing_not_available_in_console": true
+  },
+  "artifact": {
+    "id": 15259086390,
+    "name": "feature-completion-ubuntu-24.04-1c708d4f2b9f0cc278f258b8eb9b1dcc2edc55bf-1",
+    "size_in_bytes": 209082,
+    "url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15259086390",
+    "archive_download_url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15259086390/zip",
+    "expired": false,
+    "created_at": "2026-11-28T10:14:12Z",
+    "expires_at": "2027-02-26T09:17:37Z",
+    "updated_at": "2026-11-28T10:14:12Z",
+    "digest": "sha256:717f219af5544c33f480289b4410efe859626daad8b870bd07126b70329a1a4d",
+    "workflow_run": {
+      "id": 46129784287,
+      "repository_id": 1341777614,
+      "head_repository_id": 1341777614,
+      "head_branch": "carr/feature-completion-evaluation-20261128",
+      "head_sha": "1c708d4f2b9f0cc278f258b8eb9b1dcc2edc55bf"
+    }
+  },
+  "not_qualified": [
+    "Overall feature gate",
+    "Independent libcue phase (skipped after strict failure)",
+    "Windows native effects/Director/translation (not this OS)",
+    "Any successor head"
+  ],
+  "interpretation": "Historical same-head Linux failure. Existing Director, formatted-translation, CUE fixture and chorus issues recur; no source correction or assertion weakening is introduced by this evidence."
+}

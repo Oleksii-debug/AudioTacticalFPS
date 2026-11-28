@@ -1,0 +1,803 @@
+[
+  {
+    "status": "PASS",
+    "path": "tests/citations/test_csl.py",
+    "passed": 79,
+    "failed": 0,
+    "skipped": 0,
+    "pytest_exit": 0,
+    "record": "PASS: tests/citations/test_csl.py: junit_passed=79, failed=0, skipped=0, pytest_exit=0"
+  },
+  {
+    "status": "PASS",
+    "path": "tests/assistant/test_local_planning.py",
+    "passed": 94,
+    "failed": 0,
+    "skipped": 0,
+    "pytest_exit": 0,
+    "record": "PASS: tests/assistant/test_local_planning.py: junit_passed=94, failed=0, skipped=0, pytest_exit=0"
+  },
+  {
+    "status": "PASS",
+    "path": "tests/assistant/test_state_io.py",
+    "passed": 24,
+    "failed": 0,
+    "skipped": 0,
+    "pytest_exit": 0,
+    "record": "PASS: tests/assistant/test_state_io.py: junit_passed=24, failed=0, skipped=0, pytest_exit=0"
+  },
+  {
+    "status": "PASS",
+    "path": "tests/catalog/test_archive_portability.py",
+    "passed": 54,
+    "failed": 0,
+    "skipped": 0,
+    "pytest_exit": 0,
+    "record": "PASS: tests/catalog/test_archive_portability.py: junit_passed=54, failed=0, skipped=0, pytest_exit=0"
+  },
+  {
+    "status": "PASS",
+    "path": "tests/catalog/test_intake_portability.py",
+    "passed": 16,
+    "failed": 0,
+    "skipped": 0,
+    "pytest_exit": 0,
+    "record": "PASS: tests/catalog/test_intake_portability.py: junit_passed=16, failed=0, skipped=0, pytest_exit=0"
+  },
+  {
+    "status": "PASS",
+    "path": "tests/catalog/test_epub_metadata.py",
+    "passed": 13,
+    "failed": 0,
+    "skipped": 0,
+    "pytest_exit": 0,
+    "record": "PASS: tests/catalog/test_epub_metadata.py: junit_passed=13, failed=0, skipped=0, pytest_exit=0"
+  },
+  {
+    "status": "PASS",
+    "path": "tests/catalog/test_registration.py",
+    "passed": 10,
+    "failed": 0,
+    "skipped": 0,
+    "pytest_exit": 0,
+    "record": "PASS: tests/catalog/test_registration.py: junit_passed=10, failed=0, skipped=0, pytest_exit=0"
+  },
+  {
+    "status": "PASS",
+    "path": "tests/extract/test_page_ocr.py",
+    "passed": 28,
+    "failed": 0,
+    "skipped": 0,
+    "pytest_exit": 0,
+    "record": "PASS: tests/extract/test_page_ocr.py: junit_passed=28, failed=0, skipped=0, pytest_exit=0"
+  },
+  {
+    "status": "PASS",
+    "path": "tests/extract/test_ocr_language_regions.py",
+    "passed": 12,
+    "failed": 0,
+    "skipped": 0,
+    "pytest_exit": 0,
+    "record": "PASS: tests/extract/test_ocr_language_regions.py: junit_passed=12, failed=0, skipped=0, pytest_exit=0"
+  },
+  {
+    "status": "PASS",
+    "path": "tests/extract/test_ocr_evidence_fidelity.py",
+    "passed": 9,
+    "failed": 0,
+    "skipped": 0,
+    "pytest_exit": 0,
+    "record": "PASS: tests/extract/test_ocr_evidence_fidelity.py: junit_passed=9, failed=0, skipped=0, pytest_exit=0"
+  },
+  {
+    "status": "PASS",
+    "path": "tests/academic_integration/test_formatting.py",
+    "passed": 39,
+    "failed": 0,
+    "skipped": 0,
+    "pytest_exit": 0,
+    "record": "PASS: tests/academic_integration/test_formatting.py: junit_passed=39, failed=0, skipped=0, pytest_exit=0"
+  },
+  {
+    "status": "PASS",
+    "path": "tests/extract/test_automatic_ocr_native.py",
+    "passed": 7,
+    "failed": 0,
+    "skipped": 0,
+    "pytest_exit": 0,
+    "record": "PASS: tests/extract/test_automatic_ocr_native.py: junit_passed=7, failed=0, skipped=0, pytest_exit=0"
+  },
+  {
+    "status": "PASS",
+    "path": "tests/studio/test_production_cancellation_outcomes.py",
+    "passed": 24,
+    "failed": 0,
+    "skipped": 0,
+    "pytest_exit": 0,
+    "record": "PASS: tests/studio/test_production_cancellation_outcomes.py: junit_passed=24, failed=0, skipped=0, pytest_exit=0"
+  },
+  {
+    "status": "PASS",
+    "path": "tests/studio/test_production_hardening.py",
+    "passed": 5,
+    "failed": 0,
+    "skipped": 0,
+    "pytest_exit": 0,
+    "record": "PASS: tests/studio/test_production_hardening.py: junit_passed=5, failed=0, skipped=0, pytest_exit=0"
+  },
+  {
+    "status": "PASS",
+    "path": "tests/studio/test_clip_dialog.py",
+    "passed": 54,
+    "failed": 0,
+    "skipped": 0,
+    "pytest_exit": 0,
+    "record": "PASS: tests/studio/test_clip_dialog.py: junit_passed=54, failed=0, skipped=0, pytest_exit=0"
+  },
+  {
+    "status": "PASS",
+    "path": "tests/studio/test_production.py",
+    "passed": 11,
+    "failed": 0,
+    "skipped": 0,
+    "pytest_exit": 0,
+    "record": "PASS: tests/studio/test_production.py: junit_passed=11, failed=0, skipped=0, pytest_exit=0"
+  },
+  {
+    "status": "PASS",
+    "path": "tests/storage/test_production_operation_backup.py",
+    "passed": 18,
+    "failed": 0,
+    "skipped": 0,
+    "pytest_exit": 0,
+    "record": "PASS: tests/storage/test_production_operation_backup.py: junit_passed=18, failed=0, skipped=0, pytest_exit=0"
+  },
+  {
+    "status": "PASS",
+    "path": "tests/ui/test_studio_output_settings.py",
+    "passed": 36,
+    "failed": 0,
+    "skipped": 0,
+    "pytest_exit": 0,
+    "record": "PASS: tests/ui/test_studio_output_settings.py: junit_passed=36, failed=0, skipped=0, pytest_exit=0"
+  },
+  {
+    "status": "PASS",
+    "path": "tests/storage/test_studio_draft_backup.py",
+    "passed": 18,
+    "failed": 0,
+    "skipped": 0,
+    "pytest_exit": 0,
+    "record": "PASS: tests/storage/test_studio_draft_backup.py: junit_passed=18, failed=0, skipped=0, pytest_exit=0"
+  },
+  {
+    "status": "PASS",
+    "path": "tests/storage/test_backup_scan_bounds.py",
+    "passed": 20,
+    "failed": 0,
+    "skipped": 0,
+    "pytest_exit": 0,
+    "record": "PASS: tests/storage/test_backup_scan_bounds.py: junit_passed=20, failed=0, skipped=0, pytest_exit=0"
+  },
+  {
+    "status": "PASS",
+    "path": "tests/storage/test_state_backup_portability.py",
+    "passed": 27,
+    "failed": 0,
+    "skipped": 0,
+    "pytest_exit": 0,
+    "record": "PASS: tests/storage/test_state_backup_portability.py: junit_passed=27, failed=0, skipped=0, pytest_exit=0"
+  },
+  {
+    "status": "PASS",
+    "path": "tests/storage/test_v3_state_backup.py",
+    "passed": 43,
+    "failed": 0,
+    "skipped": 0,
+    "pytest_exit": 0,
+    "record": "PASS: tests/storage/test_v3_state_backup.py: junit_passed=43, failed=0, skipped=0, pytest_exit=0"
+  },
+  {
+    "status": "PASS",
+    "path": "tests/storage/test_backup_sidecars.py",
+    "passed": 28,
+    "failed": 0,
+    "skipped": 0,
+    "pytest_exit": 0,
+    "record": "PASS: tests/storage/test_backup_sidecars.py: junit_passed=28, failed=0, skipped=0, pytest_exit=0"
+  },
+  {
+    "status": "PASS",
+    "path": "tests/storage/test_canonical_backup_compat.py",
+    "passed": 68,
+    "failed": 0,
+    "skipped": 0,
+    "pytest_exit": 0,
+    "record": "PASS: tests/storage/test_canonical_backup_compat.py: junit_passed=68, failed=0, skipped=0, pytest_exit=0"
+  },
+  {
+    "status": "PASS",
+    "path": "tests/transcription/test_runtime_inventory.py",
+    "passed": 172,
+    "failed": 0,
+    "skipped": 0,
+    "pytest_exit": 0,
+    "record": "PASS: tests/transcription/test_runtime_inventory.py: junit_passed=172, failed=0, skipped=0, pytest_exit=0"
+  },
+  {
+    "status": "PASS",
+    "path": "tests/transcription/test_runtime_admission.py",
+    "passed": 13,
+    "failed": 0,
+    "skipped": 0,
+    "pytest_exit": 0,
+    "record": "PASS: tests/transcription/test_runtime_admission.py: junit_passed=13, failed=0, skipped=0, pytest_exit=0"
+  },
+  {
+    "status": "PASS",
+    "path": "tests/studio/test_book_audio.py",
+    "passed": 46,
+    "failed": 0,
+    "skipped": 0,
+    "pytest_exit": 0,
+    "record": "PASS: tests/studio/test_book_audio.py: junit_passed=46, failed=0, skipped=0, pytest_exit=0"
+  },
+  {
+    "status": "PASS",
+    "path": "tests/transcription/test_admission_boundaries.py",
+    "passed": 14,
+    "failed": 0,
+    "skipped": 0,
+    "pytest_exit": 0,
+    "record": "PASS: tests/transcription/test_admission_boundaries.py: junit_passed=14, failed=0, skipped=0, pytest_exit=0"
+  },
+  {
+    "status": "PASS",
+    "path": "tests/storage/test_asr_additional_profile.py",
+    "passed": 11,
+    "failed": 0,
+    "skipped": 0,
+    "pytest_exit": 0,
+    "record": "PASS: tests/storage/test_asr_additional_profile.py: junit_passed=11, failed=0, skipped=0, pytest_exit=0"
+  },
+  {
+    "status": "PASS",
+    "path": "tests/transcription/test_service.py",
+    "passed": 28,
+    "failed": 0,
+    "skipped": 0,
+    "pytest_exit": 0,
+    "record": "PASS: tests/transcription/test_service.py: junit_passed=28, failed=0, skipped=0, pytest_exit=0"
+  },
+  {
+    "status": "PASS",
+    "path": "tests/packaging/test_windows_bundle.py",
+    "passed": 16,
+    "failed": 0,
+    "skipped": 0,
+    "pytest_exit": 0,
+    "record": "PASS: tests/packaging/test_windows_bundle.py: junit_passed=16, failed=0, skipped=0, pytest_exit=0"
+  },
+  {
+    "status": "PASS",
+    "path": "tests/storage/test_transcription_backup.py",
+    "passed": 143,
+    "failed": 0,
+    "skipped": 0,
+    "pytest_exit": 0,
+    "record": "PASS: tests/storage/test_transcription_backup.py: junit_passed=143, failed=0, skipped=0, pytest_exit=0"
+  },
+  {
+    "status": "PASS",
+    "path": "tests/packaging/test_standard_installer.py",
+    "passed": 151,
+    "failed": 0,
+    "skipped": 0,
+    "pytest_exit": 0,
+    "record": "PASS: tests/packaging/test_standard_installer.py: junit_passed=151, failed=0, skipped=0, pytest_exit=0"
+  },
+  {
+    "status": "PASS",
+    "path": "tests/operations/test_resources.py",
+    "passed": 46,
+    "failed": 0,
+    "skipped": 0,
+    "pytest_exit": 0,
+    "record": "PASS: tests/operations/test_resources.py: junit_passed=46, failed=0, skipped=0, pytest_exit=0"
+  },
+  {
+    "status": "PASS",
+    "path": "tests/operations/test_facade.py",
+    "passed": 23,
+    "failed": 0,
+    "skipped": 0,
+    "pytest_exit": 0,
+    "record": "PASS: tests/operations/test_facade.py: junit_passed=23, failed=0, skipped=0, pytest_exit=0"
+  },
+  {
+    "status": "PASS",
+    "path": "tests/packaging/test_managed_launch_boundary.py",
+    "passed": 47,
+    "failed": 0,
+    "skipped": 0,
+    "pytest_exit": 0,
+    "record": "PASS: tests/packaging/test_managed_launch_boundary.py: junit_passed=47, failed=0, skipped=0, pytest_exit=0"
+  },
+  {
+    "status": "PASS",
+    "path": "tests/e2e/test_operations_cli.py",
+    "passed": 4,
+    "failed": 0,
+    "skipped": 0,
+    "pytest_exit": 0,
+    "record": "PASS: tests/e2e/test_operations_cli.py: junit_passed=4, failed=0, skipped=0, pytest_exit=0"
+  },
+  {
+    "status": "PASS",
+    "path": "tests/operations/test_production_admission.py",
+    "passed": 8,
+    "failed": 0,
+    "skipped": 0,
+    "pytest_exit": 0,
+    "record": "PASS: tests/operations/test_production_admission.py: junit_passed=8, failed=0, skipped=0, pytest_exit=0"
+  },
+  {
+    "status": "PASS",
+    "path": "tests/ui/test_operations_policy.py",
+    "passed": 15,
+    "failed": 0,
+    "skipped": 0,
+    "pytest_exit": 0,
+    "record": "PASS: tests/ui/test_operations_policy.py: junit_passed=15, failed=0, skipped=0, pytest_exit=0"
+  },
+  {
+    "status": "PASS",
+    "path": "tests/speech/test_synthesis_admission.py",
+    "passed": 29,
+    "failed": 0,
+    "skipped": 0,
+    "pytest_exit": 0,
+    "record": "PASS: tests/speech/test_synthesis_admission.py: junit_passed=29, failed=0, skipped=0, pytest_exit=0"
+  },
+  {
+    "status": "PASS",
+    "path": "tests/ui/test_reader_playback.py",
+    "passed": 108,
+    "failed": 0,
+    "skipped": 0,
+    "pytest_exit": 0,
+    "record": "PASS: tests/ui/test_reader_playback.py: junit_passed=108, failed=0, skipped=0, pytest_exit=0"
+  },
+  {
+    "status": "PASS",
+    "path": "tests/speech/test_progress_speech.py",
+    "passed": 53,
+    "failed": 0,
+    "skipped": 0,
+    "pytest_exit": 0,
+    "record": "PASS: tests/speech/test_progress_speech.py: junit_passed=53, failed=0, skipped=0, pytest_exit=0"
+  },
+  {
+    "status": "PASS",
+    "path": "tests/ui/test_operation_progress.py",
+    "passed": 55,
+    "failed": 0,
+    "skipped": 0,
+    "pytest_exit": 0,
+    "record": "PASS: tests/ui/test_operation_progress.py: junit_passed=55, failed=0, skipped=0, pytest_exit=0"
+  },
+  {
+    "status": "PASS",
+    "path": "tests/ui/test_progress_media_quiet.py",
+    "passed": 28,
+    "failed": 0,
+    "skipped": 0,
+    "pytest_exit": 0,
+    "record": "PASS: tests/ui/test_progress_media_quiet.py: junit_passed=28, failed=0, skipped=0, pytest_exit=0"
+  },
+  {
+    "status": "PASS",
+    "path": "tests/ui/test_studio_progress_isolation.py",
+    "passed": 19,
+    "failed": 0,
+    "skipped": 0,
+    "pytest_exit": 0,
+    "record": "PASS: tests/ui/test_studio_progress_isolation.py: junit_passed=19, failed=0, skipped=0, pytest_exit=0"
+  },
+  {
+    "status": "PASS",
+    "path": "tests/speech/test_registered_studio_voices.py",
+    "passed": 16,
+    "failed": 0,
+    "skipped": 0,
+    "pytest_exit": 0,
+    "record": "PASS: tests/speech/test_registered_studio_voices.py: junit_passed=16, failed=0, skipped=0, pytest_exit=0"
+  },
+  {
+    "status": "PASS",
+    "path": "tests/audio/test_model_voices.py",
+    "passed": 39,
+    "failed": 0,
+    "skipped": 0,
+    "pytest_exit": 0,
+    "record": "PASS: tests/audio/test_model_voices.py: junit_passed=39, failed=0, skipped=0, pytest_exit=0"
+  },
+  {
+    "status": "PASS",
+    "path": "tests/storage/test_backup_book_plan_bindings.py",
+    "passed": 9,
+    "failed": 0,
+    "skipped": 0,
+    "pytest_exit": 0,
+    "record": "PASS: tests/storage/test_backup_book_plan_bindings.py: junit_passed=9, failed=0, skipped=0, pytest_exit=0"
+  },
+  {
+    "status": "PASS",
+    "path": "tests/ui/test_book_audio_dialog.py",
+    "passed": 49,
+    "failed": 0,
+    "skipped": 0,
+    "pytest_exit": 0,
+    "record": "PASS: tests/ui/test_book_audio_dialog.py: junit_passed=49, failed=0, skipped=0, pytest_exit=0"
+  },
+  {
+    "status": "PASS",
+    "path": "tests/studio/test_publishing_handlers.py",
+    "passed": 33,
+    "failed": 0,
+    "skipped": 0,
+    "pytest_exit": 0,
+    "record": "PASS: tests/studio/test_publishing_handlers.py: junit_passed=33, failed=0, skipped=0, pytest_exit=0"
+  },
+  {
+    "status": "PASS",
+    "path": "tests/speech/test_python_helper.py",
+    "passed": 36,
+    "failed": 0,
+    "skipped": 0,
+    "pytest_exit": 0,
+    "record": "PASS: tests/speech/test_python_helper.py: junit_passed=36, failed=0, skipped=0, pytest_exit=0"
+  },
+  {
+    "status": "PASS",
+    "path": "tests/storage/test_python_helper_backup.py",
+    "passed": 26,
+    "failed": 0,
+    "skipped": 0,
+    "pytest_exit": 0,
+    "record": "PASS: tests/storage/test_python_helper_backup.py: junit_passed=26, failed=0, skipped=0, pytest_exit=0"
+  },
+  {
+    "status": "PASS",
+    "path": "tests/speech/test_runtime_settings_restore.py",
+    "passed": 44,
+    "failed": 0,
+    "skipped": 0,
+    "pytest_exit": 0,
+    "record": "PASS: tests/speech/test_runtime_settings_restore.py: junit_passed=44, failed=0, skipped=0, pytest_exit=0"
+  },
+  {
+    "status": "PASS",
+    "path": "tests/ui/test_engine_settings_review.py",
+    "passed": 8,
+    "failed": 0,
+    "skipped": 0,
+    "pytest_exit": 0,
+    "record": "PASS: tests/ui/test_engine_settings_review.py: junit_passed=8, failed=0, skipped=0, pytest_exit=0"
+  },
+  {
+    "status": "PASS",
+    "path": "tests/audio/test_cleanup_contexts.py",
+    "passed": 18,
+    "failed": 0,
+    "skipped": 0,
+    "pytest_exit": 0,
+    "record": "PASS: tests/audio/test_cleanup_contexts.py: junit_passed=18, failed=0, skipped=0, pytest_exit=0"
+  },
+  {
+    "status": "PASS",
+    "path": "tests/audio/test_audio_process.py",
+    "passed": 27,
+    "failed": 0,
+    "skipped": 0,
+    "pytest_exit": 0,
+    "record": "PASS: tests/audio/test_audio_process.py: junit_passed=27, failed=0, skipped=0, pytest_exit=0"
+  },
+  {
+    "status": "PASS",
+    "path": "tests/audio/test_silence_inspection.py",
+    "passed": 41,
+    "failed": 0,
+    "skipped": 0,
+    "pytest_exit": 0,
+    "record": "PASS: tests/audio/test_silence_inspection.py: junit_passed=41, failed=0, skipped=0, pytest_exit=0"
+  },
+  {
+    "status": "PASS",
+    "path": "tests/e2e/test_import_worker_publication.py",
+    "passed": 54,
+    "failed": 0,
+    "skipped": 0,
+    "pytest_exit": 0,
+    "record": "PASS: tests/e2e/test_import_worker_publication.py: junit_passed=54, failed=0, skipped=0, pytest_exit=0"
+  },
+  {
+    "status": "PASS",
+    "path": "tests/studio/test_book_silence.py",
+    "passed": 16,
+    "failed": 0,
+    "skipped": 0,
+    "pytest_exit": 0,
+    "record": "PASS: tests/studio/test_book_silence.py: junit_passed=16, failed=0, skipped=0, pytest_exit=0"
+  },
+  {
+    "status": "PASS",
+    "path": "tests/studio/test_director_silence.py",
+    "passed": 16,
+    "failed": 0,
+    "skipped": 0,
+    "pytest_exit": 0,
+    "record": "PASS: tests/studio/test_director_silence.py: junit_passed=16, failed=0, skipped=0, pytest_exit=0"
+  },
+  {
+    "status": "PASS",
+    "path": "tests/ui/test_studio_silence_inspection.py",
+    "passed": 65,
+    "failed": 0,
+    "skipped": 0,
+    "pytest_exit": 0,
+    "record": "PASS: tests/ui/test_studio_silence_inspection.py: junit_passed=65, failed=0, skipped=0, pytest_exit=0"
+  },
+  {
+    "status": "PASS",
+    "path": "tests/audio/test_local_runtime_cli.py",
+    "passed": 15,
+    "failed": 0,
+    "skipped": 0,
+    "pytest_exit": 0,
+    "record": "PASS: tests/audio/test_local_runtime_cli.py: junit_passed=15, failed=0, skipped=0, pytest_exit=0"
+  },
+  {
+    "status": "PASS",
+    "path": "tests/studio/test_silence_inspection.py",
+    "passed": 19,
+    "failed": 0,
+    "skipped": 0,
+    "pytest_exit": 0,
+    "record": "PASS: tests/studio/test_silence_inspection.py: junit_passed=19, failed=0, skipped=0, pytest_exit=0"
+  },
+  {
+    "status": "PASS",
+    "path": "tests/audio/test_capture_access_diagnostic.py",
+    "passed": 55,
+    "failed": 0,
+    "skipped": 0,
+    "pytest_exit": 0,
+    "record": "PASS: tests/audio/test_capture_access_diagnostic.py: junit_passed=55, failed=0, skipped=0, pytest_exit=0"
+  },
+  {
+    "status": "PASS",
+    "path": "tests/audio/test_recording_windows_process.py",
+    "passed": 74,
+    "failed": 0,
+    "skipped": 0,
+    "pytest_exit": 0,
+    "record": "PASS: tests/audio/test_recording_windows_process.py: junit_passed=74, failed=0, skipped=0, pytest_exit=0"
+  },
+  {
+    "status": "PASS",
+    "path": "tests/ui/test_ebook_audio_initialization.py",
+    "passed": 15,
+    "failed": 0,
+    "skipped": 0,
+    "pytest_exit": 0,
+    "record": "PASS: tests/ui/test_ebook_audio_initialization.py: junit_passed=15, failed=0, skipped=0, pytest_exit=0"
+  },
+  {
+    "status": "PASS",
+    "path": "tests/ui/test_ebook_dialog.py",
+    "passed": 32,
+    "failed": 0,
+    "skipped": 0,
+    "pytest_exit": 0,
+    "record": "PASS: tests/ui/test_ebook_dialog.py: junit_passed=32, failed=0, skipped=0, pytest_exit=0"
+  },
+  {
+    "status": "PASS",
+    "path": "tests/audio/test_process_deadline.py",
+    "passed": 23,
+    "failed": 0,
+    "skipped": 0,
+    "pytest_exit": 0,
+    "record": "PASS: tests/audio/test_process_deadline.py: junit_passed=23, failed=0, skipped=0, pytest_exit=0"
+  },
+  {
+    "status": "PASS",
+    "path": "tests/reader/test_ebook_audio_lifecycle.py",
+    "passed": 6,
+    "failed": 0,
+    "skipped": 0,
+    "pytest_exit": 0,
+    "record": "PASS: tests/reader/test_ebook_audio_lifecycle.py: junit_passed=6, failed=0, skipped=0, pytest_exit=0"
+  },
+  {
+    "status": "PASS",
+    "path": "tests/speech/test_wave_output.py",
+    "passed": 44,
+    "failed": 0,
+    "skipped": 0,
+    "pytest_exit": 0,
+    "record": "PASS: tests/speech/test_wave_output.py: junit_passed=44, failed=0, skipped=0, pytest_exit=0"
+  },
+  {
+    "status": "PASS",
+    "path": "tests/speech/test_player_controls.py",
+    "passed": 87,
+    "failed": 0,
+    "skipped": 0,
+    "pytest_exit": 0,
+    "record": "PASS: tests/speech/test_player_controls.py: junit_passed=87, failed=0, skipped=0, pytest_exit=0"
+  },
+  {
+    "status": "PASS",
+    "path": "tests/speech/test_player_transport.py",
+    "passed": 18,
+    "failed": 0,
+    "skipped": 0,
+    "pytest_exit": 0,
+    "record": "PASS: tests/speech/test_player_transport.py: junit_passed=18, failed=0, skipped=0, pytest_exit=0"
+  },
+  {
+    "status": "PASS",
+    "path": "tests/speech/test_output_devices.py",
+    "passed": 44,
+    "failed": 0,
+    "skipped": 0,
+    "pytest_exit": 0,
+    "record": "PASS: tests/speech/test_output_devices.py: junit_passed=44, failed=0, skipped=0, pytest_exit=0"
+  },
+  {
+    "status": "PASS",
+    "path": "tests/reader/test_ebook_audio.py",
+    "passed": 55,
+    "failed": 0,
+    "skipped": 0,
+    "pytest_exit": 0,
+    "record": "PASS: tests/reader/test_ebook_audio.py: junit_passed=55, failed=0, skipped=0, pytest_exit=0"
+  },
+  {
+    "status": "PASS",
+    "path": "tests/speech/test_playlist.py",
+    "passed": 21,
+    "failed": 0,
+    "skipped": 0,
+    "pytest_exit": 0,
+    "record": "PASS: tests/speech/test_playlist.py: junit_passed=21, failed=0, skipped=0, pytest_exit=0"
+  },
+  {
+    "status": "PASS",
+    "path": "tests/search/test_source_page_benchmark.py",
+    "passed": 19,
+    "failed": 0,
+    "skipped": 0,
+    "pytest_exit": 0,
+    "record": "PASS: tests/search/test_source_page_benchmark.py: junit_passed=19, failed=0, skipped=0, pytest_exit=0"
+  },
+  {
+    "status": "PASS",
+    "path": "tests/packaging/test_windows_launcher_bundle.py",
+    "passed": 24,
+    "failed": 0,
+    "skipped": 0,
+    "pytest_exit": 0,
+    "record": "PASS: tests/packaging/test_windows_launcher_bundle.py: junit_passed=24, failed=0, skipped=0, pytest_exit=0"
+  },
+  {
+    "status": "PASS",
+    "path": "tests/speech/test_listening.py",
+    "passed": 29,
+    "failed": 0,
+    "skipped": 0,
+    "pytest_exit": 0,
+    "record": "PASS: tests/speech/test_listening.py: junit_passed=29, failed=0, skipped=0, pytest_exit=0"
+  },
+  {
+    "status": "PASS",
+    "path": "tests/ui/test_federated_labels.py",
+    "passed": 40,
+    "failed": 0,
+    "skipped": 0,
+    "pytest_exit": 0,
+    "record": "PASS: tests/ui/test_federated_labels.py: junit_passed=40, failed=0, skipped=0, pytest_exit=0"
+  },
+  {
+    "status": "PASS",
+    "path": "tests/ui/test_reader_synthesis.py",
+    "passed": 53,
+    "failed": 0,
+    "skipped": 0,
+    "pytest_exit": 0,
+    "record": "PASS: tests/ui/test_reader_synthesis.py: junit_passed=53, failed=0, skipped=0, pytest_exit=0"
+  },
+  {
+    "status": "PASS",
+    "path": "tests/ui/test_progress_voice_actions.py",
+    "passed": 38,
+    "failed": 0,
+    "skipped": 0,
+    "pytest_exit": 0,
+    "record": "PASS: tests/ui/test_progress_voice_actions.py: junit_passed=38, failed=0, skipped=0, pytest_exit=0"
+  },
+  {
+    "status": "PASS",
+    "path": "tests/ui/test_progress_job_review.py",
+    "passed": 45,
+    "failed": 0,
+    "skipped": 0,
+    "pytest_exit": 0,
+    "record": "PASS: tests/ui/test_progress_job_review.py: junit_passed=45, failed=0, skipped=0, pytest_exit=0"
+  },
+  {
+    "status": "PASS",
+    "path": "tests/storage/test_state_json_reader.py",
+    "passed": 63,
+    "failed": 0,
+    "skipped": 0,
+    "pytest_exit": 0,
+    "record": "PASS: tests/storage/test_state_json_reader.py: junit_passed=63, failed=0, skipped=0, pytest_exit=0"
+  },
+  {
+    "status": "PASS",
+    "path": "tests/transcription/test_control_reads.py",
+    "passed": 33,
+    "failed": 0,
+    "skipped": 0,
+    "pytest_exit": 0,
+    "record": "PASS: tests/transcription/test_control_reads.py: junit_passed=33, failed=0, skipped=0, pytest_exit=0"
+  },
+  {
+    "status": "PASS",
+    "path": "tests/storage/test_reader_synthesis_backup.py",
+    "passed": 16,
+    "failed": 0,
+    "skipped": 0,
+    "pytest_exit": 0,
+    "record": "PASS: tests/storage/test_reader_synthesis_backup.py: junit_passed=16, failed=0, skipped=0, pytest_exit=0"
+  },
+  {
+    "status": "PASS",
+    "path": "tests/studio/test_daisy_publishing.py",
+    "passed": 29,
+    "failed": 0,
+    "skipped": 0,
+    "pytest_exit": 0,
+    "record": "PASS: tests/studio/test_daisy_publishing.py: junit_passed=29, failed=0, skipped=0, pytest_exit=0"
+  },
+  {
+    "status": "PASS",
+    "path": "tests/studio/test_publishing.py",
+    "passed": 49,
+    "failed": 0,
+    "skipped": 0,
+    "pytest_exit": 0,
+    "record": "PASS: tests/studio/test_publishing.py: junit_passed=49, failed=0, skipped=0, pytest_exit=0"
+  },
+  {
+    "status": "PASS",
+    "path": "tests/storage_posix/test_state_backup_names.py",
+    "passed": 3,
+    "failed": 0,
+    "skipped": 0,
+    "pytest_exit": 0,
+    "record": "PASS: tests/storage_posix/test_state_backup_names.py: junit_passed=3, failed=0, skipped=0, pytest_exit=0"
+  },
+  {
+    "status": "PASS",
+    "path": "tests/studio/test_measured_audio.py",
+    "passed": 30,
+    "failed": 0,
+    "skipped": 0,
+    "pytest_exit": 0,
+    "record": "PASS: tests/studio/test_measured_audio.py: junit_passed=30, failed=0, skipped=0, pytest_exit=0"
+  }
+]

@@ -1,0 +1,263 @@
+{
+  "schema": 1,
+  "source": {
+    "repository": "Oleksii-debug/AudioTacticalFPS",
+    "head": "943f585659c55481046266338f428e4a1043a9bd",
+    "run": 46119978375,
+    "job": 140902138753,
+    "branch": "carr/ci-endpoint-evaluation-20261127",
+    "attempt": 1,
+    "observed_status": "in_progress",
+    "observation_utc": "2026-11-28 09:24:53 UTC"
+  },
+  "reader": {
+    "head": "489d5d34cb54d16b9a162f05fd01ffd51dcba55e",
+    "tree": "1034d728e429bc161673d04762860c9a91e6358f",
+    "script": "e51b1822b85ddeb0ea240000da4958d843383230",
+    "workflow": "000d4e554a14bd6cd47e51e6d2e4a2e83c0363a1",
+    "run": 46128674165,
+    "job": 140928832912,
+    "status": "completed",
+    "conclusion": "success",
+    "completed_at": "2026-11-28T09:07:52Z",
+    "decoded_log_utf8_bytes": 1013655,
+    "decoded_log_sha256": "ac921051cab84551a789e2037a56804288ce61f081e99fd1425c804b80e9aa11"
+  },
+  "artifacts": [
+    {
+      "id": 15256851282,
+      "name": "carr-windows-pre-source-943f585659c55481046266338f428e4a1043a9bd-1",
+      "bytes": 475789,
+      "sha256": "62b88af6bb0a2df3c90b9f4dfbcbe2de9e16e84642d008eb5b4bb98b110ddb65",
+      "created_at": "2026-11-28T08:57:57Z",
+      "updated_at": "2026-11-28T08:57:57Z",
+      "run": 46119978375,
+      "head": "943f585659c55481046266338f428e4a1043a9bd",
+      "mode": "main"
+    },
+    {
+      "id": 15253625504,
+      "name": "carr-windows-audio-endpoint-943f585659c55481046266338f428e4a1043a9bd-1",
+      "bytes": 3942,
+      "sha256": "d7eff7a55f29ba4d5e95b3a266267acdaadd4ba680634f2c7bcf1437f557ef98",
+      "created_at": "2026-11-28T07:12:08Z",
+      "updated_at": "2026-11-28T07:12:08Z",
+      "run": 46119978375,
+      "head": "943f585659c55481046266338f428e4a1043a9bd",
+      "mode": "endpoint"
+    },
+    {
+      "id": 15253256509,
+      "name": "carr-windows-recording-943f585659c55481046266338f428e4a1043a9bd-1",
+      "bytes": 16780,
+      "sha256": "2db6ce9c98482128246425b098a39c2f417c3a8fd270277516b75523cdf5a293",
+      "created_at": "2026-11-28T07:14:53Z",
+      "updated_at": "2026-11-28T07:14:53Z",
+      "run": 46119978375,
+      "head": "943f585659c55481046266338f428e4a1043a9bd",
+      "mode": "recording"
+    }
+  ],
+  "completion": {
+    "run": 46119978375,
+    "head": "943f585659c55481046266338f428e4a1043a9bd",
+    "artifacts": 3,
+    "selected_files": 112,
+    "zip_digests_verified": true,
+    "application_acceptance": "NOT_ASSESSED",
+    "long_logs": "bounded excerpts; full member hashes retained",
+    "private_assets": "NOT_READ"
+  },
+  "exact_original_members": [
+    {
+      "artifact": 15256851282,
+      "path": "recording-access-diagnostic.json",
+      "bytes": 10216,
+      "sha256": "7a8cd11f4630b9847b1386bedafcb52fec3f5f81849414f9c7aa914ab87f6ff1",
+      "original_bytes_exact": true
+    },
+    {
+      "artifact": 15253256509,
+      "path": "native-recording-device.json",
+      "bytes": 2773,
+      "sha256": "cbe329cd83a02d6f04a6a80a198738251995f5c1abadd3e5a3d1ecf24f77046a",
+      "original_bytes_exact": true
+    },
+    {
+      "artifact": 15253625504,
+      "path": "audio-endpoint.json",
+      "bytes": 949,
+      "sha256": "ab5e05fdbf1cb3d9f87b44ee051afea22f29b42da6dfce91b509fa078316bee1",
+      "original_bytes_exact": true
+    },
+    {
+      "artifact": 15253625504,
+      "path": "audio-services.json",
+      "bytes": 376,
+      "sha256": "2bff8c31f77c549a729a0c05eb32447a9b69c88bed0331237736dfdc1311804a",
+      "original_bytes_exact": true
+    },
+    {
+      "artifact": 15253625504,
+      "path": "endpoint-evaluation.json",
+      "bytes": 5259,
+      "sha256": "79f9c1b511c9c04efebab8ff158bfc7dbe4524e3fc6a1df2fd73af0a6ddd9dcf",
+      "original_bytes_exact": true
+    },
+    {
+      "artifact": 15256851282,
+      "path": "source-reader-navigation.json",
+      "bytes": 6288,
+      "sha256": "43c7f7a8bb985583b4643a805bfa4532366a9853c7abf85706a64c559abac499",
+      "original_bytes_exact": true
+    },
+    {
+      "artifact": 15256851282,
+      "path": "installed-reader-navigation.json",
+      "bytes": 6218,
+      "sha256": "06235c5f4c634fc911465138127edd23b80986aac19b1783396f350d9dabc8d9",
+      "original_bytes_exact": true
+    },
+    {
+      "artifact": 15256851282,
+      "path": "native-reader-controls.json",
+      "bytes": 6692,
+      "sha256": "b884eee58fe9049fb8ca8b38435626f77c95122af4bdcfb4e021b9a28f186e1d",
+      "original_bytes_exact": true
+    },
+    {
+      "artifact": 15256851282,
+      "path": "installed-scene-clip-editor.txt",
+      "bytes": 16016,
+      "sha256": "7f5196ef35f1661e34d22690062ef346fbd96deaebeb4de330e3745792053137",
+      "original_bytes_exact": true
+    },
+    {
+      "artifact": 15256851282,
+      "path": "bundle-scene-clip-editor.txt",
+      "bytes": 10315,
+      "sha256": "d0c01d0bf5496f1e463d5715bec1bcb68808e257f9ad2e8e7ae40ab4007537fc",
+      "original_bytes_exact": true
+    }
+  ],
+  "bounded_excerpt": {
+    "path": "full-bundle-workflows.txt",
+    "original_member_bytes": 37374,
+    "original_member_sha256": "206b6dc84c79a2e37549ea4a15cd206919c271e00ff0747f890c663932b6a393",
+    "full_original_text_retained": false,
+    "excerpt_utf8_bytes": 16430,
+    "excerpt_sha256": "75565d847532c9619489a7b145e68dd1d9dd69c4f7a24cf60145bb44189845f8",
+    "reported_pytest": {
+      "passed": 9319,
+      "failed": 0,
+      "skipped": 0,
+      "duration_seconds": 5120.42
+    },
+    "private_native_dll_paths": "PASS"
+  },
+  "native": {
+    "reader_navigation_source": {
+      "status": "PASS",
+      "checks": 50,
+      "includes": "actual 50%,100%,0.25-second Seek on same measured recording"
+    },
+    "reader_navigation_installed": {
+      "status": "PASS",
+      "checks": 50
+    },
+    "bundle_reader_navigation_summary": {
+      "status": "PASS",
+      "checks": 50
+    },
+    "bundle_reader_controls_summary": {
+      "status": "PASS",
+      "checks": 108
+    },
+    "bundle_reader_player_summary": {
+      "status": "PASS",
+      "checks": 198
+    },
+    "installed_clip": {
+      "checks": 158,
+      "loop_preview": {
+        "status": "PASS",
+        "reason": null,
+        "acoustic_listening": "NOT_RUN",
+        "physical_output_device": "NOT_RUN",
+        "completed_repeats": 2,
+        "output_index": 1,
+        "output_identity": "ed6c2e477b4a15d6c6fab1338f03537acccd052219f43020e1e468ef6c187662",
+        "preview_sha256": "192579ff15b8f022cb65896c1072987035c8947fd0175af69cb99f17af29a4e0",
+        "module_sha256": {
+          "carr_library.ui.studio_clips": "8679b7c7ed987e0484392fb9d33f728e52d413b8949a441cc4b85135bd5dd85e",
+          "carr_library.studio.clips": "21814cbe3bb6c5b54c5df1a2491c30339c3595dc44ef66a9c8551b5f723cd85e",
+          "carr_library.speech.player": "2d945ee142981f15cf3009c0db90cccb8583ee71500236d0d248992a8fd608d4",
+          "carr_library.speech.output_devices": "ec0dfdd7082f05d3edde73157db59770f57c19e334ba18dd43c45ed3efa888c5",
+          "carr_library.speech.progress_speech": "20461dafc294c67ce28137ae818189d710356bb9fa9a7493e85752d0352f3393",
+          "carr_library.speech._wave_output": "190e7f289268a42db84cfb89e073c6d6cb2deb32ffb27cc63fe366a39fe71664"
+        },
+        "native_keyboard": "PASS",
+        "fixture": "synthetic retained PCM with saved clip effects"
+      }
+    },
+    "bundle_clip": {
+      "checks": 120,
+      "loop_preview": {
+        "status": "NOT_RUN",
+        "reason": "No exact reviewed output endpoint was supplied for loop playback.",
+        "acoustic_listening": "NOT_RUN",
+        "physical_output_device": "NOT_RUN"
+      }
+    },
+    "recording_control_checks_per_mode": 65
+  },
+  "capture": {
+    "status": "FAILED",
+    "selected_id": "d62e75f05c468cf3a72d587dc5331a8b5998f845b88b6893ae7a1f950f3326bb",
+    "selected_name": "CABLE Output (VB-Audio Virtual Cable)",
+    "directshow": "Could not find output pin from audio only capture device",
+    "wave_in_query_results": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "wave_in_open_without_buffers_results": [
+      1,
+      1,
+      1,
+      1
+    ],
+    "wasapi_initialize_shared": "0x80070005",
+    "endpoint_active_before_after": true,
+    "endpoint_unchanged": true,
+    "current_user_microphone": "Deny",
+    "current_user_desktop": "Allow",
+    "machine_microphone": "Allow",
+    "explicit_app_privacy_values": "NOT_CONFIGURED_AT_THIS_KEY",
+    "settings_changes": false,
+    "physical_microphone": "NOT_RUN",
+    "human_listening": "NOT_RUN"
+  },
+  "qualification": {
+    "full_bundle_step": "FAILED",
+    "full_bundle_final_predicate": "UNKNOWN pending authorized bounded JUnit diagnostic or completed MAIN log",
+    "source_stage": "IN_PROGRESS",
+    "overall_main": "NOT_QUALIFIED",
+    "no_pass_transfer_to_other_heads": true,
+    "no_live_job_log_read": true,
+    "no_binary_or_private_asset_read": true,
+    "manual_nvda": "NOT_RUN",
+    "acoustic_quality": "NOT_RUN"
+  },
+  "notes": [
+    "The full-bundle pytest summary and native member PASS scopes do not qualify the later failing complete-bundle gate.",
+    "full-bundle-workflows.json and later wheel proof receipts are absent from the immutable inventory.",
+    "The 1,495,285-byte XML remains unread in this first helper run; the separately reviewed next helper parses only bounded totals/required-name guards.",
+    "Original small member bytes retain BOM/newline/UTF8 identity; other native JSON outcomes are explicitly helper-generated summaries with their original member digests."
+  ]
+}

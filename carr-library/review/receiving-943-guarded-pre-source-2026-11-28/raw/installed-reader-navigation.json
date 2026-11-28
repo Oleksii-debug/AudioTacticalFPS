@@ -1,0 +1,106 @@
+{
+  "status": "PASS",
+  "phase": "complete",
+  "checks": [
+    "retained source and local voice load before scoped actions",
+    "same player uses only the explicitly supplied endpoint",
+    "native source copy retains exact text and passive source lineage",
+    "opening a source reader never narrates automatically",
+    "actual Read current word narrates only its exact retained span",
+    "current word leaves source and reading history unchanged",
+    "explicit Stop leaves the same player silent",
+    "actual Read current line narrates only its exact retained span",
+    "current line leaves source and reading history unchanged",
+    "explicit Stop leaves the same player silent",
+    "actual Read current sentence narrates only its exact retained span",
+    "current sentence leaves source and reading history unchanged",
+    "explicit Stop leaves the same player silent",
+    "actual Read current paragraph narrates only its exact retained span",
+    "current paragraph leaves source and reading history unchanged",
+    "explicit Stop leaves the same player silent",
+    "native Seek starts from an explicitly paused recording",
+    "native Seek labels seconds and 0%/100% before 50%",
+    "native Seek receives the exact typed value 50%",
+    "native Seek 50% uses the same measured recording and remains paused",
+    "native Seek labels seconds and 0%/100% before 100%",
+    "native Seek receives the exact typed value 100%",
+    "native Seek 100% uses the same measured recording and remains paused",
+    "native Seek labels seconds and 0%/100% before 0.25",
+    "native Seek receives the exact typed value 0.25",
+    "native Seek 0.25 uses the same measured recording and remains paused",
+    "explicit Stop leaves the same player silent",
+    "passive current-word selection after a non-BMP character starts no audio",
+    "native next-unit action selects the next exact word without speech",
+    "native previous-unit action returns without wrapping or speech",
+    "shared keymap keeps Stop and saved assignments on collision",
+    "custom native key invokes the same scoped speech command",
+    "explicit Stop leaves the same player silent",
+    "native unit location enters the existing reader worker",
+    "stale native unit worker completes without another narration",
+    "stale result leaves the original reading document unchanged",
+    "native unit location enters the existing reader worker",
+    "stale native unit worker completes without another narration",
+    "stale result leaves the original reading document unchanged",
+    "native unit location enters the existing reader worker",
+    "stale native unit worker completes without another narration",
+    "stale result leaves the original reading document unchanged",
+    "existing Save persists reading cursor and exact immutable source",
+    "close fixture owns an actual reader-worker request",
+    "Close cancels this request while retaining the active modal until completion",
+    "Close never begins the cancelled scoped narration",
+    "the returned modal has revoked its reader host after worker completion",
+    "reader shutdown leaves no retained playback or listening owner",
+    "scoped speech preserves exact original bytes and saved quotation records",
+    "existing shared keyboard adapters detach when the reader closes"
+  ],
+  "python": "3.11.9 (tags/v3.11.9:de54cf5, Apr  2 2024, 10:12:12) [MSC v.1938 64 bit (AMD64)]",
+  "source_commit": "943f585659c55481046266338f428e4a1043a9bd",
+  "speech_quality": "NOT_RUN",
+  "manual_nvda": "NOT_RUN",
+  "modules": {
+    "carr_library.speech.navigation": {
+      "path": "D:\\a\\_temp\\carr-windows-python\\Lib\\site-packages\\carr_library\\speech\\navigation.py",
+      "sha256": "6797cf5f4872af3be0646dedb38105b8afea9c45524e02b2d8ccd073f2c062e3"
+    },
+    "carr_library.ui.reader_navigation": {
+      "path": "D:\\a\\_temp\\carr-windows-python\\Lib\\site-packages\\carr_library\\ui\\reader_navigation.py",
+      "sha256": "fd9d293a2a518e5d585799bfda8db6869a48e746d9e5c1323694c85faa625ce6"
+    },
+    "carr_library.ui.reading_tools": {
+      "path": "D:\\a\\_temp\\carr-windows-python\\Lib\\site-packages\\carr_library\\ui\\reading_tools.py",
+      "sha256": "3e285dcfbe8215639aaffc203f660bb44a9927558150a3c7e94ed4da7946e67f"
+    },
+    "carr_library.speech.reading_tools": {
+      "path": "D:\\a\\_temp\\carr-windows-python\\Lib\\site-packages\\carr_library\\speech\\reading_tools.py",
+      "sha256": "0ec33986f54a584f3284123cac9839ac80d0dd3a19ee9044042c14568e47cf17"
+    },
+    "carr_library.ui.speech_dialog": {
+      "path": "D:\\a\\_temp\\carr-windows-python\\Lib\\site-packages\\carr_library\\ui\\speech_dialog.py",
+      "sha256": "6809a8c3fd7059d03c09b9d819738c2c17517bafa0f27c7d996050c12ea54a59"
+    },
+    "carr_library.ui.keyboard_settings": {
+      "path": "D:\\a\\_temp\\carr-windows-python\\Lib\\site-packages\\carr_library\\ui\\keyboard_settings.py",
+      "sha256": "351564c56e36484444c1b789da8133b0145879e0a221ebda83f270dd694b419e"
+    },
+    "carr_library.keybindings": {
+      "path": "D:\\a\\_temp\\carr-windows-python\\Lib\\site-packages\\carr_library\\keybindings.py",
+      "sha256": "deff0fe8fdc77973c025839f599049707ae0fc62f00910d8e1db47cddba28217"
+    },
+    "carr_library.speech.runtime": {
+      "path": "D:\\a\\_temp\\carr-windows-python\\Lib\\site-packages\\carr_library\\speech\\runtime.py",
+      "sha256": "4cf5bd7f49e063a2ac06fa49f1a76f7f2f752c18a0cd2004389fa175aa9df8cd"
+    },
+    "carr_library.speech.player": {
+      "path": "D:\\a\\_temp\\carr-windows-python\\Lib\\site-packages\\carr_library\\speech\\player.py",
+      "sha256": "2d945ee142981f15cf3009c0db90cccb8583ee71500236d0d248992a8fd608d4"
+    },
+    "carr_library.speech.synthesis_admission": {
+      "path": "D:\\a\\_temp\\carr-windows-python\\Lib\\site-packages\\carr_library\\speech\\synthesis_admission.py",
+      "sha256": "a66bc1659bf3d1d8e2cf71693f166bfb87fddf57cc75be342e3b4fc727778af5"
+    }
+  },
+  "wx": "4.2.4 msw (phoenix) wxWidgets 3.2.8",
+  "output_identity": "ed6c2e477b4a15d6c6fab1338f03537acccd052219f43020e1e468ef6c187662",
+  "scope": "Actual native controls, exact source spans, one reader worker/player, synthetic silent PCM",
+  "synthetic_narrations": 6
+}

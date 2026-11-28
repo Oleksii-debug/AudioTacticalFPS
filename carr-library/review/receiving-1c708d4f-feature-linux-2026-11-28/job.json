@@ -1,0 +1,180 @@
+{
+  "id": 140932191897,
+  "run_id": 46129784287,
+  "workflow_name": "Updated technical project feature acceptance",
+  "head_branch": "carr/feature-completion-evaluation-20261128",
+  "run_url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/runs/46129784287",
+  "run_attempt": 1,
+  "node_id": "CR_kwDOT_nmzs8AAAAg0DaWmQ",
+  "head_sha": "1c708d4f2b9f0cc278f258b8eb9b1dcc2edc55bf",
+  "url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/jobs/140932191897",
+  "html_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46129784287/job/140932191897",
+  "status": "completed",
+  "conclusion": "failure",
+  "created_at": "2026-11-28T09:17:38Z",
+  "started_at": "2026-11-28T10:04:47Z",
+  "completed_at": "2026-11-28T10:14:15Z",
+  "name": "Director FX, numeric effects, formatted translation and CUE / ubuntu-24.04",
+  "steps": [
+    {
+      "name": "Set up job",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 1,
+      "started_at": "2026-11-28T10:04:47Z",
+      "completed_at": "2026-11-28T10:04:49Z"
+    },
+    {
+      "name": "Preserve exact committed source bytes",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 2,
+      "started_at": "2026-11-28T10:04:49Z",
+      "completed_at": "2026-11-28T10:04:50Z"
+    },
+    {
+      "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 3,
+      "started_at": "2026-11-28T10:04:50Z",
+      "completed_at": "2026-11-28T10:04:55Z"
+    },
+    {
+      "name": "Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 4,
+      "started_at": "2026-11-28T10:04:55Z",
+      "completed_at": "2026-11-28T10:04:56Z"
+    },
+    {
+      "name": "Install exact application and declared feature prerequisites",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 5,
+      "started_at": "2026-11-28T10:04:56Z",
+      "completed_at": "2026-11-28T10:05:19Z"
+    },
+    {
+      "name": "Prepare the Linux test audio and independent C parser toolchain",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 6,
+      "started_at": "2026-11-28T10:05:19Z",
+      "completed_at": "2026-11-28T10:05:59Z"
+    },
+    {
+      "name": "Prepare the already pinned Windows test audio runtime",
+      "status": "completed",
+      "conclusion": "skipped",
+      "number": 7,
+      "started_at": "2026-11-28T10:05:59Z",
+      "completed_at": "2026-11-28T10:05:59Z"
+    },
+    {
+      "name": "Prepare exact source and installed acceptance harness",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 8,
+      "started_at": "2026-11-28T10:05:59Z",
+      "completed_at": "2026-11-28T10:05:59Z"
+    },
+    {
+      "name": "Require actual source features and unchanged adjacent contracts",
+      "status": "completed",
+      "conclusion": "failure",
+      "number": 9,
+      "started_at": "2026-11-28T10:05:59Z",
+      "completed_at": "2026-11-28T10:10:10Z"
+    },
+    {
+      "name": "Require isolated installed features and unchanged adjacent contracts",
+      "status": "completed",
+      "conclusion": "failure",
+      "number": 10,
+      "started_at": "2026-11-28T10:10:10Z",
+      "completed_at": "2026-11-28T10:14:10Z"
+    },
+    {
+      "name": "Require real installed Windows effect controls and Director rendering",
+      "status": "completed",
+      "conclusion": "skipped",
+      "number": 11,
+      "started_at": "2026-11-28T10:14:10Z",
+      "completed_at": "2026-11-28T10:14:10Z"
+    },
+    {
+      "name": "Require source and installed formatted translation controls",
+      "status": "completed",
+      "conclusion": "skipped",
+      "number": 12,
+      "started_at": "2026-11-28T10:14:10Z",
+      "completed_at": "2026-11-28T10:14:10Z"
+    },
+    {
+      "name": "Read the exact independent upstream CUE parser source",
+      "status": "completed",
+      "conclusion": "skipped",
+      "number": 13,
+      "started_at": "2026-11-28T10:14:10Z",
+      "completed_at": "2026-11-28T10:14:10Z"
+    },
+    {
+      "name": "Build and require the actual upstream reader",
+      "status": "completed",
+      "conclusion": "skipped",
+      "number": 14,
+      "started_at": "2026-11-28T10:14:10Z",
+      "completed_at": "2026-11-28T10:14:10Z"
+    },
+    {
+      "name": "Preserve exact identity",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 15,
+      "started_at": "2026-11-28T10:14:10Z",
+      "completed_at": "2026-11-28T10:14:10Z"
+    },
+    {
+      "name": "Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 16,
+      "started_at": "2026-11-28T10:14:10Z",
+      "completed_at": "2026-11-28T10:14:12Z"
+    },
+    {
+      "name": "Post Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+      "status": "completed",
+      "conclusion": "skipped",
+      "number": 31,
+      "started_at": "2026-11-28T10:14:12Z",
+      "completed_at": "2026-11-28T10:14:12Z"
+    },
+    {
+      "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 32,
+      "started_at": "2026-11-28T10:14:12Z",
+      "completed_at": "2026-11-28T10:14:12Z"
+    },
+    {
+      "name": "Complete job",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 33,
+      "started_at": "2026-11-28T10:14:12Z",
+      "completed_at": "2026-11-28T10:14:12Z"
+    }
+  ],
+  "check_run_url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/check-runs/140932191897",
+  "labels": [
+    "ubuntu-24.04"
+  ],
+  "runner_id": 1000490555,
+  "runner_name": "GitHub Actions 1000490555",
+  "runner_group_id": 0,
+  "runner_group_name": "GitHub Actions"
+}

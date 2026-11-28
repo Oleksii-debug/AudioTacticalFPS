@@ -1,0 +1,81 @@
+{
+  "total_count": 1,
+  "jobs": [
+    {
+      "id": 140928832912,
+      "run_id": 46128674165,
+      "workflow_name": "CARR exact Windows bundle receipts",
+      "head_branch": "carr/windows-687-receipts-20261127",
+      "run_url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/runs/46128674165",
+      "run_attempt": 1,
+      "node_id": "CR_kwDOT_nmzs8AAAAg0ANVkA",
+      "head_sha": "489d5d34cb54d16b9a162f05fd01ffd51dcba55e",
+      "url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/jobs/140928832912",
+      "html_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46128674165/job/140928832912",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-11-28T09:03:40Z",
+      "started_at": "2026-11-28T09:07:44Z",
+      "completed_at": "2026-11-28T09:07:52Z",
+      "name": "preserve-completed-receipts",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-11-28T09:07:44Z",
+          "completed_at": "2026-11-28T09:07:45Z"
+        },
+        {
+          "name": "Preserve exact reader source bytes",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-11-28T09:07:45Z",
+          "completed_at": "2026-11-28T09:07:45Z"
+        },
+        {
+          "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-11-28T09:07:45Z",
+          "completed_at": "2026-11-28T09:07:46Z"
+        },
+        {
+          "name": "Read only the pinned immutable public Windows artifact",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-11-28T09:07:46Z",
+          "completed_at": "2026-11-28T09:07:50Z"
+        },
+        {
+          "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 8,
+          "started_at": "2026-11-28T09:07:50Z",
+          "completed_at": "2026-11-28T09:07:50Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 9,
+          "started_at": "2026-11-28T09:07:50Z",
+          "completed_at": "2026-11-28T09:07:50Z"
+        }
+      ],
+      "check_run_url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/check-runs/140928832912",
+      "labels": [
+        "ubuntu-24.04"
+      ],
+      "runner_id": 1000490484,
+      "runner_name": "GitHub Actions 1000490484",
+      "runner_group_id": 0,
+      "runner_group_name": "GitHub Actions"
+    }
+  ]
+}

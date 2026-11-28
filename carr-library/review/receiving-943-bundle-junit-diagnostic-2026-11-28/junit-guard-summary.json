@@ -1,0 +1,120 @@
+{
+  "artifact": 15256851282,
+  "archive_sha256": "62b88af6bb0a2df3c90b9f4dfbcbe2de9e16e84642d008eb5b4bb98b110ddb65",
+  "path": "full-bundle-workflows.xml",
+  "bytes": 1495285,
+  "sha256": "a4425cc38f8879b77473943199fbc3fd86ae00f3cc29048fa4392dbcc5615b50",
+  "encoding": "utf-8-sig",
+  "run": 46119978375,
+  "head": "943f585659c55481046266338f428e4a1043a9bd",
+  "attempt": 1,
+  "scope": "read-only reproduction of existing post-pytest JUnit predicates",
+  "totals": {
+    "testcases": 9319,
+    "passed": 9319,
+    "failed": 0,
+    "errors": 0,
+    "failed_or_error": 0,
+    "skipped": 0
+  },
+  "guarded_modules": {
+    "test_import_metadata_shape": {
+      "count": 58,
+      "unique": 58,
+      "names": [
+        "test_bounded_unicode_sequences_preserve_order_on_both_routes[0-list-pdf]",
+        "test_bounded_unicode_sequences_preserve_order_on_both_routes[0-list-txt]",
+        "test_bounded_unicode_sequences_preserve_order_on_both_routes[0-tuple-pdf]",
+        "test_bounded_unicode_sequences_preserve_order_on_both_routes[0-tuple-txt]",
+        "test_bounded_unicode_sequences_preserve_order_on_both_routes[100-list-pdf]",
+        "test_bounded_unicode_sequences_preserve_order_on_both_routes[100-list-txt]",
+        "test_bounded_unicode_sequences_preserve_order_on_both_routes[100-tuple-pdf]",
+        "test_bounded_unicode_sequences_preserve_order_on_both_routes[100-tuple-txt]",
+        "test_bounded_unicode_sequences_preserve_order_on_both_routes[2-list-pdf]",
+        "test_bounded_unicode_sequences_preserve_order_on_both_routes[2-list-txt]",
+        "test_bounded_unicode_sequences_preserve_order_on_both_routes[2-tuple-pdf]",
+        "test_bounded_unicode_sequences_preserve_order_on_both_routes[2-tuple-txt]",
+        "test_invalid_metadata_never_reaches_an_import_backend[bytes-authors-pdf]",
+        "test_invalid_metadata_never_reaches_an_import_backend[bytes-authors-txt]",
+        "test_invalid_metadata_never_reaches_an_import_backend[bytes-collections-pdf]",
+        "test_invalid_metadata_never_reaches_an_import_backend[bytes-collections-txt]",
+        "test_invalid_metadata_never_reaches_an_import_backend[generator-authors-pdf]",
+        "test_invalid_metadata_never_reaches_an_import_backend[generator-authors-txt]",
+        "test_invalid_metadata_never_reaches_an_import_backend[generator-collections-pdf]",
+        "test_invalid_metadata_never_reaches_an_import_backend[generator-collections-txt]",
+        "test_invalid_metadata_never_reaches_an_import_backend[iterable-authors-pdf]",
+        "test_invalid_metadata_never_reaches_an_import_backend[iterable-authors-txt]",
+        "test_invalid_metadata_never_reaches_an_import_backend[iterable-collections-pdf]",
+        "test_invalid_metadata_never_reaches_an_import_backend[iterable-collections-txt]",
+        "test_invalid_metadata_never_reaches_an_import_backend[long-list-authors-pdf]",
+        "test_invalid_metadata_never_reaches_an_import_backend[long-list-authors-txt]",
+        "test_invalid_metadata_never_reaches_an_import_backend[long-list-collections-pdf]",
+        "test_invalid_metadata_never_reaches_an_import_backend[long-list-collections-txt]",
+        "test_invalid_metadata_never_reaches_an_import_backend[long-tuple-authors-pdf]",
+        "test_invalid_metadata_never_reaches_an_import_backend[long-tuple-authors-txt]",
+        "test_invalid_metadata_never_reaches_an_import_backend[long-tuple-collections-pdf]",
+        "test_invalid_metadata_never_reaches_an_import_backend[long-tuple-collections-txt]",
+        "test_invalid_metadata_never_reaches_an_import_backend[mapping-authors-pdf]",
+        "test_invalid_metadata_never_reaches_an_import_backend[mapping-authors-txt]",
+        "test_invalid_metadata_never_reaches_an_import_backend[mapping-collections-pdf]",
+        "test_invalid_metadata_never_reaches_an_import_backend[mapping-collections-txt]",
+        "test_invalid_metadata_never_reaches_an_import_backend[none-authors-pdf]",
+        "test_invalid_metadata_never_reaches_an_import_backend[none-authors-txt]",
+        "test_invalid_metadata_never_reaches_an_import_backend[none-collections-pdf]",
+        "test_invalid_metadata_never_reaches_an_import_backend[none-collections-txt]",
+        "test_invalid_metadata_never_reaches_an_import_backend[number-authors-pdf]",
+        "test_invalid_metadata_never_reaches_an_import_backend[number-authors-txt]",
+        "test_invalid_metadata_never_reaches_an_import_backend[number-collections-pdf]",
+        "test_invalid_metadata_never_reaches_an_import_backend[number-collections-txt]",
+        "test_invalid_metadata_never_reaches_an_import_backend[range-authors-pdf]",
+        "test_invalid_metadata_never_reaches_an_import_backend[range-authors-txt]",
+        "test_invalid_metadata_never_reaches_an_import_backend[range-collections-pdf]",
+        "test_invalid_metadata_never_reaches_an_import_backend[range-collections-txt]",
+        "test_invalid_metadata_never_reaches_an_import_backend[set-authors-pdf]",
+        "test_invalid_metadata_never_reaches_an_import_backend[set-authors-txt]",
+        "test_invalid_metadata_never_reaches_an_import_backend[set-collections-pdf]",
+        "test_invalid_metadata_never_reaches_an_import_backend[set-collections-txt]",
+        "test_invalid_metadata_never_reaches_an_import_backend[string-authors-pdf]",
+        "test_invalid_metadata_never_reaches_an_import_backend[string-authors-txt]",
+        "test_invalid_metadata_never_reaches_an_import_backend[string-collections-pdf]",
+        "test_invalid_metadata_never_reaches_an_import_backend[string-collections-txt]",
+        "test_valid_unicode_metadata_is_stored_by_real_import[list]",
+        "test_valid_unicode_metadata_is_stored_by_real_import[tuple]"
+      ]
+    },
+    "test_ocr_runtime": {
+      "count": 3,
+      "unique": 3,
+      "names": [
+        "test_directory_inventory_checks_budget_between_entries",
+        "test_empty_directory_inventory_has_a_bound",
+        "test_unreadable_directory_rejects_entire_inventory"
+      ]
+    },
+    "test_state_backup_portability": {
+      "count": 6,
+      "unique": 6,
+      "names": [
+        "test_state_inventory_rejects_unreadable_subtree[restore]",
+        "test_state_inventory_rejects_unreadable_subtree[snapshot]",
+        "test_state_restore_rejects_unlisted_file_before_scanning_later_subtree",
+        "test_state_root_lookup_error_is_not_absence[NotADirectoryError]",
+        "test_state_root_lookup_error_is_not_absence[PermissionError]",
+        "test_state_root_missing_is_optional_only_when_requested"
+      ]
+    }
+  },
+  "missing_required_names": [
+    "test_windows_native_dialog_async_lookup_focus_and_close"
+  ],
+  "predicates": {
+    "metadata_exact_58_unique": true,
+    "ocr_exact_names": true,
+    "state_inventory_exact_names": true,
+    "required_names_present": false,
+    "zero_failed_error_skipped": true
+  },
+  "all_guarded_predicates": false,
+  "application_acceptance": "NOT_ASSESSED",
+  "raw_xml_emitted": false
+}
