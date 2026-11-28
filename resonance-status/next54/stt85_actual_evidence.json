@@ -1,0 +1,146 @@
+{
+  "schema": 1,
+  "kind": "actual-remote-stt-focused-evidence",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "run_id": 46102610448,
+  "run_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46102610448",
+  "source_commit": "a7205dd2a49328d820be858fd06e739340f791ae",
+  "source_tree": "7cce3541d4bfffc4977d092c08f247798188e0d4",
+  "branch": "carr/ci-remote-stt-final-20261128-5a9e",
+  "run_conclusion": "failure",
+  "contract_manifest": "20711bab4b5a77221f7059b40e7e8f3a0ccf861d",
+  "jobs": [
+    {
+      "job_id": 140848218917,
+      "platform": "ubuntu-24.04",
+      "conclusion": "success",
+      "source": {
+        "whole_suites": 3,
+        "cases_passed": 85,
+        "failed": 0,
+        "skipped": 0
+      },
+      "installed": {
+        "whole_suites": 3,
+        "cases_passed": 85,
+        "failed": 0,
+        "skipped": 0
+      },
+      "loopback": "NOT_RUN",
+      "native": "NOT_RUN",
+      "whole_verdict_lines": [
+        "2026-11-28T03:24:01.7933043Z ============================== 39 passed in 0.51s ==============================",
+        "2026-11-28T03:24:01.7954967Z ============================== 17 passed in 1.44s ==============================",
+        "2026-11-28T03:24:01.7974554Z ============================= 29 passed in 11.60s ==============================",
+        "2026-11-28T03:24:06.3699723Z ============================== 39 passed in 0.21s ==============================",
+        "2026-11-28T03:24:18.2147171Z ============================= 29 passed in 11.44s ==============================",
+        "2026-11-28T03:24:19.9315168Z ============================== 17 passed in 1.33s =============================="
+      ],
+      "helper_receipt": "2026-11-28T03:24:19.9555722Z {\"all_children_reaped\": true, \"inputs_unchanged\": true, \"installed_passed\": 85, \"source_commit\": \"a7205dd2a49328d820be858fd06e739340f791ae\", \"source_passed\": 85, \"source_tree\": \"7cce3541d4bfffc4977d092c08f247798188e0d4\", \"status\": \"PASS\"}"
+    },
+    {
+      "job_id": 140848219133,
+      "platform": "windows-2022",
+      "conclusion": "failure",
+      "source": {
+        "whole_suites": 3,
+        "cases_passed": 85,
+        "failed": 0,
+        "skipped": 0
+      },
+      "installed": {
+        "whole_suites": 3,
+        "cases_passed": 85,
+        "failed": 0,
+        "skipped": 0
+      },
+      "loopback": {
+        "source_passed": 6,
+        "installed_passed": 6,
+        "failed": 0,
+        "skipped": 0
+      },
+      "native": {
+        "status": "FAIL",
+        "error": "TimeoutError: Native transcription focus did not reach the explicitly selected control.",
+        "required_unique_checks": 73,
+        "required_origins": 23,
+        "failed_at": "pending native focus predicate after queued-review cancellation checks; old message does not identify which requested control",
+        "selected_verified_progress": [
+          "2026-11-28T03:25:28.9671406Z PASS: native edit keeps original audio and recognition text unchanged",
+          "2026-11-28T03:25:28.9671695Z PASS: busy native Close requests cancellation and retains the current modal until settlement",
+          "2026-11-28T03:25:28.9671990Z PASS: cancelled queued review creates no second job or provider attempt",
+          "2026-11-28T03:25:28.9683710Z PASS: actual host Close drains original shared worker and finalizers",
+          "2026-11-28T03:25:28.9683950Z PASS: all actual STT Job handles are settled before fallback cleanup",
+          "2026-11-28T03:25:28.9684174Z PASS: no STT resource lease survives actual host cleanup",
+          "2026-11-28T03:25:28.9684403Z PASS: synthetic STT fixture remains byte-identical through owner cleanup"
+        ],
+        "error_excerpt": [
+          "2026-11-28T03:25:28.9672221Z FAIL: native remote-STT callback",
+          "2026-11-28T03:25:28.9672375Z Traceback (most recent call last):",
+          "2026-11-28T03:25:28.9677996Z   File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_transcription_remote_smoke.py\", line 332, in invoke",
+          "2026-11-28T03:25:28.9678359Z     action()",
+          "2026-11-28T03:25:28.9678660Z   File \"D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\scripts\\windows_transcription_remote_smoke.py\", line 604, in drive",
+          "2026-11-28T03:25:28.9678994Z     raise TimeoutError(pending[1])",
+          "2026-11-28T03:25:28.9679235Z TimeoutError: Native transcription focus did not reach the explicitly selected control.",
+          "2026-11-28T03:25:28.9679517Z "
+        ]
+      },
+      "whole_verdict_lines": [
+        "2026-11-28T03:24:34.0992412Z ============================= 39 passed in 2.74s ==============================",
+        "2026-11-28T03:24:34.1002359Z ============================= 17 passed in 8.19s ==============================",
+        "2026-11-28T03:24:34.1022295Z ============================= 29 passed in 30.99s =============================",
+        "2026-11-28T03:24:50.4969010Z ============================= 39 passed in 1.15s ==============================",
+        "2026-11-28T03:25:10.5397147Z ============================= 29 passed in 19.58s =============================",
+        "2026-11-28T03:25:16.4821658Z ============================= 17 passed in 5.48s ==============================",
+        "2026-11-28T03:25:18.1498550Z ============================== 6 passed in 0.98s ==============================",
+        "2026-11-28T03:25:19.5418312Z ============================== 6 passed in 1.12s =============================="
+      ]
+    }
+  ],
+  "artifacts": [
+    {
+      "id": 15245998071,
+      "name": "remote-stt-ubuntu-24.04-a7205dd2a49328d820be858fd06e739340f791ae-1",
+      "size_in_bytes": 26657,
+      "digest": "sha256:551b1179371e76162e2b889ab317e3a404845282475a87a70c91aca0891d5476",
+      "expired": false,
+      "workflow_run": {
+        "id": 46102610448,
+        "repository_id": 1341777614,
+        "head_repository_id": 1341777614,
+        "head_branch": "carr/ci-remote-stt-final-20261128-5a9e",
+        "head_sha": "a7205dd2a49328d820be858fd06e739340f791ae"
+      }
+    },
+    {
+      "id": 15245647912,
+      "name": "remote-stt-windows-2022-a7205dd2a49328d820be858fd06e739340f791ae-1",
+      "size_in_bytes": 38017,
+      "digest": "sha256:465082dc7d12d84469f954d62a1346de21087cfcce72d51842fa11da4d8d23e9",
+      "expired": false,
+      "workflow_run": {
+        "id": 46102610448,
+        "repository_id": 1341777614,
+        "head_repository_id": 1341777614,
+        "head_branch": "carr/ci-remote-stt-final-20261128-5a9e",
+        "head_sha": "a7205dd2a49328d820be858fd06e739340f791ae"
+      }
+    }
+  ],
+  "artifact_review": "GitHub metadata reconciled with exact run/head and closed log; ZIP contents not independently downloaded in this review.",
+  "source_diagnosis": {
+    "classification": "native-probe admission race identified by source, final target not present in old runtime message",
+    "source": "The second remote modal returns to show_transcription.remote_transcription, which refreshes(current) and begins the existing retained-text worker. controls() disables parent Close while busy. The old probe immediately focuses that button after observing child HWND destruction, whereas its earlier first-child exit already waits for parent worker/editor readiness.",
+    "product_changes": "none",
+    "proposed_native_successor": "bc32ee0a787bd70e67d0b6fab5c64ff9f0d91309",
+    "execution_of_successor": "NOT_RUN"
+  },
+  "qualifications": {
+    "paid_provider_call": "NOT_RUN",
+    "acoustic_quality": "NOT_RUN",
+    "language_coverage": "NOT_RUN",
+    "manual_nvda": "NOT_RUN"
+  },
+  "result_transfer": "No overall or native PASS is inferred from portable/loopback success."
+}

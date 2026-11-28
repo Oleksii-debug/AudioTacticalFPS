@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   transcription-contracts:
-    name: Remote STT 85 source and installed on ${{ matrix.os }}
+    name: Remote STT 86 source and installed on ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
@@ -58,7 +58,7 @@ jobs:
           path = pathlib.Path('scripts/ci_transcription_remote_contracts.py').resolve()
           assert path.is_file() and not path.is_symlink()
           raw = path.read_bytes()
-          assert sha1(b'blob '+str(len(raw)).encode('ascii')+b'\0'+raw).hexdigest() == '3297e7da752728d30aef43de20b15fd3fdd505b9'
+          assert sha1(b'blob '+str(len(raw)).encode('ascii')+b'\0'+raw).hexdigest() == 'a1d09b66d1afa85f3853113592e96995fe178228'
           compile(raw, str(path), 'exec')
           spec = importlib.util.spec_from_file_location('stt_ci_preflight', path)
           module = importlib.util.module_from_spec(spec)
@@ -67,7 +67,7 @@ jobs:
           assert len(module.sources()) == 47
           for name in ('INSTALLED_CHILD', 'ORIGIN_CHILD'):
               compile(getattr(module, name), '<stt-'+name+'>', 'exec')
-          assert len(module.SUITES) == 3 and sum(module.SUITES.values()) == 85
+          assert len(module.SUITES) == 3 and sum(module.SUITES.values()) == 86
           assert len(module.BASE_MODULES) == 30 and len(module.WINDOWS_MODULES) == 32
           contract = module.NATIVE_CONTRACT
           assert len(set(contract['required_checks'])) == contract['unique_required_checks'] == 73
@@ -85,7 +85,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Existing pinned transcription dependencies failed.' }
           & python -I -B -m pip check
           if ($LASTEXITCODE -ne 0) { throw 'The installed dependency closure is inconsistent.' }
-      - name: Require 85 source and 85 isolated installed cases on Linux
+      - name: Require 86 source and 86 isolated installed cases on Linux
         if: ${{ runner.os != 'Windows' }}
         timeout-minutes: 100
         run: |
@@ -93,7 +93,7 @@ jobs:
           $PSNativeCommandUseErrorActionPreference = $false
           & python -I -B -X utf8 scripts/ci_transcription_remote_contracts.py --evidence ci-remote-stt/contracts --expected-head $env:EXPECTED_SOURCE_SHA
           if ($LASTEXITCODE -ne 0) { throw 'Required source or installed transcription acceptance failed.' }
-      - name: Require 85 source, 85 installed, two real loopback modes and native 73 controls
+      - name: Require 86 source, 86 installed, two real loopback modes and native 73 controls
         if: ${{ runner.os == 'Windows' }}
         timeout-minutes: 100
         run: |

@@ -1,0 +1,56 @@
+{
+  "schema": 1,
+  "kind": "remote-stt-native-parent-refresh-current-composition",
+  "status": "ACCEPTED_STATIC_NOT_RUN",
+  "parent": "8f24cae6dbb657854a07dcb801f77296f3b7e4e3",
+  "parent_tree": "ce159fca8cc4344690d456dd3571937b4c46b781",
+  "manifest": "e0f20f144b2393339a34ca97bb1d0712122bed0d",
+  "previous_actual_evidence": "4eb3c9e643330fbea8d7ab5431966a10d3f9a408",
+  "files": [
+    {
+      "path": "carr-library/scripts/windows_transcription_remote_smoke.py",
+      "preimage": "62e7d85daf58c7aeadbc83fa8cc2227e09825103",
+      "blob": "bc32ee0a787bd70e67d0b6fab5c64ff9f0d91309"
+    },
+    {
+      "path": "carr-library/tests/ui/test_transcription_remote.py",
+      "preimage": "7cdb3a5f08cfb92c268ff25f7e82724aa2800f29",
+      "blob": "fff4d63049cb191c56be757ec2e3f7a3c14e387d"
+    },
+    {
+      "path": "carr-library/scripts/ci_transcription_remote_contracts.py",
+      "preimage": "3297e7da752728d30aef43de20b15fd3fdd505b9",
+      "blob": "a1d09b66d1afa85f3853113592e96995fe178228"
+    },
+    {
+      "path": ".github/workflows/carr-remote-stt.yml",
+      "preimage": "b9d3d5c7f24d08583833a7ac637cbfe2d8a74570",
+      "blob": "ebb9d3de3395548de167ac399701a318de7d5ab4"
+    },
+    {
+      "path": "resonance-status/next54/stt_parent_refresh_correction.json",
+      "preimage": null,
+      "blob": "e0f20f144b2393339a34ca97bb1d0712122bed0d"
+    },
+    {
+      "path": "resonance-status/next54/stt85_actual_evidence.json",
+      "preimage": null,
+      "blob": "4eb3c9e643330fbea8d7ab5431966a10d3f9a408"
+    }
+  ],
+  "root_composition": {
+    "helper_only_additional_broker_pin": "f09561333d33ae68480260668ec05b617cd72213",
+    "exact_source_pins": 47,
+    "old_17_tests_exact_prefix": true,
+    "workflow_only_additional_current_helper_pin": true
+  },
+  "contracts": {
+    "source": 86,
+    "installed": 86,
+    "loopback_source": 6,
+    "loopback_installed": 6,
+    "native_required_checks": 73,
+    "native_origins": 23
+  },
+  "execution": "NOT_RUN; previous actual85 source/installed/loopback PASS did not qualify the native final Close; this current composition requires a new native execution."
+}

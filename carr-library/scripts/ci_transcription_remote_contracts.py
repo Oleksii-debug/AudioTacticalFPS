@@ -21,7 +21,7 @@ ROOT = Path(__file__).resolve().parents[1]
 SUITES = {
     "tests/assistant/test_transcription_provider.py": 39,
     "tests/transcription/test_remote_service.py": 29,
-    "tests/ui/test_transcription_remote.py": 17
+    "tests/ui/test_transcription_remote.py": 18
 }
 PINS = {
     "src/carr_library/assistant/transcription_provider.py": "122c20bb4a442abdefb652ec2e4e9c98ecd74b2f",
@@ -39,10 +39,10 @@ PINS = {
     "tests/transcription/remote_fixture.py": "49b5a4b63c16f8ebada412864f7ce66c4474f0b7",
     "tests/assistant/test_transcription_provider.py": "cbc8f4c706c0da053de2adc8691aff0c06d1e2ae",
     "tests/transcription/test_remote_service.py": "cbe6fcba6064e7f66ffb0d8303d2b8bfe364a000",
-    "tests/ui/test_transcription_remote.py": "7cdb3a5f08cfb92c268ff25f7e82724aa2800f29",
+    "tests/ui/test_transcription_remote.py": "fff4d63049cb191c56be757ec2e3f7a3c14e387d",
     "tests/assistant/test_transcription_loopback.py": "6baa4675771066aba1a7ce40a276419eac4606f9",
     "scripts/translation_loopback_check.py": "360a669baaa8d60b41acc265111d2fa0f68108ee",
-    "scripts/windows_transcription_remote_smoke.py": "62e7d85daf58c7aeadbc83fa8cc2227e09825103",
+    "scripts/windows_transcription_remote_smoke.py": "bc32ee0a787bd70e67d0b6fab5c64ff9f0d91309",
     "scripts/ci_check.py": "6ad3055cfcd7c6a1b1af8544ae462c5d51adb473",
     "packaging/source_wheel.py": "478de248451d59a44b35784eb808fb2974f0af67",
     "packaging/windows-cp311.lock": "8dad99c0ea80470b7253873aee78e08857affec6",
@@ -72,7 +72,7 @@ PINS = {
     "src/carr_library/assistant/state.py": "e8657e7b18075c193b05b71769310b1616c452dd",
     "bootstrap/__init__.py": "6981b7faa1cca8d29f37fe85751c110c693dae55"
 }
-COMPANIONS = ["tests/transcription/remote_fixture.py"]
+COMPANIONS = ["tests/transcription/remote_fixture.py", "scripts/windows_transcription_remote_smoke.py"]
 BASE_MODULES = ["carr_library.application","carr_library.transcription","carr_library.assistant.models","carr_library.assistant.profiles","carr_library.assistant.providers","carr_library.assistant.credentials","carr_library.assistant.transcription_provider","carr_library.assistant.transcription_worker","carr_library.integrations.transcription_remote","carr_library.integrations.transcription_remote_values","carr_library.integrations.transcription_values","carr_library.backup_transcription","carr_library.backup_producers","carr_library.ui.transcription_dialog","carr_library.ui.transcription_remote_dialog","carr_library.operations.broker","carr_library.audio.process","carr_library.audio.windows_job","carr_library.audio.voice_transport","carr_library.native_runtime","carr_library.durable_state","carr_library.ui.assistant_dialog","carr_library.library_backup","carr_library.backup_sidecars","carr_library.file_publication","carr_library.operations._locks","carr_library.catalog.intake","carr_library.audio.models","carr_library.assistant.state","bootstrap"]
 WINDOWS_MODULES = ["carr_library.application","carr_library.transcription","carr_library.assistant.models","carr_library.assistant.profiles","carr_library.assistant.providers","carr_library.assistant.credentials","carr_library.assistant.transcription_provider","carr_library.assistant.transcription_worker","carr_library.integrations.transcription_remote","carr_library.integrations.transcription_remote_values","carr_library.integrations.transcription_values","carr_library.backup_transcription","carr_library.backup_producers","carr_library.ui.transcription_dialog","carr_library.ui.transcription_remote_dialog","carr_library.ui.desktop_app","carr_library.ui.worker_lifetime","carr_library.operations.broker","carr_library.audio.process","carr_library.audio.windows_job","carr_library.audio.voice_transport","carr_library.native_runtime","carr_library.durable_state","carr_library.ui.assistant_dialog","carr_library.library_backup","carr_library.backup_sidecars","carr_library.file_publication","carr_library.operations._locks","carr_library.catalog.intake","carr_library.audio.models","carr_library.assistant.state","bootstrap"]
 MODULES = WINDOWS_MODULES if os.name == 'nt' else BASE_MODULES

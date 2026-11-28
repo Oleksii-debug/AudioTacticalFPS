@@ -246,3 +246,53 @@ def test_repeated_close_never_repeats_the_modal_finish(view):
     assert view.close() is True
     assert view.close() is True
     view.finish_close.assert_called_once()
+
+
+def test_native_parent_close_waits_for_actual_refresh_and_enabled_modal_control():
+    # Execute the actual native generator without importing wx or substituting
+    # any product operation. A returned child starts the existing parent read.
+    import ast
+
+    source = Path(__file__).parents[2] / 'scripts' / 'windows_transcription_remote_smoke.py'
+    module = ast.parse(source.read_text(encoding='utf-8'), filename=str(source))
+    mains = [node for node in module.body if isinstance(node, ast.FunctionDef) and node.name == 'main']
+    assert len(mains) == 1
+    helpers = [node for node in mains[0].body
+               if isinstance(node, ast.FunctionDef) and node.name == 'close_parent']
+    assert len(helpers) == 1
+    events = []
+    frame = SimpleNamespace(working=True)
+    parent = SimpleNamespace(modal=True, live=True)
+    parent.IsModal = lambda: parent.modal
+    parent.GetHandle = lambda: 73
+    button = SimpleNamespace(enabled=False)
+    button.IsEnabled = lambda: button.enabled
+    def named(window, name):
+        assert window is parent and name == 'Закрити'
+        return button
+    def key(control):
+        assert control is button and button.enabled and parent.modal and not frame.working
+        events.append('actual keyboard helper admitted')
+        yield (lambda: not parent.live, 'controlled keyboard release', 5)
+    scope = dict(frame=frame, named=named, key=key,
+                 user32=SimpleNamespace(IsWindow=lambda handle: handle == 73 and parent.live),
+                 wait_for=lambda predicate, message, seconds=45: (predicate, message, seconds))
+    exec(compile(ast.Module(body=helpers, type_ignores=[]), str(source), 'exec'), scope)
+    iterator = scope['close_parent'](parent)
+    pending = next(iterator)
+    assert pending[2] == 45 and not pending[0]() and not events
+    frame.working = False
+    assert not pending[0]() and not events
+    button.enabled = True
+    parent.modal = False
+    assert not pending[0]() and not events
+    parent.modal = True
+    assert pending[0]() and not events
+    key_wait = next(iterator)
+    assert events == ['actual keyboard helper admitted'] and not key_wait[0]()
+    parent.live = False
+    assert key_wait[0]()
+    close_wait = next(iterator)
+    assert close_wait[0]()
+    with pytest.raises(StopIteration):
+        next(iterator)

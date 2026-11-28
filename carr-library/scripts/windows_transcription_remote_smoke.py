@@ -356,7 +356,9 @@ def main(argv=None):
         control.SetFocus()
         yield wait_for(lambda: user32.IsWindow(handle)
             and user32.GetForegroundWindow() == handle and wx.Window.FindFocus() is control,
-            'Native transcription focus did not reach the explicitly selected control.', 5)
+            'Native transcription focus did not reach the explicitly selected control: ' +
+            json.dumps({'window': top.GetTitle()[:128], 'control': control.GetName()[:128]},
+                       ensure_ascii=True), 5)
 
     key_state = {'pending': False}
 
@@ -425,6 +427,16 @@ def main(argv=None):
     def idle(controller):
         return wait_for(lambda: not controller.busy and not frame.working,
                         'The actual remote-STT host worker did not settle.', 45)
+
+    def close_parent(parent):
+        close_button = named(parent, 'Закрити')
+        # Returning from the remote modal refreshes the retained text on the
+        # same host worker. Wait for its real controls before requesting focus.
+        yield wait_for(lambda: not frame.working and parent.IsModal() and close_button.IsEnabled(),
+                       'The retained transcription parent did not finish refreshing before Close.', 45)
+        yield from key(close_button)
+        yield wait_for(lambda: not user32.IsWindow(parent.GetHandle()) if parent else True,
+                       'The original transcription parent did not close.')
 
     with TemporaryDirectory(prefix='carr-native-remote-stt-') as temporary:
         root = Path(temporary).resolve(strict=True)
@@ -583,9 +595,7 @@ def main(argv=None):
             yield from key(queued.close_button)
             yield wait_for(lambda: not user32.IsWindow(queued_window.GetHandle()) if queued_window else True,
                            'The cancelled remote child did not close after worker settlement.')
-            yield from key(named(parent, 'Закрити'))
-            yield wait_for(lambda: not user32.IsWindow(parent.GetHandle()) if parent else True,
-                           'The original transcription parent did not close.')
+            yield from close_parent(parent)
             check('all explicit picker answers remain bound to the selected original',
                   len(picker_calls) == 2 and selected.selected.read_bytes() == original)
             outcomes.update(native_keyboard='PASS', explicit_approval='PASS',
