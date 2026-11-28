@@ -1,0 +1,1292 @@
+﻿2026-11-28T09:56:02.0817695Z Current runner version: '2.338.2'
+2026-11-28T09:56:02.0836663Z ##[group]Runner Image Provisioner
+2026-11-28T09:56:02.0837311Z Hosted Compute Agent
+2026-11-28T09:56:02.0837776Z Version: 20261111.635
+2026-11-28T09:56:02.0838239Z Commit: b8a594ea514ff44cadb5342986c68b1eac6e22ed
+2026-11-28T09:56:02.0838759Z Build Date: 2026-11-11T01:49:01Z
+2026-11-28T09:56:02.0839537Z Worker ID: {9bc19889-ce63-45c2-b966-d45372027f8f}
+2026-11-28T09:56:02.0840047Z Region: us-west-2
+2026-11-28T09:56:02.0840435Z Cloud: AWS
+2026-11-28T09:56:02.0840826Z ##[endgroup]
+2026-11-28T09:56:02.0841784Z ##[group]Operating System
+2026-11-28T09:56:02.0842225Z Ubuntu
+2026-11-28T09:56:02.0842589Z 24.04.5
+2026-11-28T09:56:02.0842950Z LTS
+2026-11-28T09:56:02.0843327Z ##[endgroup]
+2026-11-28T09:56:02.0843698Z ##[group]Runner Image
+2026-11-28T09:56:02.0844109Z Image: ubuntu-24.04
+2026-11-28T09:56:02.0844499Z Version: 20261122.23.1
+2026-11-28T09:56:02.0845481Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20261122.23/images/ubuntu/Ubuntu2404-Readme.md
+2026-11-28T09:56:02.0846560Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20261122.23
+2026-11-28T09:56:02.0847225Z ##[endgroup]
+2026-11-28T09:56:02.0848034Z ##[group]GITHUB_TOKEN Permissions
+2026-11-28T09:56:02.0849813Z Contents: read
+2026-11-28T09:56:02.0850232Z Metadata: read
+2026-11-28T09:56:02.0850618Z ##[endgroup]
+2026-11-28T09:56:02.0852116Z Secret source: Actions
+2026-11-28T09:56:02.0852752Z Cache mode: write
+2026-11-28T09:56:02.0853237Z Prepare workflow directory
+2026-11-28T09:56:02.1212310Z Prepare all required actions
+2026-11-28T09:56:02.1251657Z Getting action download info
+2026-11-28T09:56:02.4927172Z Download action repository 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1' (SHA:3d3c42e5aac5ba805825da76410c181273ba90b1)
+2026-11-28T09:56:03.6038890Z Download action repository 'actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0' (SHA:6d4fd22b20465ccc0f7354476588e8df7c9ca0e0)
+2026-11-28T09:56:03.7643302Z Download action repository 'actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9' (SHA:cf430e030ddbb5b0abf93d22962f4752f3646cd9)
+2026-11-28T09:56:03.9979494Z Complete job name: Import admission, publication and retained ownership / ubuntu-24.04
+2026-11-28T09:56:04.0704129Z ##[group]Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+2026-11-28T09:56:04.0705445Z with:
+2026-11-28T09:56:04.0706243Z   persist-credentials: false
+2026-11-28T09:56:04.0707090Z   ref: 5b87b13974d57d1aeb59f92c78c0f64366fd8a8c
+2026-11-28T09:56:04.0708036Z   repository: Oleksii-debug/AudioTacticalFPS
+2026-11-28T09:56:04.0714237Z   token: ***
+2026-11-28T09:56:04.0714929Z   ssh-strict: true
+2026-11-28T09:56:04.0715696Z   ssh-user: git
+2026-11-28T09:56:04.0716352Z   clean: true
+2026-11-28T09:56:04.0717042Z   sparse-checkout-cone-mode: true
+2026-11-28T09:56:04.0717829Z   fetch-depth: 1
+2026-11-28T09:56:04.0718514Z   fetch-tags: false
+2026-11-28T09:56:04.0719405Z   show-progress: true
+2026-11-28T09:56:04.0720116Z   lfs: false
+2026-11-28T09:56:04.0720790Z   submodules: false
+2026-11-28T09:56:04.0721510Z   set-safe-directory: true
+2026-11-28T09:56:04.0722326Z   allow-unsafe-pr-checkout: false
+2026-11-28T09:56:04.0723327Z env:
+2026-11-28T09:56:04.0724176Z   CARR_IMPORT_HEAD: 5b87b13974d57d1aeb59f92c78c0f64366fd8a8c
+2026-11-28T09:56:04.0725094Z   PYTHONUTF8: 1
+2026-11-28T09:56:04.0725803Z   PYTHONDONTWRITEBYTECODE: 1
+2026-11-28T09:56:04.0726560Z   HF_HUB_OFFLINE: 1
+2026-11-28T09:56:04.0727282Z   TRANSFORMERS_OFFLINE: 1
+2026-11-28T09:56:04.0727994Z   DO_NOT_TRACK: 1
+2026-11-28T09:56:04.0728693Z   PYTEST_DISABLE_PLUGIN_AUTOLOAD: 1
+2026-11-28T09:56:04.0729633Z ##[endgroup]
+2026-11-28T09:56:06.9618215Z Syncing repository: Oleksii-debug/AudioTacticalFPS
+2026-11-28T09:56:06.9620231Z ##[group]Getting Git version info
+2026-11-28T09:56:06.9620688Z Working directory is '/home/runner/work/AudioTacticalFPS/AudioTacticalFPS'
+2026-11-28T09:56:06.9621441Z [command]/usr/bin/git version
+2026-11-28T09:56:07.1707346Z git version 2.56.1
+2026-11-28T09:56:07.1722904Z ##[endgroup]
+2026-11-28T09:56:07.1732772Z Temporarily overriding HOME='/home/runner/work/_temp/59924993-aef8-431c-9728-bc0b138a72a7' before making global git config changes
+2026-11-28T09:56:07.1733783Z Adding repository directory to the temporary git global config as a safe directory
+2026-11-28T09:56:07.1737396Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/AudioTacticalFPS/AudioTacticalFPS
+2026-11-28T09:56:07.1785052Z Deleting the contents of '/home/runner/work/AudioTacticalFPS/AudioTacticalFPS'
+2026-11-28T09:56:07.1787316Z ##[group]Determining repository object format
+2026-11-28T09:56:07.1788364Z ##[endgroup]
+2026-11-28T09:56:07.1789105Z ##[group]Initializing the repository
+2026-11-28T09:56:07.1792636Z [command]/usr/bin/git init /home/runner/work/AudioTacticalFPS/AudioTacticalFPS
+2026-11-28T09:56:07.2224089Z hint: Using 'master' as the name for the initial branch. This default branch name
+2026-11-28T09:56:07.2224669Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+2026-11-28T09:56:07.2225321Z hint: to use in all of your new repositories, which will suppress this warning,
+2026-11-28T09:56:07.2225686Z hint: call:
+2026-11-28T09:56:07.2225915Z hint:
+2026-11-28T09:56:07.2226272Z hint: 	git config --global init.defaultBranch <name>
+2026-11-28T09:56:07.2226580Z hint:
+2026-11-28T09:56:07.2226898Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+2026-11-28T09:56:07.2227344Z hint: 'development'. The just-created branch can be renamed via this command:
+2026-11-28T09:56:07.2227714Z hint:
+2026-11-28T09:56:07.2227973Z hint: 	git branch -m <name>
+2026-11-28T09:56:07.2228240Z hint:
+2026-11-28T09:56:07.2228575Z hint: Disable this message with "git config set advice.defaultBranchName false"
+2026-11-28T09:56:07.2231815Z Initialized empty Git repository in /home/runner/work/AudioTacticalFPS/AudioTacticalFPS/.git/
+2026-11-28T09:56:07.2238762Z [command]/usr/bin/git remote add origin https://github.com/Oleksii-debug/AudioTacticalFPS
+2026-11-28T09:56:07.2291383Z ##[endgroup]
+2026-11-28T09:56:07.2291890Z ##[group]Disabling automatic garbage collection
+2026-11-28T09:56:07.2294047Z [command]/usr/bin/git config --local gc.auto 0
+2026-11-28T09:56:07.2316927Z ##[endgroup]
+2026-11-28T09:56:07.2317740Z ##[group]Setting up auth
+2026-11-28T09:56:07.2318186Z Removing SSH command configuration
+2026-11-28T09:56:07.2321039Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-11-28T09:56:07.2347156Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-11-28T09:56:07.5495950Z Removing HTTP extra header
+2026-11-28T09:56:07.5500119Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-11-28T09:56:07.5526438Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-11-28T09:56:07.5671781Z Removing includeIf entries pointing to credentials config files
+2026-11-28T09:56:07.5677770Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-11-28T09:56:07.5706399Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-11-28T09:56:07.5857319Z [command]/usr/bin/git config --file /home/runner/work/_temp/git-credentials-eeacdd39-2d47-4269-92de-167d91948d6c.config http.https://github.com/.extraheader AUTHORIZATION: basic ***
+2026-11-28T09:56:07.5884525Z [command]/usr/bin/git config --local includeIf.gitdir:/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/.git.path /home/runner/work/_temp/git-credentials-eeacdd39-2d47-4269-92de-167d91948d6c.config
+2026-11-28T09:56:07.5906122Z [command]/usr/bin/git config --local includeIf.gitdir:/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/.git/worktrees/*.path /home/runner/work/_temp/git-credentials-eeacdd39-2d47-4269-92de-167d91948d6c.config
+2026-11-28T09:56:07.5950639Z [command]/usr/bin/git config --local includeIf.gitdir:/github/workspace/.git.path /github/runner_temp/git-credentials-eeacdd39-2d47-4269-92de-167d91948d6c.config
+2026-11-28T09:56:07.5952170Z [command]/usr/bin/git config --local includeIf.gitdir:/github/workspace/.git/worktrees/*.path /github/runner_temp/git-credentials-eeacdd39-2d47-4269-92de-167d91948d6c.config
+2026-11-28T09:56:07.5970988Z ##[endgroup]
+2026-11-28T09:56:07.5971340Z ##[group]Fetching the repository
+2026-11-28T09:56:07.5975522Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin 5b87b13974d57d1aeb59f92c78c0f64366fd8a8c
+2026-11-28T09:56:09.5394994Z From https://github.com/Oleksii-debug/AudioTacticalFPS
+2026-11-28T09:56:09.5395628Z  * branch            5b87b13974d57d1aeb59f92c78c0f64366fd8a8c -> FETCH_HEAD
+2026-11-28T09:56:09.5415640Z [command]/usr/bin/git rev-parse --verify --quiet 5b87b13974d57d1aeb59f92c78c0f64366fd8a8c^{object}
+2026-11-28T09:56:09.5440203Z 5b87b13974d57d1aeb59f92c78c0f64366fd8a8c
+2026-11-28T09:56:09.5441403Z ##[endgroup]
+2026-11-28T09:56:09.5441981Z ##[group]Determining the checkout info
+2026-11-28T09:56:09.5442650Z ##[endgroup]
+2026-11-28T09:56:09.5442999Z [command]/usr/bin/git sparse-checkout disable
+2026-11-28T09:56:09.5507939Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+2026-11-28T09:56:09.5532929Z ##[group]Checking out the ref
+2026-11-28T09:56:09.5535819Z [command]/usr/bin/git checkout --progress --force 5b87b13974d57d1aeb59f92c78c0f64366fd8a8c
+2026-11-28T09:56:09.6561205Z Note: switching to '5b87b13974d57d1aeb59f92c78c0f64366fd8a8c'.
+2026-11-28T09:56:09.6561587Z 
+2026-11-28T09:56:09.6561782Z You are in 'detached HEAD' state. You can look around, make experimental
+2026-11-28T09:56:09.6562296Z changes and commit them, and you can discard any commits you make in this
+2026-11-28T09:56:09.6562777Z state without impacting any branches by switching back to a branch.
+2026-11-28T09:56:09.6563102Z 
+2026-11-28T09:56:09.6563336Z If you want to create a new branch to retain commits you create, you may
+2026-11-28T09:56:09.6564820Z do so (now or later) by using -c with the switch command. Example:
+2026-11-28T09:56:09.6565070Z 
+2026-11-28T09:56:09.6565232Z   git switch -c <new-branch-name>
+2026-11-28T09:56:09.6565440Z 
+2026-11-28T09:56:09.6565598Z Or undo this operation with:
+2026-11-28T09:56:09.6565826Z 
+2026-11-28T09:56:09.6565942Z   git switch -
+2026-11-28T09:56:09.6566117Z 
+2026-11-28T09:56:09.6566383Z Turn off this advice by setting config variable advice.detachedHead to false
+2026-11-28T09:56:09.6566756Z 
+2026-11-28T09:56:09.6567085Z HEAD is now at 5b87b13 Supply the current full registration in prepared-request cancellation fixture
+2026-11-28T09:56:09.6574769Z ##[endgroup]
+2026-11-28T09:56:09.6617227Z [command]/usr/bin/git log -1 --format=%H
+2026-11-28T09:56:09.6638265Z 5b87b13974d57d1aeb59f92c78c0f64366fd8a8c
+2026-11-28T09:56:09.6647305Z ##[group]Removing auth
+2026-11-28T09:56:09.6647746Z Removing SSH command configuration
+2026-11-28T09:56:09.6648866Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-11-28T09:56:09.6673547Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-11-28T09:56:09.6835557Z Removing HTTP extra header
+2026-11-28T09:56:09.6838065Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-11-28T09:56:09.6861547Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-11-28T09:56:09.7011300Z Removing includeIf entries pointing to credentials config files
+2026-11-28T09:56:09.7013529Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-11-28T09:56:09.7035393Z includeif.gitdir:/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/.git.path
+2026-11-28T09:56:09.7036030Z includeif.gitdir:/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/.git/worktrees/*.path
+2026-11-28T09:56:09.7036523Z includeif.gitdir:/github/workspace/.git.path
+2026-11-28T09:56:09.7036883Z includeif.gitdir:/github/workspace/.git/worktrees/*.path
+2026-11-28T09:56:09.7046789Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/.git.path
+2026-11-28T09:56:09.7061947Z /home/runner/work/_temp/git-credentials-eeacdd39-2d47-4269-92de-167d91948d6c.config
+2026-11-28T09:56:09.7074851Z [command]/usr/bin/git config --local --unset includeif.gitdir:/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/.git.path \/home\/runner\/work\/_temp\/git\-credentials\-eeacdd39\-2d47\-4269\-92de\-167d91948d6c\.config
+2026-11-28T09:56:09.7099744Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/.git/worktrees/*.path
+2026-11-28T09:56:09.7117439Z /home/runner/work/_temp/git-credentials-eeacdd39-2d47-4269-92de-167d91948d6c.config
+2026-11-28T09:56:09.7126433Z [command]/usr/bin/git config --local --unset includeif.gitdir:/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/.git/worktrees/*.path \/home\/runner\/work\/_temp\/git\-credentials\-eeacdd39\-2d47\-4269\-92de\-167d91948d6c\.config
+2026-11-28T09:56:09.7147842Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git.path
+2026-11-28T09:56:09.7166066Z /github/runner_temp/git-credentials-eeacdd39-2d47-4269-92de-167d91948d6c.config
+2026-11-28T09:56:09.7171010Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/.git.path \/github\/runner_temp\/git\-credentials\-eeacdd39\-2d47\-4269\-92de\-167d91948d6c\.config
+2026-11-28T09:56:09.7194701Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git/worktrees/*.path
+2026-11-28T09:56:09.7211833Z /github/runner_temp/git-credentials-eeacdd39-2d47-4269-92de-167d91948d6c.config
+2026-11-28T09:56:09.7215750Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/.git/worktrees/*.path \/github\/runner_temp\/git\-credentials\-eeacdd39\-2d47\-4269\-92de\-167d91948d6c\.config
+2026-11-28T09:56:09.7239705Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-11-28T09:56:09.7386843Z Removing credentials config '/home/runner/work/_temp/git-credentials-eeacdd39-2d47-4269-92de-167d91948d6c.config'
+2026-11-28T09:56:09.7392687Z ##[endgroup]
+2026-11-28T09:56:09.7592004Z ##[group]Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+2026-11-28T09:56:09.7592339Z with:
+2026-11-28T09:56:09.7592569Z   python-version: 3.11
+2026-11-28T09:56:09.7592946Z   check-latest: false
+2026-11-28T09:56:09.7594836Z   token: ***
+2026-11-28T09:56:09.7595170Z   mirror: https://raw.githubusercontent.com/actions/python-versions/main
+2026-11-28T09:56:09.7595555Z   update-environment: true
+2026-11-28T09:56:09.7595820Z   allow-prereleases: false
+2026-11-28T09:56:09.7596069Z   freethreaded: false
+2026-11-28T09:56:09.7596264Z env:
+2026-11-28T09:56:09.7596536Z   CARR_IMPORT_HEAD: 5b87b13974d57d1aeb59f92c78c0f64366fd8a8c
+2026-11-28T09:56:09.7596820Z   PYTHONUTF8: 1
+2026-11-28T09:56:09.7597044Z   PYTHONDONTWRITEBYTECODE: 1
+2026-11-28T09:56:09.7597282Z   HF_HUB_OFFLINE: 1
+2026-11-28T09:56:09.7597509Z   TRANSFORMERS_OFFLINE: 1
+2026-11-28T09:56:09.7597773Z   DO_NOT_TRACK: 1
+2026-11-28T09:56:09.7598039Z   PYTEST_DISABLE_PLUGIN_AUTOLOAD: 1
+2026-11-28T09:56:09.7598364Z ##[endgroup]
+2026-11-28T09:56:09.8531382Z ##[group]Installed versions
+2026-11-28T09:56:10.0598328Z Successfully set up CPython (3.11.18)
+2026-11-28T09:56:10.0599332Z ##[endgroup]
+2026-11-28T09:56:10.0728236Z ##[group]Run python -m pip install ".[test]"
+2026-11-28T09:56:10.0728941Z [36;1mpython -m pip install ".[test]"[0m
+2026-11-28T09:56:10.0730100Z [36;1mpython -m pip install --only-binary=:all: --require-hashes -r packaging/trusted-client.lock[0m
+2026-11-28T09:56:10.4727814Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+2026-11-28T09:56:10.4728171Z env:
+2026-11-28T09:56:10.4728435Z   CARR_IMPORT_HEAD: 5b87b13974d57d1aeb59f92c78c0f64366fd8a8c
+2026-11-28T09:56:10.4728767Z   PYTHONUTF8: 1
+2026-11-28T09:56:10.4728992Z   PYTHONDONTWRITEBYTECODE: 1
+2026-11-28T09:56:10.4729467Z   HF_HUB_OFFLINE: 1
+2026-11-28T09:56:10.4729711Z   TRANSFORMERS_OFFLINE: 1
+2026-11-28T09:56:10.4729935Z   DO_NOT_TRACK: 1
+2026-11-28T09:56:10.4730245Z   PYTEST_DISABLE_PLUGIN_AUTOLOAD: 1
+2026-11-28T09:56:10.4730541Z   pythonLocation: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T09:56:10.4730906Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.11.18/x64/lib/pkgconfig
+2026-11-28T09:56:10.4731409Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T09:56:10.4731741Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T09:56:10.4732091Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T09:56:10.4732427Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.11.18/x64/lib
+2026-11-28T09:56:10.4732741Z ##[endgroup]
+2026-11-28T09:56:14.6538586Z Processing ./.
+2026-11-28T09:56:14.6553673Z   Installing build dependencies: started
+2026-11-28T09:56:16.1580303Z   Installing build dependencies: finished with status 'done'
+2026-11-28T09:56:16.1585146Z   Getting requirements to build wheel: started
+2026-11-28T09:56:16.5745360Z   Getting requirements to build wheel: finished with status 'done'
+2026-11-28T09:56:16.5752424Z   Preparing metadata (pyproject.toml): started
+2026-11-28T09:56:16.9108118Z   Preparing metadata (pyproject.toml): finished with status 'done'
+2026-11-28T09:56:16.9810273Z Collecting pypdf==7.1.1 (from universal-research-library==0.3.0.dev1)
+2026-11-28T09:56:17.0367270Z   Downloading pypdf-7.1.1-py3-none-any.whl.metadata (7.6 kB)
+2026-11-28T09:56:17.1214144Z Collecting pypdfium2==5.13.0 (from universal-research-library==0.3.0.dev1)
+2026-11-28T09:56:17.1297255Z   Downloading pypdfium2-5.13.0-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (66 kB)
+2026-11-28T09:56:17.1572200Z Collecting python-docx==1.2.0 (from universal-research-library==0.3.0.dev1)
+2026-11-28T09:56:17.1649810Z   Downloading python_docx-1.2.0-py3-none-any.whl.metadata (2.0 kB)
+2026-11-28T09:56:17.1819309Z Collecting platformdirs==4.10.0 (from universal-research-library==0.3.0.dev1)
+2026-11-28T09:56:17.1898631Z   Downloading platformdirs-4.10.0-py3-none-any.whl.metadata (5.5 kB)
+2026-11-28T09:56:17.2091621Z Collecting filelock==3.29.0 (from universal-research-library==0.3.0.dev1)
+2026-11-28T09:56:17.2169037Z   Downloading filelock-3.29.0-py3-none-any.whl.metadata (2.0 kB)
+2026-11-28T09:56:17.3395935Z Collecting Pillow==13.0.0 (from universal-research-library==0.3.0.dev1)
+2026-11-28T09:56:17.3474862Z   Downloading pillow-13.0.0-cp311-cp311-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl.metadata (9.1 kB)
+2026-11-28T09:56:17.3626541Z Collecting py3langid==0.4.0 (from universal-research-library==0.3.0.dev1)
+2026-11-28T09:56:17.3722180Z   Downloading py3langid-0.4.0-py3-none-any.whl.metadata (7.1 kB)
+2026-11-28T09:56:17.3847825Z Collecting defusedxml==0.7.1 (from universal-research-library==0.3.0.dev1)
+2026-11-28T09:56:17.3924427Z   Downloading defusedxml-0.7.1-py2.py3-none-any.whl.metadata (32 kB)
+2026-11-28T09:56:17.4083836Z Collecting bibtexparser==2.1.0 (from universal-research-library==0.3.0.dev1)
+2026-11-28T09:56:17.4162367Z   Downloading bibtexparser-2.1.0-py3-none-any.whl.metadata (6.3 kB)
+2026-11-28T09:56:17.4306249Z Collecting pylatexenc==2.11 (from universal-research-library==0.3.0.dev1)
+2026-11-28T09:56:17.4383310Z   Downloading pylatexenc-2.11-py2.py3-none-any.whl.metadata (3.9 kB)
+2026-11-28T09:56:17.4574740Z Collecting quickjs-ng==0.18.0.2 (from universal-research-library==0.3.0.dev1)
+2026-11-28T09:56:17.4659874Z   Downloading quickjs_ng-0.18.0.2-cp310-abi3-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (8.1 kB)
+2026-11-28T09:56:17.4879081Z Collecting pytest==9.0.2 (from universal-research-library==0.3.0.dev1)
+2026-11-28T09:56:17.4955574Z   Downloading pytest-9.0.2-py3-none-any.whl.metadata (7.6 kB)
+2026-11-28T09:56:17.5109804Z Collecting beautifulsoup4<5,>=4.12 (from universal-research-library==0.3.0.dev1)
+2026-11-28T09:56:17.5192742Z   Downloading beautifulsoup4-4.15.0-py3-none-any.whl.metadata (3.8 kB)
+2026-11-28T09:56:17.5336579Z Collecting openpyxl<4,>=3.1 (from universal-research-library==0.3.0.dev1)
+2026-11-28T09:56:17.5413982Z   Downloading openpyxl-3.1.5-py2.py3-none-any.whl.metadata (2.5 kB)
+2026-11-28T09:56:17.5478976Z Collecting packaging<27,>=25 (from universal-research-library==0.3.0.dev1)
+2026-11-28T09:56:17.5487034Z   Using cached packaging-26.4-py3-none-any.whl.metadata (3.5 kB)
+2026-11-28T09:56:17.5782687Z Collecting huggingface-hub==1.16.1 (from universal-research-library==0.3.0.dev1)
+2026-11-28T09:56:17.5862149Z   Downloading huggingface_hub-1.16.1-py3-none-any.whl.metadata (14 kB)
+2026-11-28T09:56:17.6796109Z Collecting reportlab==4.4.9 (from universal-research-library==0.3.0.dev1)
+2026-11-28T09:56:17.6879896Z   Downloading reportlab-4.4.9-py3-none-any.whl.metadata (1.7 kB)
+2026-11-28T09:56:17.7027137Z Collecting pytesseract==0.3.13 (from universal-research-library==0.3.0.dev1)
+2026-11-28T09:56:17.7105561Z   Downloading pytesseract-0.3.13-py3-none-any.whl.metadata (11 kB)
+2026-11-28T09:56:18.0377849Z Collecting rapidfuzz==3.14.6 (from universal-research-library==0.3.0.dev1)
+2026-11-28T09:56:18.0457825Z   Downloading rapidfuzz-3.14.6-cp311-cp311-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl.metadata (12 kB)
+2026-11-28T09:56:18.0608290Z Collecting nltk==3.9.2 (from universal-research-library==0.3.0.dev1)
+2026-11-28T09:56:18.0695073Z   Downloading nltk-3.9.2-py3-none-any.whl.metadata (3.2 kB)
+2026-11-28T09:56:18.1140485Z Collecting zstandard==0.25.0 (from universal-research-library==0.3.0.dev1)
+2026-11-28T09:56:18.1221747Z   Downloading zstandard-0.25.0-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.whl.metadata (3.3 kB)
+2026-11-28T09:56:18.1418935Z Collecting fsspec>=2023.5.0 (from huggingface-hub==1.16.1->universal-research-library==0.3.0.dev1)
+2026-11-28T09:56:18.1496630Z   Downloading fsspec-2026.9.0-py3-none-any.whl.metadata (10 kB)
+2026-11-28T09:56:18.1874490Z Collecting hf-xet<2.0.0,>=1.4.3 (from huggingface-hub==1.16.1->universal-research-library==0.3.0.dev1)
+2026-11-28T09:56:18.1981592Z   Downloading hf_xet-1.8.0-cp38-abi3-manylinux2014_x86_64.manylinux_2_17_x86_64.whl.metadata (4.9 kB)
+2026-11-28T09:56:18.2140511Z Collecting httpx<1,>=0.23.0 (from huggingface-hub==1.16.1->universal-research-library==0.3.0.dev1)
+2026-11-28T09:56:18.2242127Z   Downloading httpx-0.29.0-py3-none-any.whl.metadata (7.1 kB)
+2026-11-28T09:56:18.2538592Z Collecting pyyaml>=5.1 (from huggingface-hub==1.16.1->universal-research-library==0.3.0.dev1)
+2026-11-28T09:56:18.2624380Z   Downloading pyyaml-6.0.4-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (2.3 kB)
+2026-11-28T09:56:18.2853220Z Collecting tqdm>=4.42.1 (from huggingface-hub==1.16.1->universal-research-library==0.3.0.dev1)
+2026-11-28T09:56:18.2931689Z   Downloading tqdm-4.70.1-py3-none-any.whl.metadata (57 kB)
+2026-11-28T09:56:18.3136358Z Collecting typer>=0.20.0 (from huggingface-hub==1.16.1->universal-research-library==0.3.0.dev1)
+2026-11-28T09:56:18.3217964Z   Downloading typer-0.29.3-py3-none-any.whl.metadata (16 kB)
+2026-11-28T09:56:18.3376433Z Collecting typing-extensions>=4.1.0 (from huggingface-hub==1.16.1->universal-research-library==0.3.0.dev1)
+2026-11-28T09:56:18.3453159Z   Downloading typing_extensions-4.16.0-py3-none-any.whl.metadata (3.3 kB)
+2026-11-28T09:56:18.3643051Z Collecting click (from nltk==3.9.2->universal-research-library==0.3.0.dev1)
+2026-11-28T09:56:18.3720511Z   Downloading click-8.5.1-py3-none-any.whl.metadata (2.6 kB)
+2026-11-28T09:56:18.3901814Z Collecting joblib (from nltk==3.9.2->universal-research-library==0.3.0.dev1)
+2026-11-28T09:56:18.3980314Z   Downloading joblib-1.6.0-py3-none-any.whl.metadata (6.5 kB)
+2026-11-28T09:56:18.6814031Z Collecting regex>=2021.8.3 (from nltk==3.9.2->universal-research-library==0.3.0.dev1)
+2026-11-28T09:56:18.6898840Z   Downloading regex-2026.11.25-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (40 kB)
+2026-11-28T09:56:18.8466140Z Collecting numpy>=2.0.0 (from py3langid==0.4.0->universal-research-library==0.3.0.dev1)
+2026-11-28T09:56:18.8546607Z   Downloading numpy-2.4.6-cp311-cp311-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl.metadata (6.6 kB)
+2026-11-28T09:56:18.8697006Z Collecting iniconfig>=1.0.1 (from pytest==9.0.2->universal-research-library==0.3.0.dev1)
+2026-11-28T09:56:18.8774106Z   Downloading iniconfig-2.3.1-py3-none-any.whl.metadata (2.8 kB)
+2026-11-28T09:56:18.8907201Z Collecting pluggy<2,>=1.5 (from pytest==9.0.2->universal-research-library==0.3.0.dev1)
+2026-11-28T09:56:18.8985892Z   Downloading pluggy-1.7.0-py3-none-any.whl.metadata (5.0 kB)
+2026-11-28T09:56:18.9143109Z Collecting pygments>=2.7.2 (from pytest==9.0.2->universal-research-library==0.3.0.dev1)
+2026-11-28T09:56:18.9220252Z   Downloading pygments-2.21.0-py3-none-any.whl.metadata (2.5 kB)
+2026-11-28T09:56:19.0728197Z Collecting lxml>=3.1.0 (from python-docx==1.2.0->universal-research-library==0.3.0.dev1)
+2026-11-28T09:56:19.0808707Z   Downloading lxml-6.2.0-cp311-cp311-manylinux_2_26_x86_64.manylinux_2_28_x86_64.whl.metadata (5.6 kB)
+2026-11-28T09:56:19.1967176Z Collecting charset-normalizer (from reportlab==4.4.9->universal-research-library==0.3.0.dev1)
+2026-11-28T09:56:19.2050077Z   Downloading charset_normalizer-3.5.3-cp311-cp311-manylinux1_x86_64.manylinux_2_28_x86_64.manylinux_2_5_x86_64.whl.metadata (43 kB)
+2026-11-28T09:56:19.2243571Z Collecting soupsieve>=1.6.1 (from beautifulsoup4<5,>=4.12->universal-research-library==0.3.0.dev1)
+2026-11-28T09:56:19.2320586Z   Downloading soupsieve-4.1.3-py3-none-any.whl.metadata (4.4 kB)
+2026-11-28T09:56:19.2502205Z Collecting anyio (from httpx<1,>=0.23.0->huggingface-hub==1.16.1->universal-research-library==0.3.0.dev1)
+2026-11-28T09:56:19.2581748Z   Downloading anyio-4.16.0-py3-none-any.whl.metadata (4.7 kB)
+2026-11-28T09:56:19.2748115Z Collecting certifi (from httpx<1,>=0.23.0->huggingface-hub==1.16.1->universal-research-library==0.3.0.dev1)
+2026-11-28T09:56:19.2830047Z   Downloading certifi-2026.11.20-py3-none-any.whl.metadata (2.5 kB)
+2026-11-28T09:56:19.2976463Z Collecting httpcore==1.* (from httpx<1,>=0.23.0->huggingface-hub==1.16.1->universal-research-library==0.3.0.dev1)
+2026-11-28T09:56:19.3052055Z   Downloading httpcore-1.0.9-py3-none-any.whl.metadata (21 kB)
+2026-11-28T09:56:19.3202746Z Collecting idna (from httpx<1,>=0.23.0->huggingface-hub==1.16.1->universal-research-library==0.3.0.dev1)
+2026-11-28T09:56:19.3281038Z   Downloading idna-3.20-py3-none-any.whl.metadata (7.2 kB)
+2026-11-28T09:56:19.3415214Z Collecting h11>=0.16 (from httpcore==1.*->httpx<1,>=0.23.0->huggingface-hub==1.16.1->universal-research-library==0.3.0.dev1)
+2026-11-28T09:56:19.3494990Z   Downloading h11-0.16.0-py3-none-any.whl.metadata (8.3 kB)
+2026-11-28T09:56:19.3625582Z Collecting et-xmlfile (from openpyxl<4,>=3.1->universal-research-library==0.3.0.dev1)
+2026-11-28T09:56:19.3703641Z   Downloading et_xmlfile-2.0.0-py3-none-any.whl.metadata (2.7 kB)
+2026-11-28T09:56:19.4433182Z Collecting pydantic>=2.5.3 (from typer>=0.20.0->huggingface-hub==1.16.1->universal-research-library==0.3.0.dev1)
+2026-11-28T09:56:19.4514276Z   Downloading pydantic-2.14.4-py3-none-any.whl.metadata (143 kB)
+2026-11-28T09:56:19.4756164Z Collecting shellingham>=1.3.0 (from typer>=0.20.0->huggingface-hub==1.16.1->universal-research-library==0.3.0.dev1)
+2026-11-28T09:56:19.4837598Z   Downloading shellingham-1.5.4-py2.py3-none-any.whl.metadata (3.5 kB)
+2026-11-28T09:56:19.5058537Z Collecting rich>=13.8.0 (from typer>=0.20.0->huggingface-hub==1.16.1->universal-research-library==0.3.0.dev1)
+2026-11-28T09:56:19.5133634Z   Downloading rich-15.0.0-py3-none-any.whl.metadata (18 kB)
+2026-11-28T09:56:19.5262428Z Collecting annotated-doc>=0.0.2 (from typer>=0.20.0->huggingface-hub==1.16.1->universal-research-library==0.3.0.dev1)
+2026-11-28T09:56:19.5341018Z   Downloading annotated_doc-0.0.7-py3-none-any.whl.metadata (6.4 kB)
+2026-11-28T09:56:19.5471319Z Collecting annotated-types>=0.6.0 (from pydantic>=2.5.3->typer>=0.20.0->huggingface-hub==1.16.1->universal-research-library==0.3.0.dev1)
+2026-11-28T09:56:19.5547752Z   Downloading annotated_types-0.8.0-py3-none-any.whl.metadata (15 kB)
+2026-11-28T09:56:20.0331314Z Collecting pydantic-core==2.50.5 (from pydantic>=2.5.3->typer>=0.20.0->huggingface-hub==1.16.1->universal-research-library==0.3.0.dev1)
+2026-11-28T09:56:20.0415192Z   Downloading pydantic_core-2.50.5-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.whl.metadata (6.6 kB)
+2026-11-28T09:56:20.0555133Z Collecting typing-inspection>=0.4.4 (from pydantic>=2.5.3->typer>=0.20.0->huggingface-hub==1.16.1->universal-research-library==0.3.0.dev1)
+2026-11-28T09:56:20.0634172Z   Downloading typing_inspection-0.4.5-py3-none-any.whl.metadata (2.6 kB)
+2026-11-28T09:56:20.0787872Z Collecting markdown-it-py>=2.2.0 (from rich>=13.8.0->typer>=0.20.0->huggingface-hub==1.16.1->universal-research-library==0.3.0.dev1)
+2026-11-28T09:56:20.0865911Z   Downloading markdown_it_py-4.3.0-py3-none-any.whl.metadata (7.9 kB)
+2026-11-28T09:56:20.1009409Z Collecting mdurl~=0.1 (from markdown-it-py>=2.2.0->rich>=13.8.0->typer>=0.20.0->huggingface-hub==1.16.1->universal-research-library==0.3.0.dev1)
+2026-11-28T09:56:20.1089429Z   Downloading mdurl-0.1.2-py3-none-any.whl.metadata (1.6 kB)
+2026-11-28T09:56:20.1280248Z Collecting cloudpickle>=3.0 (from joblib->nltk==3.9.2->universal-research-library==0.3.0.dev1)
+2026-11-28T09:56:20.1356143Z   Downloading cloudpickle-3.1.3-py3-none-any.whl.metadata (7.1 kB)
+2026-11-28T09:56:20.1471389Z Downloading pillow-13.0.0-cp311-cp311-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl (7.1 MB)
+2026-11-28T09:56:20.1904129Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 7.1/7.1 MB 208.2 MB/s  0:00:00
+2026-11-28T09:56:20.1997191Z Downloading bibtexparser-2.1.0-py3-none-any.whl (50 kB)
+2026-11-28T09:56:20.2090298Z Downloading pylatexenc-2.11-py2.py3-none-any.whl (137 kB)
+2026-11-28T09:56:20.2195034Z Downloading defusedxml-0.7.1-py2.py3-none-any.whl (25 kB)
+2026-11-28T09:56:20.2285646Z Downloading filelock-3.29.0-py3-none-any.whl (39 kB)
+2026-11-28T09:56:20.2373497Z Downloading huggingface_hub-1.16.1-py3-none-any.whl (668 kB)
+2026-11-28T09:56:20.2435121Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 668.2/668.2 kB 111.7 MB/s  0:00:00
+2026-11-28T09:56:20.2534184Z Downloading nltk-3.9.2-py3-none-any.whl (1.5 MB)
+2026-11-28T09:56:20.2591370Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.5/1.5 MB 310.1 MB/s  0:00:00
+2026-11-28T09:56:20.2666816Z Downloading platformdirs-4.10.0-py3-none-any.whl (22 kB)
+2026-11-28T09:56:20.2768225Z Downloading py3langid-0.4.0-py3-none-any.whl (4.6 MB)
+2026-11-28T09:56:20.3004570Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 4.6/4.6 MB 202.3 MB/s  0:00:00
+2026-11-28T09:56:20.3083937Z Downloading pypdf-7.1.1-py3-none-any.whl (421 kB)
+2026-11-28T09:56:20.3201794Z Downloading pypdfium2-5.13.0-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (3.7 MB)
+2026-11-28T09:56:20.3402356Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 3.7/3.7 MB 195.2 MB/s  0:00:00
+2026-11-28T09:56:20.3480392Z Downloading pytesseract-0.3.13-py3-none-any.whl (14 kB)
+2026-11-28T09:56:20.3573910Z Downloading pytest-9.0.2-py3-none-any.whl (374 kB)
+2026-11-28T09:56:20.3672039Z Downloading python_docx-1.2.0-py3-none-any.whl (252 kB)
+2026-11-28T09:56:20.3784614Z Downloading quickjs_ng-0.18.0.2-cp310-abi3-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (2.5 MB)
+2026-11-28T09:56:20.3891627Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 2.5/2.5 MB 256.7 MB/s  0:00:00
+2026-11-28T09:56:20.3970976Z Downloading rapidfuzz-3.14.6-cp311-cp311-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl (3.2 MB)
+2026-11-28T09:56:20.4124248Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 3.2/3.2 MB 223.6 MB/s  0:00:00
+2026-11-28T09:56:20.4201908Z Downloading reportlab-4.4.9-py3-none-any.whl (2.0 MB)
+2026-11-28T09:56:20.4355195Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 2.0/2.0 MB 130.6 MB/s  0:00:00
+2026-11-28T09:56:20.4437266Z Downloading zstandard-0.25.0-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.whl (5.6 MB)
+2026-11-28T09:56:20.4590077Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 5.6/5.6 MB 389.9 MB/s  0:00:00
+2026-11-28T09:56:20.4666281Z Downloading beautifulsoup4-4.15.0-py3-none-any.whl (109 kB)
+2026-11-28T09:56:20.4757652Z Downloading hf_xet-1.8.0-cp38-abi3-manylinux2014_x86_64.manylinux_2_17_x86_64.whl (4.3 MB)
+2026-11-28T09:56:20.4872381Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 4.3/4.3 MB 401.7 MB/s  0:00:00
+2026-11-28T09:56:20.4950438Z Downloading httpx-0.29.0-py3-none-any.whl (73 kB)
+2026-11-28T09:56:20.5042422Z Downloading httpcore-1.0.9-py3-none-any.whl (78 kB)
+2026-11-28T09:56:20.5129963Z Downloading openpyxl-3.1.5-py2.py3-none-any.whl (250 kB)
+2026-11-28T09:56:20.5155960Z Using cached packaging-26.4-py3-none-any.whl (140 kB)
+2026-11-28T09:56:20.5234822Z Downloading pluggy-1.7.0-py3-none-any.whl (27 kB)
+2026-11-28T09:56:20.5323532Z Downloading fsspec-2026.9.0-py3-none-any.whl (221 kB)
+2026-11-28T09:56:20.5420225Z Downloading h11-0.16.0-py3-none-any.whl (37 kB)
+2026-11-28T09:56:20.5512200Z Downloading iniconfig-2.3.1-py3-none-any.whl (7.6 kB)
+2026-11-28T09:56:20.5612460Z Downloading lxml-6.2.0-cp311-cp311-manylinux_2_26_x86_64.manylinux_2_28_x86_64.whl (5.3 MB)
+2026-11-28T09:56:20.5924789Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 5.3/5.3 MB 183.5 MB/s  0:00:00
+2026-11-28T09:56:20.6004546Z Downloading numpy-2.4.6-cp311-cp311-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl (16.9 MB)
+2026-11-28T09:56:20.6502232Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 16.9/16.9 MB 346.9 MB/s  0:00:00
+2026-11-28T09:56:20.6582357Z Downloading pygments-2.21.0-py3-none-any.whl (1.3 MB)
+2026-11-28T09:56:20.6631364Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.3/1.3 MB 310.4 MB/s  0:00:00
+2026-11-28T09:56:20.6713653Z Downloading pyyaml-6.0.4-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (828 kB)
+2026-11-28T09:56:20.6751795Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 828.0/828.0 kB 241.3 MB/s  0:00:00
+2026-11-28T09:56:20.6831208Z Downloading regex-2026.11.25-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (812 kB)
+2026-11-28T09:56:20.6868066Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 813.0/813.0 kB 240.6 MB/s  0:00:00
+2026-11-28T09:56:20.6945327Z Downloading soupsieve-4.1.3-py3-none-any.whl (59 kB)
+2026-11-28T09:56:20.7037252Z Downloading tqdm-4.70.1-py3-none-any.whl (80 kB)
+2026-11-28T09:56:20.7126864Z Downloading typer-0.29.3-py3-none-any.whl (121 kB)
+2026-11-28T09:56:20.7220025Z Downloading annotated_doc-0.0.7-py3-none-any.whl (5.3 kB)
+2026-11-28T09:56:20.7309477Z Downloading pydantic-2.14.4-py3-none-any.whl (494 kB)
+2026-11-28T09:56:20.7410919Z Downloading pydantic_core-2.50.5-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.whl (2.3 MB)
+2026-11-28T09:56:20.7486976Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 2.3/2.3 MB 318.0 MB/s  0:00:00
+2026-11-28T09:56:20.7571024Z Downloading annotated_types-0.8.0-py3-none-any.whl (13 kB)
+2026-11-28T09:56:20.7664457Z Downloading rich-15.0.0-py3-none-any.whl (310 kB)
+2026-11-28T09:56:20.7764231Z Downloading markdown_it_py-4.3.0-py3-none-any.whl (96 kB)
+2026-11-28T09:56:20.7854297Z Downloading mdurl-0.1.2-py3-none-any.whl (10.0 kB)
+2026-11-28T09:56:20.7945182Z Downloading shellingham-1.5.4-py2.py3-none-any.whl (9.8 kB)
+2026-11-28T09:56:20.8034374Z Downloading typing_extensions-4.16.0-py3-none-any.whl (45 kB)
+2026-11-28T09:56:20.8126424Z Downloading typing_inspection-0.4.5-py3-none-any.whl (14 kB)
+2026-11-28T09:56:20.8227397Z Downloading anyio-4.16.0-py3-none-any.whl (134 kB)
+2026-11-28T09:56:20.8317616Z Downloading idna-3.20-py3-none-any.whl (69 kB)
+2026-11-28T09:56:20.8406717Z Downloading certifi-2026.11.20-py3-none-any.whl (127 kB)
+2026-11-28T09:56:20.8500113Z Downloading charset_normalizer-3.5.3-cp311-cp311-manylinux1_x86_64.manylinux_2_28_x86_64.manylinux_2_5_x86_64.whl (263 kB)
+2026-11-28T09:56:20.8595255Z Downloading click-8.5.1-py3-none-any.whl (126 kB)
+2026-11-28T09:56:20.8687263Z Downloading et_xmlfile-2.0.0-py3-none-any.whl (18 kB)
+2026-11-28T09:56:20.8774239Z Downloading joblib-1.6.0-py3-none-any.whl (306 kB)
+2026-11-28T09:56:20.8868274Z Downloading cloudpickle-3.1.3-py3-none-any.whl (22 kB)
+2026-11-28T09:56:21.0205088Z Building wheels for collected packages: universal-research-library
+2026-11-28T09:56:21.0210302Z   Building wheel for universal-research-library (pyproject.toml): started
+2026-11-28T09:56:21.7014300Z   Building wheel for universal-research-library (pyproject.toml): finished with status 'done'
+2026-11-28T09:56:21.7022244Z   /tmp/pip-build-env-u3oyqfvw/overlay/lib/python3.11/site-packages/setuptools/command/build_py.py:215: BuildBackendWarning: Package 'carr_library.academic_integration.locales' is absent from the `packages` configuration.
+2026-11-28T09:56:21.7023019Z   !!
+2026-11-28T09:56:21.7023233Z   
+2026-11-28T09:56:21.7023552Z           ********************************************************************************
+2026-11-28T09:56:21.7023855Z           ############################
+2026-11-28T09:56:21.7024117Z           # Package would be ignored #
+2026-11-28T09:56:21.7024358Z           ############################
+2026-11-28T09:56:21.7024767Z           Python recognizes 'carr_library.academic_integration.locales' as an importable package[^1],
+2026-11-28T09:56:21.7025246Z           but it is absent from setuptools' `packages` configuration.
+2026-11-28T09:56:21.7025527Z   
+2026-11-28T09:56:21.7025819Z           This leads to an ambiguous overall configuration. If you want to distribute this
+2026-11-28T09:56:21.7026317Z           package, please make sure that 'carr_library.academic_integration.locales' is explicitly added
+2026-11-28T09:56:21.7026702Z           to the `packages` configuration field.
+2026-11-28T09:56:21.7026993Z   
+2026-11-28T09:56:21.7027257Z           Alternatively, you can also rely on setuptools' discovery methods
+2026-11-28T09:56:21.7027660Z           (for example by using `find_namespace_packages(...)`/`find_namespace:`
+2026-11-28T09:56:21.7028004Z           instead of `find_packages(...)`/`find:`).
+2026-11-28T09:56:21.7028261Z   
+2026-11-28T09:56:21.7028561Z           You can read more about "package discovery" on setuptools documentation page:
+2026-11-28T09:56:21.7028911Z   
+2026-11-28T09:56:21.7029453Z           - https://setuptools.pypa.io/en/latest/userguide/package_discovery.html
+2026-11-28T09:56:21.7029893Z   
+2026-11-28T09:56:21.7030301Z           If you don't want 'carr_library.academic_integration.locales' to be distributed and are
+2026-11-28T09:56:21.7030834Z           already explicitly excluding 'carr_library.academic_integration.locales' via
+2026-11-28T09:56:21.7031263Z           `find_namespace_packages(...)/find_namespace` or `find_packages(...)/find`,
+2026-11-28T09:56:21.7031906Z           you can try to use `exclude_package_data`, or `include-package-data=False` in
+2026-11-28T09:56:21.7032350Z           combination with a more fine grained `package-data` configuration.
+2026-11-28T09:56:21.7032896Z   
+2026-11-28T09:56:21.7033192Z           You can read more about "package data files" on setuptools documentation page:
+2026-11-28T09:56:21.7033512Z   
+2026-11-28T09:56:21.7033821Z           - https://setuptools.pypa.io/en/latest/userguide/datafiles.html
+2026-11-28T09:56:21.7034157Z   
+2026-11-28T09:56:21.7034353Z   
+2026-11-28T09:56:21.7034620Z           [^1]: For Python, any directory (with suitable naming) can be imported,
+2026-11-28T09:56:21.7034986Z                 even if it does not contain any `.py` files.
+2026-11-28T09:56:21.7035458Z                 On the other hand, currently there is no concept of package data
+2026-11-28T09:56:21.7035819Z                 directory, all directories are treated like packages.
+2026-11-28T09:56:21.7036164Z           ********************************************************************************
+2026-11-28T09:56:21.7036440Z   
+2026-11-28T09:56:21.7036652Z   !!
+2026-11-28T09:56:21.7036932Z     check.warn(importable)
+2026-11-28T09:56:21.7037734Z   /tmp/pip-build-env-u3oyqfvw/overlay/lib/python3.11/site-packages/setuptools/command/build_py.py:215: BuildBackendWarning: Package 'carr_library.academic_integration.styles' is absent from the `packages` configuration.
+2026-11-28T09:56:21.7038391Z   !!
+2026-11-28T09:56:21.7038572Z   
+2026-11-28T09:56:21.7038786Z           ********************************************************************************
+2026-11-28T09:56:21.7039084Z           ############################
+2026-11-28T09:56:21.7039530Z           # Package would be ignored #
+2026-11-28T09:56:21.7039811Z           ############################
+2026-11-28T09:56:21.7040277Z           Python recognizes 'carr_library.academic_integration.styles' as an importable package[^1],
+2026-11-28T09:56:21.7040703Z           but it is absent from setuptools' `packages` configuration.
+2026-11-28T09:56:21.7040990Z   
+2026-11-28T09:56:21.7041291Z           This leads to an ambiguous overall configuration. If you want to distribute this
+2026-11-28T09:56:21.7041768Z           package, please make sure that 'carr_library.academic_integration.styles' is explicitly added
+2026-11-28T09:56:21.7042162Z           to the `packages` configuration field.
+2026-11-28T09:56:21.7042444Z   
+2026-11-28T09:56:21.7042708Z           Alternatively, you can also rely on setuptools' discovery methods
+2026-11-28T09:56:21.7043101Z           (for example by using `find_namespace_packages(...)`/`find_namespace:`
+2026-11-28T09:56:21.7043445Z           instead of `find_packages(...)`/`find:`).
+2026-11-28T09:56:21.7043693Z   
+2026-11-28T09:56:21.7043961Z           You can read more about "package discovery" on setuptools documentation page:
+2026-11-28T09:56:21.7044307Z   
+2026-11-28T09:56:21.7044610Z           - https://setuptools.pypa.io/en/latest/userguide/package_discovery.html
+2026-11-28T09:56:21.7044970Z   
+2026-11-28T09:56:21.7045260Z           If you don't want 'carr_library.academic_integration.styles' to be distributed and are
+2026-11-28T09:56:21.7045789Z           already explicitly excluding 'carr_library.academic_integration.styles' via
+2026-11-28T09:56:21.7046249Z           `find_namespace_packages(...)/find_namespace` or `find_packages(...)/find`,
+2026-11-28T09:56:21.7046665Z           you can try to use `exclude_package_data`, or `include-package-data=False` in
+2026-11-28T09:56:21.7047111Z           combination with a more fine grained `package-data` configuration.
+2026-11-28T09:56:21.7047413Z   
+2026-11-28T09:56:21.7047675Z           You can read more about "package data files" on setuptools documentation page:
+2026-11-28T09:56:21.7048016Z   
+2026-11-28T09:56:21.7048290Z           - https://setuptools.pypa.io/en/latest/userguide/datafiles.html
+2026-11-28T09:56:21.7048596Z   
+2026-11-28T09:56:21.7048779Z   
+2026-11-28T09:56:21.7049134Z           [^1]: For Python, any directory (with suitable naming) can be imported,
+2026-11-28T09:56:21.7049750Z                 even if it does not contain any `.py` files.
+2026-11-28T09:56:21.7050204Z                 On the other hand, currently there is no concept of package data
+2026-11-28T09:56:21.7050568Z                 directory, all directories are treated like packages.
+2026-11-28T09:56:21.7050895Z           ********************************************************************************
+2026-11-28T09:56:21.7051212Z   
+2026-11-28T09:56:21.7051420Z   !!
+2026-11-28T09:56:21.7051623Z     check.warn(importable)
+2026-11-28T09:56:21.7052259Z   /tmp/pip-build-env-u3oyqfvw/overlay/lib/python3.11/site-packages/setuptools/command/build_py.py:215: BuildBackendWarning: Package 'carr_library.academic_integration.vendor' is absent from the `packages` configuration.
+2026-11-28T09:56:21.7052948Z   !!
+2026-11-28T09:56:21.7053134Z   
+2026-11-28T09:56:21.7053383Z           ********************************************************************************
+2026-11-28T09:56:21.7053666Z           ############################
+2026-11-28T09:56:21.7053903Z           # Package would be ignored #
+2026-11-28T09:56:21.7054170Z           ############################
+2026-11-28T09:56:21.7054535Z           Python recognizes 'carr_library.academic_integration.vendor' as an importable package[^1],
+2026-11-28T09:56:21.7054951Z           but it is absent from setuptools' `packages` configuration.
+2026-11-28T09:56:21.7055252Z   
+2026-11-28T09:56:21.7055544Z           This leads to an ambiguous overall configuration. If you want to distribute this
+2026-11-28T09:56:21.7056028Z           package, please make sure that 'carr_library.academic_integration.vendor' is explicitly added
+2026-11-28T09:56:21.7056416Z           to the `packages` configuration field.
+2026-11-28T09:56:21.7056683Z   
+2026-11-28T09:56:21.7056946Z           Alternatively, you can also rely on setuptools' discovery methods
+2026-11-28T09:56:21.7057322Z           (for example by using `find_namespace_packages(...)`/`find_namespace:`
+2026-11-28T09:56:21.7057660Z           instead of `find_packages(...)`/`find:`).
+2026-11-28T09:56:21.7057908Z   
+2026-11-28T09:56:21.7058224Z           You can read more about "package discovery" on setuptools documentation page:
+2026-11-28T09:56:21.7058550Z   
+2026-11-28T09:56:21.7058831Z           - https://setuptools.pypa.io/en/latest/userguide/package_discovery.html
+2026-11-28T09:56:21.7059280Z   
+2026-11-28T09:56:21.7059588Z           If you don't want 'carr_library.academic_integration.vendor' to be distributed and are
+2026-11-28T09:56:21.7060027Z           already explicitly excluding 'carr_library.academic_integration.vendor' via
+2026-11-28T09:56:21.7060468Z           `find_namespace_packages(...)/find_namespace` or `find_packages(...)/find`,
+2026-11-28T09:56:21.7060878Z           you can try to use `exclude_package_data`, or `include-package-data=False` in
+2026-11-28T09:56:21.7061315Z           combination with a more fine grained `package-data` configuration.
+2026-11-28T09:56:21.7061620Z   
+2026-11-28T09:56:21.7061898Z           You can read more about "package data files" on setuptools documentation page:
+2026-11-28T09:56:21.7062240Z   
+2026-11-28T09:56:21.7062500Z           - https://setuptools.pypa.io/en/latest/userguide/datafiles.html
+2026-11-28T09:56:21.7062800Z   
+2026-11-28T09:56:21.7062984Z   
+2026-11-28T09:56:21.7063252Z           [^1]: For Python, any directory (with suitable naming) can be imported,
+2026-11-28T09:56:21.7063627Z                 even if it does not contain any `.py` files.
+2026-11-28T09:56:21.7063957Z                 On the other hand, currently there is no concept of package data
+2026-11-28T09:56:21.7064312Z                 directory, all directories are treated like packages.
+2026-11-28T09:56:21.7064643Z           ********************************************************************************
+2026-11-28T09:56:21.7064928Z   
+2026-11-28T09:56:21.7065116Z   !!
+2026-11-28T09:56:21.7065316Z     check.warn(importable)
+2026-11-28T09:56:21.7066020Z   /tmp/pip-build-env-u3oyqfvw/overlay/lib/python3.11/site-packages/setuptools/command/build_py.py:215: BuildBackendWarning: Package 'carr_library.citations._vendor_citeproc' is absent from the `packages` configuration.
+2026-11-28T09:56:21.7066777Z   !!
+2026-11-28T09:56:21.7066966Z   
+2026-11-28T09:56:21.7067199Z           ********************************************************************************
+2026-11-28T09:56:21.7067553Z           ############################
+2026-11-28T09:56:21.7067847Z           # Package would be ignored #
+2026-11-28T09:56:21.7068340Z           ############################
+2026-11-28T09:56:21.7068701Z           Python recognizes 'carr_library.citations._vendor_citeproc' as an importable package[^1],
+2026-11-28T09:56:21.7069117Z           but it is absent from setuptools' `packages` configuration.
+2026-11-28T09:56:21.7069568Z   
+2026-11-28T09:56:21.7069838Z           This leads to an ambiguous overall configuration. If you want to distribute this
+2026-11-28T09:56:21.7070341Z           package, please make sure that 'carr_library.citations._vendor_citeproc' is explicitly added
+2026-11-28T09:56:21.7070728Z           to the `packages` configuration field.
+2026-11-28T09:56:21.7070972Z   
+2026-11-28T09:56:21.7071240Z           Alternatively, you can also rely on setuptools' discovery methods
+2026-11-28T09:56:21.7071609Z           (for example by using `find_namespace_packages(...)`/`find_namespace:`
+2026-11-28T09:56:21.7071989Z           instead of `find_packages(...)`/`find:`).
+2026-11-28T09:56:21.7072237Z   
+2026-11-28T09:56:21.7072505Z           You can read more about "package discovery" on setuptools documentation page:
+2026-11-28T09:56:21.7072929Z   
+2026-11-28T09:56:21.7073225Z           - https://setuptools.pypa.io/en/latest/userguide/package_discovery.html
+2026-11-28T09:56:21.7073579Z   
+2026-11-28T09:56:21.7073878Z           If you don't want 'carr_library.citations._vendor_citeproc' to be distributed and are
+2026-11-28T09:56:21.7074351Z           already explicitly excluding 'carr_library.citations._vendor_citeproc' via
+2026-11-28T09:56:21.7074798Z           `find_namespace_packages(...)/find_namespace` or `find_packages(...)/find`,
+2026-11-28T09:56:21.7075244Z           you can try to use `exclude_package_data`, or `include-package-data=False` in
+2026-11-28T09:56:21.7075949Z           combination with a more fine grained `package-data` configuration.
+2026-11-28T09:56:21.7076249Z   
+2026-11-28T09:56:21.7076516Z           You can read more about "package data files" on setuptools documentation page:
+2026-11-28T09:56:21.7076861Z   
+2026-11-28T09:56:21.7077116Z           - https://setuptools.pypa.io/en/latest/userguide/datafiles.html
+2026-11-28T09:56:21.7077430Z   
+2026-11-28T09:56:21.7077615Z   
+2026-11-28T09:56:21.7077884Z           [^1]: For Python, any directory (with suitable naming) can be imported,
+2026-11-28T09:56:21.7078250Z                 even if it does not contain any `.py` files.
+2026-11-28T09:56:21.7078581Z                 On the other hand, currently there is no concept of package data
+2026-11-28T09:56:21.7079062Z                 directory, all directories are treated like packages.
+2026-11-28T09:56:21.7079522Z           ********************************************************************************
+2026-11-28T09:56:21.7079795Z   
+2026-11-28T09:56:21.7079994Z   !!
+2026-11-28T09:56:21.7080196Z     check.warn(importable)
+2026-11-28T09:56:21.7080874Z   /tmp/pip-build-env-u3oyqfvw/overlay/lib/python3.11/site-packages/setuptools/command/build_py.py:215: BuildBackendWarning: Package 'carr_library.citations.styles' is absent from the `packages` configuration.
+2026-11-28T09:56:21.7081484Z   !!
+2026-11-28T09:56:21.7081666Z   
+2026-11-28T09:56:21.7081904Z           ********************************************************************************
+2026-11-28T09:56:21.7082185Z           ############################
+2026-11-28T09:56:21.7082432Z           # Package would be ignored #
+2026-11-28T09:56:21.7082696Z           ############################
+2026-11-28T09:56:21.7083129Z           Python recognizes 'carr_library.citations.styles' as an importable package[^1],
+2026-11-28T09:56:21.7083576Z           but it is absent from setuptools' `packages` configuration.
+2026-11-28T09:56:21.7083923Z   
+2026-11-28T09:56:21.7084193Z           This leads to an ambiguous overall configuration. If you want to distribute this
+2026-11-28T09:56:21.7084700Z           package, please make sure that 'carr_library.citations.styles' is explicitly added
+2026-11-28T09:56:21.7085061Z           to the `packages` configuration field.
+2026-11-28T09:56:21.7085308Z   
+2026-11-28T09:56:21.7085587Z           Alternatively, you can also rely on setuptools' discovery methods
+2026-11-28T09:56:21.7085956Z           (for example by using `find_namespace_packages(...)`/`find_namespace:`
+2026-11-28T09:56:21.7086322Z           instead of `find_packages(...)`/`find:`).
+2026-11-28T09:56:21.7086562Z   
+2026-11-28T09:56:21.7086827Z           You can read more about "package discovery" on setuptools documentation page:
+2026-11-28T09:56:21.7087160Z   
+2026-11-28T09:56:21.7087432Z           - https://setuptools.pypa.io/en/latest/userguide/package_discovery.html
+2026-11-28T09:56:21.7087753Z   
+2026-11-28T09:56:21.7088027Z           If you don't want 'carr_library.citations.styles' to be distributed and are
+2026-11-28T09:56:21.7088415Z           already explicitly excluding 'carr_library.citations.styles' via
+2026-11-28T09:56:21.7089495Z           `find_namespace_packages(...)/find_namespace` or `find_packages(...)/find`,
+2026-11-28T09:56:21.7089898Z           you can try to use `exclude_package_data`, or `include-package-data=False` in
+2026-11-28T09:56:21.7090307Z           combination with a more fine grained `package-data` configuration.
+2026-11-28T09:56:21.7090596Z   
+2026-11-28T09:56:21.7090927Z           You can read more about "package data files" on setuptools documentation page:
+2026-11-28T09:56:21.7091263Z   
+2026-11-28T09:56:21.7091519Z           - https://setuptools.pypa.io/en/latest/userguide/datafiles.html
+2026-11-28T09:56:21.7091824Z   
+2026-11-28T09:56:21.7092001Z   
+2026-11-28T09:56:21.7092232Z           [^1]: For Python, any directory (with suitable naming) can be imported,
+2026-11-28T09:56:21.7092602Z                 even if it does not contain any `.py` files.
+2026-11-28T09:56:21.7092929Z                 On the other hand, currently there is no concept of package data
+2026-11-28T09:56:21.7093304Z                 directory, all directories are treated like packages.
+2026-11-28T09:56:21.7093625Z           ********************************************************************************
+2026-11-28T09:56:21.7093873Z   
+2026-11-28T09:56:21.7094078Z   !!
+2026-11-28T09:56:21.7094277Z     check.warn(importable)
+2026-11-28T09:56:21.7095125Z   /tmp/pip-build-env-u3oyqfvw/overlay/lib/python3.11/site-packages/setuptools/command/build_py.py:215: BuildBackendWarning: Package 'carr_library.language_qualification.data' is absent from the `packages` configuration.
+2026-11-28T09:56:21.7095800Z   !!
+2026-11-28T09:56:21.7095971Z   
+2026-11-28T09:56:21.7096225Z           ********************************************************************************
+2026-11-28T09:56:21.7096508Z           ############################
+2026-11-28T09:56:21.7096754Z           # Package would be ignored #
+2026-11-28T09:56:21.7097007Z           ############################
+2026-11-28T09:56:21.7097364Z           Python recognizes 'carr_library.language_qualification.data' as an importable package[^1],
+2026-11-28T09:56:21.7097809Z           but it is absent from setuptools' `packages` configuration.
+2026-11-28T09:56:21.7098110Z   
+2026-11-28T09:56:21.7098391Z           This leads to an ambiguous overall configuration. If you want to distribute this
+2026-11-28T09:56:21.7098852Z           package, please make sure that 'carr_library.language_qualification.data' is explicitly added
+2026-11-28T09:56:21.7099380Z           to the `packages` configuration field.
+2026-11-28T09:56:21.7099645Z   
+2026-11-28T09:56:21.7099896Z           Alternatively, you can also rely on setuptools' discovery methods
+2026-11-28T09:56:21.7100329Z           (for example by using `find_namespace_packages(...)`/`find_namespace:`
+2026-11-28T09:56:21.7100680Z           instead of `find_packages(...)`/`find:`).
+2026-11-28T09:56:21.7101026Z   
+2026-11-28T09:56:21.7101306Z           You can read more about "package discovery" on setuptools documentation page:
+2026-11-28T09:56:21.7101625Z   
+2026-11-28T09:56:21.7101891Z           - https://setuptools.pypa.io/en/latest/userguide/package_discovery.html
+2026-11-28T09:56:21.7102226Z   
+2026-11-28T09:56:21.7102537Z           If you don't want 'carr_library.language_qualification.data' to be distributed and are
+2026-11-28T09:56:21.7102978Z           already explicitly excluding 'carr_library.language_qualification.data' via
+2026-11-28T09:56:21.7103401Z           `find_namespace_packages(...)/find_namespace` or `find_packages(...)/find`,
+2026-11-28T09:56:21.7103824Z           you can try to use `exclude_package_data`, or `include-package-data=False` in
+2026-11-28T09:56:21.7104248Z           combination with a more fine grained `package-data` configuration.
+2026-11-28T09:56:21.7104562Z   
+2026-11-28T09:56:21.7104845Z           You can read more about "package data files" on setuptools documentation page:
+2026-11-28T09:56:21.7105174Z   
+2026-11-28T09:56:21.7105436Z           - https://setuptools.pypa.io/en/latest/userguide/datafiles.html
+2026-11-28T09:56:21.7105746Z   
+2026-11-28T09:56:21.7105943Z   
+2026-11-28T09:56:21.7106232Z           [^1]: For Python, any directory (with suitable naming) can be imported,
+2026-11-28T09:56:21.7106586Z                 even if it does not contain any `.py` files.
+2026-11-28T09:56:21.7106915Z                 On the other hand, currently there is no concept of package data
+2026-11-28T09:56:21.7107276Z                 directory, all directories are treated like packages.
+2026-11-28T09:56:21.7107613Z           ********************************************************************************
+2026-11-28T09:56:21.7107869Z   
+2026-11-28T09:56:21.7108065Z   !!
+2026-11-28T09:56:21.7108270Z     check.warn(importable)
+2026-11-28T09:56:21.7108922Z   Created wheel for universal-research-library: filename=universal_research_library-0.3.0.dev1-py3-none-any.whl size=2766600 sha256=3fda42ccaf7c1382365c358497c211c6667b18f859ad38c0149a9772955d7512
+2026-11-28T09:56:21.7109865Z   Stored in directory: /tmp/pip-ephem-wheel-cache-39hymy7f/wheels/8c/4a/13/69c77a7a70caad6cbb87efa216817814a8429d6f623984ab19
+2026-11-28T09:56:21.7112187Z Successfully built universal-research-library
+2026-11-28T09:56:21.7905109Z Installing collected packages: pylatexenc, zstandard, typing-extensions, tqdm, soupsieve, shellingham, regex, rapidfuzz, quickjs-ng, pyyaml, pypdfium2, pypdf, pygments, pluggy, platformdirs, Pillow, packaging, numpy, mdurl, lxml, iniconfig, idna, hf-xet, h11, fsspec, filelock, et-xmlfile, defusedxml, cloudpickle, click, charset-normalizer, certifi, bibtexparser, annotated-types, annotated-doc, typing-inspection, reportlab, python-docx, pytest, pytesseract, pydantic-core, py3langid, openpyxl, markdown-it-py, joblib, httpcore, beautifulsoup4, anyio, universal-research-library, rich, pydantic, nltk, httpx, typer, huggingface-hub
+2026-11-28T09:56:27.8079044Z 
+2026-11-28T09:56:27.8097620Z Successfully installed Pillow-13.0.0 annotated-doc-0.0.7 annotated-types-0.8.0 anyio-4.16.0 beautifulsoup4-4.15.0 bibtexparser-2.1.0 certifi-2026.11.20 charset-normalizer-3.5.3 click-8.5.1 cloudpickle-3.1.3 defusedxml-0.7.1 et-xmlfile-2.0.0 filelock-3.29.0 fsspec-2026.9.0 h11-0.16.0 hf-xet-1.8.0 httpcore-1.0.9 httpx-0.29.0 huggingface-hub-1.16.1 idna-3.20 iniconfig-2.3.1 joblib-1.6.0 lxml-6.2.0 markdown-it-py-4.3.0 mdurl-0.1.2 nltk-3.9.2 numpy-2.4.6 openpyxl-3.1.5 packaging-26.4 platformdirs-4.10.0 pluggy-1.7.0 py3langid-0.4.0 pydantic-2.14.4 pydantic-core-2.50.5 pygments-2.21.0 pylatexenc-2.11 pypdf-7.1.1 pypdfium2-5.13.0 pytesseract-0.3.13 pytest-9.0.2 python-docx-1.2.0 pyyaml-6.0.4 quickjs-ng-0.18.0.2 rapidfuzz-3.14.6 regex-2026.11.25 reportlab-4.4.9 rich-15.0.0 shellingham-1.5.4 soupsieve-4.1.3 tqdm-4.70.1 typer-0.29.3 typing-extensions-4.16.0 typing-inspection-0.4.5 universal-research-library-0.3.0.dev1 zstandard-0.25.0
+2026-11-28T09:56:28.8133611Z Collecting cffi==2.1.1 (from -r packaging/trusted-client.lock (line 4))
+2026-11-28T09:56:28.8659941Z   Downloading cffi-2.1.1-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.whl (217 kB)
+2026-11-28T09:56:29.0165713Z Collecting cryptography==50.0.2 (from -r packaging/trusted-client.lock (line 104))
+2026-11-28T09:56:29.0249852Z   Downloading cryptography-50.0.2-cp311-abi3-manylinux_2_34_x86_64.whl (4.8 MB)
+2026-11-28T09:56:29.2072536Z      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 4.8/4.8 MB 27.6 MB/s  0:00:00
+2026-11-28T09:56:29.2242211Z Collecting pycparser==3.12 (from -r packaging/trusted-client.lock (line 163))
+2026-11-28T09:56:29.2328003Z   Downloading pycparser-3.12-py3-none-any.whl (62 kB)
+2026-11-28T09:56:29.2492105Z Collecting securesystemslib==1.6.0 (from -r packaging/trusted-client.lock (line 165))
+2026-11-28T09:56:29.2569784Z   Downloading securesystemslib-1.6.0-py3-none-any.whl (874 kB)
+2026-11-28T09:56:29.2777441Z      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 874.8/874.8 kB 44.3 MB/s  0:00:00
+2026-11-28T09:56:29.2933366Z Collecting tuf==7.0.1 (from -r packaging/trusted-client.lock (line 167))
+2026-11-28T09:56:29.3016125Z   Downloading tuf-7.0.1-py3-none-any.whl (56 kB)
+2026-11-28T09:56:29.3189010Z Collecting urllib3==2.8.0 (from -r packaging/trusted-client.lock (line 169))
+2026-11-28T09:56:29.3269735Z   Downloading urllib3-2.8.0-py3-none-any.whl (135 kB)
+2026-11-28T09:56:29.3806106Z Installing collected packages: urllib3, securesystemslib, pycparser, tuf, cffi, cryptography
+2026-11-28T09:56:29.6620226Z 
+2026-11-28T09:56:29.6637230Z Successfully installed cffi-2.1.1 cryptography-50.0.2 pycparser-3.12 securesystemslib-1.6.0 tuf-7.0.1 urllib3-2.8.0
+2026-11-28T09:56:29.7257104Z ##[group]Run mkdir -p ci-import-cancellation
+2026-11-28T09:56:29.7258376Z [36;1mmkdir -p ci-import-cancellation[0m
+2026-11-28T09:56:29.7258704Z [36;1mcat > ci-import-cancellation/check.py <<'PY'[0m
+2026-11-28T09:56:29.7258999Z [36;1mfrom hashlib import sha256[0m
+2026-11-28T09:56:29.7259503Z [36;1mimport importlib[0m
+2026-11-28T09:56:29.7259849Z [36;1mimport importlib.util[0m
+2026-11-28T09:56:29.7260093Z [36;1mimport json[0m
+2026-11-28T09:56:29.7260322Z [36;1mimport os[0m
+2026-11-28T09:56:29.7260545Z [36;1mfrom pathlib import Path[0m
+2026-11-28T09:56:29.7260779Z [36;1mimport sys[0m
+2026-11-28T09:56:29.7261041Z [36;1mimport subprocess[0m
+2026-11-28T09:56:29.7261273Z [36;1mimport sysconfig[0m
+2026-11-28T09:56:29.7261497Z [36;1mimport tempfile[0m
+2026-11-28T09:56:29.7261750Z [36;1mimport xml.etree.ElementTree as ET[0m
+2026-11-28T09:56:29.7262026Z [36;1mimport pytest[0m
+2026-11-28T09:56:29.7262281Z [36;1m[0m
+2026-11-28T09:56:29.7262573Z [36;1mmode = sys.argv[1][0m
+2026-11-28T09:56:29.7262861Z [36;1massert mode in ("source", "installed"), mode[0m
+2026-11-28T09:56:29.7263237Z [36;1massert bool(sys.flags.isolated) == (mode == "installed"), mode[0m
+2026-11-28T09:56:29.7263699Z [36;1massert not os.environ.get("PYTHONPATH"), "Do not repair ordinary child imports with PYTHONPATH."[0m
+2026-11-28T09:56:29.7264119Z [36;1mroot = Path.cwd().resolve()[0m
+2026-11-28T09:56:29.7264406Z [36;1msource = (root / "src" / "carr_library").resolve()[0m
+2026-11-28T09:56:29.7264793Z [36;1minstalled = (Path(sysconfig.get_path("purelib")) / "carr_library").resolve()[0m
+2026-11-28T09:56:29.7265242Z [36;1massert source != installed and not installed.is_relative_to(root / "src")[0m
+2026-11-28T09:56:29.7265624Z [36;1mselected = source if mode == "source" else installed[0m
+2026-11-28T09:56:29.7265979Z [36;1martifacts = root / "ci-import-cancellation"[0m
+2026-11-28T09:56:29.7267716Z [36;1msuites = ["tests/operations/test_ocr_admission.py","tests/e2e/test_import_files_cancellation.py","tests/ingest/test_pipeline.py","tests/ingest/test_checkpoint_streaming.py","tests/ingest/test_worker_attempt_receipts.py","tests/ingest/test_worker_publication_boundary.py","tests/ingest/test_worker_isolated_launch.py","tests/ingest/test_canonical_publication_binding.py","tests/ingest/test_competing_publication_receipts.py","tests/ingest/test_import_publication_point.py","tests/ingest/test_initial_publication_completion.py","tests/ingest/test_terminal_replay_registration.py","tests/ingest/test_txt_replay_registration.py","tests/ingest/test_import_slice_ownership.py","tests/ingest/test_import_reconciliation.py"][0m
+2026-11-28T09:56:29.7269807Z [36;1m[0m
+2026-11-28T09:56:29.7271563Z [36;1mnames = ["carr_library.application","carr_library.durable_state","carr_library.catalog.intake","carr_library.ingest.pipeline","carr_library.ingest.worker","carr_library.ingest.publication_identity","carr_library.ingest.resource_budget","carr_library.ingest.retained_assets","carr_library.ingest.session","carr_library.ingest.slices","carr_library.ingest.reconciliation","carr_library.ingest.batches","carr_library.ingest.writer_guard","carr_library.operations.broker","carr_library.operations.models","carr_library.operations.facade","carr_library.storage.publication","carr_library.storage.revisions","carr_library.extract.page_ocr","carr_library.extract.document_formats","carr_library.audio.process","carr_library.audio.cleanup"][0m
+2026-11-28T09:56:29.7273658Z [36;1m# Compile selected real source and test bytes without importing UI/native code.[0m
+2026-11-28T09:56:29.7274014Z [36;1mfor name in names:[0m
+2026-11-28T09:56:29.7274310Z [36;1m    path = source.joinpath(*name.split(".")[1:]).with_suffix(".py")[0m
+2026-11-28T09:56:29.7274702Z [36;1m    compile(path.read_bytes(), str(path), "exec")[0m
+2026-11-28T09:56:29.7274988Z [36;1mfor suite in suites:[0m
+2026-11-28T09:56:29.7275286Z [36;1m    path = root / suite[0m
+2026-11-28T09:56:29.7275562Z [36;1m    compile(path.read_bytes(), str(path), "exec")[0m
+2026-11-28T09:56:29.7275943Z [36;1m[0m
+2026-11-28T09:56:29.7276176Z [36;1mdef checkout_head():[0m
+2026-11-28T09:56:29.7276506Z [36;1m    value = subprocess.run(["git", "rev-parse", "HEAD"], check=True,[0m
+2026-11-28T09:56:29.7276960Z [36;1m        stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=10).stdout.strip()[0m
+2026-11-28T09:56:29.7277457Z [36;1m    assert value == os.environ["CARR_IMPORT_HEAD"], (value, os.environ["CARR_IMPORT_HEAD"])[0m
+2026-11-28T09:56:29.7277836Z [36;1m    return value[0m
+2026-11-28T09:56:29.7278077Z [36;1m[0m
+2026-11-28T09:56:29.7278306Z [36;1mcommit_before = checkout_head()[0m
+2026-11-28T09:56:29.7278627Z [36;1mhelper_before = sha256(Path(__file__).read_bytes()).hexdigest()[0m
+2026-11-28T09:56:29.7279068Z [36;1mtests_before = {suite: sha256((root / suite).read_bytes()).hexdigest() for suite in suites}[0m
+2026-11-28T09:56:29.7279595Z [36;1m[0m
+2026-11-28T09:56:29.7279830Z [36;1mdef package_inventory(directory):[0m
+2026-11-28T09:56:29.7280201Z [36;1m    assert directory.is_dir() and not directory.is_symlink(), str(directory)[0m
+2026-11-28T09:56:29.7280567Z [36;1m    result = {}[0m
+2026-11-28T09:56:29.7280839Z [36;1m    for path in sorted(directory.rglob("*.py")):[0m
+2026-11-28T09:56:29.7281183Z [36;1m        assert path.is_file() and not path.is_symlink(), str(path)[0m
+2026-11-28T09:56:29.7281623Z [36;1m        result[path.relative_to(directory).as_posix()] = sha256(path.read_bytes()).hexdigest()[0m
+2026-11-28T09:56:29.7282054Z [36;1m    assert result and "__init__.py" in result, str(directory)[0m
+2026-11-28T09:56:29.7284681Z [36;1m    for relative in ["academic_integration/UPSTREAM.json","academic_integration/csl_worker.cjs","academic_integration/locales/locales-en-US.xml","academic_integration/locales/locales-sk-SK.xml","academic_integration/locales/locales-uk-UA.xml","academic_integration/styles/apa.csl","academic_integration/styles/chicago-author-date.csl","academic_integration/styles/chicago-fullnote-bibliography.csl","academic_integration/styles/harvard-cite-them-right.csl","academic_integration/styles/ieee.csl","academic_integration/styles/modern-language-association.csl","academic_integration/styles/nlm-citation-sequence.csl","academic_integration/vendor/LICENSE","academic_integration/vendor/LICENSE-AGPL-3.0.txt","academic_integration/vendor/LICENSE-CC-BY-SA-3.0.txt","academic_integration/vendor/LICENSE-CPAL-1.0.txt","academic_integration/vendor/NOTICE.txt","academic_integration/vendor/SORT-MACRO-CACHE-NOTICE.txt","academic_integration/vendor/citeproc-sort-macro-cache.json","academic_integration/vendor/citeproc.js"]:[0m
+2026-11-28T09:56:29.7287294Z [36;1m        path = directory / relative[0m
+2026-11-28T09:56:29.7287606Z [36;1m        assert path.is_file() and not path.is_symlink(), str(path)[0m
+2026-11-28T09:56:29.7288010Z [36;1m        result[relative] = sha256(path.read_bytes()).hexdigest()[0m
+2026-11-28T09:56:29.7288318Z [36;1m    return result[0m
+2026-11-28T09:56:29.7288583Z [36;1m[0m
+2026-11-28T09:56:29.7288810Z [36;1mexpected = package_inventory(source)[0m
+2026-11-28T09:56:29.7289380Z [36;1massert package_inventory(installed) == expected, "Installed Python file set/content differs from checkout."[0m
+2026-11-28T09:56:29.7290011Z [36;1minventory_digest = sha256(json.dumps(expected, sort_keys=True, separators=(",", ":")).encode()).hexdigest()[0m
+2026-11-28T09:56:29.7290482Z [36;1m(artifacts / (mode + "-package-inventory.json")).write_text([0m
+2026-11-28T09:56:29.7290918Z [36;1m    json.dumps({"source": str(source), "installed": str(installed), "sha256": inventory_digest,[0m
+2026-11-28T09:56:29.7291411Z [36;1m                "files": expected}, sort_keys=True, indent=2) + "\n", encoding="utf-8")[0m
+2026-11-28T09:56:29.7291731Z [36;1m[0m
+2026-11-28T09:56:29.7291971Z [36;1mdef origins():[0m
+2026-11-28T09:56:29.7292244Z [36;1m    package = importlib.import_module("carr_library")[0m
+2026-11-28T09:56:29.7292581Z [36;1m    actual_package = Path(package.__file__).resolve()[0m
+2026-11-28T09:56:29.7293072Z [36;1m    assert actual_package == selected / "__init__.py", (mode, str(actual_package), str(selected))[0m
+2026-11-28T09:56:29.7293446Z [36;1m    result = {}[0m
+2026-11-28T09:56:29.7293733Z [36;1m    for name in names:[0m
+2026-11-28T09:56:29.7294035Z [36;1m        spec = importlib.util.find_spec(name)[0m
+2026-11-28T09:56:29.7294344Z [36;1m        assert spec is not None and spec.origin, name[0m
+2026-11-28T09:56:29.7294654Z [36;1m        actual = Path(spec.origin).resolve()[0m
+2026-11-28T09:56:29.7295042Z [36;1m        relative = Path(*name.split(".")[1:]).with_suffix(".py")[0m
+2026-11-28T09:56:29.7295499Z [36;1m        assert actual == selected / relative, (name, str(actual), str(selected / relative))[0m
+2026-11-28T09:56:29.7295916Z [36;1m        digest = sha256(actual.read_bytes()).hexdigest()[0m
+2026-11-28T09:56:29.7296270Z [36;1m        assert digest == expected[relative.as_posix()], name[0m
+2026-11-28T09:56:29.7296689Z [36;1m        result[name] = {"path": str(actual), "sha256": digest}[0m
+2026-11-28T09:56:29.7297005Z [36;1m    return result[0m
+2026-11-28T09:56:29.7297275Z [36;1m[0m
+2026-11-28T09:56:29.7297498Z [36;1mclass Proof:[0m
+2026-11-28T09:56:29.7297718Z [36;1m    before = None[0m
+2026-11-28T09:56:29.7297987Z [36;1m    collected = None[0m
+2026-11-28T09:56:29.7298249Z [36;1m    expected_failure_reports = None[0m
+2026-11-28T09:56:29.7298531Z [36;1m[0m
+2026-11-28T09:56:29.7298790Z [36;1m    def pytest_sessionstart(self, session):[0m
+2026-11-28T09:56:29.7299107Z [36;1m        self.before = origins()[0m
+2026-11-28T09:56:29.7299571Z [36;1m        self.expected_failure_reports = [][0m
+2026-11-28T09:56:29.7299844Z [36;1m[0m
+2026-11-28T09:56:29.7300099Z [36;1m    def pytest_collectreport(self, report):[0m
+2026-11-28T09:56:29.7300394Z [36;1m        if report.failed:[0m
+2026-11-28T09:56:29.7300708Z [36;1m            # Preserve the original collection failure before the[0m
+2026-11-28T09:56:29.7301101Z [36;1m            # required nonempty-suite assertion can terminate pytest.[0m
+2026-11-28T09:56:29.7301540Z [36;1m            print("FAILED COLLECTION: " + report.nodeid, flush=True)[0m
+2026-11-28T09:56:29.7301904Z [36;1m            print(str(report.longrepr)[:16384], flush=True)[0m
+2026-11-28T09:56:29.7302211Z [36;1m[0m
+2026-11-28T09:56:29.7302470Z [36;1m    def pytest_collection_finish(self, session):[0m
+2026-11-28T09:56:29.7302903Z [36;1m        self.collected = {suite: 0 for suite in suites}[0m
+2026-11-28T09:56:29.7303240Z [36;1m        for item in session.items:[0m
+2026-11-28T09:56:29.7303568Z [36;1m            selector = item.nodeid.split("::", 1)[0].replace("\\", "/")[0m
+2026-11-28T09:56:29.7304032Z [36;1m            assert selector in self.collected, selector[0m
+2026-11-28T09:56:29.7304354Z [36;1m            self.collected[selector] += 1[0m
+2026-11-28T09:56:29.7304697Z [36;1m        assert all(self.collected.values()), self.collected[0m
+2026-11-28T09:56:29.7305147Z [36;1m        assert self.collected['tests/operations/test_ocr_admission.py'] == 9, self.collected[0m
+2026-11-28T09:56:29.7305676Z [36;1m        assert self.collected['tests/e2e/test_import_files_cancellation.py'] == 9, self.collected[0m
+2026-11-28T09:56:29.7306068Z [36;1m[0m
+2026-11-28T09:56:29.7306299Z [36;1m    def pytest_runtest_logreport(self, report):[0m
+2026-11-28T09:56:29.7306629Z [36;1m        if hasattr(report, "wasxfail"):[0m
+2026-11-28T09:56:29.7306957Z [36;1m            self.expected_failure_reports.append(report.nodeid)[0m
+2026-11-28T09:56:29.7307227Z [36;1m[0m
+2026-11-28T09:56:29.7307447Z [36;1mproof = Proof()[0m
+2026-11-28T09:56:29.7307756Z [36;1m# Source deliberately keeps pyproject's normal parent selection. Ordinary[0m
+2026-11-28T09:56:29.7308182Z [36;1m# child imports must choose their own installed/source origin without repair.[0m
+2026-11-28T09:56:29.7308623Z [36;1moptions = ["-vv", "--durations=20", "-o", "addopts=", "-o", "xfail_strict=true",[0m
+2026-11-28T09:56:29.7308992Z [36;1m           "-o", "faulthandler_timeout=60"][0m
+2026-11-28T09:56:29.7309527Z [36;1mif mode == "installed":[0m
+2026-11-28T09:56:29.7309790Z [36;1m    options += ["-o", "pythonpath="][0m
+2026-11-28T09:56:29.7310076Z [36;1mreport = artifacts / (mode + ".xml")[0m
+2026-11-28T09:56:29.7310487Z [36;1mwith tempfile.TemporaryDirectory(prefix="carr-import-cancellation-") as temporary:[0m
+2026-11-28T09:56:29.7310942Z [36;1m    status = pytest.main([*options, "--junitxml", str(report), "--basetemp",[0m
+2026-11-28T09:56:29.7311368Z [36;1m                          str(Path(temporary) / "pytest"), *suites], plugins=[proof])[0m
+2026-11-28T09:56:29.7311752Z [36;1m    cases = list(ET.parse(report).iter("testcase"))[0m
+2026-11-28T09:56:29.7312122Z [36;1m    assert status == 0 and cases and proof.before is not None, (status, len(cases))[0m
+2026-11-28T09:56:29.7312578Z [36;1m    assert proof.collected and all(proof.collected.values()), proof.collected[0m
+2026-11-28T09:56:29.7313096Z [36;1m    assert not proof.expected_failure_reports, proof.expected_failure_reports[0m
+2026-11-28T09:56:29.7313571Z [36;1m    assert all(not any(case.find(tag) is not None for tag in ("failure", "error", "skipped"))[0m
+2026-11-28T09:56:29.7314055Z [36;1m               for case in cases), "Every selected case must pass without a skip or expected failure."[0m
+2026-11-28T09:56:29.7314596Z [36;1m    assert origins() == proof.before, "Selected module origin/content changed during acceptance."[0m
+2026-11-28T09:56:29.7315087Z [36;1m    assert package_inventory(source) == expected, "Checkout Python inventory changed."[0m
+2026-11-28T09:56:29.7315560Z [36;1m    assert package_inventory(installed) == expected, "Installed Python inventory changed."[0m
+2026-11-28T09:56:29.7316011Z [36;1m    assert checkout_head() == commit_before, "The checked-out commit changed."[0m
+2026-11-28T09:56:29.7316506Z [36;1m    assert sha256(Path(__file__).read_bytes()).hexdigest() == helper_before, "The executed proof helper changed."[0m
+2026-11-28T09:56:29.7317138Z [36;1m    assert {suite: sha256((root / suite).read_bytes()).hexdigest() for suite in suites} == tests_before, "Executed test bytes changed."[0m
+2026-11-28T09:56:29.7317636Z [36;1m    result = {"status": "PASS", "mode": mode, "cases": len(cases),[0m
+2026-11-28T09:56:29.7318029Z [36;1m              "qualification": "IMPORT_CANCELLATION_PUBLICATION_AND_OWNER_CONTRACTS",[0m
+2026-11-28T09:56:29.7318440Z [36;1m              "actual_ocr_models": "NOT_RUN", "large_corpus": "NOT_RUN",[0m
+2026-11-28T09:56:29.7318833Z [36;1m              "actual_neural_model_quality": "NOT_RUN",[0m
+2026-11-28T09:56:29.7319328Z [36;1m              "commit": commit_before, "proof_helper_sha256": helper_before,[0m
+2026-11-28T09:56:29.7319721Z [36;1m              "test_files": tests_before,[0m
+2026-11-28T09:56:29.7320142Z [36;1m              "selected_suites": proof.collected, "package_python_files": sum(name.endswith(".py") for name in expected),[0m
+2026-11-28T09:56:29.7320600Z [36;1m              "package_inventory_files": len(expected),[0m
+2026-11-28T09:56:29.7321016Z [36;1m              "package_inventory_sha256": inventory_digest, "origins": proof.before,[0m
+2026-11-28T09:56:29.7321452Z [36;1m              "physical_microphone": "NOT_RUN", "physical_output": "NOT_RUN", "NVDA": "NOT_RUN"}[0m
+2026-11-28T09:56:29.7321857Z [36;1m    (artifacts / (mode + "-identity.json")).write_text([0m
+2026-11-28T09:56:29.7322247Z [36;1m        json.dumps(result, sort_keys=True, indent=2) + "\n", encoding="utf-8")[0m
+2026-11-28T09:56:29.7322608Z [36;1m    print(json.dumps(result, sort_keys=True))[0m
+2026-11-28T09:56:29.7322855Z [36;1mPY[0m
+2026-11-28T09:56:29.7347331Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+2026-11-28T09:56:29.7347659Z env:
+2026-11-28T09:56:29.7348066Z   CARR_IMPORT_HEAD: 5b87b13974d57d1aeb59f92c78c0f64366fd8a8c
+2026-11-28T09:56:29.7348374Z   PYTHONUTF8: 1
+2026-11-28T09:56:29.7348589Z   PYTHONDONTWRITEBYTECODE: 1
+2026-11-28T09:56:29.7348875Z   HF_HUB_OFFLINE: 1
+2026-11-28T09:56:29.7349092Z   TRANSFORMERS_OFFLINE: 1
+2026-11-28T09:56:29.7349607Z   DO_NOT_TRACK: 1
+2026-11-28T09:56:29.7349831Z   PYTEST_DISABLE_PLUGIN_AUTOLOAD: 1
+2026-11-28T09:56:29.7350101Z   pythonLocation: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T09:56:29.7350589Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.11.18/x64/lib/pkgconfig
+2026-11-28T09:56:29.7350945Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T09:56:29.7351301Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T09:56:29.7351653Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T09:56:29.7351964Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.11.18/x64/lib
+2026-11-28T09:56:29.7352261Z ##[endgroup]
+2026-11-28T09:56:29.7444982Z ##[group]Run unset PYTHONPATH PYTEST_ADDOPTS PYTEST_PLUGINS
+2026-11-28T09:56:29.7445353Z [36;1munset PYTHONPATH PYTEST_ADDOPTS PYTEST_PLUGINS[0m
+2026-11-28T09:56:29.7445791Z [36;1mpython -B -X utf8 ci-import-cancellation/check.py source 2>&1 | tee ci-import-cancellation/source.txt[0m
+2026-11-28T09:56:29.7465608Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+2026-11-28T09:56:29.7465996Z env:
+2026-11-28T09:56:29.7466269Z   CARR_IMPORT_HEAD: 5b87b13974d57d1aeb59f92c78c0f64366fd8a8c
+2026-11-28T09:56:29.7466568Z   PYTHONUTF8: 1
+2026-11-28T09:56:29.7466800Z   PYTHONDONTWRITEBYTECODE: 1
+2026-11-28T09:56:29.7467031Z   HF_HUB_OFFLINE: 1
+2026-11-28T09:56:29.7467256Z   TRANSFORMERS_OFFLINE: 1
+2026-11-28T09:56:29.7467482Z   DO_NOT_TRACK: 1
+2026-11-28T09:56:29.7467700Z   PYTEST_DISABLE_PLUGIN_AUTOLOAD: 1
+2026-11-28T09:56:29.7468020Z   pythonLocation: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T09:56:29.7468467Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.11.18/x64/lib/pkgconfig
+2026-11-28T09:56:29.7468851Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T09:56:29.7469390Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T09:56:29.7469738Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T09:56:29.7470061Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.11.18/x64/lib
+2026-11-28T09:56:29.7470333Z ##[endgroup]
+2026-11-28T09:56:30.6258803Z ============================= test session starts ==============================
+2026-11-28T09:56:30.6259846Z platform linux -- Python 3.11.18, pytest-9.0.2, pluggy-1.7.0 -- /opt/hostedtoolcache/Python/3.11.18/x64/bin/python
+2026-11-28T09:56:30.6260829Z cachedir: .pytest_cache
+2026-11-28T09:56:30.6261587Z rootdir: /home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library
+2026-11-28T09:56:30.6262113Z configfile: pyproject.toml
+2026-11-28T09:56:31.1387612Z collecting ... collected 141 items
+2026-11-28T09:56:31.1387925Z 
+2026-11-28T09:56:34.0777308Z tests/operations/test_ocr_admission.py::test_actual_isolated_pdf_import_reserves_both_volumes_and_complete_replay_bypasses_admission[temporary-root] PASSED [  0%]
+2026-11-28T09:56:34.4673906Z tests/operations/test_ocr_admission.py::test_actual_isolated_pdf_import_reserves_both_volumes_and_complete_replay_bypasses_admission[temporary-alias] PASSED [  1%]
+2026-11-28T09:56:34.4943803Z tests/operations/test_ocr_admission.py::test_ocr_resource_wait_cancel_is_durable_and_starts_no_parser PASSED [  2%]
+2026-11-28T09:56:34.6211772Z tests/operations/test_ocr_admission.py::test_ocr_resource_timeout_retains_resumable_request_without_native_start PASSED [  2%]
+2026-11-28T09:56:35.0685630Z tests/operations/test_ocr_admission.py::test_workspace_archived_while_ocr_waits_is_reauthorized_before_launch PASSED [  3%]
+2026-11-28T09:56:35.4632744Z tests/operations/test_ocr_admission.py::test_fresh_precancelled_request_is_durable_then_reuses_its_real_worker_identity PASSED [  4%]
+2026-11-28T09:56:35.4833798Z tests/operations/test_ocr_admission.py::test_precancelled_resume_does_not_rewrite_an_explicitly_prepared_request PASSED [  4%]
+2026-11-28T09:56:35.5642506Z tests/operations/test_ocr_admission.py::test_fresh_waiting_outcome_cannot_overwrite_a_changed_current_record[cancelled] PASSED [  5%]
+2026-11-28T09:56:38.5934224Z tests/operations/test_ocr_admission.py::test_fresh_waiting_outcome_cannot_overwrite_a_changed_current_record[timed_out] PASSED [  6%]
+2026-11-28T09:56:38.6520525Z tests/e2e/test_import_files_cancellation.py::test_cancel_after_committed_text_leaves_next_original_unopened PASSED [  7%]
+2026-11-28T09:56:38.6597753Z tests/e2e/test_import_files_cancellation.py::test_precancelled_selection_opens_no_source PASSED [  7%]
+2026-11-28T09:56:38.6674944Z tests/e2e/test_import_files_cancellation.py::test_interrupted_error_is_acknowledged_cancellation_and_stops_selection PASSED [  8%]
+2026-11-28T09:56:38.6750469Z tests/e2e/test_import_files_cancellation.py::test_cancelled_receipt_stops_even_if_later_callback_is_clear PASSED [  9%]
+2026-11-28T09:56:38.6974706Z tests/e2e/test_import_files_cancellation.py::test_ordinary_file_error_does_not_cancel_later_valid_source PASSED [  9%]
+2026-11-28T09:56:38.7471451Z tests/e2e/test_import_files_cancellation.py::test_late_cancel_keeps_real_parsing_descriptor_through_commit_and_stops_next_input PASSED [ 10%]
+2026-11-28T09:56:38.7678201Z tests/e2e/test_import_files_cancellation.py::test_cancellation_before_real_text_publication_still_rolls_back PASSED [ 11%]
+2026-11-28T09:56:38.7904472Z tests/e2e/test_import_files_cancellation.py::test_postcommit_staged_mutation_is_not_hidden_by_late_cancellation PASSED [ 12%]
+2026-11-28T09:56:38.8202092Z tests/e2e/test_import_files_cancellation.py::test_recovered_revision_never_acquires_this_runs_publication_latch PASSED [ 12%]
+2026-11-28T09:56:38.8390377Z tests/ingest/test_pipeline.py::test_resume_dedup_exact_text_and_isolation PASSED [ 13%]
+2026-11-28T09:56:38.8529828Z tests/ingest/test_pipeline.py::test_cancel_and_retry PASSED              [ 14%]
+2026-11-28T09:56:38.8616877Z tests/ingest/test_pipeline.py::test_changed_original_rejected PASSED     [ 14%]
+2026-11-28T09:56:38.8758301Z tests/ingest/test_pipeline.py::test_failure_before_commit_and_recovery PASSED [ 15%]
+2026-11-28T09:56:38.8888800Z tests/ingest/test_pipeline.py::test_crash_after_storage_commit PASSED    [ 16%]
+2026-11-28T09:56:38.8993426Z tests/ingest/test_pipeline.py::test_checkpoint_tamper PASSED             [ 17%]
+2026-11-28T09:56:39.1633055Z tests/ingest/test_pipeline.py::test_pdf_native_and_quarantine PASSED     [ 17%]
+2026-11-28T09:56:39.1792579Z tests/ingest/test_pipeline.py::test_stale_job_cannot_replace_new_revision PASSED [ 18%]
+2026-11-28T09:56:39.1840727Z tests/ingest/test_pipeline.py::test_invalid_path_and_mismatched_extension PASSED [ 19%]
+2026-11-28T09:56:40.1738514Z tests/ingest/test_checkpoint_streaming.py::test_actual_2001_segments_resume_and_publish_without_collecting_checkpoint_text PASSED [ 19%]
+2026-11-28T09:56:40.1822084Z tests/ingest/test_checkpoint_streaming.py::test_unknown_journal_write_cannot_reuse_a_previous_checked_generation[False] PASSED [ 20%]
+2026-11-28T09:56:40.1904467Z tests/ingest/test_checkpoint_streaming.py::test_unknown_journal_write_cannot_reuse_a_previous_checked_generation[True] PASSED [ 21%]
+2026-11-28T09:56:40.1999838Z tests/ingest/test_checkpoint_streaming.py::test_changed_journal_during_streamed_publication_rolls_back_actual_storage PASSED [ 21%]
+2026-11-28T09:56:40.2240264Z tests/ingest/test_checkpoint_streaming.py::test_selected_step_budget_leaves_exact_checkpoints_for_explicit_resume PASSED [ 22%]
+2026-11-28T09:56:40.6192140Z tests/ingest/test_worker_attempt_receipts.py::test_other_language_publication_cannot_recover_a_failed_request PASSED [ 23%]
+2026-11-28T09:56:40.9390225Z tests/ingest/test_worker_attempt_receipts.py::test_other_exact_publication_cannot_recover_a_cancelled_replay PASSED [ 24%]
+2026-11-28T09:56:41.5496954Z tests/ingest/test_worker_attempt_receipts.py::test_fresh_attempt_of_same_request_cannot_borrow_prior_receipt PASSED [ 24%]
+2026-11-28T09:56:41.8504258Z tests/ingest/test_worker_attempt_receipts.py::test_native_exit_after_receipt_and_revision_staging_rolls_back_everything PASSED [ 25%]
+2026-11-28T09:56:42.1884555Z tests/ingest/test_worker_attempt_receipts.py::test_receipt_is_immutable_and_cannot_be_added_to_a_sealed_revision[update] PASSED [ 26%]
+2026-11-28T09:56:42.5264979Z tests/ingest/test_worker_attempt_receipts.py::test_receipt_is_immutable_and_cannot_be_added_to_a_sealed_revision[delete] PASSED [ 26%]
+2026-11-28T09:56:42.8731891Z tests/ingest/test_worker_attempt_receipts.py::test_receipt_is_immutable_and_cannot_be_added_to_a_sealed_revision[replace] PASSED [ 27%]
+2026-11-28T09:56:43.2122812Z tests/ingest/test_worker_attempt_receipts.py::test_receipt_is_immutable_and_cannot_be_added_to_a_sealed_revision[replay] PASSED [ 28%]
+2026-11-28T09:56:43.9404168Z tests/ingest/test_worker_attempt_receipts.py::test_receipt_and_source_identity_survive_restore_without_reusing_the_attempt PASSED [ 29%]
+2026-11-28T09:56:44.2340597Z tests/ingest/test_worker_attempt_receipts.py::test_superseded_txt_recovery_does_not_claim_verified_completion PASSED [ 29%]
+2026-11-28T09:56:44.5549346Z tests/ingest/test_worker_attempt_receipts.py::test_after_child_stop_other_publisher_cannot_complete_request[uk-cancel] PASSED [ 30%]
+2026-11-28T09:56:44.8716698Z tests/ingest/test_worker_attempt_receipts.py::test_after_child_stop_other_publisher_cannot_complete_request[uk-crash] PASSED [ 31%]
+2026-11-28T09:56:45.1928709Z tests/ingest/test_worker_attempt_receipts.py::test_after_child_stop_other_publisher_cannot_complete_request[en-cancel] PASSED [ 31%]
+2026-11-28T09:56:45.5117564Z tests/ingest/test_worker_attempt_receipts.py::test_after_child_stop_other_publisher_cannot_complete_request[en-crash] PASSED [ 32%]
+2026-11-28T09:56:45.8096784Z tests/ingest/test_worker_publication_boundary.py::test_durable_publication_survives_stopped_worker[cancel-docx] PASSED [ 33%]
+2026-11-28T09:56:46.0942671Z tests/ingest/test_worker_publication_boundary.py::test_durable_publication_survives_stopped_worker[cancel-epub] PASSED [ 34%]
+2026-11-28T09:56:46.4324204Z tests/ingest/test_worker_publication_boundary.py::test_durable_publication_survives_stopped_worker[cancel-pdf] PASSED [ 34%]
+2026-11-28T09:56:46.6792331Z tests/ingest/test_worker_publication_boundary.py::test_durable_publication_survives_stopped_worker[cancel-txt] PASSED [ 35%]
+2026-11-28T09:56:46.9647767Z tests/ingest/test_worker_publication_boundary.py::test_durable_publication_survives_stopped_worker[cancel-md] PASSED [ 36%]
+2026-11-28T09:56:47.2669979Z tests/ingest/test_worker_publication_boundary.py::test_durable_publication_survives_stopped_worker[timeout-docx] PASSED [ 36%]
+2026-11-28T09:56:47.5522261Z tests/ingest/test_worker_publication_boundary.py::test_durable_publication_survives_stopped_worker[timeout-epub] PASSED [ 37%]
+2026-11-28T09:56:47.8884621Z tests/ingest/test_worker_publication_boundary.py::test_durable_publication_survives_stopped_worker[timeout-pdf] PASSED [ 38%]
+2026-11-28T09:56:48.1341981Z tests/ingest/test_worker_publication_boundary.py::test_durable_publication_survives_stopped_worker[timeout-txt] PASSED [ 39%]
+2026-11-28T09:56:48.4195516Z tests/ingest/test_worker_publication_boundary.py::test_durable_publication_survives_stopped_worker[timeout-md] PASSED [ 39%]
+2026-11-28T09:56:48.7140218Z tests/ingest/test_worker_publication_boundary.py::test_durable_publication_survives_stopped_worker[crash-docx] PASSED [ 40%]
+2026-11-28T09:56:48.9957104Z tests/ingest/test_worker_publication_boundary.py::test_durable_publication_survives_stopped_worker[crash-epub] PASSED [ 41%]
+2026-11-28T09:56:49.3282687Z tests/ingest/test_worker_publication_boundary.py::test_durable_publication_survives_stopped_worker[crash-pdf] PASSED [ 41%]
+2026-11-28T09:56:49.5755239Z tests/ingest/test_worker_publication_boundary.py::test_durable_publication_survives_stopped_worker[crash-txt] PASSED [ 42%]
+2026-11-28T09:56:49.8578813Z tests/ingest/test_worker_publication_boundary.py::test_durable_publication_survives_stopped_worker[crash-md] PASSED [ 43%]
+2026-11-28T09:56:50.1488525Z tests/ingest/test_worker_publication_boundary.py::test_precommit_cancellation_remains_cancelled_without_publication PASSED [ 43%]
+2026-11-28T09:56:50.1760393Z tests/ingest/test_worker_publication_boundary.py::test_prelaunch_cancellation_never_starts_or_recovers_a_worker PASSED [ 44%]
+2026-11-28T09:56:50.7869661Z tests/ingest/test_worker_publication_boundary.py::test_preexisting_replay_is_not_new_completion_after_cancel PASSED [ 45%]
+2026-11-28T09:56:51.1313156Z tests/ingest/test_worker_publication_boundary.py::test_changed_request_identity_cannot_authorize_reconciliation[scope] PASSED [ 46%]
+2026-11-28T09:56:51.4816606Z tests/ingest/test_worker_publication_boundary.py::test_changed_request_identity_cannot_authorize_reconciliation[work] PASSED [ 46%]
+2026-11-28T09:56:51.8304035Z tests/ingest/test_worker_publication_boundary.py::test_changed_request_identity_cannot_authorize_reconciliation[asset] PASSED [ 47%]
+2026-11-28T09:56:52.1723011Z tests/ingest/test_worker_publication_boundary.py::test_changed_request_identity_cannot_authorize_reconciliation[configuration] PASSED [ 48%]
+2026-11-28T09:56:52.5198900Z tests/ingest/test_worker_publication_boundary.py::test_changed_request_identity_cannot_authorize_reconciliation[language] PASSED [ 48%]
+2026-11-28T09:56:52.8677755Z tests/ingest/test_worker_publication_boundary.py::test_corrupted_retained_bytes_cannot_authorize_reconciliation PASSED [ 49%]
+2026-11-28T09:56:53.1903437Z tests/ingest/test_worker_publication_boundary.py::test_other_import_after_parent_snapshot_is_not_this_workers_commit PASSED [ 50%]
+2026-11-28T09:56:53.5603073Z tests/ingest/test_worker_publication_boundary.py::test_another_requests_fresh_publication_cannot_hide_metadata_or_membership_failure[language] PASSED [ 51%]
+2026-11-28T09:56:53.9307098Z tests/ingest/test_worker_publication_boundary.py::test_another_requests_fresh_publication_cannot_hide_metadata_or_membership_failure[authors] PASSED [ 51%]
+2026-11-28T09:56:54.2987595Z tests/ingest/test_worker_publication_boundary.py::test_another_requests_fresh_publication_cannot_hide_metadata_or_membership_failure[title] PASSED [ 52%]
+2026-11-28T09:56:54.6686151Z tests/ingest/test_worker_publication_boundary.py::test_another_requests_fresh_publication_cannot_hide_metadata_or_membership_failure[edition] PASSED [ 53%]
+2026-11-28T09:56:55.0388327Z tests/ingest/test_worker_publication_boundary.py::test_another_requests_fresh_publication_cannot_hide_metadata_or_membership_failure[volume] PASSED [ 53%]
+2026-11-28T09:56:55.4081636Z tests/ingest/test_worker_publication_boundary.py::test_another_requests_fresh_publication_cannot_hide_metadata_or_membership_failure[work] PASSED [ 54%]
+2026-11-28T09:56:55.7294660Z tests/ingest/test_worker_publication_boundary.py::test_another_requests_fresh_publication_cannot_hide_metadata_or_membership_failure[collections] PASSED [ 55%]
+2026-11-28T09:56:56.2802344Z tests/ingest/test_worker_publication_boundary.py::test_pdf_resume_attempt_rejects_a_replaced_frozen_job_or_config[job] PASSED [ 56%]
+2026-11-28T09:56:56.8284732Z tests/ingest/test_worker_publication_boundary.py::test_pdf_resume_attempt_rejects_a_replaced_frozen_job_or_config[configuration] PASSED [ 56%]
+2026-11-28T09:56:57.2174997Z tests/ingest/test_worker_publication_boundary.py::test_pdf_reconciliation_rechecks_config_against_a_valid_captured_attempt[job] PASSED [ 57%]
+2026-11-28T09:56:57.6060171Z tests/ingest/test_worker_publication_boundary.py::test_pdf_reconciliation_rechecks_config_against_a_valid_captured_attempt[missing-job] PASSED [ 58%]
+2026-11-28T09:56:57.9946551Z tests/ingest/test_worker_publication_boundary.py::test_pdf_reconciliation_rechecks_config_against_a_valid_captured_attempt[null-job] PASSED [ 58%]
+2026-11-28T09:56:58.3804652Z tests/ingest/test_worker_publication_boundary.py::test_pdf_reconciliation_rechecks_config_against_a_valid_captured_attempt[configuration] PASSED [ 59%]
+2026-11-28T09:56:58.9677752Z tests/ingest/test_worker_publication_boundary.py::test_legacy_watermark_survives_backup_validation_but_is_not_restored[None] PASSED [ 60%]
+2026-11-28T09:56:59.5567219Z tests/ingest/test_worker_publication_boundary.py::test_legacy_watermark_survives_backup_validation_but_is_not_restored[0] PASSED [ 60%]
+2026-11-28T09:56:59.8472267Z tests/ingest/test_worker_publication_boundary.py::test_malformed_legacy_watermark_cannot_enter_backup[True] PASSED [ 61%]
+2026-11-28T09:57:00.1364089Z tests/ingest/test_worker_publication_boundary.py::test_malformed_legacy_watermark_cannot_enter_backup[-1] PASSED [ 62%]
+2026-11-28T09:57:00.4257520Z tests/ingest/test_worker_publication_boundary.py::test_malformed_legacy_watermark_cannot_enter_backup[9223372036854775808] PASSED [ 63%]
+2026-11-28T09:57:00.7162726Z tests/ingest/test_worker_publication_boundary.py::test_malformed_legacy_watermark_cannot_enter_backup[0] PASSED [ 63%]
+2026-11-28T09:57:01.5420221Z tests/ingest/test_worker_isolated_launch.py::test_real_import_and_render_ignore_substitute_modules[source-False] PASSED [ 64%]
+2026-11-28T09:57:02.3683452Z tests/ingest/test_worker_isolated_launch.py::test_real_import_and_render_ignore_substitute_modules[source-True] PASSED [ 65%]
+2026-11-28T09:57:03.2176353Z tests/ingest/test_worker_isolated_launch.py::test_real_import_and_render_ignore_substitute_modules[installed-False] PASSED [ 65%]
+2026-11-28T09:57:04.0698307Z tests/ingest/test_worker_isolated_launch.py::test_real_import_and_render_ignore_substitute_modules[installed-True] PASSED [ 66%]
+2026-11-28T09:57:04.2591191Z tests/ingest/test_canonical_publication_binding.py::test_actual_child_rejects_sidecar_change_after_parent_fingerprint[source] PASSED [ 67%]
+2026-11-28T09:57:04.4524982Z tests/ingest/test_canonical_publication_binding.py::test_actual_child_rejects_sidecar_change_after_parent_fingerprint[configuration] PASSED [ 68%]
+2026-11-28T09:57:04.6399613Z tests/ingest/test_canonical_publication_binding.py::test_actual_child_rejects_sidecar_change_after_parent_fingerprint[metadata] PASSED [ 68%]
+2026-11-28T09:57:04.8276593Z tests/ingest/test_canonical_publication_binding.py::test_actual_child_rejects_sidecar_change_after_parent_fingerprint[attempt] PASSED [ 69%]
+2026-11-28T09:57:05.1711775Z tests/ingest/test_canonical_publication_binding.py::test_actual_publication_uses_frozen_attempt_instead_of_mutable_sidecar[attempt] PASSED [ 70%]
+2026-11-28T09:57:05.5101567Z tests/ingest/test_canonical_publication_binding.py::test_actual_publication_uses_frozen_attempt_instead_of_mutable_sidecar[source] PASSED [ 70%]
+2026-11-28T09:57:05.7583467Z tests/ingest/test_competing_publication_receipts.py::test_competing_publication_never_borrows_current_attempt[direct-txt] PASSED [ 71%]
+2026-11-28T09:57:06.1134424Z tests/ingest/test_competing_publication_receipts.py::test_competing_publication_never_borrows_current_attempt[direct-pdf] PASSED [ 72%]
+2026-11-28T09:57:06.4390790Z tests/ingest/test_competing_publication_receipts.py::test_competing_publication_never_borrows_current_attempt[direct-docx] PASSED [ 73%]
+2026-11-28T09:57:06.9370938Z tests/ingest/test_competing_publication_receipts.py::test_competing_publication_never_borrows_current_attempt[second-request-txt] PASSED [ 73%]
+2026-11-28T09:57:07.5862793Z tests/ingest/test_competing_publication_receipts.py::test_competing_publication_never_borrows_current_attempt[second-request-pdf] PASSED [ 74%]
+2026-11-28T09:57:08.2000926Z tests/ingest/test_competing_publication_receipts.py::test_competing_publication_never_borrows_current_attempt[second-request-docx] PASSED [ 75%]
+2026-11-28T09:57:08.7004978Z tests/ingest/test_competing_publication_receipts.py::test_competing_publication_never_borrows_current_attempt[forged-sidecar-txt] PASSED [ 75%]
+2026-11-28T09:57:09.3504481Z tests/ingest/test_competing_publication_receipts.py::test_competing_publication_never_borrows_current_attempt[forged-sidecar-pdf] PASSED [ 76%]
+2026-11-28T09:57:09.9670104Z tests/ingest/test_competing_publication_receipts.py::test_competing_publication_never_borrows_current_attempt[forged-sidecar-docx] PASSED [ 77%]
+2026-11-28T09:57:10.0177373Z tests/ingest/test_import_publication_point.py::test_cancel_after_committed_publication_returns_complete_and_keeps_replay_guard[txt] PASSED [ 78%]
+2026-11-28T09:57:10.0965933Z tests/ingest/test_import_publication_point.py::test_cancel_after_committed_publication_returns_complete_and_keeps_replay_guard[pdf] PASSED [ 78%]
+2026-11-28T09:57:10.1263793Z tests/ingest/test_initial_publication_completion.py::test_cancel_after_first_durable_publication_does_not_report_failure[txt] PASSED [ 79%]
+2026-11-28T09:57:10.1770496Z tests/ingest/test_initial_publication_completion.py::test_cancel_after_first_durable_publication_does_not_report_failure[pdf] PASSED [ 80%]
+2026-11-28T09:57:10.2044721Z tests/ingest/test_initial_publication_completion.py::test_first_publication_does_not_repeat_committed_catalog_registration[txt] PASSED [ 80%]
+2026-11-28T09:57:10.2545378Z tests/ingest/test_initial_publication_completion.py::test_first_publication_does_not_repeat_committed_catalog_registration[pdf] PASSED [ 81%]
+2026-11-28T09:57:10.3010118Z tests/ingest/test_terminal_replay_registration.py::test_terminal_replay_registration_is_invisible_until_accepted[txt] PASSED [ 82%]
+2026-11-28T09:57:10.3864658Z tests/ingest/test_terminal_replay_registration.py::test_terminal_replay_registration_is_invisible_until_accepted[pdf] PASSED [ 82%]
+2026-11-28T09:57:10.4389589Z tests/ingest/test_terminal_replay_registration.py::test_superseded_replay_uses_current_metadata_without_reactivating_old_source[txt] PASSED [ 83%]
+2026-11-28T09:57:10.5274397Z tests/ingest/test_terminal_replay_registration.py::test_superseded_replay_uses_current_metadata_without_reactivating_old_source[pdf] PASSED [ 84%]
+2026-11-28T09:57:10.5595310Z tests/ingest/test_terminal_replay_registration.py::test_cancelled_completed_replay_does_not_add_memberships[txt] PASSED [ 85%]
+2026-11-28T09:57:10.6165506Z tests/ingest/test_terminal_replay_registration.py::test_cancelled_completed_replay_does_not_add_memberships[pdf] PASSED [ 85%]
+2026-11-28T09:57:10.6528572Z tests/ingest/test_terminal_replay_registration.py::test_replay_rejects_rehashed_checkpoint_text_before_registration[txt] PASSED [ 86%]
+2026-11-28T09:57:10.7175644Z tests/ingest/test_terminal_replay_registration.py::test_replay_rejects_rehashed_checkpoint_text_before_registration[pdf] PASSED [ 87%]
+2026-11-28T09:57:10.7430916Z tests/ingest/test_terminal_replay_registration.py::test_forged_terminal_journal_without_published_source_does_not_register[complete] PASSED [ 87%]
+2026-11-28T09:57:10.7683990Z tests/ingest/test_terminal_replay_registration.py::test_forged_terminal_journal_without_published_source_does_not_register[superseded] PASSED [ 88%]
+2026-11-28T09:57:10.8642567Z tests/ingest/test_txt_replay_registration.py::test_txt_replay_registration_is_atomic PASSED [ 89%]
+2026-11-28T09:57:10.9025217Z tests/ingest/test_txt_replay_registration.py::test_txt_replay_rejects_conflicting_identity PASSED [ 90%]
+2026-11-28T09:57:10.9363618Z tests/ingest/test_txt_replay_registration.py::test_cancelled_completed_replay_never_adds_membership PASSED [ 90%]
+2026-11-28T09:57:10.9741251Z tests/ingest/test_txt_replay_registration.py::test_cancellation_during_completed_replay_validation_rolls_back_membership PASSED [ 91%]
+2026-11-28T09:57:11.0275828Z tests/ingest/test_txt_replay_registration.py::test_superseded_replay_requires_current_metadata_without_reactivation PASSED [ 92%]
+2026-11-28T09:57:11.0597262Z tests/ingest/test_txt_replay_registration.py::test_cancelled_completed_replay_preserves_membership PASSED [ 92%]
+2026-11-28T09:57:11.1241588Z tests/ingest/test_txt_replay_registration.py::test_pdf_completed_replay_registers_exact_source_without_approving_it PASSED [ 93%]
+2026-11-28T09:57:11.4754274Z tests/ingest/test_import_slice_ownership.py::test_completed_real_leader_cannot_leave_a_source_holding_descendant PASSED [ 94%]
+2026-11-28T09:57:12.1497683Z tests/ingest/test_import_slice_ownership.py::test_cancel_after_first_actual_publication_recovers_only_its_attempt PASSED [ 95%]
+2026-11-28T09:57:12.4674406Z tests/ingest/test_import_slice_ownership.py::test_changed_middle_frozen_row_has_no_source_or_publication_side_effect PASSED [ 95%]
+2026-11-28T09:57:12.7683079Z tests/ingest/test_import_slice_ownership.py::test_same_attempt_result_rewrite_after_child_acknowledgement_is_refused PASSED [ 96%]
+2026-11-28T09:57:13.6172162Z tests/ingest/test_import_slice_ownership.py::test_pending_native_ack_retains_batch_admission_and_private_input_until_same_owner_closes PASSED [ 97%]
+2026-11-28T09:57:13.9102526Z tests/ingest/test_import_reconciliation.py::test_whole_store_check_precedes_all_receipts_on_the_same_held_connection PASSED [ 97%]
+2026-11-28T09:57:14.1996839Z tests/ingest/test_import_reconciliation.py::test_real_competing_commit_is_excluded_until_the_checked_snapshot_closes PASSED [ 98%]
+2026-11-28T09:57:14.4883635Z tests/ingest/test_import_reconciliation.py::test_unexpected_same_connection_write_invalidates_the_bounded_snapshot PASSED [ 99%]
+2026-11-28T09:57:14.8811154Z tests/ingest/test_import_reconciliation.py::test_held_context_rejects_foreign_scope_and_equal_byte_database_alias PASSED [100%]
+2026-11-28T09:57:14.8811694Z 
+2026-11-28T09:57:14.8812288Z - generated xml file: /home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/ci-import-cancellation/source.xml -
+2026-11-28T09:57:14.8813065Z ============================= slowest 20 durations =============================
+2026-11-28T09:57:14.8813752Z 3.03s call     tests/operations/test_ocr_admission.py::test_fresh_waiting_outcome_cannot_overwrite_a_changed_current_record[timed_out]
+2026-11-28T09:57:14.8814544Z 2.93s call     tests/operations/test_ocr_admission.py::test_actual_isolated_pdf_import_reserves_both_volumes_and_complete_replay_bypasses_admission[temporary-root]
+2026-11-28T09:57:14.8815307Z 0.99s call     tests/ingest/test_checkpoint_streaming.py::test_actual_2001_segments_resume_and_publish_without_collecting_checkpoint_text
+2026-11-28T09:57:14.8815945Z 0.85s call     tests/ingest/test_worker_isolated_launch.py::test_real_import_and_render_ignore_substitute_modules[installed-True]
+2026-11-28T09:57:14.8816613Z 0.85s call     tests/ingest/test_import_slice_ownership.py::test_pending_native_ack_retains_batch_admission_and_private_input_until_same_owner_closes
+2026-11-28T09:57:14.8817271Z 0.85s call     tests/ingest/test_worker_isolated_launch.py::test_real_import_and_render_ignore_substitute_modules[installed-False]
+2026-11-28T09:57:14.8817868Z 0.82s call     tests/ingest/test_worker_isolated_launch.py::test_real_import_and_render_ignore_substitute_modules[source-True]
+2026-11-28T09:57:14.8818486Z 0.82s call     tests/ingest/test_worker_isolated_launch.py::test_real_import_and_render_ignore_substitute_modules[source-False]
+2026-11-28T09:57:14.8819114Z 0.73s call     tests/ingest/test_worker_attempt_receipts.py::test_receipt_and_source_identity_survive_restore_without_reusing_the_attempt
+2026-11-28T09:57:14.8819956Z 0.67s call     tests/ingest/test_import_slice_ownership.py::test_cancel_after_first_actual_publication_recovers_only_its_attempt
+2026-11-28T09:57:14.8820713Z 0.65s call     tests/ingest/test_competing_publication_receipts.py::test_competing_publication_never_borrows_current_attempt[forged-sidecar-pdf]
+2026-11-28T09:57:14.8821413Z 0.65s call     tests/ingest/test_competing_publication_receipts.py::test_competing_publication_never_borrows_current_attempt[second-request-pdf]
+2026-11-28T09:57:14.8822130Z 0.62s call     tests/ingest/test_competing_publication_receipts.py::test_competing_publication_never_borrows_current_attempt[forged-sidecar-docx]
+2026-11-28T09:57:14.8822837Z 0.61s call     tests/ingest/test_competing_publication_receipts.py::test_competing_publication_never_borrows_current_attempt[second-request-docx]
+2026-11-28T09:57:14.8823500Z 0.61s call     tests/ingest/test_worker_publication_boundary.py::test_preexisting_replay_is_not_new_completion_after_cancel
+2026-11-28T09:57:14.8824081Z 0.61s call     tests/ingest/test_worker_attempt_receipts.py::test_fresh_attempt_of_same_request_cannot_borrow_prior_receipt
+2026-11-28T09:57:14.8824683Z 0.59s call     tests/ingest/test_worker_publication_boundary.py::test_legacy_watermark_survives_backup_validation_but_is_not_restored[0]
+2026-11-28T09:57:14.8825349Z 0.59s call     tests/ingest/test_worker_publication_boundary.py::test_legacy_watermark_survives_backup_validation_but_is_not_restored[None]
+2026-11-28T09:57:14.8825975Z 0.55s call     tests/ingest/test_worker_publication_boundary.py::test_pdf_resume_attempt_rejects_a_replaced_frozen_job_or_config[job]
+2026-11-28T09:57:14.8826646Z 0.55s call     tests/ingest/test_worker_publication_boundary.py::test_pdf_resume_attempt_rejects_a_replaced_frozen_job_or_config[configuration]
+2026-11-28T09:57:14.8827144Z ============================= 141 passed in 44.16s =============================
+2026-11-28T09:57:14.9242621Z {"NVDA": "NOT_RUN", "actual_neural_model_quality": "NOT_RUN", "actual_ocr_models": "NOT_RUN", "cases": 141, "commit": "5b87b13974d57d1aeb59f92c78c0f64366fd8a8c", "large_corpus": "NOT_RUN", "mode": "source", "origins": {"carr_library.application": {"path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/application.py", "sha256": "9239ea355b5c5a38d24097720e2489bde7ba15ad7381aba6082eb187c7fe131a"}, "carr_library.audio.cleanup": {"path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/audio/cleanup.py", "sha256": "35af682e01736cee2b91b8ad2e10110aa7fb708b0584f60733f8fe2dd2600103"}, "carr_library.audio.process": {"path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/audio/process.py", "sha256": "70c485f69ffc5e5c26d29a3e56bccbf2cd231a45cb16668f42accc3c81a57bfb"}, "carr_library.catalog.intake": {"path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/catalog/intake.py", "sha256": "9ac86c0fce3a205d4e9dc2eb3f06f6a5bf85a82dfd643e858c06a2d12813ad28"}, "carr_library.durable_state": {"path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/durable_state.py", "sha256": "9b173d6cde27dd4362a920b01283cec0cbaaa42e4569f96e5b9bd24f6bd156b8"}, "carr_library.extract.document_formats": {"path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/extract/document_formats.py", "sha256": "560563bc55cce8f989c4b77591b3b8506a8e4256c4ebcc5f4c47a8c6f3b2ab01"}, "carr_library.extract.page_ocr": {"path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/extract/page_ocr.py", "sha256": "5cda8df281b7644f2e0037fc1427dded513a7e2dbdea9c744700f728bb648c41"}, "carr_library.ingest.batches": {"path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/ingest/batches.py", "sha256": "8f48ae93a34920d6cc857d93b4c165640e4d46fd085477b8f78c795ecde02e29"}, "carr_library.ingest.pipeline": {"path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/ingest/pipeline.py", "sha256": "6332c8ff35cd897e18a1ced4e0da4e2200f0d3f54229736d0aa85e80bed05e11"}, "carr_library.ingest.publication_identity": {"path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/ingest/publication_identity.py", "sha256": "7808ac278b60bb15e9b39512186b5118cc7741d7007fefa015e95fd5096ebc07"}, "carr_library.ingest.reconciliation": {"path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/ingest/reconciliation.py", "sha256": "48d6750a4f9bce48f3c6edb7c9076ddaa2737519f24a03ff9490f2741e479a71"}, "carr_library.ingest.resource_budget": {"path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/ingest/resource_budget.py", "sha256": "8ead273af549219f6ca48541e3f6be5f162e1299929d3c6718df9d356cd3f6fb"}, "carr_library.ingest.retained_assets": {"path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/ingest/retained_assets.py", "sha256": "9444911ed72158103d87e5551b2d7f24ab1b30b686af8a8788bf9f0a965e0eb6"}, "carr_library.ingest.session": {"path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/ingest/session.py", "sha256": "ced3447525e22ae557c25a70e27d47a97bdc1d57b4ee264a12085e3df5641598"}, "carr_library.ingest.slices": {"path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/ingest/slices.py", "sha256": "7fbe9314fc305d723e8f1f9260fad3c36c052867c30519058791cb14fd964376"}, "carr_library.ingest.worker": {"path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/ingest/worker.py", "sha256": "7d9892410b790fd3cebfd3336042ff52742dc1537829a45decbe9b97cc81456b"}, "carr_library.ingest.writer_guard": {"path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/ingest/writer_guard.py", "sha256": "4042fb16b57555aa94c40a8fd63ad06e4772d1f980f4d08d61bfdbff9b7f218c"}, "carr_library.operations.broker": {"path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/operations/broker.py", "sha256": "24940baa024716fb6e23bd052e427cbed17e2434098de3594e8cae47d307195b"}, "carr_library.operations.facade": {"path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/operations/facade.py", "sha256": "12226599f6d5411c0f9ca581c67cd9dc1ac81ace0641e61c506f1dc1ee7232da"}, "carr_library.operations.models": {"path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/operations/models.py", "sha256": "cb711ae7bde38c77fe039678afe1b57b56bd85d653fb982284fbef43f62b2545"}, "carr_library.storage.publication": {"path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/storage/publication.py", "sha256": "c70fc5e102613bd6ae1fa60f7640c9921c1325d615b377994c3abce4f49c60d7"}, "carr_library.storage.revisions": {"path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/storage/revisions.py", "sha256": "5d83c85838bbbf441618143106ffed4514e8185485955fdb310ec221cb08d419"}}, "package_inventory_files": 446, "package_inventory_sha256": "cd527d71040249d924dd50cdaad524eaab7c6bf5580a41808716872b0685e75a", "package_python_files": 426, "physical_microphone": "NOT_RUN", "physical_output": "NOT_RUN", "proof_helper_sha256": "83db7e17748edc67240972a70b96078f8c6c9d218c8bc560b8be364350011de5", "qualification": "IMPORT_CANCELLATION_PUBLICATION_AND_OWNER_CONTRACTS", "selected_suites": {"tests/e2e/test_import_files_cancellation.py": 9, "tests/ingest/test_canonical_publication_binding.py": 6, "tests/ingest/test_checkpoint_streaming.py": 5, "tests/ingest/test_competing_publication_receipts.py": 9, "tests/ingest/test_import_publication_point.py": 2, "tests/ingest/test_import_reconciliation.py": 4, "tests/ingest/test_import_slice_ownership.py": 5, "tests/ingest/test_initial_publication_completion.py": 4, "tests/ingest/test_pipeline.py": 9, "tests/ingest/test_terminal_replay_registration.py": 10, "tests/ingest/test_txt_replay_registration.py": 7, "tests/ingest/test_worker_attempt_receipts.py": 14, "tests/ingest/test_worker_isolated_launch.py": 4, "tests/ingest/test_worker_publication_boundary.py": 44, "tests/operations/test_ocr_admission.py": 9}, "status": "PASS", "test_files": {"tests/e2e/test_import_files_cancellation.py": "7b8360a046fbec3c6994c81da88baacc128250a5c157b5be2d5bc9ad94e8331a", "tests/ingest/test_canonical_publication_binding.py": "240daac77bdb741c8fe69e645f885a35957613918080831ad1328dc1e2920621", "tests/ingest/test_checkpoint_streaming.py": "a78f4723e2bfd88aeacd01ae28de82150e788ba5d4e7e13df01b566b5aa1a8e0", "tests/ingest/test_competing_publication_receipts.py": "d2dad37f096742389a79b25fd582de48ff1f74e74998cf5d852bd6d3579fddd0", "tests/ingest/test_import_publication_point.py": "e1ca953f2eb5d8883893136574bad3fd7f4a6f1c4700582dc0d1b1553c1250b5", "tests/ingest/test_import_reconciliation.py": "7683e985ed2e1d2bf6b898eb04b48920839ed828f3b98b8f5efaeaf4a60895a2", "tests/ingest/test_import_slice_ownership.py": "9a6378af7943be8649cdd7b8a89ae531e6ceb813da722edc0bb31d33b842d980", "tests/ingest/test_initial_publication_completion.py": "d645c7fa4dbfcda66b6193b0e2f11a068557409c9ab3960e60478c7269894584", "tests/ingest/test_pipeline.py": "a239541d5850c579a022043ace5b4a365ed623ebf87a8323efe1f60a22a8f769", "tests/ingest/test_terminal_replay_registration.py": "7d66dbf0b8da4fc875dd2f826ceb1167a0406a62c423ea655a7edee9dbfecc8a", "tests/ingest/test_txt_replay_registration.py": "7b2acf7d28cb38710fbcde8bb91fa27038f4c918bf4258f206e96ee477800958", "tests/ingest/test_worker_attempt_receipts.py": "0e1b560870e87c26fb6f46e239a68836aa67502f0f07acefb6aed67d71bf1423", "tests/ingest/test_worker_isolated_launch.py": "ca5c88a16123554ec5af56a757b93a6b027396a7a43ea28d45030ff430bf379b", "tests/ingest/test_worker_publication_boundary.py": "8f4c1a34f75e3685d9ed1ea914a9fa58cadc922ae8327b3a97501d65966150f5", "tests/operations/test_ocr_admission.py": "fc24713060fc572892868aff8410866a70d4c65326e56fe7d16618276cfa8347"}}
+2026-11-28T09:57:15.0043576Z ##[group]Run unset PYTHONPATH PYTEST_ADDOPTS PYTEST_PLUGINS
+2026-11-28T09:57:15.0043981Z [36;1munset PYTHONPATH PYTEST_ADDOPTS PYTEST_PLUGINS[0m
+2026-11-28T09:57:15.0044501Z [36;1mpython -I -B -X utf8 ci-import-cancellation/check.py installed 2>&1 | tee ci-import-cancellation/installed.txt[0m
+2026-11-28T09:57:15.0069973Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+2026-11-28T09:57:15.0070307Z env:
+2026-11-28T09:57:15.0070625Z   CARR_IMPORT_HEAD: 5b87b13974d57d1aeb59f92c78c0f64366fd8a8c
+2026-11-28T09:57:15.0070946Z   PYTHONUTF8: 1
+2026-11-28T09:57:15.0071185Z   PYTHONDONTWRITEBYTECODE: 1
+2026-11-28T09:57:15.0071424Z   HF_HUB_OFFLINE: 1
+2026-11-28T09:57:15.0071647Z   TRANSFORMERS_OFFLINE: 1
+2026-11-28T09:57:15.0071893Z   DO_NOT_TRACK: 1
+2026-11-28T09:57:15.0072126Z   PYTEST_DISABLE_PLUGIN_AUTOLOAD: 1
+2026-11-28T09:57:15.0072419Z   pythonLocation: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T09:57:15.0072876Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.11.18/x64/lib/pkgconfig
+2026-11-28T09:57:15.0073358Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T09:57:15.0073749Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T09:57:15.0074103Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T09:57:15.0074440Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.11.18/x64/lib
+2026-11-28T09:57:15.0074744Z ##[endgroup]
+2026-11-28T09:57:15.2905085Z ============================= test session starts ==============================
+2026-11-28T09:57:15.2905857Z platform linux -- Python 3.11.18, pytest-9.0.2, pluggy-1.7.0 -- /opt/hostedtoolcache/Python/3.11.18/x64/bin/python
+2026-11-28T09:57:15.2906343Z cachedir: .pytest_cache
+2026-11-28T09:57:15.2906694Z rootdir: /home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library
+2026-11-28T09:57:15.2907094Z configfile: pyproject.toml
+2026-11-28T09:57:15.6070179Z collecting ... collected 141 items
+2026-11-28T09:57:15.6070539Z 
+2026-11-28T09:57:15.9314405Z tests/operations/test_ocr_admission.py::test_actual_isolated_pdf_import_reserves_both_volumes_and_complete_replay_bypasses_admission[temporary-root] PASSED [  0%]
+2026-11-28T09:57:16.2187046Z tests/operations/test_ocr_admission.py::test_actual_isolated_pdf_import_reserves_both_volumes_and_complete_replay_bypasses_admission[temporary-alias] PASSED [  1%]
+2026-11-28T09:57:16.2450785Z tests/operations/test_ocr_admission.py::test_ocr_resource_wait_cancel_is_durable_and_starts_no_parser PASSED [  2%]
+2026-11-28T09:57:16.3704619Z tests/operations/test_ocr_admission.py::test_ocr_resource_timeout_retains_resumable_request_without_native_start PASSED [  2%]
+2026-11-28T09:57:16.7162269Z tests/operations/test_ocr_admission.py::test_workspace_archived_while_ocr_waits_is_reauthorized_before_launch PASSED [  3%]
+2026-11-28T09:57:17.0090989Z tests/operations/test_ocr_admission.py::test_fresh_precancelled_request_is_durable_then_reuses_its_real_worker_identity PASSED [  4%]
+2026-11-28T09:57:17.0287614Z tests/operations/test_ocr_admission.py::test_precancelled_resume_does_not_rewrite_an_explicitly_prepared_request PASSED [  4%]
+2026-11-28T09:57:17.1099768Z tests/operations/test_ocr_admission.py::test_fresh_waiting_outcome_cannot_overwrite_a_changed_current_record[cancelled] PASSED [  5%]
+2026-11-28T09:57:20.1386913Z tests/operations/test_ocr_admission.py::test_fresh_waiting_outcome_cannot_overwrite_a_changed_current_record[timed_out] PASSED [  6%]
+2026-11-28T09:57:20.1959338Z tests/e2e/test_import_files_cancellation.py::test_cancel_after_committed_text_leaves_next_original_unopened PASSED [  7%]
+2026-11-28T09:57:20.2034344Z tests/e2e/test_import_files_cancellation.py::test_precancelled_selection_opens_no_source PASSED [  7%]
+2026-11-28T09:57:20.2106879Z tests/e2e/test_import_files_cancellation.py::test_interrupted_error_is_acknowledged_cancellation_and_stops_selection PASSED [  8%]
+2026-11-28T09:57:20.2181548Z tests/e2e/test_import_files_cancellation.py::test_cancelled_receipt_stops_even_if_later_callback_is_clear PASSED [  9%]
+2026-11-28T09:57:20.2403862Z tests/e2e/test_import_files_cancellation.py::test_ordinary_file_error_does_not_cancel_later_valid_source PASSED [  9%]
+2026-11-28T09:57:20.2897084Z tests/e2e/test_import_files_cancellation.py::test_late_cancel_keeps_real_parsing_descriptor_through_commit_and_stops_next_input PASSED [ 10%]
+2026-11-28T09:57:20.3094825Z tests/e2e/test_import_files_cancellation.py::test_cancellation_before_real_text_publication_still_rolls_back PASSED [ 11%]
+2026-11-28T09:57:20.3321753Z tests/e2e/test_import_files_cancellation.py::test_postcommit_staged_mutation_is_not_hidden_by_late_cancellation PASSED [ 12%]
+2026-11-28T09:57:20.3612201Z tests/e2e/test_import_files_cancellation.py::test_recovered_revision_never_acquires_this_runs_publication_latch PASSED [ 12%]
+2026-11-28T09:57:20.3797357Z tests/ingest/test_pipeline.py::test_resume_dedup_exact_text_and_isolation PASSED [ 13%]
+2026-11-28T09:57:20.3935583Z tests/ingest/test_pipeline.py::test_cancel_and_retry PASSED              [ 14%]
+2026-11-28T09:57:20.4021525Z tests/ingest/test_pipeline.py::test_changed_original_rejected PASSED     [ 14%]
+2026-11-28T09:57:20.4166306Z tests/ingest/test_pipeline.py::test_failure_before_commit_and_recovery PASSED [ 15%]
+2026-11-28T09:57:20.4291092Z tests/ingest/test_pipeline.py::test_crash_after_storage_commit PASSED    [ 16%]
+2026-11-28T09:57:20.4395609Z tests/ingest/test_pipeline.py::test_checkpoint_tamper PASSED             [ 17%]
+2026-11-28T09:57:20.7068183Z tests/ingest/test_pipeline.py::test_pdf_native_and_quarantine PASSED     [ 17%]
+2026-11-28T09:57:20.7223578Z tests/ingest/test_pipeline.py::test_stale_job_cannot_replace_new_revision PASSED [ 18%]
+2026-11-28T09:57:20.7272731Z tests/ingest/test_pipeline.py::test_invalid_path_and_mismatched_extension PASSED [ 19%]
+2026-11-28T09:57:21.7586519Z tests/ingest/test_checkpoint_streaming.py::test_actual_2001_segments_resume_and_publish_without_collecting_checkpoint_text PASSED [ 19%]
+2026-11-28T09:57:21.7675069Z tests/ingest/test_checkpoint_streaming.py::test_unknown_journal_write_cannot_reuse_a_previous_checked_generation[False] PASSED [ 20%]
+2026-11-28T09:57:21.7762356Z tests/ingest/test_checkpoint_streaming.py::test_unknown_journal_write_cannot_reuse_a_previous_checked_generation[True] PASSED [ 21%]
+2026-11-28T09:57:21.7864832Z tests/ingest/test_checkpoint_streaming.py::test_changed_journal_during_streamed_publication_rolls_back_actual_storage PASSED [ 21%]
+2026-11-28T09:57:21.8108507Z tests/ingest/test_checkpoint_streaming.py::test_selected_step_budget_leaves_exact_checkpoints_for_explicit_resume PASSED [ 22%]
+2026-11-28T09:57:22.1046768Z tests/ingest/test_worker_attempt_receipts.py::test_other_language_publication_cannot_recover_a_failed_request PASSED [ 23%]
+2026-11-28T09:57:22.3249116Z tests/ingest/test_worker_attempt_receipts.py::test_other_exact_publication_cannot_recover_a_cancelled_replay PASSED [ 24%]
+2026-11-28T09:57:22.7344335Z tests/ingest/test_worker_attempt_receipts.py::test_fresh_attempt_of_same_request_cannot_borrow_prior_receipt PASSED [ 24%]
+2026-11-28T09:57:22.9854493Z tests/ingest/test_worker_attempt_receipts.py::test_native_exit_after_receipt_and_revision_staging_rolls_back_everything PASSED [ 25%]
+2026-11-28T09:57:23.2236984Z tests/ingest/test_worker_attempt_receipts.py::test_receipt_is_immutable_and_cannot_be_added_to_a_sealed_revision[update] PASSED [ 26%]
+2026-11-28T09:57:23.4631540Z tests/ingest/test_worker_attempt_receipts.py::test_receipt_is_immutable_and_cannot_be_added_to_a_sealed_revision[delete] PASSED [ 26%]
+2026-11-28T09:57:23.7122565Z tests/ingest/test_worker_attempt_receipts.py::test_receipt_is_immutable_and_cannot_be_added_to_a_sealed_revision[replace] PASSED [ 27%]
+2026-11-28T09:57:23.9521417Z tests/ingest/test_worker_attempt_receipts.py::test_receipt_is_immutable_and_cannot_be_added_to_a_sealed_revision[replay] PASSED [ 28%]
+2026-11-28T09:57:24.4280122Z tests/ingest/test_worker_attempt_receipts.py::test_receipt_and_source_identity_survive_restore_without_reusing_the_attempt PASSED [ 29%]
+2026-11-28T09:57:24.6194718Z tests/ingest/test_worker_attempt_receipts.py::test_superseded_txt_recovery_does_not_claim_verified_completion PASSED [ 29%]
+2026-11-28T09:57:24.8370513Z tests/ingest/test_worker_attempt_receipts.py::test_after_child_stop_other_publisher_cannot_complete_request[uk-cancel] PASSED [ 30%]
+2026-11-28T09:57:25.1052506Z tests/ingest/test_worker_attempt_receipts.py::test_after_child_stop_other_publisher_cannot_complete_request[uk-crash] PASSED [ 31%]
+2026-11-28T09:57:25.3237390Z tests/ingest/test_worker_attempt_receipts.py::test_after_child_stop_other_publisher_cannot_complete_request[en-cancel] PASSED [ 31%]
+2026-11-28T09:57:25.5908534Z tests/ingest/test_worker_attempt_receipts.py::test_after_child_stop_other_publisher_cannot_complete_request[en-crash] PASSED [ 32%]
+2026-11-28T09:57:25.8383915Z tests/ingest/test_worker_publication_boundary.py::test_durable_publication_survives_stopped_worker[cancel-docx] PASSED [ 33%]
+2026-11-28T09:57:26.0221923Z tests/ingest/test_worker_publication_boundary.py::test_durable_publication_survives_stopped_worker[cancel-epub] PASSED [ 34%]
+2026-11-28T09:57:26.3110182Z tests/ingest/test_worker_publication_boundary.py::test_durable_publication_survives_stopped_worker[cancel-pdf] PASSED [ 34%]
+2026-11-28T09:57:26.5080521Z tests/ingest/test_worker_publication_boundary.py::test_durable_publication_survives_stopped_worker[cancel-txt] PASSED [ 35%]
+2026-11-28T09:57:26.6930225Z tests/ingest/test_worker_publication_boundary.py::test_durable_publication_survives_stopped_worker[cancel-md] PASSED [ 36%]
+2026-11-28T09:57:26.9451985Z tests/ingest/test_worker_publication_boundary.py::test_durable_publication_survives_stopped_worker[timeout-docx] PASSED [ 36%]
+2026-11-28T09:57:27.1307535Z tests/ingest/test_worker_publication_boundary.py::test_durable_publication_survives_stopped_worker[timeout-epub] PASSED [ 37%]
+2026-11-28T09:57:27.4166798Z tests/ingest/test_worker_publication_boundary.py::test_durable_publication_survives_stopped_worker[timeout-pdf] PASSED [ 38%]
+2026-11-28T09:57:27.6123476Z tests/ingest/test_worker_publication_boundary.py::test_durable_publication_survives_stopped_worker[timeout-txt] PASSED [ 39%]
+2026-11-28T09:57:27.7968259Z tests/ingest/test_worker_publication_boundary.py::test_durable_publication_survives_stopped_worker[timeout-md] PASSED [ 39%]
+2026-11-28T09:57:28.0410164Z tests/ingest/test_worker_publication_boundary.py::test_durable_publication_survives_stopped_worker[crash-docx] PASSED [ 40%]
+2026-11-28T09:57:28.2224740Z tests/ingest/test_worker_publication_boundary.py::test_durable_publication_survives_stopped_worker[crash-epub] PASSED [ 41%]
+2026-11-28T09:57:28.5042277Z tests/ingest/test_worker_publication_boundary.py::test_durable_publication_survives_stopped_worker[crash-pdf] PASSED [ 41%]
+2026-11-28T09:57:28.6995301Z tests/ingest/test_worker_publication_boundary.py::test_durable_publication_survives_stopped_worker[crash-txt] PASSED [ 42%]
+2026-11-28T09:57:28.8809545Z tests/ingest/test_worker_publication_boundary.py::test_durable_publication_survives_stopped_worker[crash-md] PASSED [ 43%]
+2026-11-28T09:57:29.0726203Z tests/ingest/test_worker_publication_boundary.py::test_precommit_cancellation_remains_cancelled_without_publication PASSED [ 43%]
+2026-11-28T09:57:29.0997725Z tests/ingest/test_worker_publication_boundary.py::test_prelaunch_cancellation_never_starts_or_recovers_a_worker PASSED [ 44%]
+2026-11-28T09:57:29.5087670Z tests/ingest/test_worker_publication_boundary.py::test_preexisting_replay_is_not_new_completion_after_cancel PASSED [ 45%]
+2026-11-28T09:57:29.7538845Z tests/ingest/test_worker_publication_boundary.py::test_changed_request_identity_cannot_authorize_reconciliation[scope] PASSED [ 46%]
+2026-11-28T09:57:30.0048915Z tests/ingest/test_worker_publication_boundary.py::test_changed_request_identity_cannot_authorize_reconciliation[work] PASSED [ 46%]
+2026-11-28T09:57:30.2527582Z tests/ingest/test_worker_publication_boundary.py::test_changed_request_identity_cannot_authorize_reconciliation[asset] PASSED [ 47%]
+2026-11-28T09:57:30.4961578Z tests/ingest/test_worker_publication_boundary.py::test_changed_request_identity_cannot_authorize_reconciliation[configuration] PASSED [ 48%]
+2026-11-28T09:57:30.7460887Z tests/ingest/test_worker_publication_boundary.py::test_changed_request_identity_cannot_authorize_reconciliation[language] PASSED [ 48%]
+2026-11-28T09:57:30.9953351Z tests/ingest/test_worker_publication_boundary.py::test_corrupted_retained_bytes_cannot_authorize_reconciliation PASSED [ 49%]
+2026-11-28T09:57:31.2194222Z tests/ingest/test_worker_publication_boundary.py::test_other_import_after_parent_snapshot_is_not_this_workers_commit PASSED [ 50%]
+2026-11-28T09:57:31.4918526Z tests/ingest/test_worker_publication_boundary.py::test_another_requests_fresh_publication_cannot_hide_metadata_or_membership_failure[language] PASSED [ 51%]
+2026-11-28T09:57:31.7641230Z tests/ingest/test_worker_publication_boundary.py::test_another_requests_fresh_publication_cannot_hide_metadata_or_membership_failure[authors] PASSED [ 51%]
+2026-11-28T09:57:32.0345965Z tests/ingest/test_worker_publication_boundary.py::test_another_requests_fresh_publication_cannot_hide_metadata_or_membership_failure[title] PASSED [ 52%]
+2026-11-28T09:57:32.3050391Z tests/ingest/test_worker_publication_boundary.py::test_another_requests_fresh_publication_cannot_hide_metadata_or_membership_failure[edition] PASSED [ 53%]
+2026-11-28T09:57:32.5750905Z tests/ingest/test_worker_publication_boundary.py::test_another_requests_fresh_publication_cannot_hide_metadata_or_membership_failure[volume] PASSED [ 53%]
+2026-11-28T09:57:32.8459497Z tests/ingest/test_worker_publication_boundary.py::test_another_requests_fresh_publication_cannot_hide_metadata_or_membership_failure[work] PASSED [ 54%]
+2026-11-28T09:57:33.0696239Z tests/ingest/test_worker_publication_boundary.py::test_another_requests_fresh_publication_cannot_hide_metadata_or_membership_failure[collections] PASSED [ 55%]
+2026-11-28T09:57:33.4681852Z tests/ingest/test_worker_publication_boundary.py::test_pdf_resume_attempt_rejects_a_replaced_frozen_job_or_config[job] PASSED [ 56%]
+2026-11-28T09:57:33.8697690Z tests/ingest/test_worker_publication_boundary.py::test_pdf_resume_attempt_rejects_a_replaced_frozen_job_or_config[configuration] PASSED [ 56%]
+2026-11-28T09:57:34.1587914Z tests/ingest/test_worker_publication_boundary.py::test_pdf_reconciliation_rechecks_config_against_a_valid_captured_attempt[job] PASSED [ 57%]
+2026-11-28T09:57:34.4466865Z tests/ingest/test_worker_publication_boundary.py::test_pdf_reconciliation_rechecks_config_against_a_valid_captured_attempt[missing-job] PASSED [ 58%]
+2026-11-28T09:57:34.7341977Z tests/ingest/test_worker_publication_boundary.py::test_pdf_reconciliation_rechecks_config_against_a_valid_captured_attempt[null-job] PASSED [ 58%]
+2026-11-28T09:57:35.0194658Z tests/ingest/test_worker_publication_boundary.py::test_pdf_reconciliation_rechecks_config_against_a_valid_captured_attempt[configuration] PASSED [ 59%]
+2026-11-28T09:57:35.4062967Z tests/ingest/test_worker_publication_boundary.py::test_legacy_watermark_survives_backup_validation_but_is_not_restored[None] PASSED [ 60%]
+2026-11-28T09:57:35.7927537Z tests/ingest/test_worker_publication_boundary.py::test_legacy_watermark_survives_backup_validation_but_is_not_restored[0] PASSED [ 60%]
+2026-11-28T09:57:35.9820332Z tests/ingest/test_worker_publication_boundary.py::test_malformed_legacy_watermark_cannot_enter_backup[True] PASSED [ 61%]
+2026-11-28T09:57:36.1699333Z tests/ingest/test_worker_publication_boundary.py::test_malformed_legacy_watermark_cannot_enter_backup[-1] PASSED [ 62%]
+2026-11-28T09:57:36.3588108Z tests/ingest/test_worker_publication_boundary.py::test_malformed_legacy_watermark_cannot_enter_backup[9223372036854775808] PASSED [ 63%]
+2026-11-28T09:57:36.5493042Z tests/ingest/test_worker_publication_boundary.py::test_malformed_legacy_watermark_cannot_enter_backup[0] PASSED [ 63%]
+2026-11-28T09:57:37.1476442Z tests/ingest/test_worker_isolated_launch.py::test_real_import_and_render_ignore_substitute_modules[source-False] PASSED [ 64%]
+2026-11-28T09:57:37.7492053Z tests/ingest/test_worker_isolated_launch.py::test_real_import_and_render_ignore_substitute_modules[source-True] PASSED [ 65%]
+2026-11-28T09:57:38.5985734Z tests/ingest/test_worker_isolated_launch.py::test_real_import_and_render_ignore_substitute_modules[installed-False] PASSED [ 65%]
+2026-11-28T09:57:39.4460942Z tests/ingest/test_worker_isolated_launch.py::test_real_import_and_render_ignore_substitute_modules[installed-True] PASSED [ 66%]
+2026-11-28T09:57:39.5850673Z tests/ingest/test_canonical_publication_binding.py::test_actual_child_rejects_sidecar_change_after_parent_fingerprint[source] PASSED [ 67%]
+2026-11-28T09:57:39.7287505Z tests/ingest/test_canonical_publication_binding.py::test_actual_child_rejects_sidecar_change_after_parent_fingerprint[configuration] PASSED [ 68%]
+2026-11-28T09:57:39.8677496Z tests/ingest/test_canonical_publication_binding.py::test_actual_child_rejects_sidecar_change_after_parent_fingerprint[metadata] PASSED [ 68%]
+2026-11-28T09:57:40.0058968Z tests/ingest/test_canonical_publication_binding.py::test_actual_child_rejects_sidecar_change_after_parent_fingerprint[attempt] PASSED [ 69%]
+2026-11-28T09:57:40.2516620Z tests/ingest/test_canonical_publication_binding.py::test_actual_publication_uses_frozen_attempt_instead_of_mutable_sidecar[attempt] PASSED [ 70%]
+2026-11-28T09:57:40.4892929Z tests/ingest/test_canonical_publication_binding.py::test_actual_publication_uses_frozen_attempt_instead_of_mutable_sidecar[source] PASSED [ 70%]
+2026-11-28T09:57:40.6868193Z tests/ingest/test_competing_publication_receipts.py::test_competing_publication_never_borrows_current_attempt[direct-txt] PASSED [ 71%]
+2026-11-28T09:57:40.9910955Z tests/ingest/test_competing_publication_receipts.py::test_competing_publication_never_borrows_current_attempt[direct-pdf] PASSED [ 72%]
+2026-11-28T09:57:41.2666193Z tests/ingest/test_competing_publication_receipts.py::test_competing_publication_never_borrows_current_attempt[direct-docx] PASSED [ 73%]
+2026-11-28T09:57:41.6148291Z tests/ingest/test_competing_publication_receipts.py::test_competing_publication_never_borrows_current_attempt[second-request-txt] PASSED [ 73%]
+2026-11-28T09:57:42.1631452Z tests/ingest/test_competing_publication_receipts.py::test_competing_publication_never_borrows_current_attempt[second-request-pdf] PASSED [ 74%]
+2026-11-28T09:57:42.6271841Z tests/ingest/test_competing_publication_receipts.py::test_competing_publication_never_borrows_current_attempt[second-request-docx] PASSED [ 75%]
+2026-11-28T09:57:42.9749473Z tests/ingest/test_competing_publication_receipts.py::test_competing_publication_never_borrows_current_attempt[forged-sidecar-txt] PASSED [ 75%]
+2026-11-28T09:57:43.5243585Z tests/ingest/test_competing_publication_receipts.py::test_competing_publication_never_borrows_current_attempt[forged-sidecar-pdf] PASSED [ 76%]
+2026-11-28T09:57:43.9880321Z tests/ingest/test_competing_publication_receipts.py::test_competing_publication_never_borrows_current_attempt[forged-sidecar-docx] PASSED [ 77%]
+2026-11-28T09:57:44.0369846Z tests/ingest/test_import_publication_point.py::test_cancel_after_committed_publication_returns_complete_and_keeps_replay_guard[txt] PASSED [ 78%]
+2026-11-28T09:57:44.1147226Z tests/ingest/test_import_publication_point.py::test_cancel_after_committed_publication_returns_complete_and_keeps_replay_guard[pdf] PASSED [ 78%]
+2026-11-28T09:57:44.1424523Z tests/ingest/test_initial_publication_completion.py::test_cancel_after_first_durable_publication_does_not_report_failure[txt] PASSED [ 79%]
+2026-11-28T09:57:44.1911913Z tests/ingest/test_initial_publication_completion.py::test_cancel_after_first_durable_publication_does_not_report_failure[pdf] PASSED [ 80%]
+2026-11-28T09:57:44.2185005Z tests/ingest/test_initial_publication_completion.py::test_first_publication_does_not_repeat_committed_catalog_registration[txt] PASSED [ 80%]
+2026-11-28T09:57:44.2675153Z tests/ingest/test_initial_publication_completion.py::test_first_publication_does_not_repeat_committed_catalog_registration[pdf] PASSED [ 81%]
+2026-11-28T09:57:44.3123404Z tests/ingest/test_terminal_replay_registration.py::test_terminal_replay_registration_is_invisible_until_accepted[txt] PASSED [ 82%]
+2026-11-28T09:57:44.3922873Z tests/ingest/test_terminal_replay_registration.py::test_terminal_replay_registration_is_invisible_until_accepted[pdf] PASSED [ 82%]
+2026-11-28T09:57:44.4440836Z tests/ingest/test_terminal_replay_registration.py::test_superseded_replay_uses_current_metadata_without_reactivating_old_source[txt] PASSED [ 83%]
+2026-11-28T09:57:44.5303477Z tests/ingest/test_terminal_replay_registration.py::test_superseded_replay_uses_current_metadata_without_reactivating_old_source[pdf] PASSED [ 84%]
+2026-11-28T09:57:44.5617398Z tests/ingest/test_terminal_replay_registration.py::test_cancelled_completed_replay_does_not_add_memberships[txt] PASSED [ 85%]
+2026-11-28T09:57:44.6164550Z tests/ingest/test_terminal_replay_registration.py::test_cancelled_completed_replay_does_not_add_memberships[pdf] PASSED [ 85%]
+2026-11-28T09:57:44.6508615Z tests/ingest/test_terminal_replay_registration.py::test_replay_rejects_rehashed_checkpoint_text_before_registration[txt] PASSED [ 86%]
+2026-11-28T09:57:44.7140665Z tests/ingest/test_terminal_replay_registration.py::test_replay_rejects_rehashed_checkpoint_text_before_registration[pdf] PASSED [ 87%]
+2026-11-28T09:57:44.7387981Z tests/ingest/test_terminal_replay_registration.py::test_forged_terminal_journal_without_published_source_does_not_register[complete] PASSED [ 87%]
+2026-11-28T09:57:44.7636228Z tests/ingest/test_terminal_replay_registration.py::test_forged_terminal_journal_without_published_source_does_not_register[superseded] PASSED [ 88%]
+2026-11-28T09:57:44.8600920Z tests/ingest/test_txt_replay_registration.py::test_txt_replay_registration_is_atomic PASSED [ 89%]
+2026-11-28T09:57:44.8972573Z tests/ingest/test_txt_replay_registration.py::test_txt_replay_rejects_conflicting_identity PASSED [ 90%]
+2026-11-28T09:57:44.9301204Z tests/ingest/test_txt_replay_registration.py::test_cancelled_completed_replay_never_adds_membership PASSED [ 90%]
+2026-11-28T09:57:44.9662559Z tests/ingest/test_txt_replay_registration.py::test_cancellation_during_completed_replay_validation_rolls_back_membership PASSED [ 91%]
+2026-11-28T09:57:45.0187743Z tests/ingest/test_txt_replay_registration.py::test_superseded_replay_requires_current_metadata_without_reactivation PASSED [ 92%]
+2026-11-28T09:57:45.0497439Z tests/ingest/test_txt_replay_registration.py::test_cancelled_completed_replay_preserves_membership PASSED [ 92%]
+2026-11-28T09:57:45.1128700Z tests/ingest/test_txt_replay_registration.py::test_pdf_completed_replay_registers_exact_source_without_approving_it PASSED [ 93%]
+2026-11-28T09:57:45.3629071Z tests/ingest/test_import_slice_ownership.py::test_completed_real_leader_cannot_leave_a_source_holding_descendant PASSED [ 94%]
+2026-11-28T09:57:45.8316264Z tests/ingest/test_import_slice_ownership.py::test_cancel_after_first_actual_publication_recovers_only_its_attempt PASSED [ 95%]
+2026-11-28T09:57:46.0984074Z tests/ingest/test_import_slice_ownership.py::test_changed_middle_frozen_row_has_no_source_or_publication_side_effect PASSED [ 95%]
+2026-11-28T09:57:46.2970315Z tests/ingest/test_import_slice_ownership.py::test_same_attempt_result_rewrite_after_child_acknowledgement_is_refused PASSED [ 96%]
+2026-11-28T09:57:46.9929699Z tests/ingest/test_import_slice_ownership.py::test_pending_native_ack_retains_batch_admission_and_private_input_until_same_owner_closes PASSED [ 97%]
+2026-11-28T09:57:47.1817780Z tests/ingest/test_import_reconciliation.py::test_whole_store_check_precedes_all_receipts_on_the_same_held_connection PASSED [ 97%]
+2026-11-28T09:57:47.3687132Z tests/ingest/test_import_reconciliation.py::test_real_competing_commit_is_excluded_until_the_checked_snapshot_closes PASSED [ 98%]
+2026-11-28T09:57:47.5536112Z tests/ingest/test_import_reconciliation.py::test_unexpected_same_connection_write_invalidates_the_bounded_snapshot PASSED [ 99%]
+2026-11-28T09:57:47.8456653Z tests/ingest/test_import_reconciliation.py::test_held_context_rejects_foreign_scope_and_equal_byte_database_alias PASSED [100%]
+2026-11-28T09:57:47.8457198Z 
+2026-11-28T09:57:47.8457895Z - generated xml file: /home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/ci-import-cancellation/installed.xml -
+2026-11-28T09:57:47.8458951Z ============================= slowest 20 durations =============================
+2026-11-28T09:57:47.8459890Z 3.03s call     tests/operations/test_ocr_admission.py::test_fresh_waiting_outcome_cannot_overwrite_a_changed_current_record[timed_out]
+2026-11-28T09:57:47.8460897Z 1.03s call     tests/ingest/test_checkpoint_streaming.py::test_actual_2001_segments_resume_and_publish_without_collecting_checkpoint_text
+2026-11-28T09:57:47.8461811Z 0.85s call     tests/ingest/test_worker_isolated_launch.py::test_real_import_and_render_ignore_substitute_modules[installed-False]
+2026-11-28T09:57:47.8462749Z 0.85s call     tests/ingest/test_worker_isolated_launch.py::test_real_import_and_render_ignore_substitute_modules[installed-True]
+2026-11-28T09:57:47.8463756Z 0.69s call     tests/ingest/test_import_slice_ownership.py::test_pending_native_ack_retains_batch_admission_and_private_input_until_same_owner_closes
+2026-11-28T09:57:47.8464745Z 0.60s call     tests/ingest/test_worker_isolated_launch.py::test_real_import_and_render_ignore_substitute_modules[source-True]
+2026-11-28T09:57:47.8465707Z 0.60s call     tests/ingest/test_worker_isolated_launch.py::test_real_import_and_render_ignore_substitute_modules[source-False]
+2026-11-28T09:57:47.8466721Z 0.55s call     tests/ingest/test_competing_publication_receipts.py::test_competing_publication_never_borrows_current_attempt[forged-sidecar-pdf]
+2026-11-28T09:57:47.8467739Z 0.55s call     tests/ingest/test_competing_publication_receipts.py::test_competing_publication_never_borrows_current_attempt[second-request-pdf]
+2026-11-28T09:57:47.8468741Z 0.47s call     tests/ingest/test_worker_attempt_receipts.py::test_receipt_and_source_identity_survive_restore_without_reusing_the_attempt
+2026-11-28T09:57:47.8469845Z 0.47s call     tests/ingest/test_import_slice_ownership.py::test_cancel_after_first_actual_publication_recovers_only_its_attempt
+2026-11-28T09:57:47.8470815Z 0.46s call     tests/ingest/test_competing_publication_receipts.py::test_competing_publication_never_borrows_current_attempt[second-request-docx]
+2026-11-28T09:57:47.8472071Z 0.46s call     tests/ingest/test_competing_publication_receipts.py::test_competing_publication_never_borrows_current_attempt[forged-sidecar-docx]
+2026-11-28T09:57:47.8472968Z 0.41s call     tests/ingest/test_worker_attempt_receipts.py::test_fresh_attempt_of_same_request_cannot_borrow_prior_receipt
+2026-11-28T09:57:47.8473960Z 0.41s call     tests/ingest/test_worker_publication_boundary.py::test_preexisting_replay_is_not_new_completion_after_cancel
+2026-11-28T09:57:47.8474910Z 0.40s call     tests/ingest/test_worker_publication_boundary.py::test_pdf_resume_attempt_rejects_a_replaced_frozen_job_or_config[configuration]
+2026-11-28T09:57:47.8475835Z 0.40s call     tests/ingest/test_worker_publication_boundary.py::test_pdf_resume_attempt_rejects_a_replaced_frozen_job_or_config[job]
+2026-11-28T09:57:47.8476799Z 0.39s call     tests/ingest/test_worker_publication_boundary.py::test_legacy_watermark_survives_backup_validation_but_is_not_restored[None]
+2026-11-28T09:57:47.8477686Z 0.39s call     tests/ingest/test_worker_publication_boundary.py::test_legacy_watermark_survives_backup_validation_but_is_not_restored[0]
+2026-11-28T09:57:47.8478665Z 0.35s call     tests/ingest/test_competing_publication_receipts.py::test_competing_publication_never_borrows_current_attempt[second-request-txt]
+2026-11-28T09:57:47.8479629Z ============================= 141 passed in 32.45s =============================
+2026-11-28T09:57:47.8901672Z {"NVDA": "NOT_RUN", "actual_neural_model_quality": "NOT_RUN", "actual_ocr_models": "NOT_RUN", "cases": 141, "commit": "5b87b13974d57d1aeb59f92c78c0f64366fd8a8c", "large_corpus": "NOT_RUN", "mode": "installed", "origins": {"carr_library.application": {"path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/application.py", "sha256": "9239ea355b5c5a38d24097720e2489bde7ba15ad7381aba6082eb187c7fe131a"}, "carr_library.audio.cleanup": {"path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/audio/cleanup.py", "sha256": "35af682e01736cee2b91b8ad2e10110aa7fb708b0584f60733f8fe2dd2600103"}, "carr_library.audio.process": {"path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/audio/process.py", "sha256": "70c485f69ffc5e5c26d29a3e56bccbf2cd231a45cb16668f42accc3c81a57bfb"}, "carr_library.catalog.intake": {"path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/catalog/intake.py", "sha256": "9ac86c0fce3a205d4e9dc2eb3f06f6a5bf85a82dfd643e858c06a2d12813ad28"}, "carr_library.durable_state": {"path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/durable_state.py", "sha256": "9b173d6cde27dd4362a920b01283cec0cbaaa42e4569f96e5b9bd24f6bd156b8"}, "carr_library.extract.document_formats": {"path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/extract/document_formats.py", "sha256": "560563bc55cce8f989c4b77591b3b8506a8e4256c4ebcc5f4c47a8c6f3b2ab01"}, "carr_library.extract.page_ocr": {"path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/extract/page_ocr.py", "sha256": "5cda8df281b7644f2e0037fc1427dded513a7e2dbdea9c744700f728bb648c41"}, "carr_library.ingest.batches": {"path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/ingest/batches.py", "sha256": "8f48ae93a34920d6cc857d93b4c165640e4d46fd085477b8f78c795ecde02e29"}, "carr_library.ingest.pipeline": {"path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/ingest/pipeline.py", "sha256": "6332c8ff35cd897e18a1ced4e0da4e2200f0d3f54229736d0aa85e80bed05e11"}, "carr_library.ingest.publication_identity": {"path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/ingest/publication_identity.py", "sha256": "7808ac278b60bb15e9b39512186b5118cc7741d7007fefa015e95fd5096ebc07"}, "carr_library.ingest.reconciliation": {"path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/ingest/reconciliation.py", "sha256": "48d6750a4f9bce48f3c6edb7c9076ddaa2737519f24a03ff9490f2741e479a71"}, "carr_library.ingest.resource_budget": {"path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/ingest/resource_budget.py", "sha256": "8ead273af549219f6ca48541e3f6be5f162e1299929d3c6718df9d356cd3f6fb"}, "carr_library.ingest.retained_assets": {"path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/ingest/retained_assets.py", "sha256": "9444911ed72158103d87e5551b2d7f24ab1b30b686af8a8788bf9f0a965e0eb6"}, "carr_library.ingest.session": {"path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/ingest/session.py", "sha256": "ced3447525e22ae557c25a70e27d47a97bdc1d57b4ee264a12085e3df5641598"}, "carr_library.ingest.slices": {"path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/ingest/slices.py", "sha256": "7fbe9314fc305d723e8f1f9260fad3c36c052867c30519058791cb14fd964376"}, "carr_library.ingest.worker": {"path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/ingest/worker.py", "sha256": "7d9892410b790fd3cebfd3336042ff52742dc1537829a45decbe9b97cc81456b"}, "carr_library.ingest.writer_guard": {"path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/ingest/writer_guard.py", "sha256": "4042fb16b57555aa94c40a8fd63ad06e4772d1f980f4d08d61bfdbff9b7f218c"}, "carr_library.operations.broker": {"path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/operations/broker.py", "sha256": "24940baa024716fb6e23bd052e427cbed17e2434098de3594e8cae47d307195b"}, "carr_library.operations.facade": {"path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/operations/facade.py", "sha256": "12226599f6d5411c0f9ca581c67cd9dc1ac81ace0641e61c506f1dc1ee7232da"}, "carr_library.operations.models": {"path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/operations/models.py", "sha256": "cb711ae7bde38c77fe039678afe1b57b56bd85d653fb982284fbef43f62b2545"}, "carr_library.storage.publication": {"path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/storage/publication.py", "sha256": "c70fc5e102613bd6ae1fa60f7640c9921c1325d615b377994c3abce4f49c60d7"}, "carr_library.storage.revisions": {"path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/storage/revisions.py", "sha256": "5d83c85838bbbf441618143106ffed4514e8185485955fdb310ec221cb08d419"}}, "package_inventory_files": 446, "package_inventory_sha256": "cd527d71040249d924dd50cdaad524eaab7c6bf5580a41808716872b0685e75a", "package_python_files": 426, "physical_microphone": "NOT_RUN", "physical_output": "NOT_RUN", "proof_helper_sha256": "83db7e17748edc67240972a70b96078f8c6c9d218c8bc560b8be364350011de5", "qualification": "IMPORT_CANCELLATION_PUBLICATION_AND_OWNER_CONTRACTS", "selected_suites": {"tests/e2e/test_import_files_cancellation.py": 9, "tests/ingest/test_canonical_publication_binding.py": 6, "tests/ingest/test_checkpoint_streaming.py": 5, "tests/ingest/test_competing_publication_receipts.py": 9, "tests/ingest/test_import_publication_point.py": 2, "tests/ingest/test_import_reconciliation.py": 4, "tests/ingest/test_import_slice_ownership.py": 5, "tests/ingest/test_initial_publication_completion.py": 4, "tests/ingest/test_pipeline.py": 9, "tests/ingest/test_terminal_replay_registration.py": 10, "tests/ingest/test_txt_replay_registration.py": 7, "tests/ingest/test_worker_attempt_receipts.py": 14, "tests/ingest/test_worker_isolated_launch.py": 4, "tests/ingest/test_worker_publication_boundary.py": 44, "tests/operations/test_ocr_admission.py": 9}, "status": "PASS", "test_files": {"tests/e2e/test_import_files_cancellation.py": "7b8360a046fbec3c6994c81da88baacc128250a5c157b5be2d5bc9ad94e8331a", "tests/ingest/test_canonical_publication_binding.py": "240daac77bdb741c8fe69e645f885a35957613918080831ad1328dc1e2920621", "tests/ingest/test_checkpoint_streaming.py": "a78f4723e2bfd88aeacd01ae28de82150e788ba5d4e7e13df01b566b5aa1a8e0", "tests/ingest/test_competing_publication_receipts.py": "d2dad37f096742389a79b25fd582de48ff1f74e74998cf5d852bd6d3579fddd0", "tests/ingest/test_import_publication_point.py": "e1ca953f2eb5d8883893136574bad3fd7f4a6f1c4700582dc0d1b1553c1250b5", "tests/ingest/test_import_reconciliation.py": "7683e985ed2e1d2bf6b898eb04b48920839ed828f3b98b8f5efaeaf4a60895a2", "tests/ingest/test_import_slice_ownership.py": "9a6378af7943be8649cdd7b8a89ae531e6ceb813da722edc0bb31d33b842d980", "tests/ingest/test_initial_publication_completion.py": "d645c7fa4dbfcda66b6193b0e2f11a068557409c9ab3960e60478c7269894584", "tests/ingest/test_pipeline.py": "a239541d5850c579a022043ace5b4a365ed623ebf87a8323efe1f60a22a8f769", "tests/ingest/test_terminal_replay_registration.py": "7d66dbf0b8da4fc875dd2f826ceb1167a0406a62c423ea655a7edee9dbfecc8a", "tests/ingest/test_txt_replay_registration.py": "7b2acf7d28cb38710fbcde8bb91fa27038f4c918bf4258f206e96ee477800958", "tests/ingest/test_worker_attempt_receipts.py": "0e1b560870e87c26fb6f46e239a68836aa67502f0f07acefb6aed67d71bf1423", "tests/ingest/test_worker_isolated_launch.py": "ca5c88a16123554ec5af56a757b93a6b027396a7a43ea28d45030ff430bf379b", "tests/ingest/test_worker_publication_boundary.py": "8f4c1a34f75e3685d9ed1ea914a9fa58cadc922ae8327b3a97501d65966150f5", "tests/operations/test_ocr_admission.py": "fc24713060fc572892868aff8410866a70d4c65326e56fe7d16618276cfa8347"}}
+2026-11-28T09:57:47.9728151Z ##[group]Run mkdir -p ci-import-cancellation
+2026-11-28T09:57:47.9728519Z [36;1mmkdir -p ci-import-cancellation[0m
+2026-11-28T09:57:47.9728845Z [36;1mgit rev-parse HEAD > ci-import-cancellation/commit.txt[0m
+2026-11-28T09:57:47.9729427Z [36;1mgit rev-parse HEAD^{tree} > ci-import-cancellation/tree.txt[0m
+2026-11-28T09:57:47.9729809Z [36;1mpython -m pip freeze > ci-import-cancellation/packages.txt[0m
+2026-11-28T09:57:47.9755130Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+2026-11-28T09:57:47.9755427Z env:
+2026-11-28T09:57:47.9755800Z   CARR_IMPORT_HEAD: 5b87b13974d57d1aeb59f92c78c0f64366fd8a8c
+2026-11-28T09:57:47.9756099Z   PYTHONUTF8: 1
+2026-11-28T09:57:47.9756334Z   PYTHONDONTWRITEBYTECODE: 1
+2026-11-28T09:57:47.9756610Z   HF_HUB_OFFLINE: 1
+2026-11-28T09:57:47.9756831Z   TRANSFORMERS_OFFLINE: 1
+2026-11-28T09:57:47.9757088Z   DO_NOT_TRACK: 1
+2026-11-28T09:57:47.9757313Z   PYTEST_DISABLE_PLUGIN_AUTOLOAD: 1
+2026-11-28T09:57:47.9757724Z   pythonLocation: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T09:57:47.9758085Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.11.18/x64/lib/pkgconfig
+2026-11-28T09:57:47.9758459Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T09:57:47.9758800Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T09:57:47.9759125Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T09:57:47.9759623Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.11.18/x64/lib
+2026-11-28T09:57:47.9759940Z ##[endgroup]
+2026-11-28T09:57:48.1561531Z ##[group]Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+2026-11-28T09:57:48.1561928Z with:
+2026-11-28T09:57:48.1562251Z   name: import-cancellation-ubuntu-24.04-5b87b13974d57d1aeb59f92c78c0f64366fd8a8c
+2026-11-28T09:57:48.1562634Z   path: carr-library/ci-import-cancellation
+2026-11-28T09:57:48.1562957Z   if-no-files-found: error
+2026-11-28T09:57:48.1563225Z   compression-level: 6
+2026-11-28T09:57:48.1563460Z   overwrite: false
+2026-11-28T09:57:48.1563685Z   include-hidden-files: false
+2026-11-28T09:57:48.1563932Z   archive: true
+2026-11-28T09:57:48.1564164Z env:
+2026-11-28T09:57:48.1564420Z   CARR_IMPORT_HEAD: 5b87b13974d57d1aeb59f92c78c0f64366fd8a8c
+2026-11-28T09:57:48.1564719Z   PYTHONUTF8: 1
+2026-11-28T09:57:48.1564957Z   PYTHONDONTWRITEBYTECODE: 1
+2026-11-28T09:57:48.1565214Z   HF_HUB_OFFLINE: 1
+2026-11-28T09:57:48.1565481Z   TRANSFORMERS_OFFLINE: 1
+2026-11-28T09:57:48.1565709Z   DO_NOT_TRACK: 1
+2026-11-28T09:57:48.1566023Z   PYTEST_DISABLE_PLUGIN_AUTOLOAD: 1
+2026-11-28T09:57:48.1566367Z   pythonLocation: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T09:57:48.1566854Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.11.18/x64/lib/pkgconfig
+2026-11-28T09:57:48.1567220Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T09:57:48.1567552Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T09:57:48.1567888Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.18/x64
+2026-11-28T09:57:48.1568232Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.11.18/x64/lib
+2026-11-28T09:57:48.1568513Z ##[endgroup]
+2026-11-28T09:57:48.2818891Z With the provided path, there will be 12 files uploaded
+2026-11-28T09:57:48.2820086Z Artifact name is valid!
+2026-11-28T09:57:48.2820594Z Root directory input is valid!
+2026-11-28T09:57:48.7166136Z Uploading artifact: import-cancellation-ubuntu-24.04-5b87b13974d57d1aeb59f92c78c0f64366fd8a8c.zip
+2026-11-28T09:57:48.7193544Z Beginning upload of artifact content to blob storage
+2026-11-28T09:57:49.3258755Z Uploaded bytes 69832
+2026-11-28T09:57:49.4134933Z Finished uploading artifact content to blob storage!
+2026-11-28T09:57:49.4136098Z SHA256 digest of uploaded artifact is f7edc20c7a3617ec81b9a30ebc76c44719064d0b661e131a69bd74a6d5b6dc66
+2026-11-28T09:57:49.4136567Z Finalizing artifact upload
+2026-11-28T09:57:49.9175428Z Artifact import-cancellation-ubuntu-24.04-5b87b13974d57d1aeb59f92c78c0f64366fd8a8c successfully finalized. Artifact ID 15258537020
+2026-11-28T09:57:49.9176229Z Artifact import-cancellation-ubuntu-24.04-5b87b13974d57d1aeb59f92c78c0f64366fd8a8c has been successfully uploaded! Final size is 69832 bytes. Artifact ID is 15258537020
+2026-11-28T09:57:49.9177793Z Artifact download URL: https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46130074946/artifacts/15258537020
+2026-11-28T09:57:49.9314644Z Post job cleanup.
+2026-11-28T09:57:50.0310132Z Post job cleanup.
+2026-11-28T09:57:50.1022212Z [command]/usr/bin/git version
+2026-11-28T09:57:50.1054560Z git version 2.56.1
+2026-11-28T09:57:50.1078397Z Temporarily overriding HOME='/home/runner/work/_temp/3e184510-3d47-4f69-96c6-8223f9db6d1f' before making global git config changes
+2026-11-28T09:57:50.1079424Z Adding repository directory to the temporary git global config as a safe directory
+2026-11-28T09:57:50.1081637Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/AudioTacticalFPS/AudioTacticalFPS
+2026-11-28T09:57:50.1108292Z Removing SSH command configuration
+2026-11-28T09:57:50.1113442Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-11-28T09:57:50.1138831Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-11-28T09:57:50.1321942Z Removing HTTP extra header
+2026-11-28T09:57:50.1322668Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-11-28T09:57:50.1370356Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-11-28T09:57:50.1608963Z Removing includeIf entries pointing to credentials config files
+2026-11-28T09:57:50.1615756Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-11-28T09:57:50.1651855Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-11-28T09:57:50.2001396Z Cleaning up orphan processes

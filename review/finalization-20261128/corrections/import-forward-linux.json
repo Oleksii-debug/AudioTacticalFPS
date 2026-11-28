@@ -1,0 +1,330 @@
+{
+  "schema": 1,
+  "status": "LINUX_SOURCE_AND_INSTALLED_PASS_WINDOWS_PENDING",
+  "head": "5b87b13974d57d1aeb59f92c78c0f64366fd8a8c",
+  "tree": "ed9916eec86957687ccd265b1cfd044a9bb84f59",
+  "run": 46130074946,
+  "job": 140933062291,
+  "os": "ubuntu-24.04",
+  "raw_log": "06b13a40b9be0e357783029c3761abeb2e7fee50",
+  "counts": {
+    "source": 141,
+    "installed": 141,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "xfail": 0
+  },
+  "seconds": {
+    "source": 44.16,
+    "installed": 32.45
+  },
+  "records": [
+    {
+      "NVDA": "NOT_RUN",
+      "actual_neural_model_quality": "NOT_RUN",
+      "actual_ocr_models": "NOT_RUN",
+      "cases": 141,
+      "commit": "5b87b13974d57d1aeb59f92c78c0f64366fd8a8c",
+      "large_corpus": "NOT_RUN",
+      "mode": "source",
+      "origins": {
+        "carr_library.application": {
+          "path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/application.py",
+          "sha256": "9239ea355b5c5a38d24097720e2489bde7ba15ad7381aba6082eb187c7fe131a"
+        },
+        "carr_library.audio.cleanup": {
+          "path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/audio/cleanup.py",
+          "sha256": "35af682e01736cee2b91b8ad2e10110aa7fb708b0584f60733f8fe2dd2600103"
+        },
+        "carr_library.audio.process": {
+          "path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/audio/process.py",
+          "sha256": "70c485f69ffc5e5c26d29a3e56bccbf2cd231a45cb16668f42accc3c81a57bfb"
+        },
+        "carr_library.catalog.intake": {
+          "path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/catalog/intake.py",
+          "sha256": "9ac86c0fce3a205d4e9dc2eb3f06f6a5bf85a82dfd643e858c06a2d12813ad28"
+        },
+        "carr_library.durable_state": {
+          "path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/durable_state.py",
+          "sha256": "9b173d6cde27dd4362a920b01283cec0cbaaa42e4569f96e5b9bd24f6bd156b8"
+        },
+        "carr_library.extract.document_formats": {
+          "path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/extract/document_formats.py",
+          "sha256": "560563bc55cce8f989c4b77591b3b8506a8e4256c4ebcc5f4c47a8c6f3b2ab01"
+        },
+        "carr_library.extract.page_ocr": {
+          "path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/extract/page_ocr.py",
+          "sha256": "5cda8df281b7644f2e0037fc1427dded513a7e2dbdea9c744700f728bb648c41"
+        },
+        "carr_library.ingest.batches": {
+          "path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/ingest/batches.py",
+          "sha256": "8f48ae93a34920d6cc857d93b4c165640e4d46fd085477b8f78c795ecde02e29"
+        },
+        "carr_library.ingest.pipeline": {
+          "path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/ingest/pipeline.py",
+          "sha256": "6332c8ff35cd897e18a1ced4e0da4e2200f0d3f54229736d0aa85e80bed05e11"
+        },
+        "carr_library.ingest.publication_identity": {
+          "path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/ingest/publication_identity.py",
+          "sha256": "7808ac278b60bb15e9b39512186b5118cc7741d7007fefa015e95fd5096ebc07"
+        },
+        "carr_library.ingest.reconciliation": {
+          "path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/ingest/reconciliation.py",
+          "sha256": "48d6750a4f9bce48f3c6edb7c9076ddaa2737519f24a03ff9490f2741e479a71"
+        },
+        "carr_library.ingest.resource_budget": {
+          "path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/ingest/resource_budget.py",
+          "sha256": "8ead273af549219f6ca48541e3f6be5f162e1299929d3c6718df9d356cd3f6fb"
+        },
+        "carr_library.ingest.retained_assets": {
+          "path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/ingest/retained_assets.py",
+          "sha256": "9444911ed72158103d87e5551b2d7f24ab1b30b686af8a8788bf9f0a965e0eb6"
+        },
+        "carr_library.ingest.session": {
+          "path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/ingest/session.py",
+          "sha256": "ced3447525e22ae557c25a70e27d47a97bdc1d57b4ee264a12085e3df5641598"
+        },
+        "carr_library.ingest.slices": {
+          "path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/ingest/slices.py",
+          "sha256": "7fbe9314fc305d723e8f1f9260fad3c36c052867c30519058791cb14fd964376"
+        },
+        "carr_library.ingest.worker": {
+          "path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/ingest/worker.py",
+          "sha256": "7d9892410b790fd3cebfd3336042ff52742dc1537829a45decbe9b97cc81456b"
+        },
+        "carr_library.ingest.writer_guard": {
+          "path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/ingest/writer_guard.py",
+          "sha256": "4042fb16b57555aa94c40a8fd63ad06e4772d1f980f4d08d61bfdbff9b7f218c"
+        },
+        "carr_library.operations.broker": {
+          "path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/operations/broker.py",
+          "sha256": "24940baa024716fb6e23bd052e427cbed17e2434098de3594e8cae47d307195b"
+        },
+        "carr_library.operations.facade": {
+          "path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/operations/facade.py",
+          "sha256": "12226599f6d5411c0f9ca581c67cd9dc1ac81ace0641e61c506f1dc1ee7232da"
+        },
+        "carr_library.operations.models": {
+          "path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/operations/models.py",
+          "sha256": "cb711ae7bde38c77fe039678afe1b57b56bd85d653fb982284fbef43f62b2545"
+        },
+        "carr_library.storage.publication": {
+          "path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/storage/publication.py",
+          "sha256": "c70fc5e102613bd6ae1fa60f7640c9921c1325d615b377994c3abce4f49c60d7"
+        },
+        "carr_library.storage.revisions": {
+          "path": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/src/carr_library/storage/revisions.py",
+          "sha256": "5d83c85838bbbf441618143106ffed4514e8185485955fdb310ec221cb08d419"
+        }
+      },
+      "package_inventory_files": 446,
+      "package_inventory_sha256": "cd527d71040249d924dd50cdaad524eaab7c6bf5580a41808716872b0685e75a",
+      "package_python_files": 426,
+      "physical_microphone": "NOT_RUN",
+      "physical_output": "NOT_RUN",
+      "proof_helper_sha256": "83db7e17748edc67240972a70b96078f8c6c9d218c8bc560b8be364350011de5",
+      "qualification": "IMPORT_CANCELLATION_PUBLICATION_AND_OWNER_CONTRACTS",
+      "selected_suites": {
+        "tests/e2e/test_import_files_cancellation.py": 9,
+        "tests/ingest/test_canonical_publication_binding.py": 6,
+        "tests/ingest/test_checkpoint_streaming.py": 5,
+        "tests/ingest/test_competing_publication_receipts.py": 9,
+        "tests/ingest/test_import_publication_point.py": 2,
+        "tests/ingest/test_import_reconciliation.py": 4,
+        "tests/ingest/test_import_slice_ownership.py": 5,
+        "tests/ingest/test_initial_publication_completion.py": 4,
+        "tests/ingest/test_pipeline.py": 9,
+        "tests/ingest/test_terminal_replay_registration.py": 10,
+        "tests/ingest/test_txt_replay_registration.py": 7,
+        "tests/ingest/test_worker_attempt_receipts.py": 14,
+        "tests/ingest/test_worker_isolated_launch.py": 4,
+        "tests/ingest/test_worker_publication_boundary.py": 44,
+        "tests/operations/test_ocr_admission.py": 9
+      },
+      "status": "PASS",
+      "test_files": {
+        "tests/e2e/test_import_files_cancellation.py": "7b8360a046fbec3c6994c81da88baacc128250a5c157b5be2d5bc9ad94e8331a",
+        "tests/ingest/test_canonical_publication_binding.py": "240daac77bdb741c8fe69e645f885a35957613918080831ad1328dc1e2920621",
+        "tests/ingest/test_checkpoint_streaming.py": "a78f4723e2bfd88aeacd01ae28de82150e788ba5d4e7e13df01b566b5aa1a8e0",
+        "tests/ingest/test_competing_publication_receipts.py": "d2dad37f096742389a79b25fd582de48ff1f74e74998cf5d852bd6d3579fddd0",
+        "tests/ingest/test_import_publication_point.py": "e1ca953f2eb5d8883893136574bad3fd7f4a6f1c4700582dc0d1b1553c1250b5",
+        "tests/ingest/test_import_reconciliation.py": "7683e985ed2e1d2bf6b898eb04b48920839ed828f3b98b8f5efaeaf4a60895a2",
+        "tests/ingest/test_import_slice_ownership.py": "9a6378af7943be8649cdd7b8a89ae531e6ceb813da722edc0bb31d33b842d980",
+        "tests/ingest/test_initial_publication_completion.py": "d645c7fa4dbfcda66b6193b0e2f11a068557409c9ab3960e60478c7269894584",
+        "tests/ingest/test_pipeline.py": "a239541d5850c579a022043ace5b4a365ed623ebf87a8323efe1f60a22a8f769",
+        "tests/ingest/test_terminal_replay_registration.py": "7d66dbf0b8da4fc875dd2f826ceb1167a0406a62c423ea655a7edee9dbfecc8a",
+        "tests/ingest/test_txt_replay_registration.py": "7b2acf7d28cb38710fbcde8bb91fa27038f4c918bf4258f206e96ee477800958",
+        "tests/ingest/test_worker_attempt_receipts.py": "0e1b560870e87c26fb6f46e239a68836aa67502f0f07acefb6aed67d71bf1423",
+        "tests/ingest/test_worker_isolated_launch.py": "ca5c88a16123554ec5af56a757b93a6b027396a7a43ea28d45030ff430bf379b",
+        "tests/ingest/test_worker_publication_boundary.py": "8f4c1a34f75e3685d9ed1ea914a9fa58cadc922ae8327b3a97501d65966150f5",
+        "tests/operations/test_ocr_admission.py": "fc24713060fc572892868aff8410866a70d4c65326e56fe7d16618276cfa8347"
+      }
+    },
+    {
+      "NVDA": "NOT_RUN",
+      "actual_neural_model_quality": "NOT_RUN",
+      "actual_ocr_models": "NOT_RUN",
+      "cases": 141,
+      "commit": "5b87b13974d57d1aeb59f92c78c0f64366fd8a8c",
+      "large_corpus": "NOT_RUN",
+      "mode": "installed",
+      "origins": {
+        "carr_library.application": {
+          "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/application.py",
+          "sha256": "9239ea355b5c5a38d24097720e2489bde7ba15ad7381aba6082eb187c7fe131a"
+        },
+        "carr_library.audio.cleanup": {
+          "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/audio/cleanup.py",
+          "sha256": "35af682e01736cee2b91b8ad2e10110aa7fb708b0584f60733f8fe2dd2600103"
+        },
+        "carr_library.audio.process": {
+          "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/audio/process.py",
+          "sha256": "70c485f69ffc5e5c26d29a3e56bccbf2cd231a45cb16668f42accc3c81a57bfb"
+        },
+        "carr_library.catalog.intake": {
+          "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/catalog/intake.py",
+          "sha256": "9ac86c0fce3a205d4e9dc2eb3f06f6a5bf85a82dfd643e858c06a2d12813ad28"
+        },
+        "carr_library.durable_state": {
+          "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/durable_state.py",
+          "sha256": "9b173d6cde27dd4362a920b01283cec0cbaaa42e4569f96e5b9bd24f6bd156b8"
+        },
+        "carr_library.extract.document_formats": {
+          "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/extract/document_formats.py",
+          "sha256": "560563bc55cce8f989c4b77591b3b8506a8e4256c4ebcc5f4c47a8c6f3b2ab01"
+        },
+        "carr_library.extract.page_ocr": {
+          "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/extract/page_ocr.py",
+          "sha256": "5cda8df281b7644f2e0037fc1427dded513a7e2dbdea9c744700f728bb648c41"
+        },
+        "carr_library.ingest.batches": {
+          "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/ingest/batches.py",
+          "sha256": "8f48ae93a34920d6cc857d93b4c165640e4d46fd085477b8f78c795ecde02e29"
+        },
+        "carr_library.ingest.pipeline": {
+          "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/ingest/pipeline.py",
+          "sha256": "6332c8ff35cd897e18a1ced4e0da4e2200f0d3f54229736d0aa85e80bed05e11"
+        },
+        "carr_library.ingest.publication_identity": {
+          "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/ingest/publication_identity.py",
+          "sha256": "7808ac278b60bb15e9b39512186b5118cc7741d7007fefa015e95fd5096ebc07"
+        },
+        "carr_library.ingest.reconciliation": {
+          "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/ingest/reconciliation.py",
+          "sha256": "48d6750a4f9bce48f3c6edb7c9076ddaa2737519f24a03ff9490f2741e479a71"
+        },
+        "carr_library.ingest.resource_budget": {
+          "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/ingest/resource_budget.py",
+          "sha256": "8ead273af549219f6ca48541e3f6be5f162e1299929d3c6718df9d356cd3f6fb"
+        },
+        "carr_library.ingest.retained_assets": {
+          "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/ingest/retained_assets.py",
+          "sha256": "9444911ed72158103d87e5551b2d7f24ab1b30b686af8a8788bf9f0a965e0eb6"
+        },
+        "carr_library.ingest.session": {
+          "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/ingest/session.py",
+          "sha256": "ced3447525e22ae557c25a70e27d47a97bdc1d57b4ee264a12085e3df5641598"
+        },
+        "carr_library.ingest.slices": {
+          "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/ingest/slices.py",
+          "sha256": "7fbe9314fc305d723e8f1f9260fad3c36c052867c30519058791cb14fd964376"
+        },
+        "carr_library.ingest.worker": {
+          "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/ingest/worker.py",
+          "sha256": "7d9892410b790fd3cebfd3336042ff52742dc1537829a45decbe9b97cc81456b"
+        },
+        "carr_library.ingest.writer_guard": {
+          "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/ingest/writer_guard.py",
+          "sha256": "4042fb16b57555aa94c40a8fd63ad06e4772d1f980f4d08d61bfdbff9b7f218c"
+        },
+        "carr_library.operations.broker": {
+          "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/operations/broker.py",
+          "sha256": "24940baa024716fb6e23bd052e427cbed17e2434098de3594e8cae47d307195b"
+        },
+        "carr_library.operations.facade": {
+          "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/operations/facade.py",
+          "sha256": "12226599f6d5411c0f9ca581c67cd9dc1ac81ace0641e61c506f1dc1ee7232da"
+        },
+        "carr_library.operations.models": {
+          "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/operations/models.py",
+          "sha256": "cb711ae7bde38c77fe039678afe1b57b56bd85d653fb982284fbef43f62b2545"
+        },
+        "carr_library.storage.publication": {
+          "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/storage/publication.py",
+          "sha256": "c70fc5e102613bd6ae1fa60f7640c9921c1325d615b377994c3abce4f49c60d7"
+        },
+        "carr_library.storage.revisions": {
+          "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/storage/revisions.py",
+          "sha256": "5d83c85838bbbf441618143106ffed4514e8185485955fdb310ec221cb08d419"
+        }
+      },
+      "package_inventory_files": 446,
+      "package_inventory_sha256": "cd527d71040249d924dd50cdaad524eaab7c6bf5580a41808716872b0685e75a",
+      "package_python_files": 426,
+      "physical_microphone": "NOT_RUN",
+      "physical_output": "NOT_RUN",
+      "proof_helper_sha256": "83db7e17748edc67240972a70b96078f8c6c9d218c8bc560b8be364350011de5",
+      "qualification": "IMPORT_CANCELLATION_PUBLICATION_AND_OWNER_CONTRACTS",
+      "selected_suites": {
+        "tests/e2e/test_import_files_cancellation.py": 9,
+        "tests/ingest/test_canonical_publication_binding.py": 6,
+        "tests/ingest/test_checkpoint_streaming.py": 5,
+        "tests/ingest/test_competing_publication_receipts.py": 9,
+        "tests/ingest/test_import_publication_point.py": 2,
+        "tests/ingest/test_import_reconciliation.py": 4,
+        "tests/ingest/test_import_slice_ownership.py": 5,
+        "tests/ingest/test_initial_publication_completion.py": 4,
+        "tests/ingest/test_pipeline.py": 9,
+        "tests/ingest/test_terminal_replay_registration.py": 10,
+        "tests/ingest/test_txt_replay_registration.py": 7,
+        "tests/ingest/test_worker_attempt_receipts.py": 14,
+        "tests/ingest/test_worker_isolated_launch.py": 4,
+        "tests/ingest/test_worker_publication_boundary.py": 44,
+        "tests/operations/test_ocr_admission.py": 9
+      },
+      "status": "PASS",
+      "test_files": {
+        "tests/e2e/test_import_files_cancellation.py": "7b8360a046fbec3c6994c81da88baacc128250a5c157b5be2d5bc9ad94e8331a",
+        "tests/ingest/test_canonical_publication_binding.py": "240daac77bdb741c8fe69e645f885a35957613918080831ad1328dc1e2920621",
+        "tests/ingest/test_checkpoint_streaming.py": "a78f4723e2bfd88aeacd01ae28de82150e788ba5d4e7e13df01b566b5aa1a8e0",
+        "tests/ingest/test_competing_publication_receipts.py": "d2dad37f096742389a79b25fd582de48ff1f74e74998cf5d852bd6d3579fddd0",
+        "tests/ingest/test_import_publication_point.py": "e1ca953f2eb5d8883893136574bad3fd7f4a6f1c4700582dc0d1b1553c1250b5",
+        "tests/ingest/test_import_reconciliation.py": "7683e985ed2e1d2bf6b898eb04b48920839ed828f3b98b8f5efaeaf4a60895a2",
+        "tests/ingest/test_import_slice_ownership.py": "9a6378af7943be8649cdd7b8a89ae531e6ceb813da722edc0bb31d33b842d980",
+        "tests/ingest/test_initial_publication_completion.py": "d645c7fa4dbfcda66b6193b0e2f11a068557409c9ab3960e60478c7269894584",
+        "tests/ingest/test_pipeline.py": "a239541d5850c579a022043ace5b4a365ed623ebf87a8323efe1f60a22a8f769",
+        "tests/ingest/test_terminal_replay_registration.py": "7d66dbf0b8da4fc875dd2f826ceb1167a0406a62c423ea655a7edee9dbfecc8a",
+        "tests/ingest/test_txt_replay_registration.py": "7b2acf7d28cb38710fbcde8bb91fa27038f4c918bf4258f206e96ee477800958",
+        "tests/ingest/test_worker_attempt_receipts.py": "0e1b560870e87c26fb6f46e239a68836aa67502f0f07acefb6aed67d71bf1423",
+        "tests/ingest/test_worker_isolated_launch.py": "ca5c88a16123554ec5af56a757b93a6b027396a7a43ea28d45030ff430bf379b",
+        "tests/ingest/test_worker_publication_boundary.py": "8f4c1a34f75e3685d9ed1ea914a9fa58cadc922ae8327b3a97501d65966150f5",
+        "tests/operations/test_ocr_admission.py": "fc24713060fc572892868aff8410866a70d4c65326e56fe7d16618276cfa8347"
+      }
+    }
+  ],
+  "public_changes": [
+    {
+      "path": "carr-library/src/carr_library/ingest/worker.py",
+      "base": "4b78e411e37c3b5e68fd6496cb72448e8fcb0b4f",
+      "sha": "63f5d2ef09c584d94f0be761b6c264b31f568802"
+    },
+    {
+      "path": "carr-library/src/carr_library/ingest/pipeline.py",
+      "base": "8d27e0e3d52e323325f139f870a2fc6e6b58152e",
+      "sha": "cf6ffa2cece1bfaa47a76d230934f93d69dea17e"
+    },
+    {
+      "path": "carr-library/tests/e2e/test_import_files_cancellation.py",
+      "base": "423143a9a994d35839ac6342e57f525f11ff3984",
+      "sha": "6e1b58a0fcecc2b83c7b941dc07a80a973a52c2d"
+    },
+    {
+      "path": "carr-library/tests/operations/test_ocr_admission.py",
+      "base": "8ca4090c270fe337d26283a66f409c96a5763d79",
+      "sha": "0eb4b0f9d144c002700a5708ebc188f1b018d4e8"
+    }
+  ],
+  "predecessor_failure": "0e0ded4a4475cfde139b59817ac46a0b0250f8b3",
+  "scope": "Actual15 selected suites and strict before/after current package/origin/head/helper/test identity. Windows pending; no future final-head acceptance is inferred."
+}

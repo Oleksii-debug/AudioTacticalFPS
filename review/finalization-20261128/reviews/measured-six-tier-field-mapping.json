@@ -1,0 +1,216 @@
+{
+  "schema": "carr-scale-guide-evidence-map/1",
+  "guide_path": "carr-library/docs/LARGE_LIBRARY_SCALE.md",
+  "before": "7884517a2fd9bfd70cb07900a12fe21ad69734a1",
+  "after": "730547027a66e471181bc7e4f93c9d650f821e3f",
+  "delta": "One additive dated six-tier section before the unchanged512MiB history; removing that exact section reproduces the complete old guide byte-for-byte.",
+  "evidence": "e9c9059cc506f40aa1a08d86776e779d61235938",
+  "raw_harvest": "269bf468f4286923b99d7655151fdc86a45b2100",
+  "original_head": "71ca92be691455d0ff51ed163b1d91749e5ae62e",
+  "original_run": 46124999025,
+  "harvested_at": "2026-11-28T09:30:18Z",
+  "harvester_head": "ce8a6c326988c5b8d73bb107a0dcf043c9f2b151",
+  "harvester_run": 46129830331,
+  "columns": {
+    "original_counts": [
+      "records[].outcome.actual_books",
+      "records[].outcome.actual_original_segments"
+    ],
+    "original_bytes": "records[].outcome.generation.generated_bytes",
+    "measured_import_seconds": "records[].outcome.search.operations.measured_import_seconds",
+    "complete_search_seconds": "records[].outcome.search.elapsed_seconds",
+    "coordinator_own_peak_bytes": "records[].outcome.search.memory.coordinator_peak_bytes",
+    "maximum_individual_worker_own_peak_bytes": "records[].outcome.search.worker_peaks.maximum_worker_own_peak_bytes",
+    "logical_disk": [
+      "records[].outcome.search.disk.external_originals.logical_bytes",
+      "records[].outcome.search.disk.retained_originals.logical_bytes",
+      "records[].outcome.search.disk[\"library.sqlite\"].main",
+      "records[].outcome.search.disk[\"imports.sqlite\"].main",
+      "records[].outcome.search.disk.application_profile.logical_bytes"
+    ]
+  },
+  "seconds_display": "Rounded to nearest three decimals using Number.toFixed(3); underlying values retained unchanged in the record.",
+  "byte_display": "Exact integers, comma grouped only.",
+  "rows": [
+    {
+      "tier": "books-1000",
+      "os": "ubuntu-24.04",
+      "job": 140917529551,
+      "artifact": 15255746478,
+      "artifact_sha256": "ec8d6d808b7b08204ee61efac2b784b282f96ef0810d1fb950e5e1885d42f80f",
+      "artifact_bytes": 1774585,
+      "source_counts": [
+        1000,
+        40000
+      ],
+      "original_bytes": 10279003,
+      "import_seconds": 92.99408965599997,
+      "search_seconds": 41.29770475500001,
+      "coordinator_peak_bytes": 52183040,
+      "worker_peak_bytes": 46968832,
+      "memory_method": "resource.getrusage(RUSAGE_SELF).ru_maxrss",
+      "allowance_bytes": 67108864,
+      "logical_disk": {
+        "external_originals": 10279003,
+        "retained_originals": 10279948,
+        "application_profile": 114811402,
+        "library.sqlite": 41193472,
+        "imports.sqlite": 31391744
+      }
+    },
+    {
+      "tier": "text-65m",
+      "os": "windows-2022",
+      "job": 140917529723,
+      "artifact": 15256096563,
+      "artifact_sha256": "610305ccd3fd7de7068dadfc0728f73de81c159ef46b7df8ccc7e8cd8eab797c",
+      "artifact_bytes": 82785,
+      "source_counts": [
+        1,
+        17
+      ],
+      "original_bytes": 68157613,
+      "import_seconds": 11.284418300000027,
+      "search_seconds": 463.91793249999995,
+      "coordinator_peak_bytes": 641994752,
+      "worker_peak_bytes": 96649216,
+      "memory_method": "GetProcessMemoryInfo.PeakWorkingSetSize",
+      "allowance_bytes": 1073741824,
+      "logical_disk": {
+        "external_originals": 68157613,
+        "retained_originals": 68158558,
+        "application_profile": 359798724,
+        "library.sqlite": 145633280,
+        "imports.sqlite": 68280320
+      }
+    },
+    {
+      "tier": "books-1000",
+      "os": "windows-2022",
+      "job": 140917529744,
+      "artifact": 15256755017,
+      "artifact_sha256": "384d03a895146d5d5844f5500e8e0efcc7b56a8d36465bc97f0726c48cfe622a",
+      "artifact_bytes": 1774578,
+      "source_counts": [
+        1000,
+        40000
+      ],
+      "original_bytes": 10279003,
+      "import_seconds": 198.13022549999997,
+      "search_seconds": 48.39283280000001,
+      "coordinator_peak_bytes": 53153792,
+      "worker_peak_bytes": 45686784,
+      "memory_method": "GetProcessMemoryInfo.PeakWorkingSetSize",
+      "allowance_bytes": 67108864,
+      "logical_disk": {
+        "external_originals": 10279003,
+        "retained_originals": 10279948,
+        "application_profile": 115026949,
+        "library.sqlite": 41287680,
+        "imports.sqlite": 31457280
+      }
+    },
+    {
+      "tier": "text-129m",
+      "os": "windows-2022",
+      "job": 140917529780,
+      "artifact": 15257370813,
+      "artifact_sha256": "68747e744847e77cadf70cfd0d29df1d92f2280ae895d37addb8af225b6ffce2",
+      "artifact_bytes": 83548,
+      "source_counts": [
+        1,
+        33
+      ],
+      "original_bytes": 135266477,
+      "import_seconds": 18.56002619999998,
+      "search_seconds": 558.0432599999999,
+      "coordinator_peak_bytes": 1170731008,
+      "worker_peak_bytes": 98275328,
+      "memory_method": "GetProcessMemoryInfo.PeakWorkingSetSize",
+      "allowance_bytes": 1073741824,
+      "logical_disk": {
+        "external_originals": 135266477,
+        "retained_originals": 135267422,
+        "application_profile": 711780304,
+        "library.sqlite": 289144832,
+        "imports.sqlite": 135479296
+      }
+    },
+    {
+      "tier": "text-129m",
+      "os": "ubuntu-24.04",
+      "job": 140917529794,
+      "artifact": 15256997095,
+      "artifact_sha256": "d1e9ba9ad012eb06e07308e9031eb166622b9dc5ae2aaecce93db07c71527c3b",
+      "artifact_bytes": 83557,
+      "source_counts": [
+        1,
+        33
+      ],
+      "original_bytes": 135266477,
+      "import_seconds": 12.960704765999992,
+      "search_seconds": 414.436519333,
+      "coordinator_peak_bytes": 1219563520,
+      "worker_peak_bytes": 131936256,
+      "memory_method": "resource.getrusage(RUSAGE_SELF).ru_maxrss",
+      "allowance_bytes": 1073741824,
+      "logical_disk": {
+        "external_originals": 135266477,
+        "retained_originals": 135267422,
+        "application_profile": 711780347,
+        "library.sqlite": 289144832,
+        "imports.sqlite": 135479296
+      }
+    },
+    {
+      "tier": "text-65m",
+      "os": "ubuntu-24.04",
+      "job": 140917529810,
+      "artifact": 15257202190,
+      "artifact_sha256": "3b90dbba1ed854c5efceb6e5d8d4ec017b57f571207c1fe5969c09b2c01f4321",
+      "artifact_bytes": 82729,
+      "source_counts": [
+        1,
+        17
+      ],
+      "original_bytes": 68157613,
+      "import_seconds": 6.03668085599999,
+      "search_seconds": 260.631062515,
+      "coordinator_peak_bytes": 667365376,
+      "worker_peak_bytes": 134471680,
+      "memory_method": "resource.getrusage(RUSAGE_SELF).ru_maxrss",
+      "allowance_bytes": 1073741824,
+      "logical_disk": {
+        "external_originals": 68157613,
+        "retained_originals": 68158558,
+        "application_profile": 359798767,
+        "library.sqlite": 145633280,
+        "imports.sqlite": 68280320
+      }
+    }
+  ],
+  "assertions": {
+    "unchanged_old_guide_bytes": true,
+    "no_profile_or_budget_declaration_changes": true,
+    "package_python_files": 426,
+    "origins": 45,
+    "scripts": 3,
+    "full_literal_windows_by_tier": {
+      "books-1000": 400,
+      "text-65m": 3,
+      "text-129m": 5
+    },
+    "anchor_samples_each": 50,
+    "auxiliary_libraries_each": 21,
+    "unchanged_cache_updated_rows_each": 0,
+    "real_authored_exit_each": 73,
+    "remaining_at_checkpoint": "Six 10k/50k/2GiB jobs running; four mandatory largest-tier backup/fresh-restore verdicts pending.",
+    "no_largest_or_changed_head_qualification": true,
+    "family_peak": "NOT_MEASURED",
+    "no_sum_of_nonsimultaneous_process_peaks": true,
+    "search_allowance_is_not_os_rss_cap": true,
+    "logical_disk_profile_overlaps_its_retained_and_sqlite_columns": true,
+    "windows_physical_allocation": "NOT_MEASURED",
+    "no_causal_speedup_claim": true
+  }
+}

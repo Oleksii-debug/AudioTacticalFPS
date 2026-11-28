@@ -1,0 +1,12 @@
+{
+  "schema": 1,
+  "status": "SOURCE_APPROVED",
+  "path": "carr-library/docs/LARGE_LIBRARY_SCALE.md",
+  "before": "7884517a2fd9bfd70cb07900a12fe21ad69734a1",
+  "after": "730547027a66e471181bc7e4f93c9d650f821e3f",
+  "mapping": "f5e96036f52cd1749806d42b5239a36de589a102",
+  "actual_evidence": "e9c9059cc506f40aa1a08d86776e779d61235938",
+  "reviewer": "reader_review",
+  "review": "Sole additive section mechanically removed to reproduce exact base. All six counts/bytes/timings, separate own-process peaks, logical disk categories and search/restart assertions independently match saved actual records. Dated exact71ca scope and pending larger/future-head boundaries preserved.",
+  "date": "2026-11-28 09:45:41 UTC"
+}

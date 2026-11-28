@@ -2,7 +2,7 @@
 
 The source snapshot on this branch is PR143 head `71ca92be691455d0ff51ed163b1d91749e5ae62e`. Its current required acceptance has failed; it must not merge.
 
-[Current status](status.json) and [continuation checkpoint](checkpoints/correction-cycle-17.json) record actual results and the remaining work. [Correction candidates](checkpoints/correction-candidates-17.json) identify the exact reviewed source, tests, workflow trees and separate pending runs. [PR description](pull-request.md) records the reviewable scope and qualification boundaries.
+[Current status](status.json) and [continuation checkpoint](checkpoints/correction-cycle-18.json) record actual results and the remaining work. [Correction candidates](checkpoints/correction-cycle-18.json) identify the exact reviewed source, tests, workflow trees and separate pending runs. [PR description](pull-request.md) records the reviewable scope and qualification boundaries.
 
 ## Evidence groups
 

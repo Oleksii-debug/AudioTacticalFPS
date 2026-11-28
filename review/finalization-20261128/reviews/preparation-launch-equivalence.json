@@ -1,0 +1,34 @@
+{
+  "schema": "carr-preparation-native-launch-comparison/1",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "failed_composition": {
+    "head": "bdc3c6f1383f39e9c0b8e6f60c694a11a5fbb515",
+    "tree": "9247d7f1378722a0554f4bcaac04ec18874b4a32",
+    "run": 46130308277,
+    "job": 140935317017,
+    "diagnosis": "FAILURE_REPORTED; retained stdout/stderr not yet read by this reviewer"
+  },
+  "source": {
+    "probe": "7f468b9454e22fa021848b05fd1c4aaa96bf1542",
+    "helper": "b3beaa992d508f42672fdfa5cd15c5cb96f04af7",
+    "configuration": "1094b16fe3f201496ffd01913de5ced5baa42178",
+    "binding_helper": "ab4ccb8f8334c28b12ab5417ae0f19df310e41e3",
+    "native_runtime": "50ca93914325753f7d9cb91f1bc4f48fc9ae230f"
+  },
+  "qualified_component": {
+    "head": "f127fecc136ee129e5d8ed7b63cd4b0a892412de",
+    "workflow": "786f672c82510553950eab489a3b6ed6a3f66d7d",
+    "evidence": "9033d18c80d3ea299122968fe9075dac5ee128a5",
+    "native_checks": 321
+  },
+  "findings": [
+    "Empty configured arguments select the existing owned parent; it adds --native-child on the actual isolated same-interpreter child command.",
+    "The parent resolves the probe absolute path from __file__, which runpy supplies as the selected exact path.",
+    "The child activates the verified native runtime before wx imports and closes its activation handle in finally.",
+    "The child loads the binding helper by explicit sibling file path; neither parent nor child requires a scripts sys.path insertion.",
+    "The qualified workflow used the same script parent-child chain, called directly under -I -B -X utf8; the composed helper adds an isolated runpy entry wrapper and no scenario arguments."
+  ],
+  "conclusion": "No missing child flag or sibling import handoff is established. Preserve existing owned deadline and inspect exact retained stderr before any change.",
+  "product_changes": [],
+  "runtime_rerun": "NOT_RUN"
+}

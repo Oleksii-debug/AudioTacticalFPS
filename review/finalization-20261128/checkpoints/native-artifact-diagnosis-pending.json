@@ -1,0 +1,65 @@
+{
+  "schema": "carr-fixed-native-artifact-reader/1",
+  "status": "PUBLISHED_SOURCE_APPROVED_RUNTIME_PENDING",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "branch": "carr/final-native-artifact-review-20261128",
+  "head": "c632954bef79ee8ccf997d590ed844ccf037eeb6",
+  "tree": "059e765446225bda0391d1f64bc02a00d777259e",
+  "parent": "bdc3c6f1383f39e9c0b8e6f60c694a11a5fbb515",
+  "files": 1570,
+  "changed_paths": [
+    {
+      "path": ".github/diagnostics/harvest_native_failure_artifact.py",
+      "sha": "9123d2ee8f8bf936ee3889c3fe90f10fe3ee5e55"
+    },
+    {
+      "path": ".github/workflows/carr-final-native-artifact-review.yml",
+      "sha": "d268879a73049028ccac995f4ef54ad7c8bbabd9"
+    }
+  ],
+  "original_run": 46130308277,
+  "original_job": 140935317017,
+  "original_conclusion": "failure",
+  "artifact": {
+    "id": 15258462236,
+    "name": "final-scope-native-bdc3c6f1383f39e9c0b8e6f60c694a11a5fbb515",
+    "size_in_bytes": 136227,
+    "url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15258462236",
+    "archive_download_url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15258462236/zip",
+    "expired": false,
+    "created_at": "2026-11-28T09:48:46Z",
+    "expires_at": "2027-02-26T09:24:15Z",
+    "updated_at": "2026-11-28T09:48:46Z",
+    "digest": "sha256:3eb7a144b7b0e7fd7a77d58ff360f42af7e3844b663c3218153c9431635b68d2",
+    "workflow_run": {
+      "id": 46130308277,
+      "repository_id": 1341777614,
+      "head_repository_id": 1341777614,
+      "head_branch": "carr/final-scope-preflight-20261128",
+      "head_sha": "bdc3c6f1383f39e9c0b8e6f60c694a11a5fbb515"
+    }
+  },
+  "peer_review": {
+    "reviewer": "import_recovery_review",
+    "status": "SOURCE_APPROVED",
+    "script": "9123d2ee8f8bf936ee3889c3fe90f10fe3ee5e55",
+    "workflow": "d268879a73049028ccac995f4ef54ad7c8bbabd9",
+    "scope": "Ten common helpers and NoRedirect byte-identical to948b. Exact fixed failed run/job/head/artifact metadata. Bounded ZIP and selected text, unique paths, no extraction/import/replay; original failure retained."
+  },
+  "bounds": {
+    "compressed": 4194304,
+    "expanded": 16777216,
+    "member": 4194304,
+    "entries": 256,
+    "selected_text_each": 262144,
+    "selected_text_total": 2097152,
+    "reader_seconds": 360,
+    "step_minutes": 8,
+    "job_minutes": 10
+  },
+  "token_boundary": "Authorization only to fixed api.github.com; separately checked HTTPS signed host request without Authorization",
+  "no_extraction": true,
+  "no_application_import": true,
+  "no_product_replay": true,
+  "final_refs_untouched": true
+}

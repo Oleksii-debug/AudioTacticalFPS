@@ -1,0 +1,83 @@
+{
+  "schema": "carr-final-composition-native-preflight/1",
+  "status": "FAIL",
+  "head": "bdc3c6f1383f39e9c0b8e6f60c694a11a5fbb515",
+  "tree": "9247d7f1378722a0554f4bcaac04ec18874b4a32",
+  "run_id": 46130308277,
+  "syntax": {
+    "job_id": 140933765337,
+    "raw_log_blob": "9dbb6ff57d4539c161dcea6cb98fc40e294bec10",
+    "status": "PASS",
+    "python": {
+      "entrypoints": 6,
+      "head": "bdc3c6f1383f39e9c0b8e6f60c694a11a5fbb515",
+      "powershell_blocks_pending": 43,
+      "python_blocks": 11,
+      "python_files": 1246,
+      "scope": "Python compile, duplicate-free YAML, current workflow module/native paths",
+      "status": "PASS",
+      "workflows": [
+        ".github/workflows/carr-bibliography.yml",
+        ".github/workflows/carr-calibre-reading-review.yml",
+        ".github/workflows/carr-final-scope-preflight.yml",
+        ".github/workflows/carr-legacy-reading-review.yml",
+        ".github/workflows/carr-library-scale.yml",
+        ".github/workflows/carr-native-launcher.yml",
+        ".github/workflows/carr-v3.yml",
+        ".github/workflows/carr-windows.yml"
+      ]
+    },
+    "powershell": {
+      "blocks": 43,
+      "status": "PASS",
+      "errors": []
+    }
+  },
+  "native": {
+    "job_id": 140935317017,
+    "failed_step": 7,
+    "failed_probe": "speech-preparation",
+    "raw_log_blob": "8aa26cdb486d4a9b6b0ca2be8faab30065c6a58b",
+    "underlying_failure": "NOT_YET_READ; retained stdout/stderr/result artifact must determine the actual cause",
+    "later_scopes": "NOT_RUN after fail-fast refusal",
+    "diagnostic_artifact": {
+      "id": 15258462236,
+      "node_id": "MDg6QXJ0aWZhY3QxNTI1ODQ2MjIzNg==",
+      "name": "final-scope-native-bdc3c6f1383f39e9c0b8e6f60c694a11a5fbb515",
+      "size_in_bytes": 136227,
+      "url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15258462236",
+      "archive_download_url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15258462236/zip",
+      "expired": false,
+      "digest": "sha256:3eb7a144b7b0e7fd7a77d58ff360f42af7e3844b663c3218153c9431635b68d2",
+      "created_at": "2026-11-28T09:48:46Z",
+      "updated_at": "2026-11-28T09:48:46Z",
+      "expires_at": "2027-02-26T09:24:15Z",
+      "workflow_run": {
+        "id": 46130308277,
+        "repository_id": 1341777614,
+        "head_repository_id": 1341777614,
+        "head_branch": "carr/final-scope-preflight-20261128",
+        "head_sha": "bdc3c6f1383f39e9c0b8e6f60c694a11a5fbb515"
+      }
+    }
+  },
+  "launch_source_review": "fe591fa0afaa6091acac370f7452dd91e1f7f26c",
+  "launch_review_verdict": "The exact source does not support changing the existing native-child flag or scripts import path; keep the owned parent/child boundary.",
+  "artifact_diagnosis": {
+    "head": "c632954bef79ee8ccf997d590ed844ccf037eeb6",
+    "run_id": 46132889609,
+    "checkpoint": "28f2e682f7402c16077a925c6b0b7e5e3e30418b",
+    "status": "PENDING_RUNTIME; bounded read-only saved-artifact decoding only"
+  },
+  "diagnostic_helper": {
+    "before": "b3beaa992d508f42672fdfa5cd15c5cb96f04af7",
+    "after": "29529724af1dea6c8bd0cfb83f990eaa8c82ee1c",
+    "status": "SOURCE_APPROVED; NOT_YET_EXECUTED",
+    "scope": "Exactly12 added lines for bounded failure tails after finally identity checks. No native predicate, exception, full artifact stream, ownership bound or identity check is weakened."
+  },
+  "limits": [
+    "No complete native PASS is established on bdc3 or the prepared11589 source.",
+    "The previous qualified speech preparation component remains its own exact-head record.",
+    "The native failure must be diagnosed and resolved, then the full composed native scope and final maintained gates must execute."
+  ]
+}

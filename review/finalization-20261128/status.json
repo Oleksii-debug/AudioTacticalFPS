@@ -1,119 +1,226 @@
 {
-  "schema": "carr-finalization-continuation/17",
-  "observed_utc": "2026-11-28 09:27:48 UTC",
+  "schema": "carr-finalization-continuation/18",
+  "observed_utc": "2026-11-28 10:02:18 UTC",
   "repository": "Oleksii-debug/AudioTacticalFPS",
   "pr": 143,
-  "branch": "carr/canonical-integrity-finish-20261127",
-  "head": "71ca92be691455d0ff51ed163b1d91749e5ae62e",
-  "tree": "73c43b7486974a7b301aa8c210c891b4d94ddb0d",
-  "files": 1567,
+  "current_pr": {
+    "head": "71ca92be691455d0ff51ed163b1d91749e5ae62e",
+    "tree": "73c43b7486974a7b301aa8c210c891b4d94ddb0d",
+    "files": 1567,
+    "branch": "carr/canonical-integrity-finish-20261127",
+    "base": "carr-library",
+    "pr": 143,
+    "ref_readback": true,
+    "status": "PUBLISHED_GATES_PENDING"
+  },
+  "current_head_may_merge": false,
   "canonical": "e5c64a5245583f8f8b404a0f042f6ca438c24d7f",
   "specs": {
     "finalization": "db8adbdc483a03c262885928c7ed214ca70bbaa7",
     "audio_agent": "d0b2761dd22b33233b311d4800230fb47f5d3d8b",
     "root_agents": "080bb9104d3224749e9317c2273d803c0ac37835"
   },
-  "current_head_may_merge": false,
-  "gates": {
-    "main": {
-      "run": 46124998890,
-      "status": "FAIL",
-      "record": "884ff0dabfe218d7d97c7da8d7e8edb843210b7e"
+  "prepared_final": {
+    "head": "11589b7a19911d0c20c526fbf8186e9adfb41859",
+    "tree": "02498e5525522a78fed306925f07c040082e480a",
+    "files": 1567,
+    "changed_paths": [
+      {
+        "path": ".github/workflows/carr-v3.yml",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "58756c7778f90484df7dbf563dfdf9f0b40f982b"
+      },
+      {
+        "path": ".github/workflows/carr-windows.yml",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "ffd99edb913e37f76c0cd7a8ad338b84538cd8a9"
+      },
+      {
+        "path": "carr-library/docs/LARGE_LIBRARY_SCALE.md",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "730547027a66e471181bc7e4f93c9d650f821e3f"
+      },
+      {
+        "path": "carr-library/docs/V3_RELEASE_READINESS.md",
+        "sha": "b87307627e45f9a5f39e1062e5cbc7998f832828",
+        "mode": "100644",
+        "type": "blob"
+      },
+      {
+        "path": "carr-library/packaging/build_windows_bundle.py",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "6e5cbea9d9b92ebc86ec129ebd1cd72bc369a971"
+      },
+      {
+        "path": "carr-library/packaging/refresh_private_bundle.py",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "a0ada7add5d2b10c820579463bb1bef99a9e5c54"
+      },
+      {
+        "path": "carr-library/src/carr_library/ingest/pipeline.py",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "cf6ffa2cece1bfaa47a76d230934f93d69dea17e"
+      },
+      {
+        "path": "carr-library/src/carr_library/ingest/worker.py",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "63f5d2ef09c584d94f0be761b6c264b31f568802"
+      },
+      {
+        "path": "carr-library/tests/e2e/test_import_files_cancellation.py",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "6e1b58a0fcecc2b83c7b941dc07a80a973a52c2d"
+      },
+      {
+        "path": "carr-library/tests/operations/test_ocr_admission.py",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "0eb4b0f9d144c002700a5708ebc188f1b018d4e8"
+      },
+      {
+        "path": "carr-library/tests/packaging/test_refresh_private_bundle_review.py",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "796bf728f42157721ff7754ff0577f3ab1c584d4"
+      },
+      {
+        "path": "carr-library/tests/packaging/test_windows_bundle.py",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "35bfe2d17d47c4ed6e2039121fff36450f765fdc"
+      },
+      {
+        "path": "carr-library/tests/ui/test_desktop_handlers.py",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "6ef37550a8463a125de82e1f0628244d5e0e1d17"
+      },
+      {
+        "path": "carr-library/tests/packaging/test_preparation_notice_closure.py",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "72ba5770af6fd355189fff990716c679b178943c"
+      },
+      {
+        "path": "carr-library/docs/AUDIO_SILENCE_INSPECTION.md",
+        "sha": "affe57cd4e4f2f88e1eb086f9f00ce0a2a85f741",
+        "mode": "100644",
+        "type": "blob"
+      },
+      {
+        "path": "carr-library/docs/WORD_DESKTOP_INTEGRATION.md",
+        "sha": "1c4ca4fc5275c92d5741e842b2c070b86a723bf4",
+        "mode": "100644",
+        "type": "blob"
+      }
+    ],
+    "status": "PREPARED_NOT_PUBLISHED_TO_PR; native failure unresolved and final gates not run",
+    "product_and_packaging_bytes_equal_bdc3": true
+  },
+  "syntax_companion": {
+    "head": "2de5ee3d4e6e373ab8562f52e6fa8f4abe5d0380",
+    "tree": "5f328db32882f3ec7661c2ad1f54aceb6415af46",
+    "files": 1568,
+    "parent": "11589b7a19911d0c20c526fbf8186e9adfb41859",
+    "branch": "carr/final-workflow-syntax-20261128",
+    "source_tree": "02498e5525522a78fed306925f07c040082e480a",
+    "delta": [
+      {
+        "path": ".github/workflows/carr-final-workflow-syntax.yml",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "a2c05998b2b2a24d86eee89a1480e5b943b81ac8"
+      }
+    ],
+    "verified": true,
+    "status": "PENDING_RUNTIME",
+    "run_id": 46132103113,
+    "job_id": 140939309074
+  },
+  "correction_evidence": {
+    "runtime_sbom": {
+      "status": "PASS",
+      "head": "eb9b66d67322c3c243d9b8f27bc8e93dd23fe3c9",
+      "run": 46130223315,
+      "record": "bfab85fc24f6ef6810b49c0c1a4a868bb7788def",
+      "cases_each_context": 42,
+      "subtests_each_context": 18
     },
+    "fixtures": {
+      "status": "PASS",
+      "record": "8a8168ccdb4c1b6e30dd0b473f96f774b68abc2e",
+      "cases_each_context": 61
+    },
+    "importer": {
+      "head": "5b87b13974d57d1aeb59f92c78c0f64366fd8a8c",
+      "run": 46130074946,
+      "linux": "PASS_141_SOURCE_141_INSTALLED",
+      "linux_evidence": "c84ca09dfb44b96ae11986fff800512db6cdfbbb",
+      "windows": "RUNNING; await owner exact completed evidence"
+    },
+    "composed_preflight": {
+      "head": "bdc3c6f1383f39e9c0b8e6f60c694a11a5fbb515",
+      "run": 46130308277,
+      "syntax": "PASS_1246_PYTHON_11_EMBEDDED_43_POWERSHELL",
+      "native": "FAIL_AT_SPEECH_PREPARATION; cause pending fixed artifact decode"
+    },
+    "diagnostic_helper": {
+      "sha": "29529724af1dea6c8bd0cfb83f990eaa8c82ee1c",
+      "status": "SOURCE_APPROVED_NOT_YET_COMPOSED"
+    }
+  },
+  "original71ca_gates": {
+    "main": "FAIL inventory step12; record884ff0dabfe218d7d97c7da8d7e8edb843210b7e",
     "v3": {
       "run": 46124998937,
-      "status": "PORTABLE_FAIL_NATIVE_RUNNING",
-      "portable": "a984e0a5a8d6454a520277d9f4628f224d59ba6c",
-      "native_job": 140917532061
+      "portable": "FAIL_10898_PASS_5_FAIL_42_SUBTESTS",
+      "windows_installed8": "FAIL; exact assertions pending completed job log",
+      "native9_11": "NOT_RUN",
+      "progress13": "PASS",
+      "broad14": "PASS",
+      "publication15": "PASS",
+      "shared16": "RUNNING"
     },
     "capacity": {
       "run": 46124999025,
-      "status": "SIX_SMALL_TIERS_PASS_SIX_LARGER_RUNNING",
-      "harvester_checkpoint": "96e182b28f3993a18ecdb709b851718710334e75"
+      "completed": 7,
+      "pending": 5,
+      "required_largest_backup_verdicts_pending": 4,
+      "six_tier_metrics": "e9c9059cc506f40aa1a08d86776e779d61235938",
+      "linux_10000_receipt": "f6e59a812d86cfd1bca3a0aa5a41b72afb96c9df"
     },
-    "launcher": {
-      "run": 46124998938,
-      "status": "PASS",
-      "record": "3245c4e650564ed52e853ba3a9329827d9aefb4e"
-    },
-    "bibliography": {
-      "run": 46124998884,
-      "status": "PASS",
-      "record": "cd590c064f6f74d3b73c83ab30943f0cae634bff"
-    },
-    "calibre": {
-      "run": 46124995558,
-      "status": "PASS",
-      "record": "8f4dc8524191d74228f882ad5fbe3cd08d3d5cf7"
-    },
-    "legacy": {
-      "run": 46124995570,
-      "status": "PASS",
-      "record": "4f5d8286802fbea77e5355146638478d7bc64d8f"
-    }
-  },
-  "corrections": {
-    "menu_notice": {
-      "status": "PASS_61_SOURCE_61_INSTALLED_EACH_OS",
-      "record": "8a8168ccdb4c1b6e30dd0b473f96f774b68abc2e",
-      "blobs": [
-        "72ba5770af6fd355189fff990716c679b178943c",
-        "6ef37550a8463a125de82e1f0628244d5e0e1d17"
-      ]
-    },
-    "import": {
-      "status": "FORWARD_RUNTIME_PENDING",
-      "run": 46130074946,
-      "head": "5b87b13974d57d1aeb59f92c78c0f64366fd8a8c",
-      "manifest": "d55bc2056f0da09296cd460691ebce4725fde717",
-      "prior_failed_fixture_record": "0e0ded4a4475cfde139b59817ac46a0b0250f8b3"
-    },
-    "sbom": {
-      "status": "PENDING_RUNTIME",
-      "run": 46130223315,
-      "head": "eb9b66d67322c3c243d9b8f27bc8e93dd23fe3c9",
-      "tree": "c49a627deddf32e5f5bfd9ac43dda2cebbfd02ec",
-      "files": 1568,
-      "branch": "carr/sbom-vendor-review-20261128",
-      "ref_readback": true
-    },
-    "preflight": {
-      "status": "PENDING_RUNTIME",
-      "run": 46130308277,
-      "head": "bdc3c6f1383f39e9c0b8e6f60c694a11a5fbb515",
-      "tree": "9247d7f1378722a0554f4bcaac04ec18874b4a32",
-      "files": 1568,
-      "branch": "carr/final-scope-preflight-20261128",
-      "ref_readback": true,
-      "public_changes": 11
-    },
-    "preflight2": {
-      "status": "SYNTAX_PASS_NATIVE_NOT_RUN_OLD_NOTICE_FIXTURE_FAIL",
-      "record": "5e6e1b1a34a9a125903f05658850628cb31ec1c2"
-    }
-  },
-  "new_completed_native_components": {
-    "word": "8264ac4a6aa227d0e86b7d7041fe16476de1125d",
-    "silence": "f651a223e990d12de0f200b17656560b1616ddc6"
+    "launcher": "PASS_3245c4e650564ed52e853ba3a9329827d9aefb4e",
+    "bibliography": "PASS_cd590c064f6f74d3b73c83ab30943f0cae634bff",
+    "calibre": "PASS_8f4dc8524191d74228f882ad5fbe3cd08d3d5cf7",
+    "legacy": "PASS_4f5d8286802fbea77e5355146638478d7bc64d8f"
   },
   "next": [
-    "Complete focused SBOM and importer runs; repair only actual failures while retaining original strict assertions.",
-    "Complete all eight native composed scopes on bdc3, including actual syntax and exact installed source/asset checks.",
-    "Retain outcomes of current healthy 71ca V3/capacity jobs; do not manually cancel them.",
-    "Harvest the saved quantitative capacity reports without rerunning a corpus or inferring API/RAM metrics from job wall time.",
-    "Compose the final corrected source only after required corrections are supported; include truthful completed Word/silence documentation, fresh-read canonical/spec/PR refs, recursively verify every file, and advance by expected-SHA normal update.",
-    "Complete all seven required workflows and all 12 capacity tiers on the corrected exact head, then merge PR143. Do not transfer component or old-head PASS.",
-    "Actual Office availability, private model quality, physical devices/listening, human NVDA, publisher signing and production authority remain separate evidence."
+    "Receive actual saved native stderr/result from auditor run46132889609; do not change child flags based on speculation.",
+    "Fix the concrete composed-native cause, retain all required scenarios and add source-approved bounded diagnostic helper2952 to the next coherent preflight and final source.",
+    "Await importer Windows actual141-case outcome and current71ca V3 final shared-resource step; retain every completed failure/result before normal final-ref supersession.",
+    "Do not manually cancel healthy jobs. Original capacity is cancel-in-progress:false and may retain independent outcomes while a corrected final head is later tested.",
+    "Fresh-read canonical/spec/PR refs, recursively verify the corrected final tree, expected-SHA normal update, then complete all seven maintained workflows and all12 actual capacity tiers on that exact head before expected-head mergePR143.",
+    "Current prepared11589 code/guide records are durable through syntax-child2de5. It is not yet a qualified final candidate."
   ],
-  "execution_constraints": {
-    "local_executor": "DISCONNECTED; do not retry local exec/shell",
-    "source_operations": "GitHub blobs, trees, commits and Actions",
-    "agents": {
-      "reader_review": "V3 native plus reader-related source reviews",
-      "import_recovery_review": "Import correction focused gate",
-      "release_audit": "12-tier capacity and read-only report harvester"
-    },
-    "update_ref": "branch_name, sha, expected_sha, force:false",
-    "current_final_feature_map": "phasefinish_final_feature_selection contains current 71ca only, not staged corrections"
+  "owners": {
+    "reader_review": "V3 completed log and speech-preparation source diagnosis",
+    "import_recovery_review": "Importer141×4 actual completion and read-only diagnosis peer review",
+    "release_audit": "Original12-tier capacity, metrics harvesting and fixed native-artifact decode",
+    "root": "Composed native preflight, final source composition, PR/evidence and final merge"
+  },
+  "constraints": {
+    "local_executor": "DISCONNECTED; do not retry exec or shell",
+    "tools": "GitHub structured blob/tree/commit/Actions; code-mode stores hold full candidates and raw logs",
+    "final_feature_selection_store": "phasefinish_final_feature_selection is STILL71ca; use phasefinish_corrected_final_candidate_map for11589",
+    "additional_uncomposed_helper_store": "phasefinish_native_helper_diagnostic_draft",
+    "approval": "User authorized completion and merge; do not ask again because CI is queued."
   }
 }
