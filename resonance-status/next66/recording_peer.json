@@ -1,0 +1,35 @@
+{
+  "schema": "carr-bounded-static-peer/1",
+  "reviewer": "locate_project",
+  "created_utc": "2026-11-28 07:29:29 UTC",
+  "verdict": "ACCEPTED_STATIC_NOT_RUN",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "scope": "Recording initial-Pause fixture clock and actual admission/cleanup boundary",
+  "path": "carr-library/tests/audio/test_recording_controls.py",
+  "before": "e07f220a0143196b042eb0b301edd43c86073dc1",
+  "after": "d68f5bccde6ebb00809fdc192af1e9643df9c1e6",
+  "actual_recording_source": "7a71d0975cba5ada05772b43b881998e87b61326",
+  "actual_failure_evidence": "b9a84fc6ca0393feafea33850ff0c9452f7ad614",
+  "inventory": {
+    "whole_cases": 30,
+    "test_functions": 21,
+    "names_and_decorators_unchanged": true
+  },
+  "inverse": {
+    "hunks": 2,
+    "exact_preimage_reconstructed": true,
+    "unrelated_source_bytes_unchanged": true
+  },
+  "findings": [
+    "The old actual trace received the expected pause-allowance AudioError, then failed the whole capture-call wall-clock assertion at 1.406 seconds. The following no-child and no-pending assertions were not reached; that trace does not isolate the pause loop from admission cost.",
+    "Only the recording module's time reference is replaced with a private SimpleNamespace. The shared time module, broker timing, actual scope checks, FFmpeg digest, native reservation and staging remain unchanged.",
+    "The exact production module has four time calls, all within the existing paused-policy loop. The test-local monotonic/sleep pair therefore measures that loop without changing earlier admission or cleanup.",
+    "The controlled wait requires actual paused feedback, no admitted capture child and one real pending staging directory. It bounds read count, wait count and each wait and requires the existing pause-allowance exception after more than .02 and at most .05 simulated seconds.",
+    "Post-call checks require paused frames and segments zero, no capture child, and actual pending staging removed. Current capture finally closes the real reservation and the actual broker context settles as before."
+  ],
+  "limits": [
+    "No test, parser, native device, acoustic, or wall-clock latency execution claim.",
+    "No production policy, timeout, budget, source admission or cleanup change.",
+    "A3 and later runtime results remain required and separate."
+  ]
+}

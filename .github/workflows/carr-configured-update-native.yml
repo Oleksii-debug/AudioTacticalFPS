@@ -27,7 +27,7 @@ jobs:
       # and owned installed Python restart. B is the exact event source head.
       # Same display versions retain their real source/bundle identities; only
       # this isolated synthetic publisher advances protected build1 to2.
-      CARR_CONFIGURED_SOURCE_A: '8f24cae6dbb657854a07dcb801f77296f3b7e4e3'
+      CARR_CONFIGURED_SOURCE_A: '7bfdbe2ce454bfa83bb2309ee897aaf131d3411f'
       PYTHONUTF8: '1'
       PYTHONUNBUFFERED: '1'
       PYTHONDONTWRITEBYTECODE: '1'
@@ -70,7 +70,7 @@ jobs:
           $sourceAPath = Join-Path $env:GITHUB_WORKSPACE 'source-a/carr-library'
           $sourceA = (git -C $sourceAPath rev-parse HEAD).Trim()
           if ($LASTEXITCODE -ne 0 -or $sourceA -ne $env:CARR_CONFIGURED_SOURCE_A -or $sourceA -eq $sourceB) { throw 'A/B source selection is not exact and distinct.' }
-          @{ source_a=$sourceA; source_b=$sourceB; baseline_policy='immutable corrected configured updater A2; current native proof required'; version_policy='Exact committed wheels; synthetic build1 to2'; runtime_profile='Exact56 pinned full trusted-client wheels, original Python and native DLLs; no model/audio/Node payload' } | ConvertTo-Json | Set-Content (Join-Path $report 'source-identities.json')
+          @{ source_a=$sourceA; source_b=$sourceB; baseline_policy='immutable A3 with closed runtime-code admission and exact supervisor launch; current native proof required'; version_policy='Exact committed wheels; synthetic build1 to2'; runtime_profile='Exact56 pinned full trusted-client wheels, original Python and native DLLs; no model/audio/Node payload' } | ConvertTo-Json | Set-Content (Join-Path $report 'source-identities.json')
           $preflight = @'
           from hashlib import sha1, sha256
           import json, os, pathlib, stat, subprocess

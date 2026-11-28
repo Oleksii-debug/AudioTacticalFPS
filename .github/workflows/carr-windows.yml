@@ -13,7 +13,7 @@ on:
       - .github/workflows/carr-managed-update.yml
       - .github/workflows/carr-configured-update-native.yml
   push:
-    branches: [carr/finish-desktop-20261126, carr/academic-research-e021-20261126, carr/academic-workbench-20261126, carr-library, carr/academic-research-workbench, carr/academic-search-20261126, carr/notebook-release-ascii-e021-20261126, carr/v3-primary103-recovered-composition-20261126, carr/unified-publication-24-20261127]
+    branches: [carr/finish-desktop-20261126, carr/academic-research-e021-20261126, carr/academic-workbench-20261126, carr-library, carr/academic-research-workbench, carr/academic-search-20261126, carr/notebook-release-ascii-e021-20261126, carr/v3-primary103-recovered-composition-20261126, carr/unified-publication-24-20261127, 'carr/ci-full-final-*']
     paths:
       - carr-library/**
       - .github/workflows/carr-windows.yml
@@ -1003,10 +1003,21 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Exercise native reviewed library workflows and checkpoint recovery
+        id: library-workflow-native
         timeout-minutes: 3
         run: |
           & $env:CARR_PYTHON -I -B -X utf8 tests/ui/native_library_workflow_smoke.py 2>&1 | Tee-Object 'ci-results/native-library-workflow.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Retain native library phase evidence before the full bundle
+        if: ${{ !cancelled() && steps.library-workflow-native.outcome != 'skipped' }}
+        timeout-minutes: 3
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: carr-phase-library-native-${{ github.event.pull_request.head.sha || github.sha }}-${{ github.run_attempt }}
+          path: carr-library/ci-results/native-library-workflow.txt
+          if-no-files-found: error
+          retention-days: 3
 
       - name: Exercise native research-notebook search and keyboard actions
         if: ${{ !cancelled() && steps.desktop_dependencies.conclusion == 'success' && steps.ocr_runtime.conclusion == 'success' }}
@@ -3807,7 +3818,7 @@ jobs:
           if ($LASTEXITCODE -ne 0 -or $tree -cnotmatch '^[0-9a-f]{40}$') { throw 'The required workflow aggregate has no exact tree.' }
           $configuredPath = '.github/workflows/carr-configured-update-native.yml'
           $configuredBlob = (& git rev-parse ('HEAD:' + $configuredPath)).Trim()
-          if ($LASTEXITCODE -ne 0 -or $configuredBlob -cne '181d615a32619af3fbd10322a2cb04e52be48aa9') { throw 'The required configured native workflow differs from its reviewed source.' }
+          if ($LASTEXITCODE -ne 0 -or $configuredBlob -cne '14517f2e4018942a2a0a4c56ce6c59f38de861a4') { throw 'The required configured native workflow differs from its reviewed source.' }
           $results = [ordered]@{
             'source-syntax'=$env:CARR_RESULT_SOURCE_SYNTAX
             'integrated-source-complete'=$env:CARR_RESULT_SOURCE_COMPLETE

@@ -168,10 +168,33 @@ def test_changed_runtime_while_paused_refuses_before_second_input(capture):
 
 def test_initial_pause_never_opens_input_and_has_bounded_wait(capture, monkeypatch):
     monkeypatch.setattr(recording, 'MAX_PAUSED_SECONDS', .02)
-    started = time.monotonic()
+    elapsed, reads, waits, states = [0.0], [], [], []
+
+    def now():
+        reads.append(elapsed[0])
+        assert len(reads) <= 6, 'Initial Pause exceeded its bounded clock work.'
+        return elapsed[0]
+
+    def wait(seconds):
+        assert 0 < seconds <= .05, 'Pause polling requested an unbounded wait.'
+        waits.append(seconds)
+        assert len(waits) <= 4, 'Initial Pause did not enforce its allowance.'
+        assert states and states[-1].state == 'paused'
+        assert capture.runs == []
+        assert len(list(capture.service.root.glob('.pending-*'))) == 1
+        elapsed[0] += seconds
+
+    # Only the recording pause policy uses this clock. The actual scope,
+    # broker, native reservation, full FFmpeg hash and staging still run.
+    # This measures bounded policy work, not physical service-call latency.
+    monkeypatch.setattr(recording, 'time', SimpleNamespace(monotonic=now, sleep=wait))
     with pytest.raises(AudioError, match='pause allowance'):
-        capture.service.capture(capture.device.id, options=capture.options, pause_requested=lambda: True)
-    assert time.monotonic() - started < 1 and capture.runs == []
+        capture.service.capture(capture.device.id, options=capture.options,
+                                pause_requested=lambda: True, state_changed=states.append)
+    assert waits and .02 < elapsed[0] <= .05
+    assert [state.state for state in states] == ['paused']
+    assert states[0].frames == states[0].segments == 0
+    assert capture.runs == []
     assert not list(capture.service.root.glob('.pending-*'))
 
 

@@ -1,0 +1,92 @@
+{
+  "schema": "resonance-independent-full-gate-execution/1",
+  "status": "ACCEPTED_STATIC_NOT_RUN",
+  "source_commit": "7bfdbe2ce454bfa83bb2309ee897aaf131d3411f",
+  "purpose": "Run the complete unchanged obligations on a separately identified exact source while retaining prior diagnostic runs; retain existing phase text before later long installed work.",
+  "changes": [
+    {
+      "path": ".github/workflows/carr-windows.yml",
+      "preimage": "831c4b891eaee4ad9a1ec52ec6a9c137bad6012b",
+      "git_blob": "1f0c67ee4ad51735fa3805388317c850f482258a",
+      "hunks": [
+        {
+          "old": "181d615a32619af3fbd10322a2cb04e52be48aa9",
+          "new": "14517f2e4018942a2a0a4c56ce6c59f38de861a4",
+          "kind": "required configured workflow binds immutable repaired A3",
+          "count": 1
+        },
+        {
+          "old": "    branches: [carr/finish-desktop-20261126, carr/academic-research-e021-20261126, carr/academic-workbench-20261126, carr-library, carr/academic-research-workbench, carr/academic-search-20261126, carr/notebook-release-ascii-e021-20261126, carr/v3-primary103-recovered-composition-20261126, carr/unified-publication-24-20261127]",
+          "new": "    branches: [carr/finish-desktop-20261126, carr/academic-research-e021-20261126, carr/academic-workbench-20261126, carr-library, carr/academic-research-workbench, carr/academic-search-20261126, carr/notebook-release-ascii-e021-20261126, carr/v3-primary103-recovered-composition-20261126, carr/unified-publication-24-20261127, 'carr/ci-full-final-*']",
+          "kind": "allow explicit independent full acceptance branches",
+          "count": 1
+        },
+        {
+          "old": "      - name: Exercise native reviewed library workflows and checkpoint recovery\n",
+          "new": "      - name: Exercise native reviewed library workflows and checkpoint recovery\n        id: library-workflow-native\n",
+          "kind": "identify the exact long-running diagnostic phase",
+          "count": 1
+        },
+        {
+          "old": "\n      - name: Exercise native research-notebook search and keyboard actions",
+          "new": "\n      - name: Retain native library phase evidence before the full bundle\n        if: ${{ !cancelled() && steps.library-workflow-native.outcome != 'skipped' }}\n        timeout-minutes: 3\n        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9\n        with:\n          name: carr-phase-library-native-${{ github.event.pull_request.head.sha || github.sha }}-${{ github.run_attempt }}\n          path: carr-library/ci-results/native-library-workflow.txt\n          if-no-files-found: error\n          retention-days: 3\n\n      - name: Exercise native research-notebook search and keyboard actions",
+          "kind": "retain existing text evidence immediately with unchanged actual probe and source verdict",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "path": ".github/workflows/carr-v3.yml",
+      "preimage": "9a2f5660178641bb8917f1848de021f9d9753a4a",
+      "git_blob": "69dceb131561dbc78077cfb5451c524797db7e15",
+      "hunks": [
+        {
+          "old": "    branches: [carr/v3-primary103-recovered-composition-20261126, carr/unified-publication-24-20261127]",
+          "new": "    branches: [carr/v3-primary103-recovered-composition-20261126, carr/unified-publication-24-20261127, 'carr/ci-full-final-*']",
+          "kind": "allow explicit independent full acceptance branches",
+          "count": 1
+        },
+        {
+          "old": "      - name: Require publication, recording, portable clip and reader source contracts\n",
+          "new": "      - name: Require publication, recording, portable clip and reader source contracts\n        id: publication-source-contracts\n",
+          "kind": "identify the exact long-running diagnostic phase",
+          "count": 1
+        },
+        {
+          "old": "\n      - name: Verify installed publication, recording, clips and EPUB3.3 without egress",
+          "new": "\n      - name: Retain complete source phase evidence before installed acceptance\n        if: ${{ !cancelled() && steps.publication-source-contracts.outcome != 'skipped' }}\n        timeout-minutes: 3\n        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9\n        with:\n          name: carr-phase-source-v3-${{ github.event.pull_request.head.sha || github.sha }}-${{ github.run_attempt }}\n          path: carr-library/ci-v3-results/strict-publication.txt\n          if-no-files-found: error\n          retention-days: 3\n\n      - name: Verify installed publication, recording, clips and EPUB3.3 without egress",
+          "kind": "retain existing text evidence immediately with unchanged actual probe and source verdict",
+          "count": 1
+        }
+      ]
+    }
+  ],
+  "unchanged": {
+    "pull_request_triggers": true,
+    "required_source_modules": 490,
+    "required_aggregation": true,
+    "source_suite_seconds": 600,
+    "native_watchdogs": true,
+    "source_phase_minutes": 75,
+    "installed_phase_minutes": 120,
+    "v3_job_minutes": 300,
+    "library_probe_minutes": 3,
+    "permissions_contents_read": true
+  },
+  "new": {
+    "explicit_push_pattern": "carr/ci-full-final-*",
+    "evidence": "Two existing public synthetic text logs only; original final artifacts remain",
+    "upload_step_minutes": 3
+  },
+  "native_baseline": {
+    "commit": "7bfdbe2ce454bfa83bb2309ee897aaf131d3411f",
+    "workflow_blob": "14517f2e4018942a2a0a4c56ce6c59f38de861a4",
+    "binding_peer": "619a573b0beb095ca0bbadd03a79e1db71acd2dc"
+  },
+  "inverses_exact": true,
+  "execution": "NOT_RUN",
+  "independent_peer": {
+    "git_blob": "b2783b58d01b151ea9726251ba85baa086934d5d",
+    "verdict": "ACCEPTED_STATIC_NOT_RUN"
+  }
+}

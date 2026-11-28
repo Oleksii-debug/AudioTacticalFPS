@@ -1,0 +1,20 @@
+{
+  "schema": "carr-bounded-peer/1",
+  "status": "ACCEPTED_STATIC_NOT_RUN",
+  "reviewer": "progress_completion",
+  "file": {
+    "path": "carr-library/tests/ui/native_library_workflow_smoke.py",
+    "before": "0d0441392caf72eed0e0bc5a0735b041de685d30",
+    "after": "9ff46b7bc708fb9e50501bd457deedb11d16c4c0"
+  },
+  "current_ui": "c8e9e0ca148d929ead1b44f7cef17efbb76f6568",
+  "inverse_exact": true,
+  "findings": [
+    "The real constructor receives its unchanged frame; observer captures at most12 frames/8192 characters and bare-raises the original exception.",
+    "Current show_library_assistant catches ordinary constructor exceptions into the real frame status; the new outer diagnostic exposes that status and traceback when no fresh observed view was constructed.",
+    "The second modal must produce a distinct actual view; the old closed view cannot qualify a failed reopening.",
+    "Six original required behavior labels, actual menu event, worker/control scenario,40/60 native bounds and all cleanup bytes remain unchanged.",
+    "No product-cause attribution or new native qualification is inferred."
+  ],
+  "runtime": "NOT_RUN"
+}

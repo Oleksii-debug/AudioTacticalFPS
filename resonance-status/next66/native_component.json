@@ -1,0 +1,56 @@
+{
+  "schema": "carr-configured-native-baseline-binding/1",
+  "status": "ACCEPTED_STATIC_NOT_RUN",
+  "source_component": "e6b4cf8726d38386900ae021de3c5eda45d16a26",
+  "immutable_a3": {
+    "commit": "7bfdbe2ce454bfa83bb2309ee897aaf131d3411f",
+    "tree": "900774226367870b3bf1c2afd34b5e3fcc1e16ea",
+    "pins": {
+      "carr-library/src/carr_library/security/update_handoff.py": "72ec774f28f195589498d95a76da788dbcc3416c",
+      "carr-library/src/carr_library/security/update_runtime.py": "b511efb6bf5ff6d38d1e6df42854501150b20065",
+      "carr-library/src/carr_library/security/update_host.py": "10ef4bbcf783e6beeeccea7f1eeb5fce33f273ff",
+      "carr-library/scripts/windows_configured_update_smoke.py": "247f3cb36da4d9cec36f383ce40ad51a78ce8e91",
+      ".github/workflows/carr-configured-update-native.yml": "181d615a32619af3fbd10322a2cb04e52be48aa9"
+    }
+  },
+  "template": {
+    "path": "resonance-status/Next_V3_18_Configured_A3_Native_Workflow_Template_20261128.yml.in",
+    "git_blob": "a535b7628e24ccd284f582779d95e83e85e3ce7b"
+  },
+  "file": {
+    "path": ".github/workflows/carr-configured-update-native.yml",
+    "preimage": "181d615a32619af3fbd10322a2cb04e52be48aa9",
+    "git_blob": "14517f2e4018942a2a0a4c56ce6c59f38de861a4"
+  },
+  "exact_changes": [
+    {
+      "from": "CARR_CONFIGURED_SOURCE_A: '8f24cae6dbb657854a07dcb801f77296f3b7e4e3'",
+      "to": "CARR_CONFIGURED_SOURCE_A: '7bfdbe2ce454bfa83bb2309ee897aaf131d3411f'"
+    },
+    {
+      "from": "baseline_policy='immutable corrected configured updater A2; current native proof required'",
+      "to": "baseline_policy='immutable A3 with closed runtime-code admission and exact supervisor launch; current native proof required'"
+    }
+  ],
+  "inverse_exact": true,
+  "main_binding_operation": {
+    "path": ".github/workflows/carr-windows.yml",
+    "preimage": "831c4b891eaee4ad9a1ec52ec6a9c137bad6012b",
+    "from": "181d615a32619af3fbd10322a2cb04e52be48aa9",
+    "to": "14517f2e4018942a2a0a4c56ce6c59f38de861a4",
+    "expected_occurrences": 1,
+    "context": "          if ($LASTEXITCODE -ne 0 -or $configuredBlob -cne '181d615a32619af3fbd10322a2cb04e52be48aa9') { throw 'The required configured native workflow differs from its reviewed source.' }",
+    "owner": "root; no mutation by progress_completion"
+  },
+  "limits": [
+    "No refs or shared main files changed by this agent.",
+    "A3 code identity is verified; no122-case or native execution result is implied.",
+    "All remaining native workflow bytes, current247f probe, labels/origins/bounds/wholewheel/source/firewall proofs are unchanged.",
+    "A3 remains immutable; a distinct B commit must carry this new native pointer."
+  ],
+  "peer": {
+    "reviewer": "canonical_regression",
+    "git_blob": "619a573b0beb095ca0bbadd03a79e1db71acd2dc",
+    "verdict": "ACCEPTED_STATIC_NOT_RUN"
+  }
+}

@@ -5,7 +5,7 @@ on:
     branches: [carr-library, carr/v3-integrated-studio-20261126]
     paths: ['carr-library/**', '.github/workflows/carr-v3.yml', '.github/workflows/carr-flite.yml']
   push:
-    branches: [carr/v3-primary103-recovered-composition-20261126, carr/unified-publication-24-20261127]
+    branches: [carr/v3-primary103-recovered-composition-20261126, carr/unified-publication-24-20261127, 'carr/ci-full-final-*']
     paths: ['carr-library/**', '.github/workflows/carr-v3.yml', '.github/workflows/carr-flite.yml']
   workflow_dispatch:
 
@@ -863,6 +863,7 @@ jobs:
             foreach ($profile in $profilesBefore) { Set-NetFirewallProfile -Profile $profile.Name -Enabled $profile.Enabled -ErrorAction Stop }
           }
       - name: Require publication, recording, portable clip and reader source contracts
+        id: publication-source-contracts
         if: ${{ !cancelled() && steps.install-runtime.outcome == 'success' && steps.audio-runtime.outcome == 'success' }}
         # Exact b524 completed 158 child suites in 2628.93s before this step's
         # 45-minute cap; five suites were unfinished. This union has 174 whole
@@ -1068,6 +1069,16 @@ jobs:
             $pattern = '^PASS: ' + [regex]::Escape($entry.Key) + ': junit_passed=' + $entry.Value + ', failed=0, skipped=0, pytest_exit=0$'
             if (@(Select-String -LiteralPath 'ci-v3-results/strict-publication.txt' -Pattern $pattern).Count -ne 1) { throw ("Required publication-format coverage differs: " + $entry.Key) }
           }
+      - name: Retain complete source phase evidence before installed acceptance
+        if: ${{ !cancelled() && steps.publication-source-contracts.outcome != 'skipped' }}
+        timeout-minutes: 3
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: carr-phase-source-v3-${{ github.event.pull_request.head.sha || github.sha }}-${{ github.run_attempt }}
+          path: carr-library/ci-v3-results/strict-publication.txt
+          if-no-files-found: error
+          retention-days: 3
+
       - name: Verify installed publication, recording, clips and EPUB3.3 without egress
         if: ${{ !cancelled() && steps.install-runtime.outcome == 'success' && steps.audio-runtime.outcome == 'success' && steps.publication-audio-runtime.outcome == 'success' && steps.epubcheck-runtime.outcome == 'success' }}
         # The retained union contains 117 installed whole modules followed by 27

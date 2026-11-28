@@ -1,0 +1,235 @@
+{
+  "schema": "carr-actual-capacity-contracts-evidence/1",
+  "recorded_utc": "2026-11-28 07:42:16 UTC",
+  "source_commit": "7bfdbe2ce454bfa83bb2309ee897aaf131d3411f",
+  "source_tree": "900774226367870b3bf1c2afd34b5e3fcc1e16ea",
+  "run_id": 46121242674,
+  "job_id": 140906019377,
+  "job_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46121242674/job/140906019377",
+  "platform": "ubuntu-24.04",
+  "job_conclusion": "success",
+  "qualification": "ACTUAL_PORTABLE_SOURCE_AND_INSTALLED_PASS",
+  "component_manifest": "7e41da513a81dfda57c76fe17cc0cbb011d97266",
+  "helper_blob": "8cf3771d907aa6ec0b57d3aee80599407f0bf8cb",
+  "workflow_blob": "4e225e34b68f534e2655542d84ae61f4e9a542f3",
+  "source_rows": [
+    {
+      "path": "tests/search/test_window_catalog_projection.py",
+      "passed": 27,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "path": "tests/packaging/test_library_scale_benchmark.py",
+      "passed": 24,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "path": "tests/packaging/test_library_capacity_measurement.py",
+      "passed": 25,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "path": "tests/storage/test_backup_capacity.py",
+      "passed": 28,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "path": "tests/storage/test_backup_capacity_cli.py",
+      "passed": 3,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "path": "tests/ui/test_backup_capacity.py",
+      "passed": 17,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "path": "tests/storage/test_library_backup.py",
+      "passed": 9,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "path": "tests/storage/test_crash_backup.py",
+      "passed": 5,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "path": "tests/storage/test_complete_pending_backup.py",
+      "passed": 4,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "path": "tests/storage/test_backup_pending_common4.py",
+      "passed": 27,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "path": "tests/storage/test_backup_schema_identity.py",
+      "passed": 36,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "path": "tests/ui/test_native_backup_capacity_driver.py",
+      "passed": 11,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "path": "tests/catalog/test_text_screen_work.py",
+      "passed": 26,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "path": "tests/search/test_ascii_mapping_work.py",
+      "passed": 73,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    }
+  ],
+  "source_tail": "Required suites complete: 14; passed=14; failed=0",
+  "installed_pytest_summaries": [
+    {
+      "suite": "tests/search/test_window_catalog_projection.py",
+      "passed": 27,
+      "elapsed_seconds": 0.38,
+      "line": "============================== 27 passed in 0.38s =============================="
+    },
+    {
+      "suite": "tests/packaging/test_library_scale_benchmark.py",
+      "passed": 24,
+      "elapsed_seconds": 2.06,
+      "line": "============================== 24 passed in 2.06s =============================="
+    },
+    {
+      "suite": "tests/packaging/test_library_capacity_measurement.py",
+      "passed": 25,
+      "elapsed_seconds": 8.13,
+      "line": "============================== 25 passed in 8.13s =============================="
+    },
+    {
+      "suite": "tests/storage/test_backup_capacity.py",
+      "passed": 28,
+      "elapsed_seconds": 20,
+      "line": "============================= 28 passed in 20.00s =============================="
+    },
+    {
+      "suite": "tests/storage/test_backup_capacity_cli.py",
+      "passed": 3,
+      "elapsed_seconds": 0.64,
+      "line": "============================== 3 passed in 0.64s ==============================="
+    },
+    {
+      "suite": "tests/ui/test_backup_capacity.py",
+      "passed": 17,
+      "elapsed_seconds": 0.38,
+      "line": "============================== 17 passed in 0.38s =============================="
+    },
+    {
+      "suite": "tests/storage/test_library_backup.py",
+      "passed": 9,
+      "elapsed_seconds": 0.62,
+      "line": "============================== 9 passed in 0.62s ==============================="
+    },
+    {
+      "suite": "tests/storage/test_crash_backup.py",
+      "passed": 5,
+      "elapsed_seconds": 0.14,
+      "line": "============================== 5 passed in 0.14s ==============================="
+    },
+    {
+      "suite": "tests/storage/test_complete_pending_backup.py",
+      "passed": 4,
+      "elapsed_seconds": 0.52,
+      "line": "============================== 4 passed in 0.52s ==============================="
+    },
+    {
+      "suite": "tests/storage/test_backup_pending_common4.py",
+      "passed": 27,
+      "elapsed_seconds": 2.46,
+      "line": "============================== 27 passed in 2.46s =============================="
+    },
+    {
+      "suite": "tests/storage/test_backup_schema_identity.py",
+      "passed": 36,
+      "elapsed_seconds": 1.5,
+      "line": "============================== 36 passed in 1.50s =============================="
+    },
+    {
+      "suite": "tests/ui/test_native_backup_capacity_driver.py",
+      "passed": 11,
+      "elapsed_seconds": 0.12,
+      "line": "============================== 11 passed in 0.12s =============================="
+    },
+    {
+      "suite": "tests/catalog/test_text_screen_work.py",
+      "passed": 26,
+      "elapsed_seconds": 0.16,
+      "line": "============================== 26 passed in 0.16s =============================="
+    },
+    {
+      "suite": "tests/search/test_ascii_mapping_work.py",
+      "passed": 73,
+      "elapsed_seconds": 3.14,
+      "line": "============================== 73 passed in 3.14s =============================="
+    }
+  ],
+  "strict_helper_summary": {
+    "all_children_reaped": true,
+    "inputs_unchanged": true,
+    "installed_passed": 315,
+    "source_commit": "7bfdbe2ce454bfa83bb2309ee897aaf131d3411f",
+    "source_passed": 315,
+    "source_tree": "900774226367870b3bf1c2afd34b5e3fcc1e16ea",
+    "status": "PASS"
+  },
+  "decoded_log_utf8": {
+    "sha256": "128865c82e68a9b40f4382554110bf3c764661a83cc70fae4c520e18fd54e2b0",
+    "bytes": 174734
+  },
+  "artifact": {
+    "id": 15254167979,
+    "name": "capacity-profile-contracts-ubuntu-24.04-7bfdbe2ce454bfa83bb2309ee897aaf131d3411f-1",
+    "bytes": 65588,
+    "sha256": "0b3fbfbf7deab7c500ea358a5b843211c25d292ca0edc55d3d665711eed8aedc",
+    "created_at": "2026-11-28T07:40:17Z",
+    "workflow_run": {
+      "id": 46121242674,
+      "repository_id": 1341777614,
+      "head_repository_id": 1341777614,
+      "head_branch": "carr/ci-next9-capacity-a3-run-20261128-5a9e",
+      "head_sha": "7bfdbe2ce454bfa83bb2309ee897aaf131d3411f"
+    }
+  },
+  "artifact_digest_agrees_with_upload_log": true,
+  "limits": [
+    "315 source and 315 isolated installed cases are 630 case executions, not 630 unique cases.",
+    "The Windows native backup gate and four retained-corpus geometries are separate actual jobs.",
+    "This prerequisite does not qualify the 50k×40 / 2M capacity target."
+  ]
+}

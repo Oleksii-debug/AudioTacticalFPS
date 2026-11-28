@@ -1,0 +1,102 @@
+{
+  "schema": "carr-native-library-opening-diagnostic-successor/1",
+  "status": "ACCEPTED_STATIC_NOT_RUN",
+  "base_commit": "7bfdbe2ce454bfa83bb2309ee897aaf131d3411f",
+  "base_tree": "900774226367870b3bf1c2afd34b5e3fcc1e16ea",
+  "purpose": "Preserve the actual opening error that the original native probe masked when the real menu returned without constructing a new observed dialog.",
+  "actual_failure_receipt": "2e01da54ae3e96b3577139c1870e553dac8044cc",
+  "changes": [
+    {
+      "path": "carr-library/tests/ui/native_library_workflow_smoke.py",
+      "preimage": "0d0441392caf72eed0e0bc5a0735b041de685d30",
+      "git_blob": "9ff46b7bc708fb9e50501bd457deedb11d16c4c0",
+      "hunks": [
+        {
+          "before": "        def __init__(self, frame):\n            super().__init__(frame)\n            state['view'] = self\n",
+          "after": "        def __init__(self, frame):\n            try:\n                super().__init__(frame)\n            except BaseException:\n                # The real menu reports ordinary constructor failures in its\n                # status control. Retain the original traceback before that\n                # public handler returns, without changing its outcome.\n                state['view_error'] = traceback.format_exc(limit=12)[:8192]\n                raise\n            state['view'] = self\n"
+        },
+        {
+          "before": "                event = wx.CommandEvent(wx.EVT_MENU.typeId, item.GetId())\n",
+          "after": "                previous_view = state['view']\n                state['view_error'] = None\n                event = wx.CommandEvent(wx.EVT_MENU.typeId, item.GetId())\n"
+        },
+        {
+          "before": "                if failures:\n                    return\n                assert not state['view'].controller.alive\n",
+          "after": "                if failures:\n                    return\n                assert state['view'] is not None and state['view'] is not previous_view, (\n                    'Native menu returned without a fresh actual workflow dialog: ' +\n                    json.dumps(dict(phase=state['phase'], working=bool(frame.working),\n                        busy=bool(getattr(frame, 'busy', False)),\n                        closing=bool(getattr(frame, '_closing', False)),\n                        active=repr(frame.active)[:512],\n                        status=frame.status.GetValue()[:2048],\n                        constructor_error=state['view_error']), ensure_ascii=False))\n                assert not state['view'].controller.alive\n"
+        }
+      ],
+      "inverse_exact": true
+    },
+    {
+      "path": "carr-library/scripts/ci_native_library_workflow.py",
+      "preimage": "c9d5c070e0590b252d055be7f3acfa73db01eb19",
+      "git_blob": "3e46d06b8063a8c3c4322773fb97d57bbaf37eb7",
+      "pin_replacements": [
+        {
+          "before": "0d0441392caf72eed0e0bc5a0735b041de685d30",
+          "after": "9ff46b7bc708fb9e50501bd457deedb11d16c4c0",
+          "count": 1
+        }
+      ],
+      "inverse_exact": true
+    },
+    {
+      "path": ".github/workflows/carr-native-library-workflow.yml",
+      "preimage": "62845cc0eab7fb5485ca4f6bce9279a7fc059207",
+      "git_blob": "4965fd48b26b87e75ba14b9e470780943edab649",
+      "pin_replacements": [
+        {
+          "before": "0d0441392caf72eed0e0bc5a0735b041de685d30",
+          "after": "9ff46b7bc708fb9e50501bd457deedb11d16c4c0",
+          "count": 1
+        },
+        {
+          "before": "c9d5c070e0590b252d055be7f3acfa73db01eb19",
+          "after": "3e46d06b8063a8c3c4322773fb97d57bbaf37eb7",
+          "count": 1
+        }
+      ],
+      "inverse_exact": true
+    }
+  ],
+  "preserved": {
+    "native_required_checks": 6,
+    "installed_origin_modules": 9,
+    "source_pins": 12,
+    "workflow_preflight_pins": 13,
+    "native_internal_deadline_seconds": 40,
+    "native_watchdog_seconds": 60,
+    "native_parent_seconds": 180,
+    "whole_tests_added": 0,
+    "full_gate_whole_count": 490,
+    "source_installed_wheel_before_after": true,
+    "real_menu_and_serial_worker": true,
+    "cleanup": true,
+    "retention": true,
+    "policy_and_permissions": true
+  },
+  "diagnostics": {
+    "constructor_traceback_characters": 8192,
+    "constructor_traceback_frames": 12,
+    "status_characters": 2048,
+    "active_repr_characters": 512,
+    "exception_outcome": "Original object is bare-reraised; only the test observer records its bounded traceback.",
+    "freshness": "A new actual view must have been constructed for this menu activation, including the resume activation."
+  },
+  "peers": {
+    "native_source": {
+      "verdict": "ACCEPTED_STATIC_NOT_RUN",
+      "record": "2d2f7db485636f041e1769f7ace5b4c19541fd60"
+    },
+    "pin_only": {
+      "verdict": "ACCEPTED_STATIC_NOT_RUN",
+      "record": "56df294a4fca959857b9be424bdf9cabb126a8a0"
+    }
+  },
+  "limits": [
+    "This is failure visibility only, not a product cause or fix claim.",
+    "No parser/native execution of the successor has occurred.",
+    "Original six successful native checks remain required; no previous result transfers.",
+    "NVDA and complete integrated qualification remain separate."
+  ],
+  "created_utc": "2026-11-28 07:43:43 UTC"
+}

@@ -104,7 +104,14 @@ def run_native():
     class ObservedNativeWorkflow(original_view):
         """Observe actual control threads and a deterministic cancellation boundary."""
         def __init__(self, frame):
-            super().__init__(frame)
+            try:
+                super().__init__(frame)
+            except BaseException:
+                # The real menu reports ordinary constructor failures in its
+                # status control. Retain the original traceback before that
+                # public handler returns, without changing its outcome.
+                state['view_error'] = traceback.format_exc(limit=12)[:8192]
+                raise
             state['view'] = self
             later(prepare_new if state['phase'] == 'new' else prepare_resume)
 
@@ -316,11 +323,21 @@ def run_native():
                 assert len(tools) == 1
                 assert sum('library workflow assistant' in entry.GetItemLabelText()
                            for entry in tools[0].GetMenuItems()) == 1
+                previous_view = state['view']
+                state['view_error'] = None
                 event = wx.CommandEvent(wx.EVT_MENU.typeId, item.GetId())
                 event.SetEventObject(frame)
                 assert frame.GetEventHandler().ProcessEvent(event), 'Native menu event was not handled.'
                 if failures:
                     return
+                assert state['view'] is not None and state['view'] is not previous_view, (
+                    'Native menu returned without a fresh actual workflow dialog: ' +
+                    json.dumps(dict(phase=state['phase'], working=bool(frame.working),
+                        busy=bool(getattr(frame, 'busy', False)),
+                        closing=bool(getattr(frame, '_closing', False)),
+                        active=repr(frame.active)[:512],
+                        status=frame.status.GetValue()[:2048],
+                        constructor_error=state['view_error']), ensure_ascii=False))
                 assert not state['view'].controller.alive
                 if state['phase'] == 'new':
                     assert state.get('job_id') and state['pause_observed']

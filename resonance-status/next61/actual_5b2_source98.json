@@ -1,0 +1,768 @@
+{
+  "schema": "carr-closed-job-evidence/1",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "source_commit": "5b2c5a9237152d261ff541c9a2fd1fec8e75a114",
+  "source_tree": "e3813aefc765dde1f747fdfa8bf95a119b7f3686",
+  "status": "PASS_WITH_DECLARED_BOUNDARIES",
+  "observed_utc_day": "2026-11-28",
+  "evidence_basis": "Closed workflow job logs and exact matching GitHub artifact API metadata; actual reports are printed by the completed job. No source-result transfer to another commit.",
+  "run_id": 46110641084,
+  "job": {
+    "id": 140873166186,
+    "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46110641084/job/140873166186",
+    "status": "completed",
+    "conclusion": "success",
+    "started_at": "2026-11-28T05:07:19Z",
+    "completed_at": "2026-11-28T05:27:14Z"
+  },
+  "artifact": {
+    "id": 15249164788,
+    "name": "carr-next8-source-5b2c5a9237152d261ff541c9a2fd1fec8e75a114-1",
+    "size_in_bytes": 52165,
+    "digest": "sha256:94b6e9d02f85bf498b1e3741292aa9947981bc607f9b7d4e426b4c39f24f09ae",
+    "run_id": 46110641084,
+    "source_commit": "5b2c5a9237152d261ff541c9a2fd1fec8e75a114",
+    "archive_independently_inspected": false
+  },
+  "whole_modules": 98,
+  "passed_cases": 2471,
+  "rows": [
+    {
+      "suite": "tests/catalog/test_streaming_intake.py",
+      "passed": 16,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/citations/test_anchors.py",
+      "passed": 17,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/citations/test_authorized_action.py",
+      "passed": 14,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/citations/test_finish_label_integrity.py",
+      "passed": 17,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/citations/test_historical.py",
+      "passed": 13,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/citations/test_printed_label_attestation.py",
+      "passed": 15,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/citations/test_span_approval_integration.py",
+      "passed": 8,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/e2e/test_application.py",
+      "passed": 9,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/e2e/test_extended_document_workflows.py",
+      "passed": 36,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/e2e/test_raster_import.py",
+      "passed": 11,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/e2e/test_raster_ocr_native.py",
+      "passed": 3,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/e2e/test_retained_source_search_integrity.py",
+      "passed": 11,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/extract/test_raster_pages.py",
+      "passed": 23,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/ingest/test_batch_continuation.py",
+      "passed": 18,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/ingest/test_batch_continuation_cli.py",
+      "passed": 3,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/reader/test_academic_documents.py",
+      "passed": 41,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/reader/test_anchored_export.py",
+      "passed": 15,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/reader/test_bibliographic_locators.py",
+      "passed": 6,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/reader/test_context.py",
+      "passed": 11,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/reader/test_evidence_export.py",
+      "passed": 40,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/reader/test_finish_export_formats.py",
+      "passed": 17,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/reader/test_historical_reader_integration.py",
+      "passed": 9,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/reader/test_reading_desk.py",
+      "passed": 32,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/reader/test_saved_span_compatibility.py",
+      "passed": 9,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/reader/test_span_snapshot.py",
+      "passed": 10,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/reader/test_topic_literature_matrix.py",
+      "passed": 27,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/research/test_outline_export.py",
+      "passed": 25,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/search/test_federated_epub.py",
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/search/test_literal_readonly.py",
+      "passed": 6,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/search/test_thematic_budget.py",
+      "passed": 17,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/storage/test_complete_pending_backup.py",
+      "passed": 4,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/storage/test_pending_backup.py",
+      "passed": 41,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/ui/test_desktop_handlers.py",
+      "passed": 60,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/ui/test_federated_labels.py",
+      "passed": 40,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/ui/test_import_center.py",
+      "passed": 42,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/ui/test_source_open_handler.py",
+      "passed": 37,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/ui/test_source_review.py",
+      "passed": 37,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/e2e/test_research_search_cli.py",
+      "passed": 15,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/search/test_federated.py",
+      "passed": 100,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/ui/test_federated_search.py",
+      "passed": 114,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/search/test_search_paging.py",
+      "passed": 27,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/ingest/test_scan_root_binding.py",
+      "passed": 4,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/ingest/test_large_source_intake.py",
+      "passed": 6,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/speech/test_reading_marks.py",
+      "passed": 36,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/ui/test_reading_tools.py",
+      "passed": 14,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/speech/test_reading_tabs.py",
+      "passed": 25,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/ui/test_reader_tabs.py",
+      "passed": 20,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/speech/test_reading_presentation.py",
+      "passed": 32,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/speech/test_reading_presentation_handlers.py",
+      "passed": 20,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/speech/test_reading_presentation_reader_hook.py",
+      "passed": 9,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/ui/test_native_reading_presentation_driver.py",
+      "passed": 14,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/speech/test_voice_preferences.py",
+      "passed": 23,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/storage/test_voice_preferences_backup.py",
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/ui/test_voice_preferences_dialog.py",
+      "passed": 12,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/ui/test_progress_job_review.py",
+      "passed": 48,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/ui/test_reader_navigation_ui.py",
+      "passed": 11,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/ui/test_reader_view_hooks.py",
+      "passed": 11,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/storage/test_reader_preferences_state.py",
+      "passed": 7,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/studio/test_book_batch.py",
+      "passed": 29,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/studio/test_book_cli.py",
+      "passed": 18,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/ui/test_book_batch_dialog.py",
+      "passed": 18,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/storage/test_backup_book_batches.py",
+      "passed": 33,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/audio/test_recording_controls.py",
+      "passed": 30,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/audio/test_recording_monitor.py",
+      "passed": 21,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/storage/test_backup_recording_controls.py",
+      "passed": 20,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/audio/test_recording.py",
+      "passed": 31,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/audio/test_recording_cleanup.py",
+      "passed": 13,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/audio/test_recording_compatibility.py",
+      "passed": 5,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/audio/test_recording_export.py",
+      "passed": 9,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/ui/test_recording_dialog.py",
+      "passed": 28,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/audio/test_audio_process.py",
+      "passed": 23,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/audio/test_windows_audio_ownership.py",
+      "passed": 7,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/audio/test_conversion_batch.py",
+      "passed": 42,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/studio/test_conversion_batch_cli.py",
+      "passed": 4,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/speech/test_publication_validation.py",
+      "passed": 12,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/reader/test_braille.py",
+      "passed": 40,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/storage/test_incremental_backup.py",
+      "passed": 38,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/storage/test_backup_book_audio.py",
+      "passed": 32,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/storage/test_backup_effect_presets.py",
+      "passed": 45,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/storage/test_backup_studio_effects.py",
+      "passed": 21,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/speech/test_reading.py",
+      "passed": 62,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/speech/test_session.py",
+      "passed": 5,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/studio/test_book_audio.py",
+      "passed": 46,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/ui/test_book_audio_dialog.py",
+      "passed": 29,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/e2e/test_import_worker_publication.py",
+      "passed": 36,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/storage/test_desktop_preferences.py",
+      "passed": 22,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/ui/test_desktop_integration.py",
+      "passed": 37,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/ui/test_desktop_settings.py",
+      "passed": 4,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/ui/test_desktop_host_lifecycle.py",
+      "passed": 4,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/packaging/test_ci_check.py",
+      "passed": 35,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/reader/test_export_reconciliation.py",
+      "passed": 28,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/storage/test_local_schedules.py",
+      "passed": 43,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/ui/test_local_schedules.py",
+      "passed": 21,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/storage/test_backup_local_schedules.py",
+      "passed": 23,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/packaging/test_local_schedules_cli.py",
+      "passed": 11,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/storage/test_transcription_backup.py",
+      "passed": 143,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/speech/test_narration_receipt.py",
+      "passed": 79,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/speech/test_reader_usability.py",
+      "passed": 33,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    }
+  ],
+  "qualification": "Actual Windows source-only composition verification with the pinned native codec/OCR. This98-module result does not qualify the later138-module Studio composition, full487 source inventory, installed bundle or manual accessibility.",
+  "metadata_diagnostics": [
+    {
+      "tool": "ffmpeg",
+      "named": [
+        3825951946,
+        281474976723032,
+        33279,
+        1,
+        110590976,
+        1795842478341720600,
+        1795842477809854200
+      ],
+      "held": [
+        3825951946,
+        281474976723032,
+        33206,
+        1,
+        110590976,
+        1795842478341720600,
+        1795842477809854200
+      ],
+      "different_fields": [
+        "mode"
+      ]
+    },
+    {
+      "tool": "ffprobe",
+      "named": [
+        3825951946,
+        281474976723033,
+        33279,
+        1,
+        110374912,
+        1795842479358127600,
+        1795842478842422800
+      ],
+      "held": [
+        3825951946,
+        281474976723033,
+        33206,
+        1,
+        110374912,
+        1795842479358127600,
+        1795842478842422800
+      ],
+      "different_fields": [
+        "mode"
+      ]
+    }
+  ]
+}

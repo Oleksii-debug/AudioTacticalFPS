@@ -1,0 +1,30 @@
+{
+  "schema": "carr-bounded-peer/1",
+  "status": "ACCEPTED_STATIC_NOT_RUN",
+  "scope": "Native library diagnostic exact pin-only closure",
+  "source_peer": "2d2f7db485636f041e1769f7ace5b4c19541fd60",
+  "files": [
+    {
+      "path": "carr-library/scripts/ci_native_library_workflow.py",
+      "preimage": "c9d5c070e0590b252d055be7f3acfa73db01eb19",
+      "successor": "3e46d06b8063a8c3c4322773fb97d57bbaf37eb7",
+      "changes": "One native probe pin0d0441392caf72eed0e0bc5a0735b041de685d30 to9ff46b7bc708fb9e50501bd457deedb11d16c4c0"
+    },
+    {
+      "path": ".github/workflows/carr-native-library-workflow.yml",
+      "preimage": "62845cc0eab7fb5485ca4f6bce9279a7fc059207",
+      "successor": "4965fd48b26b87e75ba14b9e470780943edab649",
+      "changes": "One matching native probe pin and one helper pin"
+    }
+  ],
+  "inverse_audit": {
+    "helper": true,
+    "workflow": true,
+    "changes": {
+      "helper": 1,
+      "workflow": 2
+    }
+  },
+  "unchanged": "Every other byte, including CLI/report names, all6required checks, source-wheel and installed-origin proof, cleanup and40/60/180 limits.",
+  "runtime": "NOT_RUN"
+}

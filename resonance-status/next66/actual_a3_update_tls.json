@@ -1,0 +1,68 @@
+{
+  "schema": "carr-observed-updater-evidence/1",
+  "status": "ACTUAL_PASS",
+  "scope": "A3 Windows real local HTTPS source and isolated installed suites; no compiled activation qualification",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "run_id": 46121235190,
+  "job_id": 140905995306,
+  "head": "7bfdbe2ce454bfa83bb2309ee897aaf131d3411f",
+  "tree": "900774226367870b3bf1c2afd34b5e3fcc1e16ea",
+  "workflow_git_blob": "b8424c11ae2c68be238a273b1fcbe6b1a057fe51",
+  "helper_git_blob": "8e7c117ae4c8a2fabba46ef8c99eae09f25f40de",
+  "job": {
+    "status": "completed",
+    "conclusion": "success",
+    "started_at": "2026-11-28T07:35:54Z",
+    "completed_at": "2026-11-28T07:41:21Z"
+  },
+  "observed_report": {
+    "line": 624,
+    "report": {
+      "all_children_reaped": true,
+      "inputs_unchanged": true,
+      "installed_passed": 15,
+      "source_commit": "7bfdbe2ce454bfa83bb2309ee897aaf131d3411f",
+      "source_passed": 15,
+      "source_tree": "900774226367870b3bf1c2afd34b5e3fcc1e16ea",
+      "status": "PASS"
+    }
+  },
+  "whole_module": "tests/security/test_update_https.py",
+  "expected_cases_each": 15,
+  "observed_pytest_summaries": [
+    {
+      "line": 416,
+      "text": "2026-11-28T07:38:42.3351510Z ======================= 15 passed in 138.79s (0:02:18) ========================"
+    },
+    {
+      "line": 622,
+      "text": "2026-11-28T07:41:16.3212295Z ======================= 15 passed in 138.27s (0:02:18) ========================"
+    }
+  ],
+  "source_and_installed_each_failures": 0,
+  "source_and_installed_each_skips": 0,
+  "artifact": {
+    "id": 15253369026,
+    "name": "update-https-windows-7bfdbe2ce454bfa83bb2309ee897aaf131d3411f-1",
+    "size_in_bytes": 16736,
+    "digest": "sha256:59fb64a78a571823a845420ad58c110970277e066ea51c1283248c82f76a08d2",
+    "head_sha": "7bfdbe2ce454bfa83bb2309ee897aaf131d3411f"
+  },
+  "decoded_closed_log": {
+    "sha256": "f07a828787c113ced601a9844200e31dadc844cccc6b63683427f042871f28c2",
+    "bytes": 70813
+  },
+  "firewall_boundary": "Required setup/readback and owned cleanup step completed successfully; artifact firewall JSON contents were not independently fetched in this read.",
+  "qualification": {
+    "actual_local_TLS": "PASS",
+    "signed_synthetic_TUF_cases": "PASS",
+    "source_and_installed_identity": "PASS_FROM_REQUIRED_HELPER",
+    "compiled_A3_to_B": "NOT_RUN_IN_THIS_JOB",
+    "production_vendor_endpoint": "NOT_RUN",
+    "production_signing_keys": "NOT_RUN"
+  },
+  "related_actual_receipts": [
+    "cd1073c510ff8e4edbea743ca4c9690bcf42d320",
+    "3feb7e7a369fbf9a6b599efca6e27a018c6dcec5"
+  ]
+}

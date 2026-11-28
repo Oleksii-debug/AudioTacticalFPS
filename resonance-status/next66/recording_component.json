@@ -1,0 +1,105 @@
+{
+  "schema": "carr-reviewed-component/1",
+  "created_utc": "2026-11-28 07:29:48 UTC",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "qualification": "ACCEPTED_STATIC_NOT_RUN",
+  "title": "Bound the initial-Pause policy fixture independently of real service admission time",
+  "base": {
+    "commit": "7bfdbe2ce454bfa83bb2309ee897aaf131d3411f",
+    "tree": "900774226367870b3bf1c2afd34b5e3fcc1e16ea",
+    "preimages_verified": true
+  },
+  "files": [
+    {
+      "path": "carr-library/tests/audio/test_recording_controls.py",
+      "preimage": "e07f220a0143196b042eb0b301edd43c86073dc1",
+      "blob": "d68f5bccde6ebb00809fdc192af1e9643df9c1e6",
+      "readback_exact": true
+    }
+  ],
+  "unchanged_production": {
+    "path": "carr-library/src/carr_library/audio/recording.py",
+    "blob": "7a71d0975cba5ada05772b43b881998e87b61326",
+    "production_pause_allowance_seconds": 3600
+  },
+  "inventory": {
+    "whole_cases": 30,
+    "test_functions": 21,
+    "required_functions": [
+      "test_actual_pause_closes_capture_then_resume_retains_exact_segment_frames",
+      "test_stop_while_paused_publishes_retained_frames_without_reopening_input",
+      "test_cancel_while_paused_discards_only_unfinished_take",
+      "test_changed_runtime_while_paused_refuses_before_second_input",
+      "test_initial_pause_never_opens_input_and_has_bounded_wait",
+      "test_controlled_default_never_opens_monitor_and_legacy_receipt_stays_v1",
+      "test_monitor_taps_actual_same_pcm_with_bounded_blocks_and_no_second_input",
+      "test_unconfirmed_monitor_close_holds_existing_lease_staging_and_capture_admission",
+      "test_aggregate_native_cleanup_cannot_release_one_owner_before_the_other",
+      "test_changed_completed_segment_refuses_assembly_and_publication",
+      "test_segment_changed_immediately_after_genuine_hash_cannot_mint_new_frame_receipt",
+      "test_late_cancel_after_controlled_publication_retains_committed_receipt",
+      "test_v2_backup_restore_verifies_retained_frames_without_engine_or_input_authority",
+      "test_receipt_rejects_unknown_authority_noncontiguous_frames_and_invalid_monitor_counts",
+      "test_updated_whole_file_receipt_cannot_hide_changed_retained_pcm_range",
+      "test_unchanged_v1_receipt_remains_passively_readable",
+      "test_stop_while_shared_admission_waits_never_opens_input",
+      "test_pause_keeps_shared_admission_without_claiming_active_cpu_measurement",
+      "test_stale_library_identity_refuses_capture_before_admission",
+      "test_replaced_capture_staging_is_not_deleted_by_owned_cleanup",
+      "test_replaced_lock_leaf_is_never_unlinked_when_old_admission_is_released"
+    ],
+    "selectors_and_decorators_unchanged": true,
+    "new_companions": [],
+    "new_origins": [],
+    "count_or_timeout_changes": false
+  },
+  "actual_failure": {
+    "evidence_blob": "b9a84fc6ca0393feafea33850ff0c9452f7ad614",
+    "head": "72713056f6da48a327ce269dc805a42eb3bd1b52",
+    "run_id": 46118095311,
+    "job_id": 140896307484,
+    "test": "test_initial_pause_never_opens_input_and_has_bounded_wait",
+    "observed": "The actual call raised the expected pause-allowance AudioError, then the test's whole-call wall-clock assertion failed at 1.406 seconds.",
+    "not_reached": [
+      "capture.runs == [] on the short-circuited compound assertion",
+      "the following no-pending-staging assertion"
+    ],
+    "causal_limit": "The trace does not separate preflight, paused-policy and cleanup time."
+  },
+  "change": {
+    "scope": "One existing test only",
+    "private_clock": "Replace only recording.time with SimpleNamespace(monotonic=now, sleep=wait); retain real shared time, broker, scope checks, native reservation, full FFmpeg digest and filesystem.",
+    "bounded_work": {
+      "maximum_monotonic_reads": 6,
+      "maximum_waits": 4,
+      "maximum_requested_wait_seconds": 0.05,
+      "test_local_allowance_seconds": 0.02
+    },
+    "required_observations": [
+      "Paused state is emitted before the first wait.",
+      "No actual capture child is admitted.",
+      "Exactly one actual pending staging directory exists during the controlled wait.",
+      "The expected existing pause-allowance AudioError occurs after more than .02 and at most .05 simulated seconds.",
+      "Paused frames and segments remain zero.",
+      "No capture child exists and actual pending staging is removed after refusal."
+    ],
+    "physical_latency_claim": false
+  },
+  "inverse": {
+    "exact_preimage_reconstructed": true,
+    "old": "def test_initial_pause_never_opens_input_and_has_bounded_wait(capture, monkeypatch):\n    monkeypatch.setattr(recording, 'MAX_PAUSED_SECONDS', .02)\n    started = time.monotonic()\n    with pytest.raises(AudioError, match='pause allowance'):\n        capture.service.capture(capture.device.id, options=capture.options, pause_requested=lambda: True)\n    assert time.monotonic() - started < 1 and capture.runs == []\n    assert not list(capture.service.root.glob('.pending-*'))\n",
+    "replacement": "def test_initial_pause_never_opens_input_and_has_bounded_wait(capture, monkeypatch):\n    monkeypatch.setattr(recording, 'MAX_PAUSED_SECONDS', .02)\n    elapsed, reads, waits, states = [0.0], [], [], []\n\n    def now():\n        reads.append(elapsed[0])\n        assert len(reads) <= 6, 'Initial Pause exceeded its bounded clock work.'\n        return elapsed[0]\n\n    def wait(seconds):\n        assert 0 < seconds <= .05, 'Pause polling requested an unbounded wait.'\n        waits.append(seconds)\n        assert len(waits) <= 4, 'Initial Pause did not enforce its allowance.'\n        assert states and states[-1].state == 'paused'\n        assert capture.runs == []\n        assert len(list(capture.service.root.glob('.pending-*'))) == 1\n        elapsed[0] += seconds\n\n    # Only the recording pause policy uses this clock. The actual scope,\n    # broker, native reservation, full FFmpeg hash and staging still run.\n    # This measures bounded policy work, not physical service-call latency.\n    monkeypatch.setattr(recording, 'time', SimpleNamespace(monotonic=now, sleep=wait))\n    with pytest.raises(AudioError, match='pause allowance'):\n        capture.service.capture(capture.device.id, options=capture.options,\n                                pause_requested=lambda: True, state_changed=states.append)\n    assert waits and .02 < elapsed[0] <= .05\n    assert [state.state for state in states] == ['paused']\n    assert states[0].frames == states[0].segments == 0\n    assert capture.runs == []\n    assert not list(capture.service.root.glob('.pending-*'))\n"
+  },
+  "independent_peer": {
+    "reviewer": "locate_project",
+    "record_blob": "6bca68135dc542682bee531aeece849ece332f2e",
+    "verdict": "ACCEPTED_STATIC_NOT_RUN"
+  },
+  "limits": [
+    "No product or runtime timeout change.",
+    "No skipped, removed or renamed case.",
+    "No parser, test, physical-device or wall-clock execution claim.",
+    "A3 still contains the old fixture; this successor requires its own actual result."
+  ],
+  "publication": "No ref, workflow dispatch, cancellation or rerun action taken."
+}
