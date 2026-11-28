@@ -333,6 +333,68 @@ def test_failed_publication_releases_native_lock(broker, monkeypatch):
 
 
 @pytest.mark.parametrize('boundary', ('construction', 'acquisition'))
+def test_unowned_lock_resolves_parent_while_released_leaf_disappears(tmp_path, monkeypatch, boundary):
+    from carr_library.operations import _locks
+    parent = tmp_path.resolve(strict=True)
+    path = parent / '.vanishing.lock'
+    path.write_bytes(b'')
+    existing = _locks.NativeLock(path) if boundary == 'acquisition' else None
+    removed, lookups = [], []
+
+    def release_after_lookup(selected):
+        selected = Path(selected)
+        lookups.append(selected)
+        if selected in (path, parent) and not removed:
+            path.unlink()
+            removed.append(selected)
+
+    if os.name == 'nt':
+        import ntpath
+        original = ntpath._getfinalpathname
+
+        def native_lookup(selected):
+            result = original(selected)
+            # In the old code the leaf resolves once, then disappears before
+            # CPython's second prefix-stripping lookup. In the corrected code
+            # only the existing parent is resolved, so its second lookup is
+            # still valid while the same real lock leaf disappears.
+            release_after_lookup(selected)
+            return result
+
+        monkeypatch.setattr(ntpath, '_getfinalpathname', native_lookup)
+    else:
+        original = Path.resolve
+
+        def resolve_parent(selected, *args, **kwargs):
+            assert Path(selected) != path, 'An unowned lock leaf must not be resolved.'
+            result = original(selected, *args, **kwargs)
+            release_after_lookup(selected)
+            return result
+
+        monkeypatch.setattr(Path, 'resolve', resolve_parent)
+
+    lock = None
+    try:
+        lock = existing or _locks.NativeLock(path)
+        assert lock.acquire() is True and lock.held
+        assert removed == [parent]
+        assert path not in lookups
+        info, held = path.stat(), os.fstat(lock.lock._context.lock_file_fd)
+        assert (info.st_dev, info.st_ino) == (held.st_dev, held.st_ino)
+    finally:
+        if lock is not None:
+            lock.release()
+
+
+@pytest.mark.parametrize('name', ('NUL', 'gate.lock:stream', 'gate.lock.'))
+def test_absent_unowned_lock_leaf_keeps_portable_filename_refusals(tmp_path, name):
+    from carr_library.operations import _locks
+    with pytest.raises(ValueError, match='local filename'):
+        _locks.NativeLock(tmp_path / name)
+    assert list(tmp_path.iterdir()) == []
+
+
+@pytest.mark.parametrize('boundary', ('construction', 'acquisition'))
 def test_released_lock_leaf_may_disappear_before_native_acquisition(tmp_path, monkeypatch, boundary):
     from carr_library.operations import _locks
     path = tmp_path / '.released.lock'
@@ -363,8 +425,8 @@ def test_released_lock_leaf_may_disappear_before_native_acquisition(tmp_path, mo
 
 def _release_during_local_path_validation(monkeypatch, path, replacement, *, repetitions=1):
     """Reproduce a real missing metadata read, then change the unowned leaf."""
-    from carr_library.operations import _state
-    original, changed = _state.regular, []
+    from carr_library.operations import _locks
+    original, changed = _locks.regular, []
 
     def observed(selected, *, directory=False):
         if Path(selected) == path and len(changed) < repetitions:
@@ -377,7 +439,7 @@ def _release_during_local_path_validation(monkeypatch, path, replacement, *, rep
                 raise
         return original(selected, directory=directory)
 
-    monkeypatch.setattr(_state, 'regular', observed)
+    monkeypatch.setattr(_locks, 'regular', observed)
     return changed
 
 
@@ -478,7 +540,7 @@ def test_recreated_unowned_leaf_does_not_hide_a_denied_validation(tmp_path, monk
     original, denied = _locks.regular, PermissionError('fixture denied metadata')
 
     def denied_leaf(selected, **kwargs):
-        if Path(selected) == path:
+        if Path(selected) == path and changed:
             raise denied
         return original(selected, **kwargs)
 

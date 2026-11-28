@@ -8,6 +8,7 @@ import weakref
 
 from filelock import FileLock, Timeout, UnixFileLock, WindowsFileLock
 from ..audio.jobs import checked_directory
+from ..audio.paths import filename_component
 from ._state import local_path, regular
 from .models import ResourceStateError
 
@@ -44,9 +45,14 @@ def _unheld_path(value):
     acquired descriptor is compared with the path again before admission.
     """
     path = Path(value).expanduser().absolute()
+    filename_component(path.name)
     for _ in range(3):
         try:
-            checked = local_path(path)
+            # Windows realpath validates a stripped extended prefix with a
+            # second native lookup. A disappearing unowned leaf can keep that
+            # prefix, so resolve only its existing, fully checked parent.
+            parent = checked_directory(local_path(path.parent, exists=True))
+            checked = parent / path.name
             if os.path.lexists(checked):
                 regular(checked)
             return checked
