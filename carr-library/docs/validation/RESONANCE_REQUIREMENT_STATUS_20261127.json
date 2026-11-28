@@ -6,7 +6,7 @@
   "product": "Resonance",
   "version": "0.2.0.dev2",
   "full_platform_status": "NOT_QUALIFIED",
-  "integrated_automatic_acceptance": "The exact424 integrated job completed FAILURE after all451 source suites/11,589 events, protected252 modules/5,947 cases and native citation108 checks passed. Its Basic translation fixture supplied an unresolved root and was refused before a dialog existed. A two-line fixture correction and additive early Basic native invocation now require their own exact successor qualification; all425 application blobs, main workflow,21 reader pins and protected populations remain unchanged. Previous focused/auxiliary PASS stays bound to424.",
+  "integrated_automatic_acceptance": "The exact d4ea Basic-focused job completed FAILURE after its four-minute bound without runtime output or a receipt; its reached phase is UNKNOWN and the later324/324+8 cohort was SKIPPED. Its separate audio/helper focused run passed274 source/274 installed+29 native checks. A source-reviewed Basic-only modal-owner correction now posts the outer-loop exit after ShowModal returns and adds bounded diagnostics while preserving all14 assertions,13 receipt fields,45-second deadline and4-minute gate. This new composition is NOT_RUN; all425 application files,628 test files,21 reader pins,main/focused workflows and protected populations are unchanged. Every earlier observed result stays bound to its exact source.",
   "authority": [
     {
       "path": "docs/UNIVERSAL_SCOPE_V3_FINALIZATION.md",
@@ -1104,5 +1104,86 @@
     "focused_gate_component": "e0bc9d2167ee0d2f4a4a8be73dab72b244ab4569",
     "focused_gate_before": "21fc80fd78ebcf9aa62f26c5553f2924691da4f9",
     "focused_gate_after": "e4dafee258246fc14f039d72908136434a20465c"
+  },
+  "post_d4_basic_modal_fixture_correction": {
+    "schema": "carr-post-d4-basic-modal-fixture-correction/1",
+    "status": "SOURCE_REVIEWED_NOT_EXECUTED",
+    "predecessor": {
+      "commit": "d4ea02c32d88d803311c7ae0f454c17dee185c4c",
+      "tree": "cadf68003399b0b53ed865b6bfe588da3b1199c0",
+      "files": 1806
+    },
+    "observed_basic_failure": {
+      "run_id": 46117284580,
+      "job_id": 140893828731,
+      "attempt": 1,
+      "conclusion": "FAILURE",
+      "step": 8,
+      "step_timeout_minutes": 4,
+      "actual_phase": "UNKNOWN",
+      "runtime_output": false,
+      "traceback": false,
+      "pass_receipt": false,
+      "later_source_cases": 324,
+      "later_installed_cases": 324,
+      "later_native_flows": 8,
+      "later_status": "SKIPPED",
+      "proof_commit": "a0fd6348833f2661e7f6dee39a39d26dc24b49a2",
+      "proof_path": "carr-library/docs/evidence/basic-translation-focused-timeout-d4ea-20261128.json",
+      "proof_blob": "8bff12c6148191586976e9a4720bcf2f3b0c0ef7",
+      "proof_sha256": "25769a59550a859103b97ace8b36652722f8c2fc8d07c53d7ea8b09c8dd520dd"
+    },
+    "separate_d4_audio_focused": {
+      "run_id": 46117287262,
+      "job_id": 140893836275,
+      "attempt": 1,
+      "conclusion": "PASS",
+      "source_cases": 274,
+      "installed_cases": 274,
+      "native_checks": 29,
+      "proof_commit": "59c595f77fe2b4cd2529ad7eb87c0c88bd579028",
+      "proof_path": "carr-library/docs/evidence/completed-audio-inspection-focused-pass-d4ea-20261128.json",
+      "proof_blob": "4d72bacdfe9fa5c1b5e862bb06ab352bdc3910f2",
+      "no_pass_transfer": true
+    },
+    "repair": {
+      "commit": "d12884890335518721e109459819c2352e2ab38f",
+      "tree": "9878c151a03052256c7eee4783ce46570f87d4f5",
+      "probe_path": "carr-library/scripts/windows_translation_smoke.py",
+      "probe_blob": "781a38e2f02d2209db5333e6421b7873bf6e35e1",
+      "probe_sha256": "ec8afc47fc1d293871d1255491aafdedc80635d33d036349dc1b5921202af2fb",
+      "provenance_path": "carr-library/docs/evidence/basic-translation-modal-owner-repair-20261128.json",
+      "provenance_blob": "bdbeea677a32d06c3d60ac3980639c98542061cb",
+      "cause_status": "SOURCE_INFERENCE; silent runtime did not prove its active phase or cause",
+      "change": "Reuse Advanced/local owned modal wrapper; exit outer loop only after show_translation returns; bounded non-acceptance phase/worker/cleanup diagnostics and one35-second traceback."
+    },
+    "preserved": {
+      "application_files": 425,
+      "test_files": 628,
+      "reader_pins": 21,
+      "assertions": 14,
+      "receipt_fields": 13,
+      "final_phase": 5,
+      "probe_deadline_seconds": 45,
+      "timer_milliseconds": 50,
+      "workflow_step_minutes": 4,
+      "existing_translation_source": 324,
+      "existing_translation_installed": 324,
+      "existing_translation_native": 8,
+      "focused_audio_source": 274,
+      "focused_audio_installed": 274,
+      "focused_audio_native": 29,
+      "workflows_dependencies_oracles_changed": false
+    },
+    "execution": {
+      "focused_basic": "NOT_RUN",
+      "focused_audio": "NOT_RUN",
+      "main": "NOT_RUN",
+      "auxiliary": "NOT_RUN",
+      "independent_main_artifact": "NOT_READY",
+      "canonical_promotion": "NOT_PERFORMED"
+    },
+    "independent_review": "Root and durable_native_composition independently reviewed the exact d128 source, retained assertions, receipt, deadlines and source-tree invariants.",
+    "full_platform_status": "NOT_QUALIFIED"
   }
 }

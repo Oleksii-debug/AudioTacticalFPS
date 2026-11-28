@@ -5,6 +5,7 @@ completion, review/approval wiring and real derivative files; it does not call
 Google, claim translation quality, test a real account, or claim NVDA coverage.
 """
 from concurrent.futures import ThreadPoolExecutor
+import faulthandler
 from hashlib import sha256
 import json
 from pathlib import Path
@@ -22,6 +23,24 @@ def main():
     args = parser.parse_args()
     if sys.platform != 'win32':
         raise SystemExit('Native Windows execution is required; no simulated native PASS is produced.')
+    diagnostic_started = monotonic()
+    diagnostic_count, last_diagnostic = [0], [None]
+    def progress(stage, **details):
+        # Fixed probe stages only; suppress unchanged timer ticks and cap output.
+        value = {'stage': stage, **details}
+        key = json.dumps(value, sort_keys=True)
+        if key == last_diagnostic[0] or diagnostic_count[0] >= 64:
+            return
+        last_diagnostic[0] = key
+        diagnostic_count[0] += 1
+        value.update(schema='carr-native-translation-diagnostic/1',
+                     event=diagnostic_count[0],
+                     elapsed_seconds=round(monotonic() - diagnostic_started, 3))
+        print('DIAGNOSTIC ' + json.dumps(value, sort_keys=True), flush=True)
+    progress('starting', windows=True, isolated=bool(sys.flags.isolated))
+    # One all-thread dump before the retained 45-second native deadline.
+    # Keep stderr open and do not terminate or bypass any cleanup/acceptance.
+    faulthandler.dump_traceback_later(35, repeat=False, file=sys.stderr, exit=False)
     import wx
     from carr_library import providers
     from carr_library.assistant.translation import TranslationService
@@ -32,6 +51,7 @@ def main():
     source_tree = Path(__file__).resolve().parents[1] / 'src'
     if Path(providers.__file__).resolve().is_relative_to(source_tree):
         raise RuntimeError('This native probe must import the installed wheel, not the checkout.')
+    progress('installed-modules-imported')
 
     original = 'Public synthetic source. Український текст. No private book content.'
     requests, approvals, failures = [], [], []
@@ -60,6 +80,7 @@ def main():
                 'model': 'nmt'}]}}).encode()
 
     app = wx.App(False)
+    progress('native-application-created')
     with TemporaryDirectory(prefix='carr-native-translation-') as folder:
         root, exports = Path(folder) / 'library', Path(folder) / 'exports'
         root.mkdir()
@@ -74,6 +95,8 @@ def main():
         service = TranslationService(root, profiles=profiles,
             gateway=ProviderGateway(BudgetLedger(root / 'api-operations.sqlite'), vault=vault, transport=Transport()))
 
+        progress('service-created')
+
         class Frame(wx.Frame):
             def __init__(self):
                 super().__init__(None, title='Translation native probe host')
@@ -86,17 +109,22 @@ def main():
                     return False
                 self.working = True
                 self.cancel_event.clear()
+                progress('worker-starting', operation=label)
                 future = self.executor.submit(operation)
                 def completed(task):
                     def apply():
                         self.working = False
+                        progress('worker-callback', operation=label, closing=bool(self._closing))
                         if self._closing:
                             return
                         try:
                             result = task.result()
+                            progress('worker-result-ready', operation=label)
                             if done:
                                 done(result)
                         except BaseException as exc:
+                            progress('worker-failed', operation=label,
+                                     error_type=type(exc).__name__, message=str(exc)[:512])
                             if failed:
                                 failed(exc)
                             failures.append(type(exc).__name__ + ': ' + str(exc))
@@ -150,6 +178,8 @@ def main():
                     raise AssertionError(failures[0])
                 if monotonic() > deadline:
                     raise TimeoutError('Native translation probe exceeded its bounded wait.')
+                progress('drive-' + str(phase[0]), working=bool(frame.working),
+                         synthetic_requests=len(requests), dialog_present=dialog is not None)
                 if dialog is None:
                     return
                 if phase[0] == 0:
@@ -200,7 +230,7 @@ def main():
                     phase[0] = 5
                     timer.Stop()
                     button(dialog, 'Close')
-                    wx.CallAfter(app.ExitMainLoop)
+                    progress('native-controls-complete', synthetic_requests=len(requests))
             except BaseException as exc:
                 failures.append(type(exc).__name__ + ': ' + str(exc))
                 timer.Stop()
@@ -208,26 +238,48 @@ def main():
                 if dialog is not None:
                     close = wx.CloseEvent(wx.EVT_CLOSE.typeId, dialog.GetId())
                     dialog.GetEventHandler().ProcessEvent(close)
-                wx.CallAfter(app.ExitMainLoop)
+                progress('native-flow-failed', error_type=type(exc).__name__, message=str(exc)[:512])
 
         frame.Bind(wx.EVT_TIMER, drive, timer)
         timer.Start(50)
-        wx.CallAfter(show_translation, frame, initial_text=original, title='Synthetic public source', service=service)
+        def show_owned_modal():
+            try:
+                progress('opening-owned-modal')
+                show_translation(frame, initial_text=original, title='Synthetic public source', service=service)
+                progress('owned-modal-returned')
+            except BaseException as error:
+                failures.append(type(error).__name__ + ': ' + str(error))
+                progress('modal-open-failed', error_type=type(error).__name__, message=str(error)[:512])
+            finally:
+                # Exit the application loop only after ShowModal has
+                # unwound; an exit posted inside it can target its nested loop.
+                wx.CallAfter(app.ExitMainLoop)
+        wx.CallAfter(show_owned_modal)
         try:
+            progress('entering-application-loop')
             app.MainLoop()
+            progress('application-loop-returned')
         finally:
             timer.Stop()
             frame._closing = True
             frame.cancel_event.set()
+            progress('settling-native-worker')
             frame.executor.shutdown(wait=True, cancel_futures=True)
+            progress('native-worker-settled')
             wx.MessageBox, wx.DirDialog = native_message_box, native_dir_dialog
             frame.Destroy()
+            progress('native-frame-cleaned')
         if failures or phase[0] != 5:
             raise RuntimeError('Native translation probe failed: ' + '; '.join(failures or ['incomplete flow']))
+    progress('temporary-workspace-cleaned')
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(final, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+    progress('receipt-written')
     print(json.dumps(final, ensure_ascii=False))
 
 
 if __name__ == '__main__':
-    main()
+    try:
+        main()
+    finally:
+        faulthandler.cancel_dump_traceback_later()

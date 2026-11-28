@@ -16,6 +16,54 @@ remain authoritative. The
 [machine-readable matrix](validation/RESONANCE_REQUIREMENT_STATUS_20261127.json)
 keeps their exact source blobs and separate evidence dimensions.
 
+## 28 November: observed Basic timeout and modal-owner fixture correction
+
+The exact `d4ea02c3` [focused Basic run 46117284580](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46117284580)
+completed **FAILURE**. Its Basic step reached the unchanged **four-minute workflow
+bound**, with no runtime output, traceback or final receipt between command setup
+and the timeout. The actual blocked phase is **UNKNOWN**. This silence does not
+establish that root canonicalization ran successfully, nor does it prove a cause.
+The following 324 source / 324 installed cases and eight native flows were
+**SKIPPED**. [Complete observed timeout](evidence/basic-translation-focused-timeout-d4ea-20261128.md)
+preserves the actual steps, raw-log identity, artifact identity and limitations.
+
+Source inspection found that Basic posted the application-loop exit while its
+translation dialog still owned a nested modal loop. The existing Advanced/local
+fixtures instead post that exit after the modal call returns. The
+[modal-owner correction](evidence/basic-translation-modal-owner-repair-20261128.json)
+reuses their existing wrapper and removes both inner exit posts. This is a
+source-supported repair hypothesis requiring an actual new run, not a proven
+explanation of the silent timeout.
+
+Bounded diagnostics identify phase transitions, synthetic worker state, modal
+return and cleanup without recording document content or credentials. They emit
+at most 64 records, suppress unchanged consecutive states, limit exception text
+to 512 characters and request one all-thread traceback after 35 seconds. The
+traceback request is cancelled on process exit. Diagnostics cannot satisfy the
+acceptance receipt. All **14 original assertions**, the complete **13-field PASS
+receipt**, final phase 5, **45-second probe deadline**, 50 ms timer and four-minute
+workflow bound remain unchanged. Cleanup still precedes the final receipt.
+
+On that same d4 source, the separate
+[audio/helper focused run 46117287262](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46117287262)
+passed **274 source cases, 274 installed cases and 29 native Studio checks**.
+Its [independently reviewed complete record](https://github.com/Oleksii-debug/AudioTacticalFPS/blob/59c595f77fe2b4cd2529ad7eb87c0c88bd579028/carr-library/docs/evidence/completed-audio-inspection-focused-pass-d4ea-20261128.md)
+retains both complete function Counters, current source/installed hashes and
+actual firewall and temporary-work cleanup. That PASS belongs to d4 only.
+
+**All 425 application files, 628 test files and 21 independent-reader source pins
+remain unchanged.** The main workflow, focused workflows, dependencies, protected
+populations and acceptance assertions are also unchanged by this modal correction.
+The newly composed source is **NOT_RUN** at preparation. It still requires fresh
+Basic-focused and audio/helper-focused execution, complete main and auxiliary
+qualification, and independent reading of the successful main artifact. The
+complete platform remains **NOT_QUALIFIED** for the separate real-engine,
+language/acoustic, manual NVDA/hardware, corpus and distribution dimensions.
+
+The earlier sections are retained as historical preparation snapshots. This
+observed d4 result supersedes their pending wording; no earlier PASS transfers
+to the corrected source.
+
 ## 28 November: source acceptance passed; Basic translation fixture correction
 
 The exact `424cc456` [integrated run 46109011419](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46109011419)
