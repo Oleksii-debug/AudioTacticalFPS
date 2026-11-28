@@ -27,7 +27,8 @@ occurrences remain intentional. The extra 99-case manifest guard makes 405
 required reports. Metadata stream hashing is included exactly once at
 occurrence 207.
 
-All six source shards completed under their unchanged 35-minute job limits.
+All six source shards completed under their unchanged 35-minute source-step limits
+inside 60-minute jobs.
 The main job's four required source reports also passed. Previous incomplete
 405-report coverage on an older commit is superseded only for this exact source.
 
@@ -84,7 +85,7 @@ Unicode selection, actual WavePlayer synthetic PCM output, pause/resume/stop,
 navigation and source-archive cleanup. Human listening and NVDA remain NOT_RUN.
 
 A later ReaderPlayer scenario failed because the old adapter-interface query
-gave ambiguous saved identities for the two waveform endpoints. This is a
+gave ambiguous output identities for the two waveform endpoints. This is a
 different failure from EPUB playback and motivated the later endpoint-ID fix.
 
 The unchanged installed Book scenario verified its first completed result at
