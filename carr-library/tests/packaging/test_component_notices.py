@@ -59,8 +59,10 @@ def bundle(root, entries):
     value = dict(schema=1, target='Windows x64 / CPython 3.11',
         bundled_python=True, bundled_model=True, bundled_ocr=True,
         bundled_audio_runtime=True, bundled_native_runtime=True,
-        bundled_native_launcher=True, files=files)
+        files=files)
     (root / 'bundle-manifest.json').write_text(json.dumps(value), encoding='utf-8')
+    from carr_library.native_checks import _manifest
+    assert _manifest(root) == value
 
 
 @pytest.mark.parametrize('modern', [True, False], ids=['license-directory', 'legacy-metadata-directory'])
