@@ -1,6 +1,6 @@
 {
   "schema": "carr-final-run-execution-state/1",
-  "updated_utc": "2026-11-28 06:36:14 UTC",
+  "updated_utc": "2026-11-28 06:51:28 UTC",
   "product": "Resonance",
   "repository": "Oleksii-debug/AudioTacticalFPS",
   "canonical_branch": "carr-library",
@@ -69,11 +69,11 @@
     "no_pass_transfer": true
   },
   "successor": {
-    "status": "INDEPENDENT_SOURCE_GO_FOCUSED_RUNS_LAUNCHED",
+    "status": "FOCUSED_BASIC_FAILED_INSPECTION_PASSED",
     "fixture_component": "a13457e9d4d44f23ab86e828b706184f5246aa34",
     "application_files_changed": 0,
     "focused_workflow_component": "e0bc9d2167ee0d2f4a4a8be73dab72b244ab4569",
-    "qualification": "IN_PROGRESS_FOCUSED; no successor PASS yet",
+    "qualification": "NOT_QUALIFIED; no main/aux successor runs started",
     "commit": "d4ea02c32d88d803311c7ae0f454c17dee185c4c",
     "tree": "cadf68003399b0b53ed865b6bfe588da3b1199c0",
     "files": 1806,
@@ -81,15 +81,23 @@
       "run": 46117284580,
       "job": 140893828731,
       "attempt": 1,
-      "status": "in_progress",
-      "conclusion": null
+      "status": "completed",
+      "conclusion": "failure",
+      "failure": "Basic step8 exceeded4-minute bound with no runtime receipt or traceback; step9 existing324/324+8 skipped.",
+      "independent_review": "ROOT_AND_CAPACITY_GO_FOR_OBSERVED_FAILURE",
+      "proof": "a0fd6348833f2661e7f6dee39a39d26dc24b49a2"
     },
     "inspection_focus": {
       "run": 46117287262,
       "job": 140893836275,
       "attempt": 1,
-      "status": "in_progress",
-      "conclusion": null
+      "status": "completed",
+      "conclusion": "success",
+      "source": 274,
+      "installed": 274,
+      "native": 29,
+      "independent_review": "ROOT_AND_NATIVE_GO",
+      "proof": "59c595f77fe2b4cd2529ad7eb87c0c88bd579028"
     },
     "branches": {
       "basic": "carr/local-translation-final-d4ea-20261128-d3a",
@@ -114,8 +122,9 @@
   "evidence": {
     "branch": "carr/final-evidence-d3a-20261127",
     "warning": "Evidence tree retains historical application source; never promote it as the application candidate.",
-    "observed_head_before_this_checkpoint": "41f75f9e74a20bab3a1ef5114be3c3bd8e5298a6",
-    "observed_tree_before_this_checkpoint": "ae8885155c74dc393cab553a6481b125fee62156"
+    "checkpoint_path": "carr-library/docs/validation/FINAL_RUN_EXECUTION_STATE_20261128.json",
+    "observed_head_before_this_checkpoint": "f44b995b3ab6e465c3c15dba0f525065164a83bc",
+    "observed_tree_before_this_checkpoint": "3278eab965153ace7035902b10bcd8db236be1ad"
   },
   "finish_requirements": [
     "Review final composed source and additive focused gate independently.",
@@ -127,5 +136,12 @@
   ],
   "full_platform_status": "NOT_QUALIFIED",
   "external_acceptance": "Real owner engines/models/authorized samples, language/acoustics, Windows11/NVDA and physical devices, lawful corpora, private authority/signing and distribution rights.",
-  "checkpoint_binding": "This is an observation of the explicit application commit and runs above. The evidence branch retains historical application code and must not be used as the application promotion target."
+  "next_repair": {
+    "status": "IN_PREPARATION_NOT_EXECUTED",
+    "scope": "Basic native fixture only; preserve14 assertions,45-second timer,4-minute workflow and13-field PASS receipt.",
+    "observed": "Silent Basic process reached workflow timeout; actual blocked phase remains UNKNOWN.",
+    "source_inference": "Basic posts app.ExitMainLoop from inside its modal callback. Existing Advanced/local probes wait until show_translation returns before posting outer-loop exit.",
+    "planned": "Reuse the existing owned-modal final exit plus bounded phase/worker/cleanup diagnostics and a single35-second all-thread trace. Require actual new-source execution."
+  },
+  "checkpoint_binding": "This observation binds the explicit application commits and runs. The evidence tree retains historical application source and is never the application promotion target."
 }
