@@ -7,6 +7,7 @@ from zipfile import ZipFile
 import pytest
 
 from carr_library.application import LibraryApp
+from carr_library import durable_state
 from carr_library.library_backup import create_backup, restore_backup, INCOMPLETE
 from carr_library.speech.reading import ReadingDocument
 from carr_library.speech.session import ReaderDraftStore, ReaderResume
@@ -56,14 +57,16 @@ def test_cancel_during_original_hashing_does_not_publish(tmp_path, monkeypatch):
     source, digest = populated(tmp_path)
     target = tmp_path / 'restored'
     opened = False
-    original = Path.open
-    def observe(path, mode='r', *args, **kwargs):
+    original = durable_state._open_json_file
+    def observe(path):
         nonlocal opened
-        result = original(path, mode, *args, **kwargs)
-        if path.parent == source / 'originals' and mode == 'rb':
+        result = original(path)
+        if Path(path).parent == source / 'originals':
+            # This is the actual retained descriptor used by current hashing.
+            assert not result.closed and result.fileno() >= 0
             opened = True
         return result
-    monkeypatch.setattr(Path, 'open', observe)
+    monkeypatch.setattr(durable_state, '_open_json_file', observe)
     with pytest.raises(InterruptedError, match='cancelled'):
         restore_backup(source, target, digest, cancelled=lambda: opened)
     assert opened and not target.exists()

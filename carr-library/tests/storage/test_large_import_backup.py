@@ -139,7 +139,7 @@ def test_paged_scan_roundtrip_retains_profile_ids_and_requires_new_external_revi
                  row['manifest']) for row in current['rows']] == expected[index]
         assert current['scan']['review_required'] is True
         assert current['scan']['cursor'] == item['scan']['cursor']
-    with pytest.raises(ValueError, match='review|Review|restor'):
+    with pytest.raises(ValueError, match='Restored scan roots require a fresh explicit selection'):
         restored.continue_import_scan(workspace, second['batch_id'], max_files=1)
     # The already-retained reviewed page remains an explicit runnable operation.
     finished = restored.run_import_batch(workspace, first['batch_id'], max_items=1)

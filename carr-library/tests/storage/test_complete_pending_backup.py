@@ -1,7 +1,9 @@
 """Enclosing manifest and publication integration for resumable import backups."""
+from contextlib import closing
 from uuid import uuid4
 from pathlib import Path
 import os
+import sqlite3
 
 import pytest
 
@@ -21,11 +23,16 @@ def test_complete_backup_survives_lost_original_and_resumes_identical_import(tmp
                     collections=[], work_id=uuid4().hex, edition_id=uuid4().hex)
     planned = snapshot(original.parent, original.name).manifest()
     request = prepare_request(app.root, workspace, original, metadata, Config(), expected_manifest=planned)
-    calls = 0
     def cancelled():
-        nonlocal calls
-        calls += 1
-        return calls >= 2
+        # Observe the real committed checkpoint, independent of how many source
+        # or resource cancellation checks run before the first extraction.
+        journal = app.root / 'imports.sqlite'
+        if not journal.exists():
+            return False
+        with closing(sqlite3.connect(journal.as_uri() + '?mode=ro', uri=True)) as db:
+            return db.execute('SELECT count(*) FROM checkpoint c JOIN job j ON j.id=c.job '
+                              'WHERE j.workspace=? AND j.edition=?',
+                              (workspace, metadata['edition_id'])).fetchone()[0] >= 1
     initial = app._import_file(workspace, original, **metadata, cancelled=cancelled,
                               _request_id=request['request_id'], _expected_manifest=planned)
     assert initial['completed'] == 1

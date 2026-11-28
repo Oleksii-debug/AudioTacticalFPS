@@ -92,6 +92,12 @@ def main(argv=None):
     if arguments[:1] == ['translate-batch']:
         from .assistant.translation_batch_cli import main as batch_translation_main
         return batch_translation_main(arguments[1:])
+    if arguments[:1] == ['backup-incremental']:
+        from .backup_incremental_cli import run as incremental_backup_main
+        return incremental_backup_main(arguments[1:])
+    if arguments[:1] == ['import-batch']:
+        from .ingest.batch_cli import run as import_batch_run
+        return import_batch_run(arguments[1:])
     if arguments[:1] == ['documents']:
         from .conversion.cli import main as documents_main
         return documents_main(arguments[1:])
@@ -110,6 +116,8 @@ def main(argv=None):
                         help='Include generated audio stored inside the library in --backup')
     parser.add_argument('--restore', type=Path, help='Restore a backup to a new --data-dir')
     parser.add_argument('--manifest-sha256', help='Previously recorded backup manifest checksum')
+    from .backup_options import add_resource_arguments, resources_from_arguments
+    add_resource_arguments(parser)
     ocr = parser.add_mutually_exclusive_group()
     ocr.add_argument('--list-ocr-models', action='store_true',
                      help='List the pinned official OCR catalogue; never downloads models')
@@ -151,6 +159,13 @@ def main(argv=None):
     parser.add_argument('--offset-per-library', type=int, default=0,
                         help='Nonnegative result offset for All words or Advanced searches')
     args = parser.parse_args(argv)
+    try:
+        backup_policy = resources_from_arguments(args)
+    except (ValueError, TypeError) as error:
+        parser.error(str(error))
+    if backup_policy is not None and not (args.backup or args.restore):
+        parser.error('Backup resource options require --backup or --restore.')
+    backup_resources = {} if backup_policy is None else {'backup_budget': backup_policy}
     validate_acquisition_arguments(parser, args)
     identifier_lookup = args.lookup_doi is not None or args.lookup_isbn is not None
     if args.backup_include_generated and not args.backup:
@@ -218,7 +233,8 @@ def main(argv=None):
             if not args.data_dir or not args.manifest_sha256:
                 parser.error('--restore requires a new --data-dir and --manifest-sha256')
             from .library_backup import restore_backup
-            restore_backup(args.restore, args.data_dir, expected_manifest_sha256=args.manifest_sha256)
+            restore_backup(args.restore, args.data_dir, expected_manifest_sha256=args.manifest_sha256,
+                           **backup_resources)
             from .backup_report import recovery_summary
             print(recovery_summary(args.data_dir))
             return 0
@@ -275,7 +291,7 @@ def main(argv=None):
             return 0
         if args.backup:
             from .backup_report import backup_scope_text
-            checksum = app.backup(args.backup, include_generated=args.backup_include_generated)
+            checksum = app.backup(args.backup, include_generated=args.backup_include_generated, **backup_resources)
             print(backup_scope_text(args.backup_include_generated))
             print(f'Backup complete. Keep this manifest checksum separately: {checksum}')
             return 0

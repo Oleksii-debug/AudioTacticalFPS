@@ -42,6 +42,8 @@ _CALLBACKS = {
     ('carr_library.assistant.translation_cli', 'main'),
     ('carr_library.assistant.templates_cli', 'main'),
     ('carr_library.assistant.translation_batch_cli', 'main'),
+    ('carr_library.ingest.batch_cli', 'main'),
+    ('carr_library.backup_incremental_cli', 'main'),
 }
 OWNED_SOURCES = (
     'installation_lease.py', 'portable_entry.py', 'portable_bootstrap.py',
@@ -51,7 +53,7 @@ OWNED_SOURCES = (
     'transcription_cli.py', 'security/__main__.py', 'studio/cli.py', 'local_audio_setup.py',
     'extract/ocr_model_catalog.py', 'assistant/translation_cli.py', 'operations_cli.py',
     'assistant/templates_cli.py', 'assistant/translation_batch_cli.py',
-    'conversion/cli.py', 'sync/cli.py',
+    'conversion/cli.py', 'sync/cli.py', 'ingest/batch_cli.py', 'backup_incremental_cli.py',
 )
 _owner_root = None
 

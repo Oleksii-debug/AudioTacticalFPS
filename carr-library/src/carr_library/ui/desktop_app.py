@@ -731,6 +731,8 @@ class DesktopFrame(WorkspaceFrame):
         install_operations_actions(self)
         install_assistant_actions(self)
         install_save_actions(self)
+        from .backup_incremental_dialog import install_incremental_backup_actions
+        install_incremental_backup_actions(self)
         install_library_assistant_actions(self)
         install_translation_actions(self)
         install_transcription_actions(self)
@@ -1396,76 +1398,12 @@ class DesktopFrame(WorkspaceFrame):
             self.report(str(exc))
 
     def backup(self, event):
-        from ..backup_report import backup_scope_text
-        options = wx.Dialog(self, title='Backup options', size=(600, 310))
-        try:
-            layout = wx.BoxSizer(wx.VERTICAL)
-            include_audio = wx.CheckBox(options, label='Include generated audio stored inside this library')
-            include_audio.SetName('Include generated audio stored inside this library')
-            include_audio.SetValue(True)
-            layout.Add(include_audio, 0, wx.EXPAND | wx.ALL, 10)
-            notice = wx.StaticText(options, label='Libraries, reading state, project settings and pending inputs are included.\n'
-                'External exports, engine/model packs and operating-system credentials are separate.')
-            notice.Wrap(550)
-            layout.Add(notice, 0, wx.EXPAND | wx.ALL, 10)
-            layout.Add(options.CreateStdDialogButtonSizer(wx.OK | wx.CANCEL), 0, wx.ALIGN_RIGHT | wx.ALL, 10)
-            options.SetSizer(layout)
-            options.SetEscapeId(wx.ID_CANCEL)
-            include_audio.SetFocus()
-            if options.ShowModal() != wx.ID_OK:
-                return
-            include_generated = include_audio.GetValue()
-        finally:
-            options.Destroy()
-        dialog = wx.DirDialog(self, 'Choose a parent folder for the library and project backup')
-        try:
-            if dialog.ShowModal() != wx.ID_OK:
-                return
-            parent = Path(dialog.GetPath())
-        finally:
-            dialog.Destroy()
-        from datetime import datetime
-        destination = parent / ('ResearchLibrary-backup-' + datetime.now().strftime('%Y%m%d-%H%M%S'))
-        def done(checksum):
-            show_text(self, 'Backup complete', f'Backup folder: {destination}\n\n'
-                + backup_scope_text(include_generated) + '\n\n'
-                f'Keep this checksum separately; it is needed to verify a restore:\n{checksum}')
-        self.run_job('Backing up all libraries', lambda: self.library.backup(destination,
-            include_generated=include_generated, cancelled=self.cancel_event.is_set), done)
+        from .backup_actions import create_backup
+        create_backup(self)
 
     def restore_backup(self, event):
-        dialog = wx.DirDialog(self, 'Select the backup folder')
-        try:
-            if dialog.ShowModal() != wx.ID_OK:
-                return
-            source = Path(dialog.GetPath())
-        finally:
-            dialog.Destroy()
-        checksum = text_dialog(self, 'Verify backup', 'Paste the manifest checksum saved when this backup was created.')
-        if checksum is None:
-            return
-        dialog = wx.DirDialog(self, 'Choose a parent folder for the restored libraries')
-        try:
-            if dialog.ShowModal() != wx.ID_OK:
-                return
-            parent = Path(dialog.GetPath())
-        finally:
-            dialog.Destroy()
-        from datetime import datetime
-        from ..library_backup import restore_backup
-        destination = parent / ('ResearchLibrary-restored-' + datetime.now().strftime('%Y%m%d-%H%M%S'))
-        def done(path):
-            from ..backup_report import recovery_summary
-            show_text(self, 'Recovery details', recovery_summary(path))
-            if wx.MessageBox('Backup restored successfully. Open the restored libraries now?',
-                'Restore complete',wx.YES_NO | wx.ICON_QUESTION,self) == wx.YES:
-                self._open_data_root(path)
-            else:
-                show_text(self,'Restore complete',f'Restored library folder: {path}\n\n'
-                    'You can open it later through Library, Open existing library folder.')
-        self.run_job('Restoring backup', lambda: restore_backup(source, destination,
-            expected_manifest_sha256=checksum.strip(), cancelled=self.cancel_event.is_set),
-            done)
+        from .backup_actions import restore_backup
+        restore_backup(self)
 
     def check_installation(self, event):
         from ..__main__ import self_test

@@ -208,3 +208,45 @@ def test_actual_hard_link_is_refused_before_common4_publication(saved_queue, tmp
         assert selected.read_bytes() == original and alias.read_bytes() == original
     finally:
         alias.unlink()
+
+
+@pytest.mark.parametrize('schema', [SCHEMA, LEGACY_SCHEMA])
+def test_incremental_queue_recovery_is_passive_and_keeps_exact_saved_order(
+        saved_queue, tmp_path, monkeypatch, schema):
+    from carr_library.backup_incremental import (BackupReference,
+        create_incremental_backup, restore_incremental_backup)
+    from carr_library.backup_budget import BackupBudget, MIB, GIB
+    app, _, sources, editor, service, voices, value = saved_queue
+    if schema == LEGACY_SCHEMA:
+        value = replace(value, schema=schema, skips=(.1, 600), output={
+            'index': 7, 'name': 'Historical output', 'interface': 'old-output-endpoint',
+            'manufacturer': 1, 'product': 2, 'driver': 3, 'channels': 2})
+        store = PlaylistStore(app.root)
+        store.save(value, expected_token=store.load()[1])
+    base_path = tmp_path / 'full'
+    base = BackupReference(base_path, backups.create_backup(app, base_path))
+    store = PlaylistStore(app.root)
+    value = replace(value, items=(value.items[1], value.items[0], value.items[1]), index=2, frame=4000)
+    store.save(value, expected_token=store.load()[1])
+    raw = (app.root / NAME).read_bytes()
+    media = {row.filename: (app.root / row.filename).read_bytes() for row in value.items}
+    assert editor.close() is not False and service.close() is not False and voices.close() is not False
+    policy = BackupBudget(memory_bytes=GIB, staging_bytes=256*MIB, seconds=300)
+    with monkeypatch.context() as passive:
+        forbid_activation(passive)
+        receipt = create_incremental_backup(app, tmp_path / 'delta', base=base, backup_budget=policy)
+        layer = json.loads((receipt.path / 'manifest.json').read_bytes())
+        assert NAME in layer['stored'] and not set(media) & set(layer['stored'])
+        before = inventory(base.path), inventory(receipt.path)
+        shutil.rmtree(app.root)
+        shutil.rmtree(sources[0].parent)
+        restored = restore_incremental_backup(receipt.path, tmp_path / 'restored-layer',
+            receipt.manifest_sha256, bases=(base,), backup_budget=policy)
+        loaded, token = PlaylistStore(restored).load()
+        assert loaded == value and token == sha256(raw).hexdigest()
+        assert (restored / NAME).read_bytes() == raw
+        assert {name: (restored / name).read_bytes() for name in media} == media
+        assert all((restored / name).stat().st_nlink == 1 for name in media)
+        assert (inventory(base.path), inventory(receipt.path)) == before
+        assert loaded.index == 2 and loaded.frame == 4000
+        assert loaded.schema == schema and loaded.output == value.output

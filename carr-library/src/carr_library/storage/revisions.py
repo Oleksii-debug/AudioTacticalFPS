@@ -542,8 +542,12 @@ class Storage:
                 copy.db.set_progress_handler(validation_progress, 1000)
                 try:
                     copy.check()
-                except sqlite3.Error:
-                    check()
+                except BaseException:
+                    # An interrupted PRAGMA may return an integrity-detail row,
+                    # which the unchanged checker translates to ValueError.
+                    # Only the exact captured callback failure supersedes it.
+                    if failure is not None:
+                        raise failure
                     raise
                 check()
             finally:

@@ -15,7 +15,28 @@ def batch_summary(batch):
               ('duplicate', 'exact duplicates'), ('rejected', 'not accepted'),
               ('failed', 'failed'), ('quarantined', 'need page review'), ('excluded', 'excluded')]
     detail = ', '.join(f'{counts.get(key, 0)} {label}' for key, label in labels if counts.get(key, 0))
-    return f'{batch.get("total", len(batch.get("rows", ())))} files: {detail or "none"}.'
+    summary = f'{batch.get("total", len(batch.get("rows", ())))} files: {detail or "none"}.'
+    scan = batch.get('scan')
+    if scan is not None:
+        cursor = scan.get('cursor', {})
+        complete = scan.get('complete', cursor.get('complete', False))
+        planned = scan.get('planned', cursor.get('planned'))
+        summary = f'Scan page {scan["page"] + 1}. ' + summary
+        if planned is not None:
+            summary += f' {planned} source rows reviewed across saved pages.'
+        if scan.get('review_required'):
+            summary += ' External scan continuation needs a fresh source selection after restore.'
+        elif not complete:
+            summary += ' More source entries remain. Choose Continue source scan to review the next page.'
+        else:
+            summary += ' The selected source traversal is complete.'
+        if not scan.get('classification_complete', True):
+            summary += ' Some duplicate checks were paused; the catalog is checked before import.'
+    if batch.get('version') == 3 and 'import_budget' in batch:
+        from ..ingest.resource_budget import ImportBudget
+        from .import_resources import profile_summary
+        summary += ' ' + profile_summary(ImportBudget.from_dict(batch['import_budget']))
+    return summary
 
 
 def row_details(row):
@@ -80,6 +101,18 @@ def batch_report(batch):
 
 class ImportCenterActions:
     """Handlers separated from native construction for meaningful event tests."""
+    def _ui_alive(self):
+        return (not self.closed and getattr(self, '_native_alive', True)
+                and not getattr(self.frame, '_closing', False))
+
+    def _dispose(self):
+        if self.closed and not getattr(self, '_native_alive', True):
+            return
+        self._native_alive = False
+        self.closed = True
+        if self.busy and getattr(self, '_job_token', None) is not None and self.frame.working:
+            self.frame.cancel_event.set()
+
     def _bound(self):
         if (self.closed or getattr(self.frame, '_closing', False)
                 or self.frame.library is not self.library):
@@ -88,11 +121,15 @@ class ImportCenterActions:
             pass
 
     def report(self, text, *, focus=True):
+        if not self._ui_alive():
+            return
         self.status.SetValue(text)
         if focus:
             self.status.SetFocus()
 
     def refresh(self, event=None, *, selected=None):
+        if not self._ui_alive():
+            return
         if self.busy:
             return
         try:
@@ -112,6 +149,8 @@ class ImportCenterActions:
             self.report(str(exc))
 
     def select_batch(self, event=None):
+        if not self._ui_alive():
+            return
         if self.busy:
             return
         try:
@@ -132,6 +171,8 @@ class ImportCenterActions:
             self.report(str(exc))
 
     def _display(self, batch):
+        if not self._ui_alive():
+            return
         selected = self.rows.GetSelection()
         self.batch = batch
         self.rows.SetItems([f'{i}. {readable(row["file"])} — {row["state"].replace("_", " ")}'
@@ -141,11 +182,21 @@ class ImportCenterActions:
         self.report(batch_summary(batch), focus=False)
 
     def select_row(self, event=None):
+        if not self._ui_alive():
+            return
         index = self.rows.GetSelection()
         rows = (self.batch or {}).get('rows', ())
         self.details.SetValue(row_details(rows[index]) if 0 <= index < len(rows) else '')
 
     def _job(self, title, operation, done, *, token=None, planning=False):
+        if not self._ui_alive():
+            return
+        pending = getattr(self, '_cleanup_owner', None)
+        if pending is not None:
+            if not pending.quiescent:
+                self.report('Native import cleanup is still pending. Wait for the same owner before starting another operation.')
+                return
+            self._cleanup_owner = None
         if self.busy or self.frame.working:
             self.report('An operation is already running. Wait or choose Cancel operation.')
             return
@@ -159,9 +210,15 @@ class ImportCenterActions:
         self.report(title + '…')
 
         def finish(value=None, error=None):
-            if self.closed or self._job_token is not token:
+            if self._job_token is not token:
                 return
+            self._job_token = None
             self.busy = False
+            from ..audio.models import AudioCleanupPending
+            if isinstance(error, AudioCleanupPending):
+                self._cleanup_owner = error.cleanup_owner
+            if not self._ui_alive():
+                return
             for control in self.mutable:
                 control.Enable()
             self.cancel.Disable()
@@ -174,14 +231,33 @@ class ImportCenterActions:
                 except Exception as exc:
                     self.report(str(exc))
 
+        def work():
+            # Check only captured Python ownership on the worker thread.
+            # Returning a saved plan/result is not revoked by a later UI close.
+            self._bound()
+            if self._job_token is not token:
+                raise InterruptedError('The import window no longer owns this work.')
+            return operation()
+
         try:
-            self.frame.run_job(title, operation, lambda value: finish(value),
+            self.frame.run_job(title, work, lambda value: finish(value),
                                failed=lambda exc: finish(error=exc))
-        except Exception as exc:
+            if self.busy and not self.frame.working:
+                finish(error=RuntimeError('The Desktop queue did not admit this import operation. Retry explicitly.'))
+        except (Exception, KeyboardInterrupt) as exc:
             finish(error=exc)
+
+    def _scan_options(self):
+        from ..ingest.batch_scan import scan_page_limits
+        return scan_page_limits(max_files=int(self.page_files.GetValue()),
+            max_entries=int(self.page_entries.GetValue()), timeout=float(self.page_seconds.GetValue()))
 
     def plan(self, paths):
         self._bound()
+        selected = tuple(paths)
+        limits = self._scan_options()
+        from ..ingest.resource_budget import checked_budget
+        import_budget = checked_budget(getattr(self, 'import_budget', None))
         index = self.collection.GetSelection()
         if not 0 <= index < len(self.collection_ids):
             raise ValueError('Choose a destination collection and text recognition languages.')
@@ -194,9 +270,47 @@ class ImportCenterActions:
             self.report('Plan saved. ' + batch_summary(batch) +
                         ' Review the files, exclude any you do not want, then choose Start queued files.')
 
-        self._job('Checking files and duplicates', lambda: self.library.plan_import_batch(
-            self.workspace, paths, collections=collections, recursive=recursive, config=config,
-            cancelled=self.frame.cancel_event.is_set), done, planning=True)
+        def operation():
+            self._bound()
+            return self.library.plan_import_page(self.workspace, selected, collections=collections,
+                recursive=recursive, config=config, cancelled=self.frame.cancel_event.is_set,
+                import_budget=import_budget, **limits)
+        self._job('Checking the next source page and duplicates', operation, done, planning=True)
+
+    def continue_scan(self, event=None):
+        try:
+            self._bound()
+            if self.batch is None or self.batch.get('version') not in (2, 3):
+                raise ValueError('Choose a saved scan page, or select source folders for a new paged scan.')
+            batch_id = self.batch['batch_id']
+            limits = self._scan_options()
+            def operation():
+                self._bound()
+                return self.library.continue_import_scan(self.workspace, batch_id,
+                    cancelled=self.frame.cancel_event.is_set, **limits)
+            def done(batch):
+                self.refresh(selected=batch['batch_id'])
+                self.report('Scan page saved. ' + batch_summary(batch)
+                            + ' Review this page before choosing Start queued files.')
+            self._job('Continuing the saved source scan', operation, done, planning=True)
+        except Exception as exc:
+            self.report(str(exc))
+
+    def choose_resources(self, event=None):
+        from .import_resources import choose_import_resources, profile_summary
+        if self.busy or self.frame.working:
+            self.report('Wait for the current operation before choosing new import allowances.')
+            return
+        try:
+            self._bound()
+            accepted, chosen = choose_import_resources(self, getattr(self, 'import_budget', None))
+            self._bound()
+            if accepted:
+                self.import_budget = chosen
+                self.resource_summary.SetValue(profile_summary(chosen))
+                self.report('Future import plans will use these reviewed allowances. ' + profile_summary(chosen))
+        except (Exception, KeyboardInterrupt) as exc:
+            self.report(str(exc))
 
     def _new_plan_ocr_config(self):
         from ..extract.page_ocr import Config
@@ -242,11 +356,14 @@ class ImportCenterActions:
             self.custom_ocr_config = chosen
             orientation = 'on' if chosen.orientation else 'off'
             self.report(f'OCR settings for new plans: {profile}; {", ".join(identifiers)}. '
-                        f'Page orientation detection: {orientation}.')
+                        f'Page orientation detection: {orientation}. '
+                        f'Automatic language/region review: {"on" if chosen.automatic_languages else "off"}.')
         except Exception as exc:
             self.report(str(exc))
 
     def add_files(self, event=None):
+        if not self._ui_alive():
+            return
         import wx
         dialog = wx.FileDialog(self, 'Select books for an import plan',
             wildcard=file_dialog_wildcard(),
@@ -262,6 +379,8 @@ class ImportCenterActions:
                 self.report(str(exc))
 
     def add_folder(self, event=None):
+        if not self._ui_alive():
+            return
         import wx
         dialog = wx.DirDialog(self, 'Select a folder of books', style=wx.DD_DIR_MUST_EXIST)
         try:
@@ -280,12 +399,15 @@ class ImportCenterActions:
             if self.batch is None:
                 raise ValueError('Select a saved import batch first.')
             batch_id = self.batch['batch_id']
+            max_items = int(self.slice_items.GetValue())
+            if not 1 <= max_items <= 1000:
+                raise ValueError('Choose between 1 and 1000 queued rows for this explicit work slice.')
             token = object()
 
             def progress(batch):
                 import wx
                 def apply():
-                    if (not self.closed and self.busy and self.frame.library is self.library
+                    if (self._ui_alive() and self.busy and self.frame.library is self.library
                             and getattr(self, '_job_token', None) is token
                             and batch.get('batch_id') == batch_id):
                         self._display(batch)
@@ -301,7 +423,7 @@ class ImportCenterActions:
 
             self._job('Importing saved batch', lambda: self.library.run_import_batch(
                 self.workspace, batch_id, cancelled=self.frame.cancel_event.is_set,
-                retry_failed=retry, progress=progress), done, token=token)
+                retry_failed=retry, progress=progress, max_items=max_items), done, token=token)
         except Exception as exc:
             self.report(str(exc))
 
@@ -350,11 +472,13 @@ class ImportCenterActions:
     def cancel_operation(self, event=None):
         if self.busy:
             self.frame.cancel_event.set()
-            self.report('Stopping the file check. An unfinished scan has not saved a new plan.'
+            self.report('Stopping the source scan. Existing saved pages are kept; the current page is not saved until source checks finish.'
                         if getattr(self, 'planning', False) else
                         'Stopping the current operation. Queued files will remain saved.')
 
     def close(self, event=None):
+        if not self._ui_alive():
+            return
         if self.busy:
             if event is not None and hasattr(event, 'CanVeto') and event.CanVeto():
                 event.Veto()
@@ -368,19 +492,29 @@ class ImportCenterActions:
 
 def show_import_center(frame, workspace):
     import wx
+    from wx.lib.scrolledpanel import ScrolledPanel
     from .ocr_options import LANGUAGES
 
     class ImportCenter(wx.Dialog, ImportCenterActions):
         def __init__(self):
-            super().__init__(frame, title='Import Center', size=(920, 760),
+            super().__init__(frame, title='Import Center', size=(920, 820),
                              style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
             self.frame, self.library, self.workspace = frame, frame.library, workspace
             self.busy = self.closed = False
+            self._native_alive = True
+            self._native_id = self.GetId()
+            self._cleanup_owner = None
+            self.import_budget = None
             self.batch, self.summaries = None, ()
             self.custom_ocr_config = None
             self.mutable = []
+            # Keep every source-review control reachable at the minimum window
+            # size; focused children scroll into view through wx's tab traversal.
+            self.body = ScrolledPanel(self, style=wx.TAB_TRAVERSAL)
+            self.body.SetName('Import Center scrollable options and results')
+            self.body.SetMinSize((1, 1))
             layout = wx.BoxSizer(wx.VERTICAL)
-            introduction = wx.StaticText(self, label='Prepare a file or folder import, review the plan, then start. '
+            introduction = wx.StaticText(self.body, label='Prepare a file or folder import, review the plan, then start. '
                        'Saved queues can be continued after restarting the program.')
             introduction.Wrap(750)
             layout.Add(introduction, 0, wx.ALL, 8)
@@ -391,45 +525,79 @@ def show_import_center(frame, workspace):
             for number, (identity, name) in enumerate(self.library.collections(workspace), 1):
                 self.collection_ids.append(identity)
                 collection_labels.append(f'{number}. Collection: {readable(name)}')
-            self.collection = wx.Choice(self, choices=collection_labels)
-            self.languages = wx.Choice(self, choices=[label for label, _ in LANGUAGES])
+            self.collection = wx.Choice(self.body, choices=collection_labels)
+            self.languages = wx.Choice(self.body, choices=[label for label, _ in LANGUAGES])
             for label, control in [('Destination for new plans', self.collection),
                                    ('Text recognition languages for new plans', self.languages)]:
                 control.SetName(label)
                 control.SetSelection(0)
-                options.Add(wx.StaticText(self, label=label), 0, wx.ALIGN_CENTER_VERTICAL)
+                options.Add(wx.StaticText(self.body, label=label), 0, wx.ALIGN_CENTER_VERTICAL)
                 options.Add(control, 1, wx.EXPAND)
                 self.mutable.append(control)
             layout.Add(options, 0, wx.EXPAND | wx.ALL, 8)
-            self.ocr_models_button = wx.Button(self, label='Choose installed or managed OCR &models…')
+            self.page_files = wx.SpinCtrl(self.body, min=1, max=5000, initial=1000)
+            self.page_entries = wx.SpinCtrl(self.body, min=1, max=20000, initial=20000)
+            self.page_seconds = wx.SpinCtrl(self.body, min=1, max=600, initial=60)
+            limits = wx.FlexGridSizer(cols=3, hgap=8, vgap=4)
+            controls = [('Files per scan page', self.page_files),
+                        ('Traversal entries per scan page', self.page_entries),
+                        ('Seconds per source scan page', self.page_seconds)]
+            for index, (label, _control) in enumerate(controls):
+                limits.AddGrowableCol(index)
+                limits.Add(wx.StaticText(self.body, label=label), 0, wx.ALIGN_CENTER_VERTICAL)
+            for label, control in controls:
+                control.SetName(label)
+                limits.Add(control, 1, wx.EXPAND)
+                self.mutable.append(control)
+            layout.Add(limits, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
+            from .import_resources import profile_summary
+            resources = wx.Button(self.body, label='Review import &resource allowances…')
+            resources.SetName('Review import resource allowances for new plans')
+            resources.Bind(wx.EVT_BUTTON, self.choose_resources)
+            self.mutable.append(resources)
+            layout.Add(resources, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
+            self.resource_summary = wx.TextCtrl(self.body, value=profile_summary(),
+                style=wx.TE_MULTILINE | wx.TE_READONLY, size=(-1, 55))
+            self.resource_summary.SetName('Resource allowances for future import plans')
+            layout.Add(self.resource_summary, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
+            slice_row = wx.BoxSizer(wx.HORIZONTAL)
+            slice_row.Add(wx.StaticText(self.body, label='Queued rows per explicit work slice'), 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 8)
+            self.slice_items = wx.SpinCtrl(self.body, min=1, max=1000, initial=1000)
+            self.slice_items.SetName('Queued rows per explicit import work slice')
+            self.mutable.append(self.slice_items)
+            slice_row.Add(self.slice_items, 0)
+            layout.Add(slice_row, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
+            self.ocr_models_button = wx.Button(self.body, label='Choose installed or managed OCR &models…')
             self.ocr_models_button.SetName('Choose installed or managed OCR models for new plans')
             self.ocr_models_button.Bind(wx.EVT_BUTTON, self.choose_ocr_models)
             self.mutable.append(self.ocr_models_button)
             layout.Add(self.ocr_models_button, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
-            self.recursive = wx.CheckBox(self, label='Include subfol&ders in new plans')
+            self.recursive = wx.CheckBox(self.body, label='Include subfol&ders in new plans')
             self.recursive.SetValue(True)
             self.mutable.append(self.recursive)
             layout.Add(self.recursive, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
             add = wx.BoxSizer(wx.HORIZONTAL)
             for label, handler in [('&Add files...', self.add_files), ('Add &folder...', self.add_folder),
+                                   ('Continue source &scan', self.continue_scan),
                                    ('Refresh saved &queues', self.refresh)]:
-                control = wx.Button(self, label=label)
+                control = wx.Button(self.body, label=label)
+                control.SetName(label.replace('&', ''))
                 control.Bind(wx.EVT_BUTTON, handler)
                 self.mutable.append(control)
                 add.Add(control, 0, wx.RIGHT, 8)
             layout.Add(add, 0, wx.ALL, 8)
-            layout.Add(wx.StaticText(self, label='Saved import batches'), 0, wx.LEFT | wx.RIGHT, 8)
-            self.batches = wx.ListBox(self, size=(-1, 65))
+            layout.Add(wx.StaticText(self.body, label='Saved import batches'), 0, wx.LEFT | wx.RIGHT, 8)
+            self.batches = wx.ListBox(self.body, size=(-1, 65))
             self.batches.SetName('Saved import batches')
             self.batches.Bind(wx.EVT_LISTBOX, self.select_batch)
             self.mutable.append(self.batches)
             layout.Add(self.batches, 1, wx.EXPAND | wx.ALL, 8)
-            layout.Add(wx.StaticText(self, label='Files in the selected batch'), 0, wx.LEFT | wx.RIGHT, 8)
-            self.rows = wx.ListBox(self, size=(-1, 100))
+            layout.Add(wx.StaticText(self.body, label='Files in the selected batch'), 0, wx.LEFT | wx.RIGHT, 8)
+            self.rows = wx.ListBox(self.body, size=(-1, 100))
             self.rows.SetName('Files and import status')
             self.rows.Bind(wx.EVT_LISTBOX, self.select_row)
             layout.Add(self.rows, 2, wx.EXPAND | wx.ALL, 8)
-            self.details = wx.TextCtrl(self, style=wx.TE_MULTILINE | wx.TE_READONLY, size=(-1, 70))
+            self.details = wx.TextCtrl(self.body, style=wx.TE_MULTILINE | wx.TE_READONLY, size=(-1, 70))
             self.details.SetName('Selected file details')
             layout.Add(self.details, 1, wx.EXPAND | wx.LEFT | wx.RIGHT, 8)
             actions = wx.FlexGridSizer(cols=2, hgap=8, vgap=6)
@@ -438,12 +606,13 @@ def show_import_center(frame, workspace):
             for label, handler in [('&Start queued files', self.run),
                     ('&Retry failed or reviewed files', lambda event: self.run(event, retry=True)),
                     ('&Exclude or include selected file', self.toggle_row), ('Save re&port...', self.save_report)]:
-                control = wx.Button(self, label=label)
+                control = wx.Button(self.body, label=label)
+                control.SetName(label.replace('&', ''))
                 control.Bind(wx.EVT_BUTTON, handler)
                 self.mutable.append(control)
                 actions.Add(control, 0, wx.EXPAND)
             layout.Add(actions, 0, wx.EXPAND | wx.ALL, 8)
-            self.status = wx.TextCtrl(self, style=wx.TE_MULTILINE | wx.TE_READONLY, size=(-1, 45))
+            self.status = wx.TextCtrl(self.body, style=wx.TE_MULTILINE | wx.TE_READONLY, size=(-1, 45))
             self.status.SetName('Import Center status')
             layout.Add(self.status, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 8)
             bottom = wx.BoxSizer(wx.HORIZONTAL)
@@ -452,18 +621,37 @@ def show_import_center(frame, workspace):
             self.cancel.Bind(wx.EVT_BUTTON, self.cancel_operation)
             bottom.Add(self.cancel, 0, wx.RIGHT, 8)
             close = wx.Button(self, wx.ID_CANCEL, 'Cl&ose')
+            close.SetName('Close Import Center')
             close.Bind(wx.EVT_BUTTON, self.close)
             bottom.Add(close)
-            layout.Add(bottom, 0, wx.ALL, 8)
-            self.SetSizer(layout)
+            self.body.SetSizer(layout)
+            self.body.SetupScrolling(scroll_x=True, scroll_y=True, scrollIntoView=True)
+            shell = wx.BoxSizer(wx.VERTICAL)
+            shell.Add(self.body, 1, wx.EXPAND)
+            shell.Add(bottom, 0, wx.ALL, 8)
+            self.SetSizer(shell)
             self.SetMinSize((800, 650))
             self.Bind(wx.EVT_CLOSE, self.close)
+            self.Bind(wx.EVT_WINDOW_DESTROY, self._destroyed)
             self.refresh()
             self.batches.SetFocus() if self.summaries else self.collection.SetFocus()
+
+        def _destroyed(self, event):
+            if event.GetEventObject() is self or event.GetId() == self._native_id:
+                self._dispose()
+            event.Skip()
+
+        def Destroy(self):
+            self._dispose()
+            return super().Destroy()
 
     dialog = ImportCenter()
     try:
         dialog.ShowModal()
     finally:
-        dialog.closed = True
-        dialog.Destroy()
+        dialog._dispose()
+        try:
+            if dialog and not dialog.IsBeingDeleted():
+                dialog.Destroy()
+        except RuntimeError:
+            pass
