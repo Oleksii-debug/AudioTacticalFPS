@@ -71,7 +71,7 @@ def test_actual_formats_decode_and_export_without_altering_original(environment,
     assert hashlib.sha256(output.read_bytes()).hexdigest() == summary['outputs'][0]['sha256']
     destination = service.export(job_id, tmp_path / 'reviewed export')
     assert (destination / output.name).read_bytes() == output.read_bytes()
-    receipt = json.loads((destination / 'media-export.json').read_text())
+    receipt = json.loads((destination / 'media-export.json').read_text(encoding='utf-8'))
     assert str(original) not in json.dumps(receipt) and definition['inputs'][0]['origin'] == str(original)
     assert original.read_bytes() == before
     assert broker.snapshot()['leases'] == []
@@ -286,7 +286,7 @@ def test_native_codec_rate_is_an_explicit_choice(format):
 def test_playlist_and_video_without_audio_are_not_silent_audio_defaults(environment, tmp_path):
     _, service, source, broker = environment
     playlist = tmp_path / 'unselected local reference.m3u'
-    playlist.write_text('#EXTM3U\n' + str(source) + '\n')
+    playlist.write_text('#EXTM3U\n' + str(source) + '\n', encoding='utf-8')
     with pytest.raises((ValueError, RuntimeError)):
         service.inspect([playlist])
     assert broker.snapshot()['leases'] == []

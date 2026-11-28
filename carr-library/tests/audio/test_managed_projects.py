@@ -55,7 +55,7 @@ def test_relocated_project_and_recovery_cannot_write_into_old_library(tmp_path):
     assert restored.output_dir.is_relative_to(moved)
     restored.save()
     assert sha256(path.read_bytes()).hexdigest() == original_hash
-    assert json.loads(restored_path.read_text())['output_dir'] == str(restored.output_dir)
+    assert json.loads(restored_path.read_text(encoding='utf-8'))['output_dir'] == str(restored.output_dir)
 
 
 def test_library_writer_and_draft_lock_prevent_partial_saves(tmp_path):
@@ -103,7 +103,7 @@ def test_external_modification_and_cross_project_paths_are_rejected(tmp_path):
     other = value.private_root / 'audio-projects' / ('f' * 32) / 'studio' / 'project.json'
     with pytest.raises(ValueError, match='different managed project'):
         value.save(other)
-    assert source.read_text() == 'Original evidence'
+    assert source.read_text(encoding='utf-8') == 'Original evidence'
 
 
 def test_managed_save_as_detaches_output_without_touching_original(tmp_path):
@@ -113,7 +113,7 @@ def test_managed_save_as_detaches_output_without_touching_original(tmp_path):
     outside = tmp_path / 'standalone.json'
     value.save(outside)
     assert path.read_bytes() == original
-    assert value.output_dir is None and json.loads(outside.read_text())['output_dir'] is None
+    assert value.output_dir is None and json.loads(outside.read_text(encoding='utf-8'))['output_dir'] is None
     value.configure(output_dir=tmp_path)
 
 
@@ -143,7 +143,7 @@ def test_managed_hardlinked_document_rejected(tmp_path):
 def test_project_id_must_match_saved_directory_before_state_changes(tmp_path):
     first = controller(tmp_path / 'library')
     path = first.save_in_library()
-    data = json.loads(path.read_text())
+    data = json.loads(path.read_text(encoding='utf-8'))
     data['project_id'] = 'e' * 32
     path.write_text(json.dumps(data), encoding='utf-8')
     opened = StudioController(private_root=first.private_root)
