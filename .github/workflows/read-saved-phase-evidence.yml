@@ -129,23 +129,24 @@ jobs:
               raise ValueError("JUnit testcase count is outside its read bound.")
           skipped, failures, passed = [], [], 0
           for case in cases:
-              identity = {"classname": case.get("classname", ""), "name": case.get("name", "")}
-              if any(len(value) > 2048 for value in identity.values()):
-                  raise ValueError("JUnit testcase identity is outside its read bound.")
               skip = case.find("skipped")
               failed = any(case.find(tag) is not None for tag in ("failure", "error"))
               if skip is not None and failed:
                   raise ValueError("JUnit testcase has contradictory terminal outcomes.")
+              if skip is None and not failed:
+                  passed += 1
+                  continue
+              identity = {"classname": case.get("classname", ""), "name": case.get("name", "")}
+              if any(len(value) > 2048 for value in identity.values()):
+                  raise ValueError("JUnit testcase identity is outside its read bound.")
               if skip is not None:
                   reason = skip.get("message", "")
                   kind = skip.get("type", "")
                   if len(reason) > 4096 or len(kind) > 512:
                       raise ValueError("JUnit skip reason is outside its read bound.")
                   skipped.append({**identity, "type": kind, "reason": reason})
-              elif failed:
-                  failures.append(identity)
               else:
-                  passed += 1
+                  failures.append(identity)
           report = {"artifact_id": ARTIFACT_ID, "source_run": SOURCE_RUN,
                     "source_head": SOURCE_HEAD, "member": junit_name,
                     "member_bytes": len(junit_bytes),
