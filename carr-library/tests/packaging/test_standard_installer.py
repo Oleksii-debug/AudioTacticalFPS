@@ -1344,3 +1344,142 @@ if sys.platform == 'win32':
         assert core['failed'] == ([dict(name=failed, exit_code=77)] if expected_core == 'FAIL' else [])
         assert tail['failed'] == ([dict(name=failed, exit_code=77)] if expected_tail == 'FAIL' else [])
         assert (tmp_path / 'tested-application-wheel.json').exists() is (not failed)
+
+
+# These controls use the actual Windows ShellLink COM interfaces and PowerShell,
+# without executing a target executable or compiling/installing Inno itself.
+if sys.platform == 'win32':
+    SHORTCUT_FIXTURE = r"""param([string]$Folder,[string]$Targets)
+$ErrorActionPreference = 'Stop'
+Add-Type -TypeDefinition @'
+using System;
+using System.Runtime.InteropServices;
+using System.Runtime.InteropServices.ComTypes;
+using System.Text;
+
+[ComImport, Guid("00021401-0000-0000-C000-000000000046")]
+internal class FixtureShortcutObject {}
+
+[ComImport, Guid("000214F9-0000-0000-C000-000000000046"),
+ InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+internal interface FixtureShortcutW {
+    void GetPath([Out, MarshalAs(UnmanagedType.LPWStr)] StringBuilder path,
+                 int characters, IntPtr findData, uint flags);
+    void GetIDList(out IntPtr list);
+    void SetIDList(IntPtr list);
+    void GetDescription([Out, MarshalAs(UnmanagedType.LPWStr)] StringBuilder text, int characters);
+    void SetDescription([MarshalAs(UnmanagedType.LPWStr)] string text);
+    void GetWorkingDirectory([Out, MarshalAs(UnmanagedType.LPWStr)] StringBuilder path, int characters);
+    void SetWorkingDirectory([MarshalAs(UnmanagedType.LPWStr)] string path);
+    void GetArguments([Out, MarshalAs(UnmanagedType.LPWStr)] StringBuilder text, int characters);
+    void SetArguments([MarshalAs(UnmanagedType.LPWStr)] string text);
+    void GetHotkey(out ushort hotkey);
+    void SetHotkey(ushort hotkey);
+    void GetShowCmd(out int command);
+    void SetShowCmd(int command);
+    void GetIconLocation([Out, MarshalAs(UnmanagedType.LPWStr)] StringBuilder path,
+                         int characters, out int index);
+    void SetIconLocation([MarshalAs(UnmanagedType.LPWStr)] string path, int index);
+    void SetRelativePath([MarshalAs(UnmanagedType.LPWStr)] string path, uint reserved);
+    void Resolve(IntPtr window, uint flags);
+    void SetPath([MarshalAs(UnmanagedType.LPWStr)] string path);
+}
+
+public static class FixtureShortcutWriter {
+    public static void Create(string filename, string target) {
+        object link = new FixtureShortcutObject();
+        try {
+            ((FixtureShortcutW)link).SetPath(target);
+            ((IPersistFile)link).Save(filename, true);
+        } finally {
+            Marshal.FinalReleaseComObject(link);
+        }
+    }
+}
+'@
+$targetsByName = Get-Content -LiteralPath $Targets -Raw -Encoding utf8 | ConvertFrom-Json
+foreach ($entry in $targetsByName) {
+    [FixtureShortcutWriter]::Create((Join-Path $Folder ($entry.name + '.lnk')), $entry.target)
+}
+"""
+
+    @pytest.mark.parametrize('fault', [
+        'none', 'wrong-main', 'wrong-repair', 'wrong-uninstall',
+        'missing-link', 'missing-target', 'invalid-link',
+    ])
+    def test_actual_unicode_shelllink_inspection_keeps_exact_targets_and_refuses_wrong_ones(
+            tmp_path, monkeypatch, fault):
+        root = tmp_path / 'Resonance installed Ω Україна'
+        appdata = tmp_path / 'isolated appdata Ω'
+        folder = appdata / 'Microsoft/Windows/Start Menu/Programs/Resonance'
+        folder.mkdir(parents=True)
+        report = tmp_path / 'inspection'
+        report.mkdir()
+        monkeypatch.setenv('APPDATA', str(appdata))
+        expected = {
+            'Resonance': root / 'app/ResearchLibrary.exe',
+            'Repair Resonance': root / 'maintenance/ResonanceSetup.exe',
+            'Uninstall Resonance': root / 'unins000.exe',
+        }
+        for path in expected.values():
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(b'Synthetic shortcut target; never executed.')
+        actual = dict(expected)
+        wrong_names = {
+            'wrong-main': 'Resonance', 'wrong-repair': 'Repair Resonance',
+            'wrong-uninstall': 'Uninstall Resonance',
+        }
+        if fault in wrong_names:
+            name = wrong_names[fault]
+            # A real adjacent ASCII-O directory must never stand in for Ω.
+            wrong = tmp_path / 'Resonance installed O Україна' / expected[name].relative_to(root)
+            wrong.parent.mkdir(parents=True, exist_ok=True)
+            wrong.write_bytes(b'A different actual target; never executed.')
+            actual[name] = wrong
+        targets = tmp_path / 'shortcut-targets.json'
+        targets.write_text(json.dumps([dict(name=name, target=str(target))
+                                      for name, target in actual.items()]), encoding='ascii')
+        fixture = tmp_path / 'create-native-shortcuts.ps1'
+        fixture.write_text(SHORTCUT_FIXTURE, encoding='utf-8-sig')
+        powershell = Path(os.environ['SystemRoot']) / 'System32/WindowsPowerShell/v1.0/powershell.exe'
+        probe.owned_process(
+            [powershell, '-NoProfile', '-NonInteractive', '-File', fixture,
+             '-Folder', folder, '-Targets', targets],
+            cwd=tmp_path, log=tmp_path / 'create-shortcuts-process.log', timeout=60)
+        selected = folder / 'Resonance.lnk'
+        if fault == 'missing-link':
+            selected.unlink()
+        elif fault == 'missing-target':
+            expected['Resonance'].unlink()
+        elif fault == 'invalid-link':
+            selected.write_bytes(b'This is not a native Shell link.')
+        before = {path.name: path.read_bytes() for path in folder.iterdir()}
+        if fault == 'none':
+            assert probe.inspect_shortcuts(root, report) == folder
+        else:
+            message = ('shortcuts were not installed' if fault == 'missing-link'
+                       else 'Native acceptance failed' if fault == 'invalid-link'
+                       else 'targets another installation')
+            with pytest.raises(RuntimeError, match=message):
+                probe.inspect_shortcuts(root, report)
+        assert {path.name: path.read_bytes() for path in folder.iterdir()} == before
+        if fault in ('missing-link', 'invalid-link'):
+            assert not (report / 'shortcuts.json').exists()
+            return
+        observed = json.loads((report / 'shortcuts.json').read_text(encoding='utf-8-sig'))
+        detail = json.loads((report / 'shortcut-inspection.json').read_text(encoding='utf-8-sig'))
+        assert set(observed) == set(detail) == set(expected)
+        for name, target in actual.items():
+            assert Path(observed[name]).resolve() == target.resolve()
+            assert detail[name]['unicode_target'] == observed[name]
+            assert detail[name]['link_bytes'] == len(before[name + '.lnk'])
+            assert detail[name]['link_sha256'] == checksum(before[name + '.lnk'])
+            assert detail[name]['legacy_target'] is None or isinstance(detail[name]['legacy_target'], str)
+            assert detail[name]['legacy_error'] is None or isinstance(detail[name]['legacy_error'], str)
+        if fault == 'none':
+            assert all('Ω Україна' in target for target in observed.values())
+            assert all(path.is_file() for path in expected.values())
+        elif fault in wrong_names:
+            assert Path(observed[wrong_names[fault]]).resolve() != expected[wrong_names[fault]].resolve()
+        else:
+            assert fault == 'missing-target' and not expected['Resonance'].exists()

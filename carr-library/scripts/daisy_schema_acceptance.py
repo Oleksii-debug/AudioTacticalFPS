@@ -110,10 +110,7 @@ def acceptance(schemas, *, require_installed=False):
                     identity = publishing._digest(binary, lambda: None, 1024**3)['sha256']
                     audio_proof[name] = {'path': str(binary), 'sha256': identity}
                     if bundle:
-                        relative = 'audio/bin/' + name + '.exe'
-                        if (not binary.samefile(bundle / relative)
-                                or identity != manifest['files'].get(relative)):
-                            raise RuntimeError('DAISY audio runtime escaped the sealed installed bundle: ' + name)
+                        fixture.require_sealed_audio(bundle, binary, name, identity, manifest)
                 publisher = publishing.PublicationService(service)
                 script = ('[Scene: Архів & letters]\r\nNarrator: Exact <source> & words.\r\n'
                           '[Pause: 0.2]\r\n[Scene: Conclusion]\r\nNarrator: Другий розділ.\r\n')

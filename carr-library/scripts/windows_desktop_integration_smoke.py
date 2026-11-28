@@ -309,6 +309,27 @@ def main():
                     if isinstance(window, wx.Dialog) and window.IsModal() and window.GetTitle().startswith('Local assistant'):
                         window.EndModal(wx.ID_CANCEL)
 
+        def save_watched_reading_copy(dialog, editor, expected):
+            """Complete the explicit Save action before the existing native Close."""
+            foreground(dialog)
+            editor.SetFocus()
+            pump(lambda: wx.Window.FindFocus() is editor, 'Watched reading-copy save focus')
+            check('native Ctrl+S for the watched reading copy',
+                  simulator.Char(ord('S'), wx.MOD_CONTROL))
+            status = named(dialog, 'Speech and save status')
+            source_status = named(dialog, 'Original and reading-copy status')
+            pump(lambda: status.GetValue() ==
+                 'Reading draft, voice settings and current position saved for recovery. '
+                 'Save As exports an independent reading project.',
+                 'Explicit watched reading-copy save did not complete.')
+            check('explicit watched reading-copy save is acknowledged without changing the editor',
+                  '; saved. ' in source_status.GetValue() and editor.GetValue() == expected)
+            recovered = ReaderDraftStore(library.root, slot='clipboard-watch').load()
+            check('explicit watched save retains exact source and copy without quotation authority',
+                  recovered is not None and recovered.document.source_text == expected
+                  and recovered.document.text == expected and recovered.document.source_anchor is None
+                  and recovered.document.source_sha256 == sha256(expected.encode('utf-8')).hexdigest())
+
         def reader_driver(expected):
             try:
                 pump(lambda: controller.reader is not None, 'Canonical reader controls were not attached.')
@@ -356,6 +377,7 @@ def main():
                 finally:
                     check('native global Stop key up',
                           simulator.KeyUp(ord('J'), wx.MOD_CONTROL | wx.MOD_ALT | wx.MOD_SHIFT))
+                save_watched_reading_copy(dialog, editor, expected)
                 foreground(dialog)
                 close = next(child for child in dialog.GetChildren()
                              if isinstance(child, wx.Button) and child.GetId() == wx.ID_CANCEL)
