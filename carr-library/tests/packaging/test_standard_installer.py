@@ -410,6 +410,10 @@ def test_template_uses_exact_manifest_no_recursive_uninstall_and_standard_per_us
     assert 'CloseApplications=no' in script
     assert 'Repair Resonance' in script and 'ModifyPath' in script
     assert '[UninstallDelete]' not in script and 'filesandordirs' not in script
+    directory_section = script.split('[Dirs]\n', 1)[1].split('\n[', 1)[0]
+    entries = [line.strip() for line in directory_section.splitlines()
+               if line.strip() and not line.lstrip().startswith(';')]
+    assert entries == ['Name: "{app}\\maintenance"; Flags: uninsalwaysuninstall']
     assert ' --lease-owner ' in script
     assert script.count('Flags: dontcopy') == len(json.loads((root / 'bundle-manifest.json').read_bytes())['files']) + 1 + len(service.HELPERS)
     assert 'runtime\\python.exe' in script and 'CopyVerified' in script
@@ -948,6 +952,62 @@ def test_native_probe_stops_owned_tree_after_descendant_timeout(tmp_path, monkey
 def test_native_probe_never_queries_an_ambient_or_missing_job():
     with pytest.raises(RuntimeError, match='no live owned job'):
         probe.active_job_processes(SimpleNamespace(_job=None))
+
+
+@pytest.mark.parametrize('root_reparse', [False, True], ids=['ordinary-root', 'reparse-root'])
+def test_uninstall_failure_diagnostics_are_bounded_metadata_only(tmp_path, monkeypatch, capsys, root_reparse):
+    root = tmp_path / 'Residual installation Ω'
+    root.mkdir()
+    (root / 'maintenance').mkdir()
+    sentinel = root / 'user-note.txt'
+    sentinel.write_bytes(b'Never read or change diagnostic fixture contents.')
+    for index in range(40):
+        (root / ('residual-' + str(index))).write_bytes(b'untouched')
+    before = {path.name for path in root.iterdir()}
+    report = tmp_path / 'diagnostic report'
+    report.mkdir()
+    original_lstat = Path.lstat
+    original_scandir = os.scandir
+    seen = []
+
+    def metadata(path, *args, **kwargs):
+        info = original_lstat(path, *args, **kwargs)
+        if root_reparse and path == root:
+            return SimpleNamespace(st_mode=info.st_mode, st_file_attributes=0x400)
+        return info
+
+    def inventory(path):
+        assert not root_reparse, 'A reparse root must not be traversed.'
+        seen.append(Path(path))
+        return original_scandir(path)
+
+    def forbidden_read(*args, **kwargs):
+        raise AssertionError('Failure diagnostics must not read file contents.')
+
+    with monkeypatch.context() as patch:
+        patch.setattr(probe, 'registry', lambda: None)
+        patch.setattr(Path, 'lstat', metadata)
+        patch.setattr(Path, 'read_bytes', forbidden_read)
+        patch.setattr(Path, 'read_text', forbidden_read)
+        patch.setattr(probe.os, 'scandir', inventory)
+        result = probe.uninstall_residual_diagnostics(root, report)
+
+    raw = (report / 'uninstall-residual.json').read_bytes()
+    assert len(raw) <= 32 * 1024
+    assert json.loads(raw) == result
+    assert result['diagnostic_only'] is True and result['registry_present'] is False
+    if root_reparse:
+        assert result['root'] == 'link-or-reparse'
+        assert result['app'] == result['maintenance'] == 'not-inspected'
+        assert result['top_level_names'] == [] and seen == []
+    else:
+        assert result['root'] == result['maintenance'] == 'directory'
+        assert result['app'] == 'absent'
+        assert len(result['top_level_names']) == 32 and result['names_truncated'] is True
+        assert set(result['top_level_names']) <= before and seen == [root]
+    assert {path.name for path in root.iterdir()} == before
+    assert sentinel.read_bytes() == b'Never read or change diagnostic fixture contents.'
+    assert json.loads(capsys.readouterr().out) == result
 
 
 def test_nested_application_commands_share_one_actual_lease(installed, monkeypatch):

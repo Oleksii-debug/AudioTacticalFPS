@@ -29,6 +29,11 @@ UninstallFilesDir={app}
 UninstallLogMode=append
 DisableDirPage=no
 
+[Dirs]
+; The verified maintenance helper creates this fixed directory before [Files].
+; Inno may remove it only when empty; retained or foreign contents stay intact.
+Name: "{app}\maintenance"; Flags: uninsalwaysuninstall
+
 [Files]
 @@FILES@@
 Source: "{srcexe}"; DestDir: "{app}\maintenance"; DestName: "ResonanceSetup.exe"; Flags: external ignoreversion; Check: CacheNeeded

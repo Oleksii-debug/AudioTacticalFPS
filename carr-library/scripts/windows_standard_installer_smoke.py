@@ -11,6 +11,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import stat
 import subprocess
 import time
 
@@ -342,6 +343,10 @@ def probe(setup, build_evidence, work, report):
                    '/LOG=' + str(report / 'uninstall.log')], cwd=work,
                   log=report / 'uninstall-process.log', timeout=300)
     if registry() is not None or (root / 'app').exists() or (root / 'maintenance').exists():
+        try:
+            uninstall_residual_diagnostics(root, report)
+        except Exception:
+            pass  # Diagnostics cannot replace this original acceptance failure.
         raise RuntimeError('Normal uninstall left program files or registration.')
     if set(path.name for path in root.iterdir()) != {'managed-install.ini', 'installation.lease'}:
         raise RuntimeError('The uninstaller did not finish removing its own wrapper files.')
@@ -366,6 +371,55 @@ def probe(setup, build_evidence, work, report):
         unprivileged_account_qualification='NOT_RUN',
         native_network_trace='NOT_RUN', release_status='unsigned-private-candidate')
     (report / 'result.json').write_text(json.dumps(result, indent=2) + '\n', encoding='utf-8')
+    return result
+
+
+def uninstall_residual_diagnostics(root, report):
+    """Record bounded metadata after failure; never follow a residual link."""
+    def kind(path):
+        try:
+            info = path.lstat()
+        except FileNotFoundError:
+            return 'absent'
+        except OSError as error:
+            return 'error:' + type(error).__name__
+        if (stat.S_ISLNK(info.st_mode)
+                or getattr(info, 'st_file_attributes', 0) & 0x400):
+            return 'link-or-reparse'
+        return 'directory' if stat.S_ISDIR(info.st_mode) else 'file-or-other'
+
+    result = dict(schema=1, diagnostic_only=True, root=kind(root),
+                  app='not-inspected', maintenance='not-inspected',
+                  top_level_names=[], names_truncated=False,
+                  name_text_truncated=False)
+    try:
+        result['registry_present'] = registry() is not None
+    except Exception as error:
+        result['registry_error'] = type(error).__name__
+    if result['root'] == 'directory':
+        result['app'] = kind(root / 'app')
+        result['maintenance'] = kind(root / 'maintenance')
+        try:
+            with os.scandir(root) as entries:
+                for entry in entries:
+                    if len(result['top_level_names']) == 32:
+                        result['names_truncated'] = True
+                        break
+                    result['top_level_names'].append(entry.name[:128])
+                    result['name_text_truncated'] |= len(entry.name) > 128
+            result['top_level_names'].sort()
+        except OSError as error:
+            result['inventory_error'] = type(error).__name__
+    raw = json.dumps(result, ensure_ascii=True, sort_keys=True) + '\n'
+    try:
+        with (report / 'uninstall-residual.json').open('x', encoding='utf-8') as stream:
+            stream.write(raw)
+    except OSError:
+        pass
+    try:
+        print(raw, end='', flush=True)
+    except (OSError, UnicodeError):
+        pass
     return result
 
 
