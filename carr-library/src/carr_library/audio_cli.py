@@ -14,6 +14,16 @@ def add_audio_arguments(parser):
     group.add_argument('--audio-voices', action='store_true', help='List available local speech voices and compatibility notices')
     group.add_argument('--audio-script', type=Path, help='Read a local UTF-8 production script')
     group.add_argument('--audio-plan', type=Path, help='Read a validated versioned production-plan JSON file')
+    group.add_argument('--audio-inspect-silence', type=Path, metavar='COMPLETION_JSON',
+                       help='Inspect long-silence intervals in the verified PCM of one completed production; print JSON only')
+    parser.add_argument('--audio-silence-threshold-dbfs', type=float, metavar='DBFS',
+                        help='Explicit silence level criterion; required with --audio-inspect-silence')
+    parser.add_argument('--audio-silence-minimum-seconds', type=float, metavar='SECONDS',
+                        help='Explicit minimum silence interval; required with --audio-inspect-silence')
+    parser.add_argument('--audio-silence-run-key', metavar='RUN_KEY',
+                        help='Require this exact completed production identity during inspection')
+    parser.add_argument('--audio-silence-max-intervals', type=int, metavar='COUNT',
+                        help='Bound the inspection report interval population (default: 1000)')
     parser.add_argument('--audio-preview', action='store_true', help='Print the validated production plan without generating audio')
     parser.add_argument('--audio-output', type=Path, help='Local project output/cache folder; interrupted renders can resume here')
     parser.add_argument('--voice', help='Default local voice ID from --audio-voices; role directives may override it')
@@ -25,10 +35,24 @@ def add_audio_arguments(parser):
 
 def audio_requested(args):
     from .audio_batch_cli import requested as batch_requested
-    return bool(args.audio_voices or args.audio_script or args.audio_plan or batch_requested(args))
+    return bool(args.audio_voices or args.audio_script or args.audio_plan
+                or getattr(args, 'audio_inspect_silence', None) or batch_requested(args))
 
 
 def validate_audio_arguments(args, parser):
+    inspection = getattr(args, 'audio_inspect_silence', None)
+    criteria = (getattr(args, 'audio_silence_threshold_dbfs', None),
+                getattr(args, 'audio_silence_minimum_seconds', None),
+                getattr(args, 'audio_silence_run_key', None),
+                getattr(args, 'audio_silence_max_intervals', None))
+    if inspection is None and any(value is not None for value in criteria):
+        parser.error('Silence inspection options require --audio-inspect-silence.')
+    if inspection is not None:
+        if criteria[0] is None or criteria[1] is None:
+            parser.error('Silence inspection requires --audio-silence-threshold-dbfs and --audio-silence-minimum-seconds.')
+        if any((args.audio_preview, args.audio_output, args.voice, args.ffmpeg,
+                args.dordiai_manifest, args.piper_executable, args.piper_manifest)):
+            parser.error('Silence inspection does not accept rendering, voice or FFmpeg options.')
     from .audio_batch_cli import requested as batch_requested, validate as validate_batch
     if batch_requested(args):
         validate_batch(args, parser)
@@ -64,7 +88,38 @@ def _render_library_root(selected):
     return checked_directory(selected, create=True)
 
 
+def _inspect_silence(args):
+    """Use the same read-only completed-production inspector as the desktop."""
+    from .audio.jobs import RenderCancelled, check_cancelled
+    from .audio.production import inspect_completed_silence
+    stopped = Event()
+    previous = signal.getsignal(signal.SIGINT)
+    signal.signal(signal.SIGINT, lambda *_: stopped.set())
+    try:
+        check_cancelled(stopped.is_set)
+        maximum = getattr(args, 'audio_silence_max_intervals', None)
+        result = inspect_completed_silence(
+            args.audio_inspect_silence,
+            threshold_dbfs=args.audio_silence_threshold_dbfs,
+            minimum_seconds=args.audio_silence_minimum_seconds,
+            expected_run_key=getattr(args, 'audio_silence_run_key', None),
+            max_intervals=1000 if maximum is None else maximum,
+            cancelled=stopped.is_set,
+            on_status=lambda text: print(text, file=sys.stderr, flush=True))
+        check_cancelled(stopped.is_set)
+    except (RenderCancelled, InterruptedError) as exc:
+        print(json.dumps({'status': 'cancelled', 'message': str(exc)},
+                         ensure_ascii=False, indent=2))
+        return 130
+    finally:
+        signal.signal(signal.SIGINT, previous)
+    print(json.dumps(result, ensure_ascii=False, indent=2, allow_nan=False))
+    return 0
+
+
 def run_audio(args, *, trust_controller=None):
+    if getattr(args, 'audio_inspect_silence', None) is not None:
+        return _inspect_silence(args)
     from .audio_batch_cli import requested as batch_requested, run as run_batch
     if batch_requested(args):
         return run_batch(args, trust_controller=trust_controller)
