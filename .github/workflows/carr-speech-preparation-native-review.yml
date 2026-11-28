@@ -1,7 +1,7 @@
 name: Actual installed speech preparation
 on:
   push:
-    branches: [carr/speech-preparation-review-20261128]
+    branches: [carr/speech-preparation-native-review-20261128]
     paths: ['carr-library/**', '.github/workflows/carr-speech-preparation-native-review.yml']
   workflow_dispatch:
 permissions:

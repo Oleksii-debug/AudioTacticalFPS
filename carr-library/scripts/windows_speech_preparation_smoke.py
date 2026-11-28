@@ -580,6 +580,9 @@ def _run_native():
             record = jobs[-1]
             if action == 'cancel':
                 press(dialog.buttons['cancel'])
+                yield waiting(dialog._withdrawn.is_set, 'The native Cancel event did not reach its owner')
+                check('native Cancel is acknowledged before releasing the genuine completed proposal',
+                      dialog.busy and dialog.proposal is None and not record.returned)
             else:
                 dialog.Destroy()
             hold.release.set()
