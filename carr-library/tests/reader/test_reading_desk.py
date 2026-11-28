@@ -191,8 +191,8 @@ def test_native_verification_consumes_the_reader_deadline(text_book, monkeypatch
     clock = [100.0]
     original = app.assets.resolve
 
-    def slow_resolution(asset):
-        result = original(asset)
+    def slow_resolution(asset, *, cancelled=lambda: False):
+        result = original(asset, cancelled=cancelled)
         clock[0] += 2.0
         return result
 
@@ -208,8 +208,8 @@ def test_cancellation_during_original_check_never_returns_a_page(text_book, monk
     desk = ReadingDesk(app, workspace, book['edition'], cancelled=stopped.is_set)
     original = app.assets.resolve
 
-    def cancel_after_resolution(asset):
-        result = original(asset)
+    def cancel_after_resolution(asset, *, cancelled=lambda: False):
+        result = original(asset, cancelled=cancelled)
         stopped.set()
         return result
 

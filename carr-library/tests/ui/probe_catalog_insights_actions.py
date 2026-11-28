@@ -126,7 +126,10 @@ class Dialogs:
 class CatalogInsightsActionsTests(unittest.TestCase):
     def setUp(self):
         self.wx = SimpleNamespace(YES_NO=1, NO_DEFAULT=2, ICON_QUESTION=4, YES=8, NO=16)
-        self.wx.MessageBox = Mock(return_value=self.wx.YES)
+        def confirm_overwrite(*args, **kwargs):
+            assert threading.get_ident() == self.frame.main_thread, 'Overwrite dialog used from a worker'
+            return self.wx.YES if self.approve_overwrite else self.wx.NO
+        self.wx.MessageBox = Mock(side_effect=confirm_overwrite)
         confirm = ui.confirm_export_destination
         native = patch.object(ui, 'confirm_export_destination',
             lambda *args, **kwargs: confirm(*args, **kwargs, wx_module=self.wx))
@@ -487,6 +490,8 @@ class CatalogInsightsActionsTests(unittest.TestCase):
         self.approve_overwrite = False
         actions, _ = self.actions((0, 0))
         actions.export_matrix()
+        self.wx.MessageBox.assert_called_once()
+        self.assertIn(self.destination.name, self.wx.MessageBox.call_args.args[0])
         self.assertEqual(self.frame.jobs, [])
         self.assertEqual(self.destination.read_bytes(), b'Keep existing matrix')
         self.assertTrue(self.frame.origin.focused)
