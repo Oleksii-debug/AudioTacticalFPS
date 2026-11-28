@@ -24,7 +24,7 @@ SUITES = {
     "tests/ui/test_document_conversion.py": 20,
     "tests/extract/test_document_formats_xml.py": 151,
     "tests/audio/test_audio_process.py": 23,
-    "tests/audio/test_live_metadata_retry.py": 12,
+    "tests/audio/test_live_metadata_retry.py": 22,
     "tests/ui/test_native_conversion_diagnostics.py": 23,
 }
 PINS = {
@@ -49,15 +49,15 @@ PINS = {
     "scripts/ci_check.py": "6ad3055cfcd7c6a1b1af8544ae462c5d51adb473",
     "packaging/source_wheel.py": "478de248451d59a44b35784eb808fb2974f0af67",
     "scripts/selected_conversion_fixture_support.py": "f91ee1bae7cb6584d3f7caa1788538d8038dfbf7",
-    "scripts/selected_conversion_acceptance.py": "1bebafab9730ded278d0a477892963f18a38749d",
+    "scripts/selected_conversion_acceptance.py": "4f3fd0b4edbce854c03b69ffd9c4bdbf45fc5679",
     "scripts/translation_loopback_check.py": "6859d406a595e806b78de12969ad681757e34f71",
     "packaging/windows-document-converters.lock.json": "c5822c7ff56d5139da911ea153a8fdcd626d70dd",
     "tests/conversion/fixtures/ordered_slides.pptx": "58b0d7cce78a50883ed4bcf1e73cbbcc40675d44",
-    "src/carr_library/audio/process.py": "014c47d5297a937a8bf6061420dd009206863669",
+    "src/carr_library/audio/process.py": "480272d0224770f6b0ec9c8efc8e70d9aab42b0b",
     "tests/audio/test_audio_process.py": "af58a03f5e5f84d7a4014089d6213511c4e4e13c",
-    "tests/audio/test_live_metadata_retry.py": "9d97fca2633815e61a55c16f51a06484944f6fbc",
+    "tests/audio/test_live_metadata_retry.py": "8534a05cf4e7c89a49f42fdcbb611f6f141fe969",
     "tests/ui/test_native_conversion_diagnostics.py": "fbf50b760bd2f636196845291f51dd2efd1db9b6",
-    "scripts/windows_document_conversion_smoke.py": "e430ecd1acf1ad550f59fb0a8a656414ddded1fd",
+    "scripts/windows_document_conversion_smoke.py": "ec96de70f8f4681b8c89801d5369529d20608924",
 }
 COMPANIONS = ("scripts/windows_document_conversion_smoke.py",
               "scripts/selected_conversion_fixture_support.py")

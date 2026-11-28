@@ -63,7 +63,7 @@ PINS = {
     "src/carr_library/native_runtime.py": "50ca93914325753f7d9cb91f1bc4f48fc9ae230f",
     "src/carr_library/ui/worker_lifetime.py": "ed62603159bc095724c3b240d4754f989141a2c9",
     "src/carr_library/ui/worker_cleanup.py": "2f071d9d2762ef15f5f8ee3da2fcf25de165b15a",
-    "src/carr_library/audio/process.py": "014c47d5297a937a8bf6061420dd009206863669",
+    "src/carr_library/audio/process.py": "480272d0224770f6b0ec9c8efc8e70d9aab42b0b",
     "src/carr_library/audio/cleanup.py": "77d69f8406db93dc0ff6110b9597ad805bd92dc5",
     "src/carr_library/runtime_settings.py": "00df790d393f9d54f87d0dcf891e6506916437a1",
     "src/carr_library/operations/_locks.py": "ae161b8483f84b2a4aa2f153b4b11b08f76b9693",

@@ -317,3 +317,137 @@ finally:
     else:
         assert native_errors == [] and set(metadata_outcomes) == {'absent'}
     _reaped(live_children)
+
+
+@pytest.mark.parametrize('outcome', ['recovered', 'disappeared', 'oversized', 'too-many'])
+def test_live_directory_open_refusal_requires_fresh_bounded_entries(
+        tmp_path, monkeypatch, live_children, outcome):
+    output, release = tmp_path / 'output', tmp_path / 'release'
+    output.mkdir()
+    if outcome != 'disappeared':
+        (output / 'first').write_bytes(b'x' * (8192 if outcome == 'oversized' else 17))
+    if outcome == 'too-many':
+        (output / 'second').write_bytes(b'y')
+    original, calls = os.scandir, []
+
+    def observe(path):
+        # Real tempfile cleanup may enumerate through a directory descriptor.
+        if isinstance(path, int) or Path(path) != output:
+            return original(path)
+        calls.append(path)
+        if len(calls) == 1:
+            raise _denial()
+        if outcome == 'disappeared':
+            output.rmdir()
+        if outcome in ('recovered', 'disappeared'):
+            release.write_bytes(b'Release the real child after the fresh enumeration.')
+        return original(path)
+
+    monkeypatch.setattr(runner.os, 'scandir', observe)
+    budget = AudioBudget(timeout=5, max_output_bytes=4096,
+                         max_staging_files=1 if outcome == 'too-many' else 8)
+    if outcome in ('oversized', 'too-many'):
+        message = 'output disk budget' if outcome == 'oversized' else 'staging file budget'
+        with pytest.raises(AudioError, match=message):
+            _run(_waiting_code(release), watch=(output,), budget=budget)
+        assert not release.exists()
+    else:
+        result = _run(_waiting_code(release), watch=(output,), budget=budget)
+        assert result.returncode == 0
+        assert output.exists() == (outcome == 'recovered')
+    assert len(calls) >= 2
+    _reaped(live_children)
+
+
+@pytest.mark.parametrize('fault', ['persistent', 'other-error', 'cancelled', 'budget'])
+def test_live_directory_open_refusal_preserves_controls_and_never_skips(
+        tmp_path, monkeypatch, live_children, fault):
+    output, release = tmp_path / 'output', tmp_path / 'release'
+    output.mkdir()
+    (output / 'retained').write_bytes(b'unchanged')
+    original, calls = os.scandir, []
+    expected = _denial(13 if fault == 'other-error' else 5)
+    monotonic = time.monotonic
+
+    def observe(path):
+        if isinstance(path, int) or Path(path) != output:
+            return original(path)
+        calls.append(path)
+        raise expected
+
+    def clock():
+        return monotonic() + (10 if fault == 'budget' and calls else 0)
+
+    monkeypatch.setattr(runner.os, 'scandir', observe)
+    monkeypatch.setattr(runner, 'time', SimpleNamespace(monotonic=clock, sleep=time.sleep))
+    options = dict(watch=(output,), budget=AudioBudget(timeout=5),
+                   cancelled=lambda: fault == 'cancelled' and bool(calls))
+    if fault == 'cancelled':
+        with pytest.raises(AudioCancelled, match='cancelled'):
+            _run(_waiting_code(release), **options)
+    elif fault == 'budget':
+        with pytest.raises(AudioError, match='time allowance'):
+            _run(_waiting_code(release), **options)
+    else:
+        with pytest.raises(PermissionError) as caught:
+            _run(_waiting_code(release), **options)
+        assert caught.value is expected
+    assert len(calls) == (11 if fault == 'persistent' else 1)
+    assert (output / 'retained').read_bytes() == b'unchanged'
+    assert not release.exists()
+    _reaped(live_children)
+
+
+def test_directory_open_after_actual_child_exit_keeps_strict_denial(
+        tmp_path, monkeypatch, live_children):
+    output, release = tmp_path / 'output', tmp_path / 'release'
+    output.mkdir()
+    original_info, original_scan = runner._live_file_info, os.scandir
+    expected, calls = _denial(), []
+
+    def observe_info(path):
+        info = original_info(path)
+        release.write_bytes(b'Exit before the directory-open observation.')
+        live_children[0].wait(timeout=5)
+        return info
+
+    def observe_scan(path):
+        if isinstance(path, int) or Path(path) != output:
+            return original_scan(path)
+        assert live_children[0].poll() is not None
+        calls.append(path)
+        raise expected
+
+    monkeypatch.setattr(runner, '_live_file_info', observe_info)
+    monkeypatch.setattr(runner.os, 'scandir', observe_scan)
+    with pytest.raises(PermissionError) as caught:
+        _run(_waiting_code(release), watch=(output,), budget=AudioBudget(timeout=6))
+    assert caught.value is expected and calls == [output]
+    _reaped(live_children)
+
+
+def test_child_exit_during_directory_open_denial_rechecks_new_final_entries(
+        tmp_path, monkeypatch, live_children):
+    output, release = tmp_path / 'output', tmp_path / 'release'
+    output.mkdir()
+    original, calls = os.scandir, []
+
+    def observe(path):
+        if isinstance(path, int) or Path(path) != output:
+            return original(path)
+        calls.append(path)
+        if len(calls) == 1:
+            (output / 'new-final-file').write_bytes(b'x' * 8192)
+            release.write_bytes(b'Exit after changing the actual final inventory.')
+            live_children[0].wait(timeout=5)
+            raise _denial()
+        assert live_children[0].poll() is not None
+        return original(path)
+
+    monkeypatch.setattr(runner.os, 'scandir', observe)
+    with pytest.raises(AudioError, match='output disk budget'):
+        _run(_waiting_code(release), watch=(output,),
+             budget=AudioBudget(timeout=6, max_output_bytes=4096))
+    assert calls == [output, output]
+    assert (output / 'new-final-file').stat().st_size == 8192
+    _reaped(live_children)

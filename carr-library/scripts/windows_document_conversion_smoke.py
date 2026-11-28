@@ -121,8 +121,8 @@ def main(argv=None):
     def native_question_button(question, label):
         # wx 4.2.4 uses nested TaskDialog buttons with control ID zero.
         # The caller first binds the question title, process and owner chain.
-        if label not in ('Yes', 'No'):
-            raise ValueError('Only the explicit native Yes or No control is admitted.')
+        if label not in ('Yes', 'No', 'Cancel'):
+            raise ValueError('Only the explicit native Yes, No or Cancel control is admitted.')
         if not question or not user32.IsWindow(question):
             return None
         process_id = wintypes.DWORD()
@@ -178,15 +178,19 @@ def main(argv=None):
         if not any(old is window and native == handle for old, native, _ in modal_loops):
             modal_loops.append((window, handle, loop))
 
-    def owned_question():
-        handle = user32.FindWindowW('#32770', 'Import verified reading copy')
+    def owned_question(title='Import verified reading copy'):
+        if title not in ('Import verified reading copy', 'Unsaved reading copy'):
+            raise ValueError('Only an explicit conversion or reading-copy question is admitted.')
+        handle = user32.FindWindowW('#32770', title)
         if not handle:
             return None
         process_id = wintypes.DWORD()
         user32.GetWindowThreadProcessId(handle, ctypes.byref(process_id))
         owners = {native for window, native, _ in modal_loops
-                  if window and user32.IsWindow(native)}
-        if host_handle and user32.IsWindow(host_handle):
+                  if window and user32.IsWindow(native)
+                  and (title != 'Unsaved reading copy'
+                       or window.GetTitle() == 'Voice reader and reading copy')}
+        if title == 'Import verified reading copy' and host_handle and user32.IsWindow(host_handle):
             owners.add(host_handle)
         owner = user32.GetWindow(handle, 4)  # GW_OWNER
         for _ in range(16):
@@ -206,15 +210,21 @@ def main(argv=None):
             nonlocal unwind_pending
             unwind_pending = False
             try:
-                question = owned_question()
+                # A failed reader callback must cancel only its recorded
+                # reader's question before ending that owned modal. Never
+                # approve a save or affect an unrelated native question.
+                question = owned_question('Unsaved reading copy')
+                label = 'Cancel'
+                if question is None:
+                    question, label = owned_question(), 'No'
                 if question:
-                    no_button = native_question_button(question, 'No')
-                    if no_button is None:
+                    answer_button = native_question_button(question, label)
+                    if answer_button is None:
                         wx.CallLater(25, unwind)
                         return
                     user32.SetActiveWindow(question)
-                    if not user32.PostMessageW(no_button, 0x00F5, 0, 0):  # BM_CLICK admission only
-                        raise OSError(ctypes.get_last_error(), 'Could not queue the owned conversion No answer.')
+                    if not user32.PostMessageW(answer_button, 0x00F5, 0, 0):  # BM_CLICK admission only
+                        raise OSError(ctypes.get_last_error(), 'Could not queue the owned question cancellation.')
                     if errors:
                         wx.CallLater(25, unwind)
                     return
@@ -427,11 +437,13 @@ def main(argv=None):
         return picked
 
     def visit_reader(read_button, expected):
-        state = {'seen': False, 'save': False, 'close': False}
+        state = {'seen': False, 'save': False, 'save_acknowledged': False, 'close': False}
         until = monotonic() + 30
         def visit():
             if monotonic() >= until:
                 raise TimeoutError('The real source reader did not complete its verified-copy handoff.')
+            if state['close'] and owned_question('Unsaved reading copy'):
+                raise AssertionError('The explicitly saved reading copy unexpectedly requested another save.')
             readers = [window for window in wx.GetTopLevelWindows()
                        if isinstance(window, wx.Dialog) and window.GetParent() is frame
                        and window.GetTitle() == 'Voice reader and reading copy'
@@ -448,6 +460,12 @@ def main(argv=None):
             own_modal(reader)
             editor = control(reader, 'Reading copy (editable; Ctrl+S saves)')
             status = control(reader, 'Original and reading-copy status')
+            save_status = control(reader, 'Speech and save status')
+            reload_buttons = [item for item in descendants(reader)
+                              if isinstance(item, wx.Button)
+                              and item.GetLabel().replace('&', '') == 'Reload voices']
+            if len(reload_buttons) != 1:
+                raise AssertionError('The actual reader voice-reload control is missing or ambiguous.')
             if not state['seen']:
                 actual_text = editor.GetValue()
                 if not reader_copy_matches(expected, actual_text):
@@ -460,7 +478,13 @@ def main(argv=None):
                       reader_copy_matches(expected, actual_text))
                 state['seen'] = True
             if not state['save']:
-                # Real Ctrl+S is needed before the existing reader's close guard.
+                # The reader has its own serial worker. The host may be idle
+                # while initial voice discovery still refuses keyboard actions.
+                # Wait for its actual enabled reload control and the previous
+                # native key release, then send real Ctrl+S exactly once.
+                if not reload_buttons[0].IsEnabled() or pressed:
+                    later(25, visit)
+                    return
                 editor.SetFocus()
                 reader.Raise()
                 user32.SetForegroundWindow(reader.GetHandle())
@@ -479,15 +503,20 @@ def main(argv=None):
                 return
             resume = ReaderDraftStore(frame.library.root, slot='converted-reading-copy').load()
             if (resume is None or resume.document.text != expected.replace('\r\n', '\n')
-                    or frame.working):
+                    or frame.working or pressed
+                    or '; saved.' not in status.GetValue()
+                    or not save_status.GetValue().startswith(
+                        'Reading draft, voice settings and current position saved for recovery.')):
                 later(25, visit)
                 return
+            state['save_acknowledged'] = True
             if not state['close']:
                 check('verified copy remains unbound and gives no native quotation authority',
                       resume.document.source_anchor is None
                       and 'No retained-library source locator.' in status.GetValue())
                 check('real reader Save preserves the verified copy and its original',
-                      reader_copy_matches(expected, editor.GetValue(), resume.document))
+                      state['save_acknowledged']
+                      and reader_copy_matches(expected, editor.GetValue(), resume.document))
                 state['close'] = True
                 press(editor, wx.WXK_ESCAPE)
             later(25, visit)
@@ -496,7 +525,7 @@ def main(argv=None):
         pump(lambda: state.get('complete', False), 'Native reading-copy modal did not close.', timeout=35)
         pump(lambda: not frame.working, 'Verified Read callback did not return to the host.')
         check('native reader closes and returns to the same conversion result window',
-              state['seen'] and state['save'] and state['close']
+              state['seen'] and state['save'] and state['save_acknowledged'] and state['close']
               and frame.conversion_results_dialog is not None)
 
     def confirm_import(button, *, yes):

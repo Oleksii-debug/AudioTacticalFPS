@@ -94,7 +94,7 @@ jobs:
         run: |
           $ErrorActionPreference = 'Stop'
           $helper = 'scripts/check_integrated_source_shard.ps1'
-          $expectedBlob = '7422d46e6b48a6828101437654d789a7b595eb36'
+          $expectedBlob = 'ecb812d1b9ceadc9bca652abd90cad40698f7bcf'
           $info = Get-Item -LiteralPath $helper -Force -ErrorAction Stop
           if ($info.PSIsContainer -or ($info.Attributes -band [IO.FileAttributes]::ReparsePoint) -or $info.Length -gt 131072) { throw 'The source shard helper is not an ordinary bounded file.' }
           $selectedBlob = (& git rev-parse 'HEAD:carr-library/scripts/check_integrated_source_shard.ps1').Trim()
@@ -190,7 +190,7 @@ jobs:
           $tree = (& git rev-parse 'HEAD^{tree}').Trim()
           if ($LASTEXITCODE -ne 0 -or $tree -cnotmatch '^[0-9a-f]{40}$') { throw 'The required source aggregate has no exact tree.' }
           $helper = 'scripts/check_integrated_source_shard.ps1'
-          $expectedBlob = '7422d46e6b48a6828101437654d789a7b595eb36'
+          $expectedBlob = 'ecb812d1b9ceadc9bca652abd90cad40698f7bcf'
           $info = Get-Item -LiteralPath $helper -Force -ErrorAction Stop
           if ($info.PSIsContainer -or ($info.Attributes -band [IO.FileAttributes]::ReparsePoint) -or $info.Length -gt 131072) { throw 'The source shard helper is not an ordinary bounded file.' }
           $selectedBlob = (& git rev-parse 'HEAD:carr-library/scripts/check_integrated_source_shard.ps1').Trim()
@@ -614,7 +614,7 @@ jobs:
             'tests/ui/test_native_studio_book_choices.py' = 14
             'tests/ui/test_native_book_publication_driver.py' = 8
             'tests/search/test_paged_candidate_work.py' = 30
-            'tests/audio/test_live_metadata_retry.py' = 12
+            'tests/audio/test_live_metadata_retry.py' = 22
             'tests/ui/test_native_conversion_diagnostics.py' = 23
             'tests/ui/test_native_saved_audio_cleanup.py' = 13
             'tests/audio/test_voice_package_management.py' = 30

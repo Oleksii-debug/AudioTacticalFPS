@@ -250,12 +250,33 @@ def run_process(args, *, budget=None, cancelled=lambda: False,
             if stat.S_ISLNK(info.st_mode) or getattr(info, 'st_file_attributes', 0) & 0x400:
                 raise AudioError('Audio worker output is not a regular file.')
             if stat.S_ISDIR(info.st_mode):
-                with os.scandir(path) as entries:
-                    for entry in entries:
-                        count += 1
-                        if count > budget.max_staging_files:
-                            raise AudioError('Audio worker exceeded its staging file budget.')
-                        pending.append(Path(entry.path))
+                # A native writer can retire a directory after its attributes
+                # were observed but before enumeration acquires its handle.
+                # Retry only that live Windows access denial. Once acquired,
+                # consume one fresh iterator; never replay partial entries.
+                entries = None
+                for attempt in range(11):
+                    query_live = live_files and process.poll() is None
+                    try:
+                        entries = os.scandir(path)
+                        break
+                    except FileNotFoundError:
+                        break
+                    except PermissionError as error:
+                        if (not query_live or getattr(error, 'winerror', None) != 5
+                                or attempt == 10):
+                            raise
+                        check_control()
+                        if process.poll() is None:
+                            time.sleep(.01)
+                        check_control()
+                if entries is not None:
+                    with entries:
+                        for entry in entries:
+                            count += 1
+                            if count > budget.max_staging_files:
+                                raise AudioError('Audio worker exceeded its staging file budget.')
+                            pending.append(Path(entry.path))
                 continue
             if not stat.S_ISREG(info.st_mode):
                 raise AudioError('Audio worker output is not a regular file.')

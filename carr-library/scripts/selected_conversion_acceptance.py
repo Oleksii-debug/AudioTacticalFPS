@@ -135,7 +135,7 @@ def formats(args, fixture, report, children):
             raise AssertionError('Actual native conversion left shared admission active.')
         if any(path.name.startswith('.pending-conversion-') for path in root.rglob('*')):
             raise AssertionError('Actual native conversion left owned staging.')
-        library.check()
+        LibraryApp(library.root)  # Reopen through the real full catalog integrity audit.
         retained_hashes = {sha256(path.read_bytes()).hexdigest()
                            for path in library.assets_dir.rglob('*') if path.is_file()}
         if not {row['reading_sha256'] for row in evidence} <= retained_hashes:
