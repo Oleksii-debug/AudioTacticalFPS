@@ -265,26 +265,47 @@ class EbookSession:
 def native_position(control, raw_text, offset):
     """Map a source offset only if the native control proves the exact prefix.
 
-    wx.TextCtrl positions differ from Python indices on Windows (CRLF and
-    UTF-16). XYToPosition supplies platform-native candidates; GetRange verifies
-    them against the unmodified source. Unsupported mappings fail explicitly.
+    Native positions may count Python characters or UTF-16 units and LF or
+    CRLF line endings. Absolute candidates avoid treating soft-wrapped display
+    rows as source lines. Every candidate is bounded by the native end and
+    verified against the unmodified source; unknown mappings fail explicitly.
     """
     if type(offset) is not int or not 0 <= offset <= len(raw_text):
         raise ValueError('Invalid extracted-text position.')
     if control.GetValue() != raw_text:
         raise ValueError('The text control changed the extracted text; positioning is unavailable.')
     prefix = raw_text[:offset]
-    row = prefix.count('\n')
+    last = control.GetLastPosition()
+    if type(last) is not int or last < 0:
+        raise ValueError('The text control could not locate that exact extracted-text position.')
+
+    def proves(position):
+        if type(position) is not int or not 0 <= position <= last:
+            return False
+        try:
+            return control.GetRange(0, position) == prefix
+        except UnicodeError:
+            # A candidate may end between a UTF-16 surrogate pair.
+            return False
+
+    characters = len(prefix)
+    utf16_units = len(prefix.encode('utf-16-le')) // 2
+    line_breaks = prefix.count('\n')
+    candidates = {characters, utf16_units,
+                  characters + line_breaks, utf16_units + line_breaks}
+    # Prefer the complete CRLF boundary when a native range also translates a
+    # trailing lone CR to LF. The upper bound prevents clamped end-of-text reads
+    # from proving a position beyond the actual control.
+    for position in sorted(candidates, reverse=True):
+        if proves(position):
+            return position
+
+    # Retain the existing platform mapping only as a verified fallback. Its
+    # rows may be visual lines, so a successful XY lookup alone proves nothing.
     line_prefix = prefix.rsplit('\n', 1)[-1]
     columns = (len(line_prefix), len(line_prefix.encode('utf-16-le')) // 2)
     for column in dict.fromkeys(columns):
-        position = control.XYToPosition(column, row)
-        if position >= 0:
-            try:
-                if control.GetRange(0, position) == prefix:
-                    return position
-            except UnicodeError:
-                # A Windows candidate may end between a surrogate pair.
-                # Try the UTF-16 column only; never accept a partial character.
-                continue
+        position = control.XYToPosition(column, line_breaks)
+        if proves(position):
+            return position
     raise ValueError('The text control could not locate that exact extracted-text position.')

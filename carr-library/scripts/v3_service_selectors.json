@@ -1,0 +1,25 @@
+{
+  "schema": "carr-v3-broad-service/1",
+  "selectors": [
+    "tests/audio",
+    "tests/speech",
+    "tests/assistant",
+    "tests/studio",
+    "tests/transcription",
+    "tests/academic_integration",
+    "tests/test_delivery_contract.py",
+    "tests/storage/test_pending_backup.py",
+    "tests/storage/test_complete_pending_backup.py",
+    "tests/storage/test_backup_v4_review.py",
+    "tests/e2e/test_import_worker_publication.py",
+    "tests/e2e/test_import_publication_receipt_integrity.py",
+    "tests/ingest/test_import_replay_identity.py",
+    "tests/packaging/test_worker_bytecode.py",
+    "tests/storage/test_v3_state_backup.py",
+    "tests/storage/test_state_snapshot_identity.py",
+    "tests/language_qualification",
+    "tests/conversion",
+    "tests/extract/test_language_manager.py",
+    "tests/packaging/test_prepare_windows_audio.py"
+  ]
+}

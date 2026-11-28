@@ -296,7 +296,7 @@ The independently reviewed scheduling successor db5d7af5 preserves the exact
 139-suite manifest and all limits while moving Book batch alone to a required
 third source VM: 69/69/1 suites, with Book CLI still in the second partition.
 Observed earlier work plus the 517.45-second Book run projects an optimistic
-810.43-second finish in its old720-second partition; this is a scheduling
+810.43-second finish in its old 720-second partition; this is a scheduling
 projection, not a future timing guarantee. The new partition and forthcoming
 ordinary composition remain **NOT_RUN** in this record. All qualification
 limits above remain unchanged.

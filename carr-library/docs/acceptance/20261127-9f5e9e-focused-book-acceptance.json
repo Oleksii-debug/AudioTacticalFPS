@@ -121,7 +121,7 @@
     "installed_identity": {
       "source_commit": "9f5e9e214e9a0df8c599069222e225c21f964564",
       "exact_checkout_python_files": 341,
-      "equality_asserted_for_every_installed_python_file": true,
+      "every_checkout_python_file_has_byte_equal_installed_counterpart": true,
       "isolated_installed_entrypoint": true,
       "audio_package": "ffmpeg-win64-lgpl-shared-20261126",
       "audio_source_lock_sha256": "fba184226c559a39684810ce34b823b86b75a3708711b599dfbd437c5511f80a",
