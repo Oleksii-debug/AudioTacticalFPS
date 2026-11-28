@@ -1,6 +1,6 @@
 {
   "schema": "carr-final-run-execution-state/1",
-  "updated_utc": "2026-11-28 07:15:44 UTC",
+  "updated_utc": "2026-11-28 07:33:46 UTC",
   "product": "Resonance",
   "repository": "Oleksii-debug/AudioTacticalFPS",
   "canonical_branch": "carr-library",
@@ -9,7 +9,7 @@
     "number": 210,
     "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/pull/210",
     "branch": "carr/v3-final-fixture-424cc-20261128-d3a",
-    "head": "424cc456992c69c1ee945bc4d5ab73bc21e4e7b8"
+    "head": "7c991dac1581faa63cb32eaaa5e21cf548287b38"
   },
   "predecessor": {
     "commit": "424cc456992c69c1ee945bc4d5ab73bc21e4e7b8",
@@ -106,8 +106,8 @@
     "peer_review": "durable_native_composition FINAL_COMPOSITION_SOURCE_GO_NOT_EXECUTED"
   },
   "reader": {
-    "status": "NOT_READY",
-    "materialization": "a1cc9cd3d4a10bbf3cecbd519d19ff4f13683cec",
+    "status": "UNREADY_SOURCE_REVIEWED_ARTIFACT_NULL",
+    "materialization": "d89009aac70edb7892bbbdc69bb3ddbb4a9f5a75",
     "source_blob": "7ce75dba920d2b45529529393030c96aa32b33a4",
     "pins": 21,
     "artifact": null,
@@ -117,14 +117,30 @@
       "negative": 37,
       "positive": 6,
       "status": "PASS_PARSER_ONLY"
+    },
+    "tree": "b5f8543fd29f1a95519712776ef944fe126ced35",
+    "target": {
+      "source_commit": "7c991dac1581faa63cb32eaaa5e21cf548287b38",
+      "source_tree": "4929a01d460a1184d0552fdcda0fe392f1e7e21b",
+      "run_id": 46121064501,
+      "job_id": 140905458267,
+      "run_attempt": 1
+    },
+    "root_review": "UNREADY_RETARGET_SOURCE_GO",
+    "measured_size_review": {
+      "status": "WAIT_FOR_ACTUAL_SUCCESSFUL_MAIN_ARTIFACT_METADATA",
+      "risk": "The current6,457,019-byte focused translation artifact retains four pytest basetemp trees; main also retains B/O/A wheels and other evidence. The8MiB cap may need an actual measured finite extension.",
+      "authority": "Pinned original plan955 existing_bounds.adjustment requires measured metadata first and retention of exact digest/path/duplicate/expansion predicates.",
+      "no_bounds_changes": true
     }
   },
   "evidence": {
     "branch": "carr/final-evidence-d3a-20261127",
     "warning": "Evidence tree retains historical application source; never promote it as the application candidate.",
     "checkpoint_path": "carr-library/docs/validation/FINAL_RUN_EXECUTION_STATE_20261128.json",
-    "head_observed_before_this_checkpoint": "cbca1c14fc8f10df89bb4335d8bce1df9caf3c4a",
-    "tree_observed_before_this_checkpoint": "4f5d104d023b7fb6946961a9a4bf4eac831510bc"
+    "head_observed_before_this_checkpoint": "403cb9607f6e8ed42924eaa33cf0471cb6c27ca1",
+    "tree_observed_before_this_checkpoint": "f38545d887e67582536e49886afa0a9582f21fe4",
+    "checkpoint_note": "Current exact7c focused gates passed; PR210 now points to7c and full/auxiliary actual runs are active or queued. Reader d890 is source-reviewed UNREADY with null artifact. Evidence tree retains historical source and is never the application promotion target."
   },
   "finish_requirements": [
     "Review final composed source and additive focused gate independently.",
@@ -147,7 +163,7 @@
     "commit": "7c991dac1581faa63cb32eaaa5e21cf548287b38",
     "tree": "4929a01d460a1184d0552fdcda0fe392f1e7e21b",
     "files": 1810,
-    "status": "INSPECTION_PASS_BASIC_QUEUED",
+    "status": "FOCUSED_PASS_MAIN_AND_AUXILIARY_PENDING",
     "component": "d12884890335518721e109459819c2352e2ab38f",
     "root_review": "SOURCE_GO_NOT_EXECUTED",
     "peer_review": "durable_native_composition SOURCE_GO_NOT_EXECUTED",
@@ -159,8 +175,33 @@
       "run": 46119546281,
       "job": 140900801416,
       "attempt": 1,
-      "status": "queued",
-      "conclusion": null
+      "status": "completed",
+      "conclusion": "success",
+      "basic_step": {
+        "number": 8,
+        "conclusion": "success",
+        "started_at": "2026-11-28T07:20:04Z",
+        "completed_at": "2026-11-28T07:20:05Z",
+        "raw_receipt_review": "ROOT_AND_CAPACITY_PASS_13_FIELDS_32_DIAGNOSTICS_AND_ORDERED_CLEANUP"
+      },
+      "existing_translation_cohort": {
+        "source": 324,
+        "installed": 324,
+        "native": 8,
+        "status": "PASS"
+      },
+      "independent_review": "ROOT_AND_CAPACITY_OBSERVED_FOCUSED_PASS_PROOF_GO",
+      "raw_log": {
+        "chars": 64675,
+        "bytes": 64677,
+        "sha256": "a6fc7d4db9053549d839a349bad6fe5e18baf21ff2e43ff44a0ead3f3896ace2"
+      },
+      "artifact": {
+        "id": 15253412010,
+        "bytes": 6457019,
+        "sha256": "5c5cafa5f5d72d4afdffbdb4c05cb3571a1e5e4612710f93588a9e6653522922"
+      },
+      "proof": "62309e968851e24f8ddad8e938ca1ad41f5fd88e"
     },
     "inspection_focus": {
       "run": 46119552088,
@@ -171,7 +212,7 @@
       "source": 274,
       "installed": 274,
       "native": 29,
-      "independent_review": "ROOT_AND_NATIVE_OBSERVED_FOCUSED_PASS_PROOF_GO",
+      "independent_review": "ROOT_AND_NATIVE_PASS",
       "raw_log": {
         "chars": 166649,
         "bytes": 166651,
@@ -183,6 +224,50 @@
         "sha256": "9deab7a801b8c532fcdb03af999e356a00bbb8ca1df3c160610dbee0192f40ba"
       },
       "proof": "8019fd0d4f7de4071f98ffaf15ae6a96ada4c2ba"
+    },
+    "main": {
+      "run": 46121064501,
+      "job": 140905458267,
+      "attempt": 1,
+      "status": "queued",
+      "conclusion": null
+    },
+    "auxiliary": {
+      "keyboard": {
+        "run": 46121064501,
+        "job": 140905458033,
+        "attempt": 1,
+        "status": "completed",
+        "conclusion": "success"
+      },
+      "audio": {
+        "run": 46121064509,
+        "job": 140905457444,
+        "attempt": 1,
+        "status": "in_progress",
+        "conclusion": null
+      },
+      "bibliography": {
+        "run": 46121064503,
+        "job": 140905457270,
+        "attempt": 1,
+        "status": "completed",
+        "conclusion": "success"
+      },
+      "snapshots": {
+        "run": 46121064493,
+        "job": 140905458089,
+        "attempt": 1,
+        "status": "queued",
+        "conclusion": null
+      },
+      "launcher": {
+        "run": 46121064498,
+        "job": 140905457311,
+        "attempt": 1,
+        "status": "completed",
+        "conclusion": "success"
+      }
     }
   },
   "optional_native_source_audit": {
