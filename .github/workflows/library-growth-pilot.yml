@@ -105,10 +105,94 @@ jobs:
           $operatingSystem = Get-CimInstance -ClassName Win32_OperatingSystem | Select-Object Caption, Version, BuildNumber
           @{ source_commit = $env:GITHUB_SHA; processors = $processors; computer = $computer; operating_system = $operatingSystem; scope = 'Actual hosted VM hardware; no cold-cache or physical-device guarantee' } | ConvertTo-Json -Depth 6 | Set-Content -Encoding utf8 'ci-native-audio-diagnostic/pilot-hardware.json'
 
-      - name: Require actual pilot accounting and lifetime controls
-        timeout-minutes: 5
+      - name: Require actual pilot, SQL integrity and resource controls
+        timeout-minutes: 12
         run: |
-          & $env:CARR_PYTHON scripts/ci_check.py --jobs 1 tests/performance/test_library_growth_benchmark.py 2>&1 | Tee-Object 'ci-native-audio-diagnostic/pilot-controls.txt'
+          $controls = @'
+          import hashlib, importlib.util, json, os, pathlib, sys
+          import xml.etree.ElementTree as ET
+          from contextlib import contextmanager
+          
+          runner_path = pathlib.Path('scripts/ci_check.py').resolve()
+          runner_sha = hashlib.sha256(runner_path.read_bytes()).hexdigest()
+          assert runner_sha == '70281591d047dbe5f464db95457c35604b988b2aa0994e0706e4b317385a6ca6'
+          suites = [
+              'tests/performance/test_library_growth_benchmark.py',
+              'tests/search/test_search_paging.py',
+              'tests/storage/test_locator_integrity.py',
+              'tests/storage/test_durable_state_read.py',
+              'tests/operations/test_resources.py',
+          ]
+          expected_properties = {
+              suites[1]: {'source_sql_0', 'source_sql_1', 'source_sql_4'},
+              suites[2]: {'locator_sql_profiles'},
+          }
+          spec = importlib.util.spec_from_file_location('_carr_growth_ci_check', runner_path)
+          runner = importlib.util.module_from_spec(spec)
+          sys.modules[spec.name] = runner
+          spec.loader.exec_module(runner)
+          original_reports = runner._report_directory
+          output = pathlib.Path('ci-native-audio-diagnostic')
+          captured, errors = {}, []
+          
+          @contextmanager
+          def preserve_reports(suite):
+              with original_reports(suite) as directory:
+                  try:
+                      yield directory
+                  finally:
+                      report = pathlib.Path(directory) / 'junit.xml'
+                      if report.is_file():
+                          try:
+                              with report.open('rb') as stream:
+                                  raw = stream.read(2 * 1024 * 1024 + 1)
+                              assert len(raw) <= 2 * 1024 * 1024
+                              destination = output / ('source-control-%02d.xml' % suites.index(suite))
+                              with destination.open('xb') as stream:
+                                  stream.write(raw)
+                              captured[suite] = dict(path=destination.name, bytes=len(raw),
+                                                     sha256=hashlib.sha256(raw).hexdigest())
+                          except Exception as exc:
+                              errors.append(dict(suite=suite, capture_error=type(exc).__name__))
+                              print('FAIL: bounded control report capture: ' + type(exc).__name__, flush=True)
+          
+          runner._report_directory = preserve_reports
+          sys.argv = [str(runner_path), '--jobs', '1', *suites]
+          exit_code = 1
+          try:
+              exit_code = runner.main()
+          finally:
+              profiles = {}
+              for suite, record in captured.items():
+                  try:
+                      raw = (output / record['path']).read_bytes()
+                      assert hashlib.sha256(raw).hexdigest() == record['sha256']
+                      assert b'<!DOCTYPE' not in raw and b'<!ENTITY' not in raw
+                      root = ET.fromstring(raw)
+                      selected = {}
+                      for item in root.iter('property'):
+                          name, value = item.get('name'), item.get('value')
+                          if name in expected_properties.get(suite, set()):
+                              assert name not in selected and isinstance(value, str) and len(value) <= 65536
+                              selected[name] = value
+                      profiles[suite] = selected
+                      if exit_code == 0:
+                          assert set(selected) == expected_properties.get(suite, set())
+                  except Exception as exc:
+                      errors.append(dict(suite=suite, receipt_error=type(exc).__name__))
+              if exit_code == 0 and set(captured) != set(suites):
+                  errors.append(dict(receipt_error='Missing required control report'))
+              receipt = dict(schema='carr-growth-control-evidence/1', tested_commit=os.environ['GITHUB_SHA'],
+                             application_source_commit='e032eabf5cdff41a0829de681f4ba8c92272cb18',
+                             ci_check_sha256=runner_sha, strict_runner_exit=exit_code,
+                             suites=suites, junit_reports=captured, query_properties=profiles, errors=errors,
+                             scope='Actual strict source controls and SQL plans; no pilot or ordinary acceptance verdict')
+              with (output / 'pilot-control-evidence.json').open('x', encoding='utf-8') as stream:
+                  json.dump(receipt, stream, ensure_ascii=True, sort_keys=True, allow_nan=False)
+                  stream.write('\n')
+          raise SystemExit(exit_code if exit_code else int(bool(errors)))
+          '@
+          $controls | & $env:CARR_PYTHON -I -B - 2>&1 | Tee-Object 'ci-native-audio-diagnostic/pilot-controls.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Measure the genuine small-TXT corpus with separate bounded children
@@ -118,7 +202,7 @@ jobs:
           & $env:CARR_PYTHON -I -B scripts/benchmark_library_growth.py --output-dir ci-library-growth --source-proof ci-native-audio-diagnostic/installed-source.json --tested-commit $env:GITHUB_SHA --sizes 100 1000 2>&1 | Tee-Object 'ci-native-audio-diagnostic/library-growth-pilot.txt'
           $pilotExit = $LASTEXITCODE
           $finished = [DateTime]::UtcNow
-          @{ tested_commit = $env:GITHUB_SHA; baseline_application_commit = '95d305d527f8fa4f36202d40fc069d71f2551069'; exit_code = $pilotExit; started_at = $started.ToString('o'); completed_at = $finished.ToString('o'); elapsed_seconds = ($finished - $started).TotalSeconds; child_timeout_seconds = 900; scope = '100/1000 fresh real small-TXT cases; incomplete scales remain incomplete; no ordinary acceptance claim' } | ConvertTo-Json | Set-Content -Encoding utf8 'ci-native-audio-diagnostic/library-growth-exit.json'
+          @{ tested_commit = $env:GITHUB_SHA; baseline_application_commit = 'e032eabf5cdff41a0829de681f4ba8c92272cb18'; exit_code = $pilotExit; started_at = $started.ToString('o'); completed_at = $finished.ToString('o'); elapsed_seconds = ($finished - $started).TotalSeconds; child_timeout_seconds = 900; scope = '100/1000 fresh real small-TXT cases on combined source; incomplete scales remain incomplete; no isolated SQL causality or ordinary acceptance claim' } | ConvertTo-Json | Set-Content -Encoding utf8 'ci-native-audio-diagnostic/library-growth-exit.json'
           if ($pilotExit -ne 0) { exit $pilotExit }
 
       - name: Preserve exact measurements and incomplete-case evidence

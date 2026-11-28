@@ -190,3 +190,141 @@ def test_source_cursor_cannot_cross_an_authorized_topic(tmp_path):
         app.search_page(workspace, 'Needle', mode='terms', authorized_topic=other_topic,
                         cursor=first.next_source_cursor)
     assert app._selections == before
+
+
+def _real_query_profile(db, sql, parameters):
+    """Measure executed SQLite work and plan; never substitute result rows."""
+    from hashlib import sha256
+
+    steps = 0
+    def progress():
+        nonlocal steps
+        steps += 1
+        return 0
+    source = None
+    db.set_progress_handler(progress, 1)
+    try:
+        source = db.execute(sql, parameters)
+        rows = tuple(tuple(row) for row in source)
+    finally:
+        if source is not None:
+            source.close()
+        db.set_progress_handler(None, 0)
+    plan = tuple(tuple(row) for row in db.execute('EXPLAIN QUERY PLAN ' + sql, parameters))
+    return rows, dict(sql_sha256=sha256(sql.encode('utf-8')).hexdigest(),
+                      vm_steps=steps, rows=len(rows), query_plan=plan)
+
+
+@pytest.mark.parametrize('preceding_windows', [0, 1, 4], ids=['first', 'cursor', 'catalog-boundary'])
+def test_existing_source_indexes_preserve_exact_window_and_cursor_rows(
+        catalog, preceding_windows, record_testsuite_property):
+    from hashlib import sha256
+
+    from carr_library.catalog.membership import Catalog
+    from carr_library.search.paging import canonical, select_window
+
+    app, workspace, _ = catalog
+    before = app.database.read_bytes()
+    scope, cursor = 'real-published-sql-equivalence', None
+    with app.read(workspace) as db:
+        scoped_catalog = Catalog(db, workspace)
+        for _ in range(preceding_windows):
+            previous = select_window(db, scoped_catalog, scope=scope, cursor=cursor)
+            assert previous.next_cursor is not None
+            cursor = previous.next_cursor
+        calls = []
+        class ObservedConnection:
+            def execute(self, sql, parameters=()):
+                calls.append((sql, tuple(parameters)))
+                return db.execute(sql, parameters)
+        window = select_window(ObservedConnection(), scoped_catalog, scope=scope, cursor=cursor)
+        assert len(window.editions) == 500
+        assert len(calls) == (2 if cursor is not None else 1)
+        profiles = {}
+        if cursor is not None:
+            assert cursor['after_page'] is not None
+            old_lookup = ('SELECT edition,revision,ordinal,id FROM active_page '
+                          'WHERE workspace=? AND id=?')
+            lookup_sql, lookup_parameters = calls[0]
+            actual, current_profile = _real_query_profile(db, lookup_sql, lookup_parameters)
+            legacy, legacy_profile = _real_query_profile(db, old_lookup, lookup_parameters)
+            assert actual == legacy == (tuple(cursor['after_page']),)
+            # Count real VM instructions, not wall-clock speed or a mocked plan.
+            assert 0 < current_profile['vm_steps'] < legacy_profile['vm_steps']
+            profiles['cursor'] = dict(current=current_profile, legacy=legacy_profile)
+        old_window = ('SELECT id,edition,revision,ordinal,length(raw),digest FROM active_page '
+                      'WHERE workspace=? AND edition IN (' +
+                      ','.join('?' for _ in window.editions) + ')')
+        if cursor is not None:
+            old_window += (' AND (edition COLLATE BINARY>? OR (edition=? AND '
+                           '(ordinal>? OR (ordinal=? AND id>?))))')
+        old_window += ' ORDER BY edition COLLATE BINARY,ordinal,id LIMIT ?'
+        window_sql, window_parameters = calls[-1]
+        actual, current_profile = _real_query_profile(db, window_sql, window_parameters)
+        legacy, legacy_profile = _real_query_profile(db, old_window, window_parameters)
+        assert actual == legacy
+        selected = legacy[:MAX_SOURCE_PAGES]
+        assert window.page_ids == tuple(row[0] for row in selected)
+        assert window.characters == sum(row[4] for row in selected)
+        assert window.identity == sha256(canonical(
+            [scope, tuple(window.editions.items()), list(selected)]).encode('utf-8')).hexdigest()
+        if len(legacy) > MAX_SOURCE_PAGES:
+            last = selected[-1]
+            expected_cursor = {**window.cursor,
+                               'after_page': [last[1], last[2], last[3], last[0]]}
+        else:
+            expected_cursor = {**window.cursor, 'edition_after': 'edition-0499',
+                               'after_page': None}
+        assert canonical(window.next_cursor) == canonical(expected_cursor)
+        profiles['window'] = dict(current=current_profile, legacy=legacy_profile)
+        record_testsuite_property('source_sql_' + str(preceding_windows), json.dumps(
+            dict(scope='actual 501-edition fixture; query work only', profiles=profiles),
+            sort_keys=True))
+    assert app.database.read_bytes() == before
+
+
+def test_published_active_revision_replacement_refuses_old_cursor_but_keeps_history(tmp_path):
+    from contextlib import closing
+    from hashlib import sha256
+
+    from carr_library.application import _CatalogPublisher
+    from carr_library.catalog.intake import source_snapshot
+    from carr_library.catalog.registration import Registration
+    from carr_library.ingest.writer_guard import exclusive_writer
+    from carr_library.storage.revisions import CURRENT_SCHEMA_VERSION, Page, Storage
+
+    app = LibraryApp(tmp_path / 'library')
+    workspace = app.create_workspace('Fresh active source, retained history')
+    original = '\f'.join(f'Needle original {number:03d}.' for number in range(102))
+    first = app.add_text(workspace, 'Source', original, work_id='work', edition_id='edition')
+    page = app.search_page(workspace, 'Needle', mode='terms')
+    assert first['state'] == 'complete' and page.next_source_cursor is not None
+    before = dict(app._selections)
+    retained = app.assets.resolve(first['asset'])
+    snapshot = source_snapshot(retained.parent, retained.name)
+    assert snapshot.digest == first['asset']
+    later = sha256(('new-publication:' + first['id']).encode('utf-8')).hexdigest()
+    # Exercise the real catalog/storage publication boundary. TXT extraction has
+    # a fixed configuration, so changing OCR options cannot create this history.
+    with exclusive_writer(app.root), closing(Storage(
+            app.database, schema_version=CURRENT_SCHEMA_VERSION)) as storage:
+        config = storage.db.execute('SELECT config FROM revision WHERE id=?',
+                                    (first['id'],)).fetchone()[0]
+        publisher = _CatalogPublisher(
+            storage, Registration('work', 'edition', snapshot.manifest(), title='Source'))
+        publisher.publish_revision(workspace, 'edition', later, snapshot.digest, config,
+                                   tuple(Page(text) for text in original.split('\f')))
+        publisher.check()
+    assert later != first['id']
+    with pytest.raises(ValueError, match='active source changed'):
+        app.search_page(workspace, 'Needle', mode='terms', cursor=page.next_source_cursor)
+    assert app._selections == before
+    assert app.copy(workspace, page.results[0].ref, page.results[0].revision, 'quote') == 'Needle'
+    with app.read(workspace) as db:
+        assert db.execute('SELECT revision FROM active WHERE workspace=? AND edition=?',
+                          (workspace, 'edition')).fetchone()[0] == later
+        assert db.execute('SELECT count(*) FROM sealed WHERE revision IN (?,?)',
+                          (first['id'], later)).fetchone()[0] == 2
+    current = app.search_page(workspace, 'Needle', mode='terms')
+    assert current.results and all(row.revision == later and row.verified for row in current.results)
+    assert app.assets.resolve(first['asset']).read_bytes() == original.encode('utf-8')

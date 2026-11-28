@@ -220,3 +220,71 @@ def test_retention_rechecks_reviewed_source_before_copy_and_cancel_publishes_no_
     with pytest.raises(InterruptedError):
         retain_playlist(root, valid, cancelled=lambda: True)
     assert not (root / NAME).exists()
+
+
+@pytest.mark.parametrize('old_identity', ['legacy-adapter-interface', 'previous-endpoint-installation'])
+def test_old_saved_output_stays_passive_and_requires_explicit_current_output(queue, monkeypatch, old_identity):
+    from dataclasses import asdict
+    from carr_library.speech import playback_devices as devices
+    app, _, _, store, saved, token = queue
+    current_output = devices.PlaybackDevice(0, 'Same device name', 'current-endpoint', 1, 2, 3, 2)
+    old_output = replace(current_output, interface=old_identity)
+    saved = replace(saved, output=asdict(old_output))
+    token = store.save(saved, expected_token=token)
+    original = store.path.read_bytes()
+    native_calls = []
+    def inventory(**options):
+        native_calls.append(True)
+        return (current_output,)
+    monkeypatch.setattr(devices, 'output_devices', inventory)
+    loaded, actual_token = store.load()
+    assert loaded == saved and actual_token == token and native_calls == []
+    assert loaded.to_dict()['output'] == asdict(old_output)
+    reviewed = loaded.review(app.root)
+    current = WavePlayer()
+    try:
+        with pytest.raises(RuntimeError, match='no fallback'):
+            loaded.apply(current, reviewed)
+        assert native_calls == [True]
+        assert current.output_device is None and current.playlist == () and current.path is None
+        assert not current._open and current._process is None and current._wave is None
+        current.select_output(current_output)
+        loaded.apply(current, reviewed, use_current_controls=True)
+        assert native_calls == [True, True]
+        assert current.output_device == current_output and current.playlist_index == 1
+        assert current.state == 'stopped' and current.position_seconds == .375
+        assert not current._open and current._process is None and current._wave is None
+        assert store.path.read_bytes() == original and store.load() == (saved, token)
+    finally:
+        current.close()
+
+
+def test_saved_endpoint_rebinds_a_changed_ordinal_only_after_explicit_review(queue, monkeypatch):
+    from dataclasses import asdict
+    from carr_library.speech import playback_devices as devices
+    app, _, _, store, saved, token = queue
+    old_output = devices.PlaybackDevice(0, 'Same device name', 'stable-endpoint', 1, 2, 3, 2)
+    current_output = replace(old_output, index=3)
+    saved = replace(saved, output=asdict(old_output))
+    token = store.save(saved, expected_token=token)
+    original = store.path.read_bytes()
+    native_calls = []
+    def inventory(**options):
+        native_calls.append(True)
+        return (devices.PlaybackDevice(0, old_output.name, 'other-endpoint', 1, 2, 3, 2), current_output)
+    monkeypatch.setattr(devices, 'output_devices', inventory)
+    loaded, actual_token = store.load()
+    assert loaded == saved and actual_token == token and native_calls == []
+    reviewed = loaded.review(app.root)
+    current = WavePlayer()
+    try:
+        assert native_calls == []
+        loaded.apply(current, reviewed)
+        assert native_calls == [True]
+        assert current.output_device == current_output and current.output_device.identity == old_output.identity
+        assert current.playlist_index == 1 and current.position_seconds == .375
+        assert current.state == 'stopped' and not current.queue_active
+        assert not current._open and current._process is None and current._wave is None
+        assert store.path.read_bytes() == original and store.load() == (saved, token)
+    finally:
+        current.close()

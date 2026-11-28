@@ -19,9 +19,7 @@ class UnlinkedRegularFile(ValueError):
         super().__init__('State must use regular local files, without links.')
 
 
-def regular(path, *, directory=False):
-    path = Path(path)
-    value = path.lstat()
+def _regular_snapshot(path, value, *, directory=False):
     if (stat.S_ISLNK(value.st_mode) or getattr(value, 'st_file_attributes', 0) & 0x400
             or not (stat.S_ISDIR(value.st_mode) if directory else stat.S_ISREG(value.st_mode))):
         raise ValueError('State must use regular local files, without links.')
@@ -32,16 +30,27 @@ def regular(path, *, directory=False):
     return value
 
 
+def regular(path, *, directory=False):
+    path = Path(path)
+    return _regular_snapshot(path, path.lstat(), directory=directory)
+
+
 def local_path(value, *, root=None, exists=False):
     path = Path(value).absolute()
     if str(value).startswith(('//', '\\\\')) or '\x00' in str(value):
         raise ValueError('Choose a local path.')
     for parent in reversed((path, *path.parents)):
-        if os.path.lexists(parent):
-            if parent != path or parent.is_dir():
-                regular(parent, directory=True)
-            else:
-                regular(parent)
+        try:
+            value = parent.lstat()
+        except (OSError, ValueError):
+            # Preserve the former lexists probe's error boundary. Canonical
+            # resolution below still decides strict existence and containment.
+            continue
+        # Validate this fresh snapshot once, without repeating the same native
+        # filesystem query. Nothing is retained between calls; regular/open
+        # checks at the eventual reader or writer remain independent.
+        _regular_snapshot(parent, value,
+                          directory=parent != path or stat.S_ISDIR(value.st_mode))
     path = path.resolve(strict=exists)
     if root is not None and not path.is_relative_to(Path(root).resolve(strict=True)):
         raise ValueError('The path is outside the selected directory.')
@@ -136,14 +145,17 @@ def read_json_snapshot(path, *, max_bytes=None):
             raise ValueError('State must use regular local files, without links.')
         if opened.st_size > maximum:
             raise ValueError('State exceeds its configured JSON budget.')
-        raw = stream.read(maximum + 1)
+        # Bound the allocation to this opened snapshot, not the configured ceiling.
+        # One extra byte detects growth even if the final size is restored.
+        raw = stream.read(opened.st_size + 1)
         finished = os.fstat(stream.fileno())
-    if len(raw) > maximum:
+    if len(raw) > maximum or finished.st_size > maximum:
         raise ValueError('State grew beyond its JSON budget.')
     # A replacement may unlink this old snapshot while it is open. Its path,
     # link count and change time can change; its bytes and file identity cannot.
     fields = ('st_dev', 'st_ino', 'st_size', 'st_mtime_ns')
-    if any(getattr(opened, name) != getattr(finished, name) for name in fields):
+    if len(raw) != opened.st_size or any(
+            getattr(opened, name) != getattr(finished, name) for name in fields):
         raise ValueError('State changed while it was being read.')
     value = json.loads(raw.decode('utf-8'), object_pairs_hook=_unique,
                        parse_constant=lambda _: (_ for _ in ()).throw(ValueError('Non-finite state number.')))

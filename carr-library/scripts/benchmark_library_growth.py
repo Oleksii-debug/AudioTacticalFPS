@@ -4,7 +4,7 @@ Only --sizes 100 1000 is exposed by the public entry. Each scale has a fresh
 measurement child and a 900-second hard ceiling. Interrupted children retain
 their owned files and last completed checkpoints; incomplete work is never PASS.
 The installed package must match an explicit source proof and the reviewed
-95d application modules. This measures generated logical segments, not OCR,
+combined application modules. This measures generated logical segments, not OCR,
 neural quality, native UI latency, cold storage or isolated-worker throughput.
 """
 import argparse
@@ -25,15 +25,15 @@ import sys
 import threading
 from time import monotonic, perf_counter
 
-BASE_SOURCE_COMMIT = "95d305d527f8fa4f36202d40fc069d71f2551069"
+BASE_SOURCE_COMMIT = "e032eabf5cdff41a0829de681f4ba8c92272cb18"
 SOURCE_BINDINGS = {
     "application.py": "a5aeac86640cb3221de726b452f9e8e2094a6035cc53f30775fdd173b5f0ee9f",
     "catalog/intake.py": "9a22419d2fe245806c501f59024d850083648dc7228c1ea92dab642332bf8a28",
     "ingest/pipeline.py": "fd77d10f20ba7a8a712a73cf4c1eae6f8f3903a37c97858901b64cb0a4f36f4e",
     "ingest/batches.py": "2761a2814275c6194157b30ae8a9fbf17e95ff8a327a6bb99051a77a8308cdfe",
     "ingest/worker.py": "d8e9ba1bb965679007481206018ff7aa641ca76d9a52eb0dae0777661f6b64a4",
-    "search/paging.py": "c5620c77d45dbe48d93b646b40bf8e46129b43d9b76c833aef7b85a1dfc67055",
-    "storage/revisions.py": "348340397f8a0cfd44759feaa2513950b29e42e7da44c7759dbeb1879c458ea9",
+    "search/paging.py": "49bc51b29c9d8967a887bbeeae6d2516a70ab0679964ca0441f7ea0db8f5eda7",
+    "storage/revisions.py": "b27ff39ba22b691d3be76fdc550efa4c60d341c783091a27c03c74ffc0112e2b",
     "reader/reading_desk.py": "43ae80bab2fcfa73dc8a64d80fb11ffda7a0a3650b861f543cb2326558d19706"
 }
 CI_CHECK_SHA256 = "70281591d047dbe5f464db95457c35604b988b2aa0994e0706e4b317385a6ca6"
@@ -116,7 +116,7 @@ def source_identity(proof_path, tested_commit, *, require_installed=False):
     require({p.relative_to(package).as_posix() for p in package.rglob("*.py")} == set(expected),
             "Installed Python source inventory changed.")
     require(all(actual.get(name) == digest for name, digest in SOURCE_BINDINGS.items()),
-            "The pilot is bound to the reviewed 95d production modules.")
+            "The pilot is bound to the reviewed combined production modules.")
     return dict(tested_commit=tested_commit, baseline_source_commit=BASE_SOURCE_COMMIT,
                 package_root=str(package), python_files=len(actual),
                 source_inventory_sha256=sha256(canonical(actual)).hexdigest(),
@@ -199,24 +199,32 @@ def hardware_profile():
 
 
 def locator_query_plans(app, workspace, revision):
-    """Observe the exact current scoped validation statements; never rewrite them."""
-    import ast
-    import inspect
-    import textwrap
+    """Observe actual scoped validation against the real read-only transaction."""
     from carr_library.storage.revisions import Storage
-    tree = ast.parse(textwrap.dedent(inspect.getsource(Storage._check_locators)))
-    queries = [node.args[0].value for node in ast.walk(tree)
-               if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)
-               and node.func.attr == "execute" and node.args
-               and isinstance(node.args[0], ast.Constant) and isinstance(node.args[0].value, str)]
-    require(len(queries) == 2 and all("(? IS NULL OR revision=?)" in query for query in queries),
-            "Reviewed locator diagnostic statements changed.")
+
+    statements = []
     plans = []
     with app.read(workspace) as db:
-        for query in queries:
-            cursor = db.execute("EXPLAIN QUERY PLAN " + query, (revision, revision))
-            rows = cursor.fetchmany(257)
-            require(len(rows) <= 256, "Locator plan diagnostic exceeded its bound.")
+        class ObservedConnection:
+            def execute(self, query, parameters=()):
+                require(type(query) is str and len(statements) < 2,
+                        "Reviewed locator diagnostic statements changed.")
+                parameters = tuple(parameters)
+                require(parameters == (revision,),
+                        "Locator diagnostic lost its exact revision scope.")
+                statements.append((query, parameters))
+                return db.execute(query, parameters)
+        observer = object.__new__(Storage)
+        observer.db = ObservedConnection()
+        Storage._check_locators(observer, revision)
+        require(len(statements) == 2, "Reviewed locator diagnostic statements changed.")
+        for query, parameters in statements:
+            cursor = db.execute("EXPLAIN QUERY PLAN " + query, parameters)
+            try:
+                rows = cursor.fetchmany(257)
+                require(len(rows) <= 256, "Locator plan diagnostic exceeded its bound.")
+            finally:
+                cursor.close()
             plans.append(dict(sql_sha256=sha256(query.encode("utf-8")).hexdigest(),
                               scope="real existing revision parameter", rows=[list(row) for row in rows]))
     return dict(sqlite=sqlite3.sqlite_version, plans=plans,
