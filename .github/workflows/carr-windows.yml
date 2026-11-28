@@ -1182,6 +1182,45 @@ jobs:
       # Evidence and exact public-source Python wheel only: no model, native DLLs, OCR source payload, or user documents
       # are uploaded. NVDA and final-download identity remain separate acceptance.
 
+      - name: Run serial academic and required source tail suites
+        if: ${{ !cancelled() && steps.desktop_dependencies.conclusion == 'success' && steps.ocr_runtime.conclusion == 'success' }}
+        timeout-minutes: 12
+        run: |
+          $previousPath = $env:PATH
+          $previousOcr = $env:CARR_OCR_DIR
+          $previousTessdata = $env:TESSDATA_PREFIX
+          try {
+            if (-not $env:CARR_CI_AUDIO_DIR -or -not $env:CARR_CI_OCR_DIR) { throw 'Verified audio and OCR prerequisites are required for source acceptance.' }
+            $audioBin = Join-Path $env:CARR_CI_AUDIO_DIR 'bin'
+            foreach ($tool in @('ffmpeg.exe', 'ffprobe.exe')) {
+              if (-not (Test-Path -LiteralPath (Join-Path $audioBin $tool) -PathType Leaf)) { throw "Verified audio executable is missing: $tool" }
+            }
+            if (-not (Test-Path -LiteralPath (Join-Path $env:CARR_CI_OCR_DIR 'tesseract.exe') -PathType Leaf)) { throw 'Verified OCR executable is missing.' }
+            $env:PATH = "$audioBin;$env:CARR_CI_OCR_DIR;$previousPath"
+            $env:CARR_OCR_DIR = $env:CARR_CI_OCR_DIR
+            $env:TESSDATA_PREFIX = Join-Path $env:CARR_CI_OCR_DIR 'tessdata'
+            $planRaw = & $env:CARR_PYTHON scripts/windows_source_suites.py isolated
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            $planRaw | Set-Content 'ci-results/integrated-source-first-plan.json'
+            $plan = $planRaw | ConvertFrom-Json
+            $academicSuite = [string]$plan.academic
+            $isolatedSuites = @($plan.isolated)
+            $coverageSuite = [string]$plan.coverage_guard
+            # The actual Windows run completed this suite alone in 208 seconds;
+            # another run reached its unchanged 600-second bound alongside other suites.
+            & $env:CARR_PYTHON scripts/ci_check.py --jobs 1 $academicSuite 2>&1 | Tee-Object 'ci-results/integrated-source-first-tests.txt'
+            $academicExit = $LASTEXITCODE
+            # Always run the second required command, even when the academic suite fails.
+            & $env:CARR_PYTHON scripts/ci_check.py --jobs 2 @isolatedSuites $coverageSuite 2>&1 | Tee-Object -Append 'ci-results/integrated-source-first-tests.txt'
+            $isolatedExit = $LASTEXITCODE
+            @{ schema = 1; manifest_sha256 = $plan.manifest_sha256; academic_exit = $academicExit; isolated_and_guard_exit = $isolatedExit } | ConvertTo-Json | Set-Content 'ci-results/integrated-source-first-verdict.json'
+            if ($academicExit -ne 0 -or $isolatedExit -ne 0) { exit 1 }
+          } finally {
+            $env:PATH = $previousPath
+            $env:CARR_OCR_DIR = $previousOcr
+            $env:TESSDATA_PREFIX = $previousTessdata
+          }
+
       - name: Run required integrated source workflows
         if: ${{ !cancelled() && steps.desktop_dependencies.conclusion == 'success' && steps.ocr_runtime.conclusion == 'success' }}
         timeout-minutes: 35
@@ -1605,19 +1644,19 @@ jobs:
             $env:PATH = "$audioBin;$env:CARR_CI_OCR_DIR;$previousPath"
             $env:CARR_OCR_DIR = $env:CARR_CI_OCR_DIR
             $env:TESSDATA_PREFIX = Join-Path $env:CARR_CI_OCR_DIR 'tessdata'
-            # The actual Windows run completed this suite alone in 208 seconds;
-            # another run reached its unchanged 600-second bound alongside other suites.
-            $academicSuite = 'tests/research/test_academic_library.py'
-            $parallelSuites = @($suites | Where-Object { $_ -cne $academicSuite })
-            if ($parallelSuites.Count + 1 -ne $suites.Count) { throw 'Required academic suite must occur exactly once.' }
-            & $env:CARR_PYTHON scripts/ci_check.py --jobs 1 $academicSuite 2>&1 | Tee-Object 'ci-results/integrated-tests.txt'
-            $academicExit = $LASTEXITCODE
-            & $env:CARR_PYTHON scripts/ci_check.py --jobs 3 @parallelSuites 2>&1 | Tee-Object -Append 'ci-results/integrated-tests.txt'
+            $planRaw = ConvertTo-Json -InputObject $suites -Compress | & $env:CARR_PYTHON scripts/windows_source_suites.py partition
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            $planRaw | Set-Content 'ci-results/integrated-source-bulk-plan.json'
+            $plan = $planRaw | ConvertFrom-Json
+            $parallelSuites = @($plan.bulk)
+            if ($parallelSuites.Count -ne 401 -or $parallelSuites.Count + @($plan.isolated).Count + 1 -ne $suites.Count) { throw 'Required source partitions must preserve all 404 original occurrences.' }
+            & $env:CARR_PYTHON scripts/ci_check.py --jobs 3 @parallelSuites 2>&1 | Tee-Object 'ci-results/integrated-tests.txt'
             $parallelExit = $LASTEXITCODE
-            if ($academicExit -ne 0 -or $parallelExit -ne 0) { exit 1 }
-          $sourceSummary = Get-Content 'ci-results/integrated-tests.txt'
-          if ($sourceSummary -notcontains 'PASS: tests/ingest/test_import_metadata_shape.py: junit_passed=58, failed=0, skipped=0, pytest_exit=0') {
-            throw 'All 58 import metadata shape cases must pass in the source checkout.'
+            @{ schema = 1; manifest_sha256 = $plan.manifest_sha256; bulk_occurrences = $parallelSuites.Count; bulk_exit = $parallelExit } | ConvertTo-Json | Set-Content 'ci-results/integrated-source-bulk-verdict.json'
+            if ($parallelExit -ne 0) { exit 1 }
+          & $env:CARR_PYTHON scripts/windows_source_suites.py metadata --report 'ci-results/integrated-tests.txt' | Tee-Object 'ci-results/integrated-source-metadata-verdict.json'
+          if ($LASTEXITCODE -ne 0) {
+            throw 'Exactly one completed report must confirm all 58 import metadata shape cases without failures or skips.'
           }
 
           } finally {

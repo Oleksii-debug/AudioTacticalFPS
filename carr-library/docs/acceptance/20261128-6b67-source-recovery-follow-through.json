@@ -1,0 +1,414 @@
+{
+  "schema": "carr-focused-acceptance/1",
+  "recorded_at_utc": "2026-11-28T01:55:07Z",
+  "status": "OBSERVED_SOURCE_CORRECTIONS_VERIFIED_FULL_SUCCESSOR_GATES_REQUIRED",
+  "scope": "Exact focused component execution, not a complete ordinary-candidate PASS. Repeated suites are not a unique aggregate.",
+  "predecessor_ordinary": {
+    "commit": "7a445cfa0701465facc80fe5dee226ba628aa4d6",
+    "source_failed_cases": 61,
+    "source_failure_files": 13,
+    "source_unreported_files": 2,
+    "evidence": "20261128-7a445c-terminal-and-native-output.json"
+  },
+  "cohort": {
+    "commit": "6b67bdf2658a29c8df627cc57082a255aa6b2d6e",
+    "tree": "fa0c770f1fc559290fdd6ac4301b840e2dbcff59",
+    "ordinary_source_basis": "22ae69319a8ad822b81786c2a8233b3c75dfad49",
+    "source_files_equal": 1351,
+    "extra_file": ".github/workflows/native-audio-diagnostic.yml",
+    "run_id": 46094404280,
+    "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46094404280",
+    "conclusion": "failure",
+    "regressions": {
+      "job_id": 140822346852,
+      "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46094404280/job/140822346852",
+      "conclusion": "failure",
+      "completed_at_utc": "2026-11-28T01:46:33Z",
+      "phase_start_utc": "2026-11-28T01:44:13Z",
+      "phase_end_utc": "2026-11-28T01:46:28Z",
+      "strict": {
+        "suites": [
+          {
+            "suite": "tests/e2e/test_epub_library.py",
+            "passed": 8,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "suite": "tests/ui/test_notebook_search_actions.py",
+            "passed": 16,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "suite": "tests/ui/test_desktop_result_modes.py",
+            "passed": 23,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "suite": "tests/reader/test_reading_desk.py",
+            "passed": 32,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "suite": "tests/ingest/test_import_metadata_shape.py",
+            "passed": 58,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "suite": "tests/ingest/test_txt_replay_registration.py",
+            "passed": 7,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "suite": "tests/ui/probe_catalog_insights_actions.py",
+            "passed": 35,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "suite": "tests/ingest/test_import_publication_point.py",
+            "passed": 2,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "suite": "tests/ingest/test_terminal_replay_registration.py",
+            "passed": 11,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "suite": "tests/storage/test_engine_settings_dordiai_backup.py",
+            "passed": 22,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "suite": "tests/storage/test_studio_input_backup.py",
+            "passed": 30,
+            "failed": 2,
+            "skipped": 0,
+            "exit": 1
+          },
+          {
+            "suite": "tests/ingest/test_import_replay_identity.py",
+            "passed": 22,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "suite": "tests/storage/test_composed_recovery.py",
+            "passed": 6,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "suite": "tests/storage/test_engine_settings_backup.py",
+            "passed": 45,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "suite": "tests/storage/test_backup_generated_audio.py",
+            "passed": 14,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "suite": "tests/storage/test_studio_input_authority.py",
+            "passed": 6,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "suite": "tests/storage/test_backup_v4_sidecars.py",
+            "passed": 34,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          }
+        ],
+        "totals": {
+          "passed": 371,
+          "failed": 2,
+          "skipped": 0
+        }
+      },
+      "log_characters": 85789,
+      "log_sha256": "89678e90416e4ecaab2b5da73bd75b6b37fa0d581b434da6e514616ab6e7a14e",
+      "installed_python_files_equal": 341
+    },
+    "unfinished": {
+      "job_id": 140822346623,
+      "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46094404280/job/140822346623",
+      "conclusion": "success",
+      "completed_at_utc": "2026-11-28T01:47:15Z",
+      "phase_start_utc": "2026-11-28T01:44:36Z",
+      "phase_end_utc": "2026-11-28T01:47:09Z",
+      "strict": {
+        "suites": [
+          {
+            "suite": "tests/security/test_portable_handoff.py",
+            "passed": 33,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "suite": "tests/search/test_federated_advanced.py",
+            "passed": 37,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          }
+        ],
+        "totals": {
+          "passed": 70,
+          "failed": 0,
+          "skipped": 0
+        }
+      },
+      "pytest_seconds": {
+        "federated_advanced": 152.42,
+        "portable_handoff": 52.67
+      },
+      "log_characters": 61808,
+      "log_sha256": "6f65a606296bdf9360eaa4e555f2b87e41d6dd0faa8761c8431c20fbe1b468d2",
+      "installed_python_files_equal": 341
+    },
+    "all_completed": {
+      "suites": 19,
+      "passed": 441,
+      "failed": 2,
+      "skipped": 0
+    },
+    "remaining_failures": [
+      "tests/storage/test_studio_input_backup.py::test_legacy_paths_and_inherited_approvals_cannot_capture_local_files",
+      "tests/storage/test_studio_input_backup.py::test_legacy_v4_without_studio_receipt_remains_readable"
+    ],
+    "cause": "Both historical fixtures removed every declared retained-input file but left the empty state/studio/inputs directory. The unchanged strict namespace validator correctly rejected that undeclared directory.",
+    "composed_recovery": {
+      "passed": 6,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_seconds": 16.58,
+      "scope": "Both generated-inclusion variants preserve reading/Studio/accepted ASR/retained HTML across deletion and two restores; actual second-read cancellation and three generated-cache refusal cases also pass."
+    },
+    "artifacts": [
+      {
+        "id": 15243061684,
+        "name": "carr-source-cohort-diagnostic-6b67bdf2658a29c8df627cc57082a255aa6b2d6e-regressions",
+        "size_bytes": 21999,
+        "sha256": "f288a45be2f0c4d25afa34a78dfe085314e28b57e15147bb363d208adba145f9",
+        "source_commit": "6b67bdf2658a29c8df627cc57082a255aa6b2d6e",
+        "run_id": 46094404280,
+        "archive_scope": "Metadata independently read; archive not decoded for this record."
+      },
+      {
+        "id": 15242996111,
+        "name": "carr-source-cohort-diagnostic-6b67bdf2658a29c8df627cc57082a255aa6b2d6e-unfinished",
+        "size_bytes": 19627,
+        "sha256": "b6b0b80c89aaf624a095148590b7957c5ac657726fd5d3115d017efe56941a3a",
+        "source_commit": "6b67bdf2658a29c8df627cc57082a255aa6b2d6e",
+        "run_id": 46094404280,
+        "archive_scope": "Metadata independently read; archive not decoded for this record."
+      }
+    ],
+    "native": "NOT_RUN"
+  },
+  "fixture_followthrough": {
+    "ordinary_fix_commit": "83cbd0fe8ff4209cee6f54a516096187175bdca3",
+    "ordinary_source_basis": "c232eff4ef106be60269f7a642b72a4ce04dabc0",
+    "changed_path": "carr-library/tests/storage/test_studio_input_backup.py",
+    "changed_blob": "0f083c00b1ebbeb9fd896440a5af085db570b6e8",
+    "change": "Two rmdir calls remove only the exact now-empty fixture directory. Nonempty directories still fail; no product validator, assertion or deadline changes.",
+    "diagnostic_commit": "6daa0527b9d97332d2ee7f4dfd4f315b9a53f30d",
+    "tree": "6b4ca61c87856d39f2740f68244e32342505330f",
+    "source_files_equal": 1352,
+    "extra_file": ".github/workflows/native-audio-diagnostic.yml",
+    "run_id": 46095235286,
+    "job_id": 140824951902,
+    "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46095235286/job/140824951902",
+    "conclusion": "success",
+    "completed_at_utc": "2026-11-28T01:53:15Z",
+    "strict": {
+      "suites": [
+        {
+          "suite": "tests/storage/test_studio_input_backup.py",
+          "passed": 32,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        }
+      ],
+      "totals": {
+        "passed": 32,
+        "failed": 0,
+        "skipped": 0
+      }
+    },
+    "pytest_seconds": 16.54,
+    "installed_python_files_equal": 341,
+    "log_characters": 52411,
+    "log_sha256": "e91a27ecc128eb71042f2ad16134312175963b7c2d975b9be7feb5c5c0663d66",
+    "artifacts": [
+      {
+        "id": 15242388213,
+        "name": "carr-studio-input-recovery-diagnostic-6daa0527b9d97332d2ee7f4dfd4f315b9a53f30d",
+        "size_bytes": 18727,
+        "sha256": "db137b1bf0307253168777484420d67fedf2d76481b07f67abcec225c63d25c5",
+        "source_commit": "6daa0527b9d97332d2ee7f4dfd4f315b9a53f30d",
+        "run_id": 46095235286,
+        "archive_scope": "Metadata independently read; archive not decoded for this record."
+      }
+    ],
+    "native": "NOT_RUN"
+  },
+  "corrected_failure_files": [
+    {
+      "path": "tests/e2e/test_epub_library.py",
+      "predecessor_failed": 1,
+      "corrected_passed": 8,
+      "corrected_failed": 0,
+      "corrected_skipped": 0,
+      "proved_by": "6b67bdf2658a29c8df627cc57082a255aa6b2d6e",
+      "final_reviewed_test_blob": "dba06f3e44768536641ef1500ba6a11ca043298b"
+    },
+    {
+      "path": "tests/reader/test_reading_desk.py",
+      "predecessor_failed": 2,
+      "corrected_passed": 32,
+      "corrected_failed": 0,
+      "corrected_skipped": 0,
+      "proved_by": "6b67bdf2658a29c8df627cc57082a255aa6b2d6e",
+      "final_reviewed_test_blob": "310bf6c90668fe00c2eb2cd60a55412f7eed3710"
+    },
+    {
+      "path": "tests/ui/test_notebook_search_actions.py",
+      "predecessor_failed": 2,
+      "corrected_passed": 16,
+      "corrected_failed": 0,
+      "corrected_skipped": 0,
+      "proved_by": "6b67bdf2658a29c8df627cc57082a255aa6b2d6e",
+      "final_reviewed_test_blob": "c7b7e60dc384c7252eb93da1891a46e9b8e45149"
+    },
+    {
+      "path": "tests/ui/test_desktop_result_modes.py",
+      "predecessor_failed": 15,
+      "corrected_passed": 23,
+      "corrected_failed": 0,
+      "corrected_skipped": 0,
+      "proved_by": "6b67bdf2658a29c8df627cc57082a255aa6b2d6e",
+      "final_reviewed_test_blob": "4da211245124183caa42b2069382e767a1df2b36"
+    },
+    {
+      "path": "tests/ui/probe_catalog_insights_actions.py",
+      "predecessor_failed": 1,
+      "corrected_passed": 35,
+      "corrected_failed": 0,
+      "corrected_skipped": 0,
+      "proved_by": "6b67bdf2658a29c8df627cc57082a255aa6b2d6e",
+      "final_reviewed_test_blob": "a2e6b67f383c68a5515e344588d22642076dd109"
+    },
+    {
+      "path": "tests/ingest/test_import_metadata_shape.py",
+      "predecessor_failed": 6,
+      "corrected_passed": 58,
+      "corrected_failed": 0,
+      "corrected_skipped": 0,
+      "proved_by": "6b67bdf2658a29c8df627cc57082a255aa6b2d6e",
+      "final_reviewed_test_blob": "9cbb3455737183d7e23efb20acdbe7e0168047db"
+    },
+    {
+      "path": "tests/ingest/test_txt_replay_registration.py",
+      "predecessor_failed": 2,
+      "corrected_passed": 7,
+      "corrected_failed": 0,
+      "corrected_skipped": 0,
+      "proved_by": "6b67bdf2658a29c8df627cc57082a255aa6b2d6e",
+      "final_reviewed_test_blob": "52af7ab563d0ff78bc7845a931088c8c96cb77c3"
+    },
+    {
+      "path": "tests/ingest/test_terminal_replay_registration.py",
+      "predecessor_failed": 4,
+      "corrected_passed": 11,
+      "corrected_failed": 0,
+      "corrected_skipped": 0,
+      "proved_by": "6b67bdf2658a29c8df627cc57082a255aa6b2d6e",
+      "final_reviewed_test_blob": "73a3a797799f6e662b15f5a7083c9bb3fb0624e6"
+    },
+    {
+      "path": "tests/ingest/test_import_publication_point.py",
+      "predecessor_failed": 2,
+      "corrected_passed": 2,
+      "corrected_failed": 0,
+      "corrected_skipped": 0,
+      "proved_by": "6b67bdf2658a29c8df627cc57082a255aa6b2d6e",
+      "final_reviewed_test_blob": "bd00074dda6423b26d792edd205b84c039a46ca0"
+    },
+    {
+      "path": "tests/ingest/test_import_replay_identity.py",
+      "predecessor_failed": 2,
+      "corrected_passed": 22,
+      "corrected_failed": 0,
+      "corrected_skipped": 0,
+      "proved_by": "6b67bdf2658a29c8df627cc57082a255aa6b2d6e",
+      "final_reviewed_test_blob": "2ad0e52629e572019e50ab1a09980bc31d259436"
+    },
+    {
+      "path": "tests/storage/test_engine_settings_dordiai_backup.py",
+      "predecessor_failed": 12,
+      "corrected_passed": 22,
+      "corrected_failed": 0,
+      "corrected_skipped": 0,
+      "proved_by": "6b67bdf2658a29c8df627cc57082a255aa6b2d6e",
+      "final_reviewed_test_blob": "709840128334467cd5cd8181417572daca11b38d"
+    },
+    {
+      "path": "tests/storage/test_studio_input_backup.py",
+      "predecessor_failed": 9,
+      "corrected_passed": 32,
+      "corrected_failed": 0,
+      "corrected_skipped": 0,
+      "proved_by": "6daa0527b9d97332d2ee7f4dfd4f315b9a53f30d",
+      "final_reviewed_test_blob": "0f083c00b1ebbeb9fd896440a5af085db570b6e8"
+    },
+    {
+      "path": "tests/storage/test_composed_recovery.py",
+      "predecessor_failed": 3,
+      "corrected_passed": 6,
+      "corrected_failed": 0,
+      "corrected_skipped": 0,
+      "proved_by": "6b67bdf2658a29c8df627cc57082a255aa6b2d6e",
+      "final_reviewed_test_blob": "a5e7a6994f5d8919ca92c698b76c5d11a0daaba9"
+    }
+  ],
+  "limits": [
+    "All thirteen originally failing files now have a passing corrected focused result, but those results span explicitly named heads.",
+    "The19-suite failed run retains441PASS2FAIL; it is not relabeled as passing by the later32-case follow-up.",
+    "The32-case follow-up overlaps30 previously passing cases; do not sum the two runs as unique coverage.",
+    "All final ordinary source, installed-package and native gates still require their own exact-candidate execution.",
+    "No native playback was repeated in these source diagnostics. The separately proved missing Windows output prerequisite remains open.",
+    "Synthetic ASR protocol and PCM fixtures prove receipt/lifecycle/recovery behavior, not speech recognition or perceptual audio quality."
+  ]
+}

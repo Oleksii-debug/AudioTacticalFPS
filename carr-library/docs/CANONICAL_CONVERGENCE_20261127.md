@@ -1,6 +1,8 @@
 # Canonical convergence — 2026-11-27
 
-[Latest exact execution checkpoint: 7a terminal gates and actual native-output diagnosis](acceptance/20261128-7a445c-terminal-and-native-output.json). All 22 ordinary jobs are terminal (17 successful, five failed). The reviewed source successor has no whole-head acceptance; the tested hosted Windows runner still exposes no render endpoint after its audio services start.
+[Latest focused source correction proof: 6b67 cohort and 6daa Studio follow-through](acceptance/20261128-6b67-source-recovery-follow-through.json). All thirteen previously failing source files now have a passing corrected focused result. Final ordinary successor gates remain required; required native output is still unqualified.
+
+[Latest completed ordinary checkpoint: 7a terminal gates and actual native-output diagnosis](acceptance/20261128-7a445c-terminal-and-native-output.json). All 22 ordinary jobs are terminal (17 successful, five failed). The reviewed source successor has no whole-head acceptance; the tested hosted Windows runner still exposes no render endpoint after its audio services start.
 
 ## Reviewed identities and authority
 
@@ -843,6 +845,30 @@ fresh pinned installed package and unchanged native probes. No driver install,
 license assumption, signing-policy change, silent skip or fixture substitution
 is part of this source correction.
 
-Focused source execution and all final ordinary successor gates are still
-required. Historical passing counts here do not qualify the prepared union,
-physical listening, human NVDA use, private models or a signed public release.
+At that prepared checkpoint, focused source execution and all final ordinary
+successor gates remained required. Historical passing counts here do not qualify
+the prepared union, physical listening, human NVDA use, private models or a signed
+public release.
+
+## Focused source recovery after the complete 7a terminal read
+
+The [exact source follow-through](acceptance/20261128-6b67-source-recovery-follow-through.json)
+records all nineteen selected suites on isolated `6b67bdf`: 441 cases passed,
+two failed, and none were skipped. All six composed recovery cases passed in
+16.58 seconds, including both generated-cache choices, deletion of the original
+library, two restores, retained HTML resume, unchanged accepted ASR receipts and
+the real second-source-read cancellation boundary. The previously unreported
+federated advanced and portable handoff suites passed 37 and 33 cases.
+
+Both remaining Studio failures were caused by historical test construction
+leaving the now-undeclared empty retained-input directory. Source component
+`83cbd0f` removes only that exact empty directory with `rmdir`, preserving
+the product's strict namespace check and every existing assertion. Isolated
+`6daa052` then passed all 32 Studio input recovery cases in 16.54 seconds,
+including the two historical authority and restore scenarios. Each diagnostic
+verified all 341 installed Python counterparts against its own checkout.
+
+The ordinary reviewed source at `c232eff` includes that correction and the
+reviewed documentation. Its full successor gates are still required. The
+nineteen-suite failed run is not relabeled as a pass, and its thirty previously
+passing Studio cases overlap the later thirty-two-case follow-through.
