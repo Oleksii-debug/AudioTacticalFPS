@@ -108,7 +108,7 @@ jobs:
           commit = subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip()
           assert commit == os.environ['GITHUB_SHA']
           paths = sorted(source.rglob('*.py'))
-          assert len(paths) == 341
+          assert len(paths) == 342
           hashes = {}
           for selected in paths:
               relative = selected.relative_to(source)
@@ -202,7 +202,7 @@ jobs:
                   errors.append(dict(receipt_error=type(exc).__name__))
               receipt = dict(schema='carr-owned-pcm-evidence/1',
                   tested_commit=os.environ['GITHUB_SHA'],
-                  source_component_commit='58be2e9eeb493318e9de79c8e1ab214471f58290',
+                  source_component_commit='de4b18f60d6f44811cdd23dafd1822a4e9b59d5e',
                   ci_check_sha256=runner_sha, strict_runner_exit=exit_code,
                   suites=list(suites), expected_case_counts={key: value[1] for key, value in suites.items()},
                   junit_reports=captured, verdict=verdict, per_suite=per_suite, errors=errors,

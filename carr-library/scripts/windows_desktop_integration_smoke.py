@@ -26,6 +26,7 @@ def main():
         raise RuntimeError('This probe requires actual Windows and its interactive native desktop.')
     import wx
     import wx.adv
+    import wx.siplib
     from carr_library.application import LibraryApp
     from carr_library import desktop_preferences
     from carr_library.speech import ReadingDocument
@@ -217,7 +218,9 @@ def main():
                       and not integration.hotkeys._registered and integration.hotkeys._cleanup_complete)
                 check('direct Destroy removed its actual system tray icon',
                       integration.tray is None and not icon.active)
-                pump(lambda: not bool(icon), 'The direct owner tray object did not finish native destruction.')
+                # TaskBarIcon is an EvtHandler, not a Window: its Python truth
+                # does not report deletion of the original C++ peer.
+                pump(lambda: wx.siplib.isdeleted(icon), 'The direct owner tray object did not finish native destruction.')
                 receiver = desktop_integration.WindowsHotkeyAPI(outside)
                 acquired = receiver.register(0x4303, 'Ctrl+Alt+Shift+J')
                 check('another actual window can acquire the direct-destroyed owner key', acquired)

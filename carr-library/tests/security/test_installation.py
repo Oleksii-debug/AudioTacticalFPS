@@ -295,3 +295,380 @@ def test_failed_preupdate_backup_never_activates_candidate(setup_update, monkeyp
     assert adapter.activated_path is None
     assert anchor.load().sequence == 1
     assert_preserved(setup_update)
+
+
+# Managed setup admission is deliberately separate from activation. These small
+# genuine TUF targets contain synthetic binaries that are never executed.
+def _managed_members(build=2):
+    from carr_library.security._files import json_bytes
+    from carr_library.storage.revisions import SCHEMAS
+    files = {
+        'runtime/python.exe': b'synthetic pinned runtime; never executed',
+        'ResearchLibrary.exe': b'synthetic native launcher; never executed',
+        'install_windows.py': b'raise AssertionError("admission must not execute payload")\n',
+        'install.lock': b'# synthetic offline lock\n',
+        'README.txt': ('Synthetic managed build ' + str(build)).encode(),
+    }
+    bundle_manifest = json_bytes(dict(schema=1, bundled_python=True, bundled_launcher=True,
+                                     source_commit=str(build) * 40,
+                                     files={name: sha256(raw).hexdigest() for name, raw in files.items()}))
+    helpers = {name: b'raise AssertionError("admission must not import captured helpers")\n'
+               for name in ('maintenance.py', 'installation_lease.py', 'bundle_verifier.py', 'windows_process.py')}
+    setup = b'MZ synthetic setup; signature qualification is not represented'
+    manifest = dict(schema=1, kind='carr-managed-setup', product='carr-test', channel='stable',
+                    version=f'0.{build}.0', build=build, source_commit=str(build) * 40,
+                    data_schema=max(SCHEMAS), bundle_manifest_sha256=sha256(bundle_manifest).hexdigest(),
+                    setup_sha256=sha256(setup).hexdigest(), setup_bytes=len(setup),
+                    helpers={name: sha256(raw).hexdigest() for name, raw in helpers.items()})
+    return {
+        **{'bundle/' + name: raw for name, raw in files.items()},
+        'bundle/bundle-manifest.json': bundle_manifest,
+        **{'helpers/' + name: raw for name, raw in helpers.items()},
+        'ResonanceSetup.exe': setup,
+        'managed-setup.json': json_bytes(manifest),
+    }
+
+
+def _managed_zip(members):
+    output = io.BytesIO()
+    with zipfile.ZipFile(output, 'w', compression=zipfile.ZIP_DEFLATED) as archive:
+        for name, raw in members.items():
+            archive.writestr(name, raw)
+    return output.getvalue()
+
+
+def _managed_signed(repository, cache, members, *, build=2, custom=None):
+    repository.publish(_managed_zip(members), build=build, custom=custom)
+    client = LocalRepositoryClient(cache, repository.policy())
+    release = client.check(repository.root, repository.target_path)
+    return client.download(repository.root, repository.target_path, reviewed_sha256=release.sha256)
+
+
+@pytest.fixture
+def managed_admission_fixture(tmp_path, repository, clock):
+    from carr_library.security.managed_setup import authenticate_installed_package, review_managed_package
+    original = _managed_signed(repository, tmp_path / 'managed-a', _managed_members(2))
+    anchors = MemoryAnchor(Anchor(original.release.build, original.release.sha256, clock.now))
+    repository.advance()
+    incoming = _managed_signed(repository, tmp_path / 'managed-b', _managed_members(3), build=3)
+    policy = repository.policy(current_build=2)
+    installed = authenticate_installed_package(original.path, policy, anchors)
+    reviewed = review_managed_package(incoming, policy)
+    return policy, anchors, installed, reviewed
+
+
+def test_managed_admission_authenticates_independent_a_and_b_without_mutating_program_or_anchor(
+        managed_admission_fixture, tmp_path):
+    from carr_library.security.managed_setup import admit_managed_update, revalidate_managed_admission
+    policy, anchors, installed, reviewed = managed_admission_fixture
+    original_anchor = anchors.load()
+    before = {path: path.read_bytes() for path in tmp_path.rglob('*') if path.is_file()}
+    result = admit_managed_update(installed, reviewed, policy, anchors,
+                                  reviewed_sha256=reviewed.package.release.sha256)
+    assert result.installed.setup.build == 2 and result.incoming.setup.build == 3
+    assert result.installed.setup.setup_sha256 == sha256(_managed_members(2)['ResonanceSetup.exe']).hexdigest()
+    assert revalidate_managed_admission(result) == result
+    assert anchors.load() == original_anchor
+    assert {path: path.read_bytes() for path in tmp_path.rglob('*') if path.is_file()} == before
+    assert not any(path.name in ('bootstrap-owner.json', 'managed-install.ini') for path in tmp_path.rglob('*'))
+
+
+def test_managed_committed_b_recovery_needs_no_old_a_or_downgrade_permission(
+        managed_admission_fixture, repository, tmp_path):
+    from carr_library.security.managed_setup import authenticate_installed_package
+    policy, anchors, installed, reviewed = managed_admission_fixture
+    committed = Anchor(3, reviewed.package.release.sha256, anchors.load().max_utc)
+    anchors.compare_and_set(anchors.load(), committed)
+    installed.path.unlink()
+    current_policy = replace(policy, current_build=3)
+    recovered = authenticate_installed_package(reviewed.package.path, current_policy, anchors)
+    assert recovered.setup.build == 3 and recovered.anchor == committed
+    repository.advance()
+    repository.publish(_managed_zip(_managed_members(2)), build=2)
+    client = LocalRepositoryClient(tmp_path / 'no-downgrade', current_policy)
+    with pytest.raises(TrustError, match='advance.*rollback'):
+        client.check(repository.root, repository.target_path)
+    assert anchors.load() == committed
+    assert not installed.path.exists()
+
+
+@pytest.mark.parametrize('anchor', [Anchor(), Anchor(2, '0' * 64), Anchor(3, '0' * 64)])
+def test_managed_local_receipt_cannot_provision_or_replace_protected_authority(
+        managed_admission_fixture, anchor):
+    from carr_library.security.managed_setup import authenticate_installed_package
+    policy, _, installed, _ = managed_admission_fixture
+    anchors = MemoryAnchor(anchor)
+    with pytest.raises(TrustError, match='anchor'):
+        authenticate_installed_package(installed.path, policy, anchors)
+    assert anchors.load() == anchor
+
+
+def test_managed_matching_package_digest_still_requires_anchor_build_match(managed_admission_fixture):
+    from carr_library.security.managed_setup import authenticate_installed_package
+    policy, anchors, installed, _ = managed_admission_fixture
+    anchors.value = Anchor(3, installed.anchor.digest, installed.anchor.max_utc)
+    with pytest.raises(TrustError, match='build differs'):
+        authenticate_installed_package(installed.path, policy, anchors)
+
+
+def test_managed_anchor_changed_during_real_package_read_refuses_authentication(managed_admission_fixture):
+    from carr_library.security.managed_setup import authenticate_installed_package
+    policy, anchors, installed, reviewed = managed_admission_fixture
+    count = 0
+    def changed():
+        nonlocal count
+        count += 1
+        if count == 3:
+            anchors.value = Anchor(3, reviewed.package.release.sha256, installed.anchor.max_utc)
+        return False
+    with pytest.raises(TrustError, match='identity changed during'):
+        authenticate_installed_package(installed.path, policy, anchors, cancelled=changed)
+    assert count >= 3 and anchors.load().sequence == 3
+
+
+@pytest.mark.parametrize('change', ['incoming', 'installed', 'anchor', 'owner', 'review'])
+def test_managed_admission_freshly_rechecks_bytes_anchor_owner_and_review(managed_admission_fixture, change):
+    from carr_library.security.managed_setup import admit_managed_update
+    policy, anchors, installed, reviewed = managed_admission_fixture
+    checksum = reviewed.package.release.sha256
+    if change == 'incoming':
+        raw = reviewed.package.path.read_bytes()
+        reviewed.package.path.write_bytes(b'x' + raw[1:])
+    elif change == 'installed':
+        raw = installed.path.read_bytes()
+        installed.path.write_bytes(b'x' + raw[1:])
+    elif change == 'anchor':
+        anchors.value = Anchor(3, checksum, installed.anchor.max_utc)
+    elif change == 'owner':
+        anchors = MemoryAnchor(installed.anchor)
+    else:
+        checksum = '0' * 64
+    before = anchors.load()
+    with pytest.raises(TrustError):
+        admit_managed_update(installed, reviewed, policy, anchors, reviewed_sha256=checksum)
+    assert anchors.load() == before
+
+
+def test_managed_capability_replacement_cannot_rebind_paths_or_signed_descriptions(
+        managed_admission_fixture, tmp_path):
+    from carr_library.security.managed_setup import ManagedAdmission, ReviewedManagedPackage
+    policy, anchors, installed, reviewed = managed_admission_fixture
+    with pytest.raises(TrustError, match='live protected'):
+        replace(installed, path=tmp_path / 'different.zip')
+    with pytest.raises(TrustError, match='live protected'):
+        replace(installed, _store=MemoryAnchor(anchors.load()))
+    with pytest.raises(TrustError, match='TUF capability'):
+        replace(reviewed, setup=replace(reviewed.setup, build=50))
+    with pytest.raises(TrustError, match='TUF capability'):
+        ReviewedManagedPackage(reviewed.package, reviewed.setup, policy)
+    with pytest.raises(TrustError, match='admission boundary'):
+        ManagedAdmission(installed, reviewed)
+
+
+def test_managed_installed_capability_cannot_be_used_as_incoming_tuf_authority(managed_admission_fixture):
+    from carr_library.security.managed_setup import admit_managed_update, review_managed_package
+    policy, anchors, installed, reviewed = managed_admission_fixture
+    with pytest.raises(TrustError, match='TUF-verified'):
+        review_managed_package(installed, policy)
+    with pytest.raises(TrustError, match='capabilities'):
+        admit_managed_update(installed, installed, policy, anchors,
+                             reviewed_sha256=installed.anchor.digest)
+    assert anchors.load() == installed.anchor
+
+
+def test_managed_revalidation_refuses_commit_of_b_after_reviewed_a(managed_admission_fixture):
+    from carr_library.security.managed_setup import admit_managed_update, revalidate_managed_admission
+    policy, anchors, installed, reviewed = managed_admission_fixture
+    admission = admit_managed_update(installed, reviewed, policy, anchors,
+                                    reviewed_sha256=reviewed.package.release.sha256)
+    anchors.compare_and_set(installed.anchor, Anchor(3, reviewed.package.release.sha256,
+                                                   installed.anchor.max_utc))
+    with pytest.raises(TrustError, match='identity changed'):
+        revalidate_managed_admission(admission)
+    assert anchors.load().sequence == 3
+
+
+@pytest.mark.parametrize('field,value', [
+    ('product', 'other-product'), ('channel', 'other-channel'), ('version', '0.9.0'),
+    ('source_commit', '9' * 40), ('build', 3), ('data_schema', 999),
+    ('setup_bytes', True), ('schema', True),
+])
+def test_managed_even_signed_package_requires_exact_context_and_typed_manifest(repository, tmp_path, field, value):
+    from carr_library.security.managed_setup import review_managed_package
+    from carr_library.security._files import json_bytes
+    members = _managed_members()
+    manifest = json.loads(members['managed-setup.json'])
+    manifest[field] = value
+    members['managed-setup.json'] = json_bytes(manifest)
+    package = _managed_signed(repository, tmp_path / 'cache', members)
+    with pytest.raises(TrustError):
+        review_managed_package(package, repository.policy())
+
+
+@pytest.mark.parametrize('member', ['ResonanceSetup.exe', 'helpers/maintenance.py', 'bundle/README.txt'])
+def test_managed_even_signed_container_cannot_substitute_declared_setup_helper_or_payload(
+        repository, tmp_path, member):
+    from carr_library.security.managed_setup import review_managed_package
+    members = _managed_members()
+    members[member] = b'changed ' + members[member]
+    package = _managed_signed(repository, tmp_path / 'cache', members)
+    with pytest.raises(TrustError, match='length|checksum'):
+        review_managed_package(package, repository.policy())
+
+
+@pytest.mark.parametrize('name', [
+    '../outside', 'helpers/extra.py', 'bundle/.venv/pyvenv.cfg', 'bundle/portable-update.ini',
+    'bundle/managed-install.ini', 'bundle/owned-files.json', 'bundle/bootstrap-owner.json',
+    'Bundle/README.txt', 'bundle/README.txt/child', 'bundle/runtime/python.exe:stream',
+])
+def test_managed_fixed_layout_refuses_traversal_state_aliases_and_extra_commands(repository, tmp_path, name):
+    from carr_library.security.managed_setup import review_managed_package
+    members = _managed_members()
+    members[name] = b'untrusted'
+    package = _managed_signed(repository, tmp_path / 'cache', members)
+    with pytest.raises(TrustError):
+        review_managed_package(package, repository.policy())
+    assert not (tmp_path / 'outside').exists()
+
+
+def test_managed_missing_declared_file_and_invalid_bundle_manifest_are_refused(repository, tmp_path):
+    from carr_library.security.managed_setup import review_managed_package
+    members = _managed_members()
+    del members['bundle/README.txt']
+    package = _managed_signed(repository, tmp_path / 'missing', members)
+    with pytest.raises(TrustError, match='missing'):
+        review_managed_package(package, repository.policy())
+    repository.advance()
+    members = _managed_members()
+    members['bundle/bundle-manifest.json'] = b'{"schema":1}'
+    package = _managed_signed(repository, tmp_path / 'manifest', members)
+    with pytest.raises(TrustError, match='manifest checksum'):
+        review_managed_package(package, repository.policy())
+
+
+def test_managed_signed_link_and_duplicate_members_remain_refused(repository, tmp_path):
+    from carr_library.security.managed_setup import review_managed_package
+    for mode in ('link', 'duplicate'):
+        stream = io.BytesIO()
+        with zipfile.ZipFile(stream, 'w', compression=zipfile.ZIP_DEFLATED) as archive:
+            for name, raw in _managed_members().items():
+                archive.writestr(name, raw)
+            info = zipfile.ZipInfo('linked-member' if mode == 'link' else 'managed-setup.json')
+            if mode == 'link':
+                info.create_system = 3
+                info.external_attr = 0o120777 << 16
+                archive.writestr(info, b'outside')
+            else:
+                with pytest.warns(UserWarning, match='Duplicate name'):
+                    archive.writestr(info, b'{}')
+        repository.advance()
+        package = signed_package(repository, tmp_path / mode, stream.getvalue())
+        with pytest.raises(TrustError, match='unlinked|Duplicate'):
+            review_managed_package(package, repository.policy())
+
+
+def test_managed_package_limits_apply_before_payload_processing(repository, tmp_path):
+    from carr_library.security.managed_setup import review_managed_package
+    package = _managed_signed(repository, tmp_path / 'cache', _managed_members())
+    for policy in (repository.policy(max_package_bytes=package.release.length - 1),
+                   repository.policy(max_files=2), repository.policy(max_unpacked_bytes=32)):
+        with pytest.raises(TrustError, match='budget'):
+            review_managed_package(package, policy)
+
+
+def test_managed_requested_cancellation_never_advances_anchor_or_extracts_payload(
+        managed_admission_fixture, tmp_path):
+    from carr_library.security.managed_setup import admit_managed_update
+    from carr_library.security.updates import UpdateCancelled
+    policy, anchors, installed, reviewed = managed_admission_fixture
+    before = {path: path.read_bytes() for path in tmp_path.rglob('*') if path.is_file()}
+    with pytest.raises(UpdateCancelled):
+        admit_managed_update(installed, reviewed, policy, anchors,
+                             reviewed_sha256=reviewed.package.release.sha256, cancelled=lambda: True)
+    assert anchors.load() == installed.anchor
+    assert {path: path.read_bytes() for path in tmp_path.rglob('*') if path.is_file()} == before
+
+
+def test_managed_retained_authentication_rejects_real_file_link(managed_admission_fixture, tmp_path):
+    from carr_library.security.managed_setup import authenticate_installed_package
+    policy, anchors, installed, _ = managed_admission_fixture
+    alias = tmp_path / 'retained-hardlink.zip'
+    os.link(installed.path, alias)
+    with pytest.raises(TrustError, match='unlinked'):
+        authenticate_installed_package(alias, policy, anchors)
+    assert anchors.load() == installed.anchor
+
+
+def test_managed_old_genuine_tuf_package_cannot_replay_the_protected_build(
+        managed_admission_fixture, repository, tmp_path):
+    from carr_library.security.managed_setup import admit_managed_update, review_managed_package
+    policy, anchors, installed, _ = managed_admission_fixture
+    repository.advance()
+    package = _managed_signed(repository, tmp_path / 'historical-a', _managed_members(2))
+    historical_review = review_managed_package(package, policy)
+    with pytest.raises(TrustError, match='advance the protected'):
+        admit_managed_update(installed, historical_review, policy, anchors,
+                             reviewed_sha256=package.release.sha256)
+    assert anchors.load() == installed.anchor
+
+
+def test_managed_review_uses_private_verified_snapshot_and_admission_rechecks_live_bytes(
+        managed_admission_fixture, monkeypatch):
+    from carr_library.security import managed_setup
+    policy, anchors, installed, reviewed = managed_admission_fixture
+    original = managed_setup._inspect
+    changed = []
+    def replace_download_after_snapshot(snapshot, checked_policy, cancelled):
+        assert checked_policy == policy
+        raw = reviewed.package.path.read_bytes()
+        reviewed.package.path.write_bytes(b'x' + raw[1:])
+        changed.append(True)
+        return original(snapshot, checked_policy, cancelled)
+    monkeypatch.setattr(managed_setup, '_inspect', replace_download_after_snapshot)
+    still_original = managed_setup.review_managed_package(reviewed.package, policy)
+    assert changed == [True] and still_original == reviewed
+    monkeypatch.setattr(managed_setup, '_inspect', original)
+    with pytest.raises(TrustError, match='checksum'):
+        managed_setup.admit_managed_update(installed, still_original, policy, anchors,
+                                          reviewed_sha256=reviewed.package.release.sha256)
+    assert anchors.load() == installed.anchor
+
+
+def test_managed_admission_cannot_rebind_an_equal_valued_capability_to_another_owner(
+        managed_admission_fixture):
+    from carr_library.security.managed_setup import (
+        admit_managed_update, authenticate_installed_package, revalidate_managed_admission,
+    )
+    policy, anchors, installed, reviewed = managed_admission_fixture
+    admission = admit_managed_update(installed, reviewed, policy, anchors,
+                                    reviewed_sha256=reviewed.package.release.sha256)
+    other_owner = MemoryAnchor(anchors.load())
+    other_installed = authenticate_installed_package(installed.path, policy, other_owner)
+    # Both are independently valid and semantically equal. They are different
+    # owner capabilities, so the existing review must not migrate between them.
+    assert other_installed == installed and other_installed is not installed
+    assert other_installed._store is other_owner and admission.installed._store is anchors
+    with pytest.raises(TrustError, match='admission boundary'):
+        replace(admission, installed=other_installed)
+    assert revalidate_managed_admission(admission).installed._store is anchors
+    explicit_other_review = admit_managed_update(
+        other_installed, reviewed, policy, other_owner,
+        reviewed_sha256=reviewed.package.release.sha256)
+    assert revalidate_managed_admission(explicit_other_review).installed._store is other_owner
+    other_owner.value = Anchor(3, reviewed.package.release.sha256, other_owner.load().max_utc)
+    with pytest.raises(TrustError, match='identity changed'):
+        revalidate_managed_admission(explicit_other_review)
+    assert revalidate_managed_admission(admission).installed._store is anchors
+    assert anchors.load() == installed.anchor
+
+
+def test_managed_admission_retains_exact_incoming_review_capability(managed_admission_fixture):
+    from carr_library.security.managed_setup import admit_managed_update, review_managed_package
+    policy, anchors, installed, reviewed = managed_admission_fixture
+    admission = admit_managed_update(installed, reviewed, policy, anchors,
+                                    reviewed_sha256=reviewed.package.release.sha256)
+    separate_review = review_managed_package(reviewed.package, policy)
+    assert separate_review == admission.incoming and separate_review is not admission.incoming
+    with pytest.raises(TrustError, match='admission boundary'):
+        replace(admission, incoming=separate_review)
+    assert admission.incoming.package is reviewed.package
