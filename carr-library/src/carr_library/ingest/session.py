@@ -30,6 +30,13 @@ def _identity(info):
     return info.st_dev, info.st_ino, info.st_mode, info.st_nlink, getattr(info, 'st_file_attributes', 0)
 
 
+def _directory_identity(info):
+    # Ordinary subdirectory creation changes a POSIX directory's link count.
+    # Its owned directory identity is the actual inode, mode and attributes;
+    # regular files still retain their independently checked single-link count.
+    return info.st_dev, info.st_ino, info.st_mode, getattr(info, 'st_file_attributes', 0)
+
+
 def _present(path):
     try:
         return regular(path)
@@ -53,7 +60,7 @@ class ImportSession:
         self.policy = effective_budget(budget)
         self.cancelled = cancelled
         self.root = local_path(app.root)
-        self._root_identity = _identity(regular(self.root, directory=True))
+        self._root_identity = _directory_identity(regular(self.root, directory=True))
         self._thread = threading.get_ident()
         self._active = True
         self._minimum_free = minimum_free
@@ -93,7 +100,7 @@ class ImportSession:
         # reused, never a stat result or a previous successful validation.
         for parent in reversed(self.root.parents):
             regular(parent, directory=True)
-        if _identity(regular(self.root, directory=True)) != self._root_identity:
+        if _directory_identity(regular(self.root, directory=True)) != self._root_identity:
             raise ValueError('The current import root was replaced.')
 
     def validate(self, app, workspace, budget):
@@ -208,12 +215,12 @@ class ImportSession:
             if path.parent != original_parent:
                 raise ValueError('Original accounting is outside this session.')
             if original_directory is None:
-                original_directory = _identity(regular(original_parent, directory=True))
+                original_directory = _directory_identity(regular(original_parent, directory=True))
             info = regular(path)
             if info.st_size != size or _identity(info) != identity:
                 raise ValueError('A newly retained original changed during this slice.')
         if (original_directory is not None
-                and _identity(regular(original_parent, directory=True)) != original_directory):
+                and _directory_identity(regular(original_parent, directory=True)) != original_directory):
             raise ValueError('The retained original directory changed during this accounting check.')
         growth += self._original_bytes
         growth += sum(size for _, size in self._pending_originals.values())

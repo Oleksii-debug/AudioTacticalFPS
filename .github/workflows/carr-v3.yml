@@ -1199,6 +1199,8 @@ jobs:
             if ($LASTEXITCODE -ne 0) { throw 'Actual native local translation approval controls failed.' }
             & $python -I -B -X utf8 scripts/windows_playback_queue_smoke.py --audio-evidence 'ci-v3-results/external-test-audio-binding.json' 2>&1 | Tee-Object 'ci-v3-results/native-playback-queue.txt'
             if ($LASTEXITCODE -ne 0) { throw 'Actual native playback queue controls failed.' }
+            & $python -I -B -X utf8 scripts/windows_backup_import_access_smoke.py 2>&1 | Tee-Object 'ci-v3-results/native-backup-import-access.txt'
+            if ($LASTEXITCODE -ne 0) { throw 'Actual native import continuation and full/incremental recovery controls failed.' }
             & $python -I -B -X utf8 scripts/windows_update_maintenance_smoke.py --report 'ci-v3-results/native-update-maintenance.json' 2>&1 | Tee-Object 'ci-v3-results/native-update-maintenance.txt'
             if ($LASTEXITCODE -ne 0) { throw 'Installed native verified download Pause/Resume and lifetime acceptance failed.' }
             & $python -I -B -X utf8 tests/ui/native_trust_status_smoke.py --native 2>&1 | Tee-Object 'ci-v3-results/native-trust-status.txt'

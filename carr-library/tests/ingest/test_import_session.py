@@ -472,3 +472,28 @@ def test_cancel_during_the_actual_last_sidecar_probe_is_seen_before_return(
         stopped = False
         assert owner.check() == asset.size
         assert target.read_bytes() == source.read_bytes()
+
+
+def test_real_child_directories_do_not_replace_the_current_root(library, tmp_path):
+    app, workspace = library
+    with module.import_session(app, workspace, _budget()) as owner:
+        before = app.root.lstat()
+        selected = [app.root / 'import-requests', app.root / 'import-progress']
+        assert all(not path.exists() for path in selected)
+        for path in selected:
+            path.mkdir()
+        after = app.root.lstat()
+        assert (after.st_dev, after.st_ino, after.st_mode) == (
+            before.st_dev, before.st_ino, before.st_mode)
+        # POSIX increases the root directory link count for genuine child
+        # directories; Windows may report the same count. Neither is replacement.
+        if module.os.name == 'posix':
+            assert after.st_nlink == before.st_nlink + len(selected)
+        assert owner.validate(app, workspace, owner.budget) is owner.storage
+        source, asset, target = _retain(app, owner, tmp_path, 17)
+        assert owner.check() == asset.size
+        for path in selected:
+            path.rmdir()
+        assert owner.check() == asset.size
+        assert target.read_bytes() == source.read_bytes()
+    assert app.root.lstat().st_ino == before.st_ino

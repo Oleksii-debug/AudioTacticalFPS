@@ -911,6 +911,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Installed local translation approval controls failed.' }
           & $python -I -B -X utf8 -c $nativeProbe (Resolve-Path scripts/windows_playback_queue_smoke.py).Path --audio-evidence 'ci-results/external-test-audio-binding.json' 2>&1 | Tee-Object 'ci-results/installed-playback-queue-native.txt'
           if ($LASTEXITCODE -ne 0) { throw 'Installed playback queue controls failed.' }
+          & $python -I -B -X utf8 -c $nativeProbe (Resolve-Path scripts/windows_backup_import_access_smoke.py).Path 2>&1 | Tee-Object 'ci-results/installed-backup-import-access-native.txt'
+          if ($LASTEXITCODE -ne 0) { throw 'Installed native import continuation and full/incremental recovery controls failed.' }
           $env:PYTEST_DISABLE_PLUGIN_AUTOLOAD = '1'
           $runInstalledTests = @'
           import atexit, ctypes, hashlib, importlib, json, os, pathlib, sys
