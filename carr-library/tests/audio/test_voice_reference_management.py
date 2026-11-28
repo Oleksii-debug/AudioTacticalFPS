@@ -240,7 +240,9 @@ def test_competing_destination_is_never_read_or_overwritten_after_owner_package_
     original_query = reference._query
     def competing(*args, **kwargs):
         result = original_query(*args, **kwargs)
-        target.write_bytes(b'new independent file')
+        # Create the independent competitor outside the product-open observer.
+        with original_open(target, 'xb') as stream:
+            stream.write(b'new independent file')
         return result
     monkeypatch.setattr(reference, '_query', competing)
     original_open = Path.open

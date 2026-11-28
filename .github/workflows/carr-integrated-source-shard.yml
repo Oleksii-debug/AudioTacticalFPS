@@ -1,0 +1,199 @@
+name: CARR required integrated source shard
+
+on:
+  workflow_call:
+    inputs:
+      shard:
+        description: Reviewed whole-suite partition, zero through three
+        required: true
+        type: number
+      expected_head:
+        description: Exact caller event source commit
+        required: true
+        type: string
+    outputs:
+      receipt:
+        description: Complete strict source receipt after all assigned suites
+        value: ${{ jobs.source.outputs.receipt }}
+
+permissions:
+  contents: read
+
+jobs:
+  source:
+    name: Required integrated source ${{ inputs.shard }} / Windows x64
+    runs-on: windows-2022
+    timeout-minutes: 90
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: carr-library
+    outputs:
+      receipt: ${{ steps.contracts.outputs.receipt }}
+    env:
+      PYTHONUTF8: '1'
+      PYTHONUNBUFFERED: '1'
+      PYTHONDONTWRITEBYTECODE: '1'
+      PIP_DISABLE_PIP_VERSION_CHECK: '1'
+      ORT_DISABLE_TELEMETRY: '1'
+      HF_HUB_OFFLINE: '1'
+      HF_HUB_DISABLE_TELEMETRY: '1'
+      HF_HUB_DISABLE_IMPLICIT_TOKEN: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      DO_NOT_TRACK: '1'
+      CARR_SOURCE_EXPECTED_HEAD: ${{ inputs.expected_head }}
+      CARR_SOURCE_CALLER_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+      CARR_SOURCE_SHARD: ${{ inputs.shard }}
+    steps:
+      - name: Check out the exact caller source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ inputs.expected_head }}
+          persist-credentials: false
+      - name: Set up native x64 CPython
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+          architecture: x64
+      - name: Require the exact caller and checked-out source
+        run: |
+          if ($env:CARR_SOURCE_EXPECTED_HEAD -cnotmatch '^[0-9a-f]{40}$' -or
+              $env:CARR_SOURCE_EXPECTED_HEAD -cne $env:CARR_SOURCE_CALLER_HEAD -or
+              $env:CARR_SOURCE_SHARD -cnotmatch '^[0-3]$') { throw 'The caller supplied a different source or shard.' }
+          $head = (& git rev-parse HEAD).Trim()
+          if ($LASTEXITCODE -ne 0 -or $head -cne $env:CARR_SOURCE_EXPECTED_HEAD) { throw 'Checkout did not select the exact event source.' }
+      - name: Install the actual desktop package in a fresh environment
+        id: desktop_runtime
+        timeout-minutes: 10
+        run: |
+          $environment = Join-Path $env:RUNNER_TEMP 'carr-windows-python'
+          python -m venv $environment
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $python = Join-Path $environment 'Scripts/python.exe'
+          "CARR_PYTHON=$python" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          New-Item -ItemType Directory -Force 'ci-results' | Out-Null
+          git rev-parse HEAD | Set-Content 'ci-results/tested-commit.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip install --only-binary=:all: --require-hashes -r packaging/windows-cp311.lock -r packaging/trusted-client.lock
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip install --only-binary=:all: pytest==9.0.2 reportlab==4.4.9 openpyxl==3.1.5
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip install --no-deps .
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip list --format=json | Set-Content 'ci-results/installed-packages.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -I -c "import json,platform,sqlite3,struct,sys,wx; assert sys.platform=='win32' and struct.calcsize('P')==8 and sys.version_info[:2]==(3,11); print(json.dumps(dict(python=sys.version,windows=platform.platform(),sqlite=sqlite3.sqlite_version,wx=wx.version())))" | Tee-Object 'ci-results/native-runtime.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+
+      - name: Match production dependencies before required source suites
+        id: desktop_dependencies
+        timeout-minutes: 10
+        run: |
+          & $env:CARR_PYTHON -m pip install --only-binary=:all: --require-hashes -r packaging/windows-semantic-cp311.lock
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $env:CARR_PYTHON -m pip check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $env:CARR_PYTHON -I -B -c "import importlib.metadata as m,json,pathlib,re; pins=dict(re.findall(r'^([A-Za-z0-9_.-]+)==([^\s]+)',pathlib.Path('packaging/windows-semantic-cp311.lock').read_text(),re.M)); actual={n:m.version(n) for n in pins}; assert len(pins)==51 and actual==pins; print(json.dumps(actual,sort_keys=True))" | Tee-Object 'ci-results/full-lock-source-inventory.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+
+      - name: Prepare the verified OCR engine before its required source regression
+        id: ocr_runtime
+        timeout-minutes: 10
+        run: |
+          $bundleWork = Join-Path $env:RUNNER_TEMP 'carr-bundle-ci'
+          New-Item -ItemType Directory -Force $bundleWork | Out-Null
+          & $env:CARR_PYTHON -m pip install --only-binary=:all: zstandard==0.25.0
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $ocr = Join-Path $bundleWork 'ocr'
+          $ocrSource = Join-Path $bundleWork 'ocr-corresponding-source.tar'
+          & $env:CARR_PYTHON packaging/prepare_windows_ocr.py --cache (Join-Path $bundleWork 'ocr-cache') --output $ocr --source-archive $ocrSource --download | Tee-Object 'ci-results/ocr-preparation.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          "CARR_CI_OCR_DIR=$ocr" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+
+      - name: Prepare verified audio before independent source acceptance
+        id: audio_runtime
+        timeout-minutes: 10
+        run: |
+          $bundleWork = Join-Path $env:RUNNER_TEMP 'carr-bundle-ci'
+          New-Item -ItemType Directory -Force $bundleWork | Out-Null
+          $audioInputs = Join-Path $bundleWork 'audio-inputs'
+          $audioRuntime = Join-Path $bundleWork 'reviewed-audio'
+          & $env:CARR_PYTHON packaging/acquire_audio_runtime.py --output $audioInputs --download | Tee-Object 'ci-results/audio-acquisition.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $audioLock = Get-Content packaging/audio-runtime/source-lock.json -Raw | ConvertFrom-Json
+          & $env:CARR_PYTHON packaging/prepare_audio_runtime.py --archive (Join-Path $audioInputs $audioLock.archive.name) --sources-dir $audioInputs --output $audioRuntime | Tee-Object 'ci-results/audio-preparation.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          "CARR_CI_AUDIO_DIR=$audioRuntime" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+
+      - name: Require every assigned whole suite and unchanged source
+        id: contracts
+        timeout-minutes: 60
+        run: |
+          $helper = 'scripts/check_integrated_source_shard.ps1'
+          $expectedBlob = '7422d46e6b48a6828101437654d789a7b595eb36'
+          $info = Get-Item -LiteralPath $helper -Force -ErrorAction Stop
+          if ($info.PSIsContainer -or ($info.Attributes -band [IO.FileAttributes]::ReparsePoint) -or $info.Length -gt 131072) { throw 'The source shard helper is not an ordinary bounded file.' }
+          $selectedBlob = (& git rev-parse 'HEAD:carr-library/scripts/check_integrated_source_shard.ps1').Trim()
+          if ($LASTEXITCODE -ne 0 -or $selectedBlob -cne $expectedBlob) { throw 'The source shard helper is not the reviewed HEAD object.' }
+          $actualBlob = (& git hash-object --no-filters -- $helper).Trim()
+          if ($LASTEXITCODE -ne 0 -or $actualBlob -cne $expectedBlob) { throw 'The source shard helper bytes differ from the reviewed object.' }
+          $helperHash = (Get-FileHash -LiteralPath $helper -Algorithm SHA256).Hash.ToLowerInvariant()
+          $helperStamp = @($info.Length, $info.CreationTimeUtc.Ticks, $info.LastWriteTimeUtc.Ticks)
+          $tokens = $null
+          $parseErrors = $null
+          [Management.Automation.Language.Parser]::ParseFile((Join-Path (Get-Location) $helper), [ref]$tokens, [ref]$parseErrors) | Out-Null
+          if ($parseErrors.Count -ne 0) { throw ('The native source-shard PowerShell parser refused the helper: ' + ($parseErrors.Message -join '; ')) }
+          $failure = $null
+          try {
+            & (Join-Path (Get-Location) $helper) -Shard ([int]$env:CARR_SOURCE_SHARD) -ExpectedHead $env:CARR_SOURCE_EXPECTED_HEAD
+          } catch {
+            $failure = $_
+          } finally {
+            $afterInfo = Get-Item -LiteralPath $helper -Force -ErrorAction Stop
+            if ($afterInfo.PSIsContainer -or ($afterInfo.Attributes -band [IO.FileAttributes]::ReparsePoint) -or
+                ($helperStamp -join ':') -cne (@($afterInfo.Length, $afterInfo.CreationTimeUtc.Ticks, $afterInfo.LastWriteTimeUtc.Ticks) -join ':') -or
+                (Get-FileHash -LiteralPath $helper -Algorithm SHA256).Hash.ToLowerInvariant() -cne $helperHash) { throw 'The reviewed source-shard helper changed during execution.' }
+          }
+          if ($null -ne $failure) { throw $failure }
+
+      - name: Retain only bounded source and prerequisite reports
+        if: always()
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $allowed = @(
+            'tested-commit.txt', 'installed-packages.json', 'native-runtime.json',
+            'full-lock-source-inventory.json', 'ocr-preparation.json',
+            'audio-acquisition.json', 'audio-preparation.json', 'integrated-tests.txt',
+            'source-inventory.json', 'source-before.json', 'source-after.json',
+            'source-shard.json'
+          )
+          $target = Join-Path $env:RUNNER_TEMP 'carr-required-source-evidence'
+          if (Test-Path -LiteralPath $target) { throw 'The source evidence destination must be new.' }
+          New-Item -ItemType Directory -Path $target | Out-Null
+          $total = 0L
+          foreach ($name in $allowed) {
+            $path = Join-Path 'ci-results' $name
+            if (-not (Test-Path -LiteralPath $path)) { continue }
+            $item = Get-Item -LiteralPath $path -Force -ErrorAction Stop
+            if ($item.PSIsContainer -or ($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -or $item.Length -gt 16MB) { throw 'A source report exceeds the closed text-only allowance.' }
+            $total += $item.Length
+            if ($total -gt 64MB) { throw 'The source reports exceed their total allowance.' }
+            $before = (Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash
+            Copy-Item -LiteralPath $path -Destination (Join-Path $target $name) -ErrorAction Stop
+            if ((Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash -cne $before -or
+                (Get-FileHash -LiteralPath (Join-Path $target $name) -Algorithm SHA256).Hash -cne $before) { throw 'A source evidence file changed during retention.' }
+          }
+      - name: Preserve required source evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: carr-required-source-${{ inputs.shard }}-${{ inputs.expected_head }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/carr-required-source-evidence/
+          if-no-files-found: warn
+          retention-days: 7

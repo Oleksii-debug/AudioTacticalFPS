@@ -1,0 +1,179 @@
+{
+  "schema": "resonance-composition-and-required-gates/1",
+  "created_utc": "2026-11-28T02:16:05Z",
+  "status": "ACCEPTED_STATIC_NOT_RUN",
+  "component": "Current whole source, installed bundle, V3 and saved-audio cleanup integration",
+  "base_head": "9c9fb4df953fc5aa406a06086e75cfddc677089c",
+  "base_tree": "69c8a3d2c64c884ec9a49a72ff43bedc2c376061",
+  "changes": [
+    {
+      "path": ".github/workflows/carr-windows.yml",
+      "before": "fc1a0828613971d825c2b8a8e6c486a15c6d7f84",
+      "after": "9079d65dc507078ec9557cea2fe74a2282ddf39b"
+    },
+    {
+      "path": ".github/workflows/carr-integrated-source-shard.yml",
+      "before": null,
+      "after": "8504868a65a1a64c0c670858235700f733020711"
+    },
+    {
+      "path": "carr-library/scripts/check_integrated_source_shard.ps1",
+      "before": null,
+      "after": "7422d46e6b48a6828101437654d789a7b595eb36"
+    },
+    {
+      "path": ".github/workflows/carr-v3.yml",
+      "before": "f6c0f8775a6da838d48fd862931197c256113d37",
+      "after": "07dd5a736bc9c17041ce5ff07983ab3bb12a2180"
+    },
+    {
+      "path": "carr-library/scripts/check_installed_bundle.py",
+      "before": "38bf6f7030350aa0165a2f9f40abd0b5ff48c1f9",
+      "after": "bff68448f9f120e02cf70c1ebee11a4958cdf005"
+    },
+    {
+      "path": "carr-library/packaging/build_windows_bundle.py",
+      "before": "5a80f0c5e615113c57912fcfa4a7d03e3e9813d6",
+      "after": "dbfa8e61add47e00596d85e98a887ff13425628a"
+    },
+    {
+      "path": "carr-library/scripts/windows_audio_player_smoke.py",
+      "before": "a388304961bb5d611f83f342d3f1badd8c0ff1b5",
+      "after": "cc68ddba234a396d0c8738a6ec49a57b7116e5f5"
+    },
+    {
+      "path": "carr-library/tests/ui/test_native_saved_audio_cleanup.py",
+      "before": null,
+      "after": "712167756982f5b728e7118603f70399efe18ec0"
+    },
+    {
+      "path": "carr-library/scripts/ci_native_saved_audio_cleanup.py",
+      "before": null,
+      "after": "3ab4d08e3b9d8269fe0741da1d87be956468a96f"
+    },
+    {
+      "path": ".github/workflows/carr-native-saved-audio-cleanup.yml",
+      "before": null,
+      "after": "7197de71f082fcb1f0212af1472b8622ae1bfe57"
+    },
+    {
+      "path": "carr-library/tests/audio/test_voice_reference_management.py",
+      "before": "e7c0f0829d9b15e2f8ee40021c9b445cb85ed2f2",
+      "after": "48da3169be41c3524ebd5af86e7af686450013a2"
+    },
+    {
+      "path": "carr-library/tests/storage/test_state_backup_portability.py",
+      "before": "b346d9eab3eb98627116228ac5b13c93e3283476",
+      "after": "27a9bf1ee349b48c557bd6f38f11f7ed15a99930"
+    },
+    {
+      "path": "carr-library/scripts/ci_voice_management_contracts.py",
+      "before": "4831ad3665997c3faa573cd132b1a8e3ee220381",
+      "after": "ac5d3b34a089b2f448a34f3868efeb6b00fa1e45"
+    },
+    {
+      "path": ".github/workflows/carr-voice-management.yml",
+      "before": "70fef77fe33be586bfd79e76f6ae0a22fd590944",
+      "after": "766fa06847a2d780cc7d8621811813b61ebe4909"
+    }
+  ],
+  "reviewed_chain": "d577714b6c9523fee6fef8b281e14f8a0e62998d",
+  "components": {
+    "required_source": "1adccf782b9ff6758e49dd05e2150d60d911e962",
+    "v3_installed_bundle": "6d3ebd9943b90458fdfc8863762bb408185dedbe",
+    "saved_audio": "30689f1599daf2aa5dbf92e2d9c385f2919b2661",
+    "saved_audio_focused_gate": "3bb050edad9eca3106c6fc5eba7d6ef60ae9c373",
+    "reference_competitor_fixture": "eb7dfcd02f4f693d6180009a7be52742bd1ee0d6",
+    "portable_state_fixture": "bbbe5ad7b749750566f828c4bd98f542a2b911ec",
+    "voice_pin_reconciliation": "bc1b158efac1cdc5f79508cff52a11c6f99ea1f0"
+  },
+  "source": {
+    "whole_suites": 472,
+    "unique": 472,
+    "partition_sizes": [
+      118,
+      118,
+      118,
+      118
+    ],
+    "required_all_four": true,
+    "maximum_simultaneous_child_suites_per_job": 3,
+    "academic_jobs": 1,
+    "default_suite_seconds": 600,
+    "only_reviewed_override": {
+      "tests/transcription/test_admission_boundaries.py": 900
+    },
+    "audited_count_paths": 189
+  },
+  "other_lanes": {
+    "fast_source_wholes": 165,
+    "v3_source_wholes": 202,
+    "v3_installed_wholes": 181,
+    "installed_bundle_wholes": 321,
+    "packaged_guides": 56
+  },
+  "native_saved_audio": {
+    "default_checks": 46,
+    "exact_installed_origins": 11,
+    "report_fields": 10,
+    "requires_mode": "full-playback",
+    "failure_cleanup": "PASS",
+    "separate_cleanup_mode_cannot_substitute": true
+  },
+  "runtime": {
+    "new_composition": "NOT_RUN",
+    "source": "NOT_RUN",
+    "installed": "NOT_RUN",
+    "native": "NOT_RUN"
+  },
+  "qualification": {
+    "real_engine_inference": "NOT_RUN",
+    "physical_audio": "NOT_RUN",
+    "audible_listening": "NOT_RUN",
+    "manual_nvda": "NOT_RUN",
+    "release": "NOT_DONE"
+  },
+  "refs_changed": false,
+  "preceding_actual_evidence": {
+    "converter_linux341": "50ffd70a9eb0b674e5d21e07f3b375663a6c510f",
+    "voice_linux494and_failure": "6bf406c78939ce10dec66409fea2186e3dac5db2",
+    "legacy_v3_final_phase_inventory": "69f69fc139d657bdb762a4f31d11a3ab36deeb34"
+  },
+  "saved_audio_focused": {
+    "source_cases": 13,
+    "isolated_installed_cases": 13,
+    "installed_origins": 20,
+    "required_native_observations": 15,
+    "required_mode": "failure-cleanup-only",
+    "independent_default_playback_observations": 46,
+    "default_timeout_seconds": 120,
+    "full_playback_must_retain_independent_exit": true,
+    "physical_audio_claim": false
+  },
+  "static_audit": {
+    "all_source_paths_present": true,
+    "whole_selector_uniqueness": 472,
+    "exact_partition_reconstruction": true,
+    "whole_count_contracts": 189,
+    "equal_overlaps": 3,
+    "all_current_cleanup_pins_match": true,
+    "reviewed_preimage_chains_match": true,
+    "ref_update": "NOT_YET",
+    "voice_pins": 67,
+    "voice_pin_inverse_and_peer": "ACCEPTED_STATIC_NOT_RUN",
+    "fixture_body_peers": "ACCEPTED_STATIC_NOT_RUN"
+  },
+  "publication_intent": {
+    "integration_pr": 173,
+    "branch": "carr/resonance-final-integration-20261127-5a9e",
+    "expected_head": "e7636ca3f9e6b7474145f6e1799bd19a135a3250",
+    "focused_voice_branch": "carr/ci-voice-management-final-20261128-5a9e",
+    "focused_voice_expected_head": "4ccb38169775cf515b0d2a0a0cbcb0683617b4dd",
+    "new_saved_audio_branch": "carr/ci-native-audio-cleanup-final-20261128-5a9e",
+    "force": false,
+    "canonical_branch": "UNCHANGED",
+    "automations": "UNCHANGED",
+    "unrelated_refs": "UNCHANGED",
+    "superseded_v3_evidence": "If normal same-PR concurrency supersedes e763, retain its completed and partial trace honestly; unfinished phase23 is not qualified."
+  }
+}

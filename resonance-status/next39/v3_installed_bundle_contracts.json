@@ -1,0 +1,464 @@
+{
+  "schema": "carr-gate-handoff/1",
+  "status": "STATIC_NOT_RUN",
+  "component": "Final shared installed and V3 contract union, saved-audio failure cleanup, and XLS reading-copy guide",
+  "files": [
+    {
+      "path": ".github/workflows/carr-v3.yml",
+      "before": "be8d027d73cfd0a8a4f70ae77312429ff37d827c",
+      "after": "07dd5a736bc9c17041ce5ff07983ab3bb12a2180",
+      "utf8_bytes": 476608
+    },
+    {
+      "path": "carr-library/scripts/check_installed_bundle.py",
+      "before": "7a1bc73c9d5fdd5d262d516ac273ae89e722372f",
+      "after": "bff68448f9f120e02cf70c1ebee11a4958cdf005",
+      "utf8_bytes": 186800
+    },
+    {
+      "path": "carr-library/packaging/build_windows_bundle.py",
+      "before": "ca044280a3bdd91832836111c5b6c5b467738bd2",
+      "after": "dbfa8e61add47e00596d85e98a887ff13425628a",
+      "utf8_bytes": 27880
+    }
+  ],
+  "dependencies": [
+    {
+      "component": "Prior accepted full-gate union",
+      "manifest": "d577714b6c9523fee6fef8b281e14f8a0e62998d"
+    },
+    {
+      "component": "Converter XLS opt-in and exact reader widget representation",
+      "manifest": "8829fe41fb8a4bc9bea4c2a5de80342cc31f46f6"
+    },
+    {
+      "component": "Reader verified raw handoff versus documented LF view",
+      "manifest": "69e5a73958e197915d9d29046b556cf4c7d41685"
+    },
+    {
+      "component": "Saved-audio owned failure cleanup and separate passive-only mode",
+      "manifest": "30689f1599daf2aa5dbf92e2d9c385f2919b2661"
+    }
+  ],
+  "whole_lanes": {
+    "v3_source": {
+      "before": 201,
+      "after": 202
+    },
+    "v3_installed": {
+      "before": 180,
+      "after": 181
+    },
+    "main_installed": {
+      "before": 320,
+      "after": 321
+    }
+  },
+  "exact_whole_contracts": [
+    {
+      "path": "carr-library/tests/audio/test_voice_publication_lifetime.py",
+      "blob": "1f71856039c5d3e94312714f020021110f1e9b84",
+      "before": 9,
+      "after": 15,
+      "functions": [
+        "test_exact_package_publication_uses_actual_create_only_link_and_receipt",
+        "test_existing_competitor_is_never_read_overwritten_or_mislabeled_as_our_commit",
+        "test_same_size_write_during_actual_fsync_fails_before_link",
+        "test_verified_actual_link_retains_commit_truth_after_late_control",
+        "test_real_pending_child_keeps_stage_and_resource_lease_until_exact_quiescence",
+        "test_package_destination_capture_never_opens_an_existing_competitor",
+        "test_package_destination_capture_rechecks_original_route_after_callback",
+        "test_package_destination_preserves_requested_route_through_actual_publication",
+        "test_package_destination_precancellation_performs_no_path_inspection"
+      ]
+    },
+    {
+      "path": "carr-library/tests/integrations/test_dordiai_owner_lease.py",
+      "blob": "282bc60cf1d94ce29a32602a6ead0440def271e8",
+      "before": 22,
+      "after": 28,
+      "functions": [
+        "test_legacy_enumeration_keeps_original_ids_and_creates_no_owner_namespace",
+        "test_unbound_adapter_never_falls_back_for_any_owned_profile",
+        "test_package_stream_holds_actual_owner_lock_until_child_is_quiescent",
+        "test_actual_pending_child_cleanup_keeps_package_lease_until_native_retry_finishes",
+        "test_first_management_namespace_appearance_retires_existing_legacy_worker",
+        "test_index_mutation_after_pcm_revokes_current_stream_before_another_chunk",
+        "test_same_bytes_do_not_reauthorize_replaced_owner_scope",
+        "test_owner_wait_cancellation_starts_no_probe_and_never_reclaims_the_other_lease",
+        "test_unmanaged_factory_still_checks_current_library_configuration_before_cache",
+        "test_authority_metadata_cannot_escape_its_active_worker_scope",
+        "test_explicit_legacy_state_scope_cannot_rebind_to_same_byte_directory"
+      ]
+    },
+    {
+      "path": "carr-library/tests/ui/test_native_conversion_diagnostics.py",
+      "blob": "fbf50b760bd2f636196845291f51dd2efd1db9b6",
+      "before": 13,
+      "after": 23,
+      "functions": [
+        "test_native_conversion_observer_forwards_actual_host_call_and_admission",
+        "test_native_conversion_observer_returns_exact_result_on_actual_worker",
+        "test_native_conversion_observer_preserves_original_worker_error_and_bounds_diagnostic",
+        "test_native_conversion_observer_preserves_original_admission_error",
+        "test_native_conversion_cleanup_retains_primary_failure_and_checks_remaining_owners",
+        "test_native_conversion_optional_diagnostic_cannot_replace_actual_admission",
+        "test_native_conversion_cleanup_predicate_failure_cannot_mask_primary_or_stop_later_checks",
+        "test_native_conversion_reader_observer_preserves_exact_handoff_and_outcome",
+        "test_native_conversion_text_diagnostic_bounds_and_distinguishes_native_line_endings",
+        "test_native_conversion_reader_lf_view_keeps_exact_verified_source_and_saved_draft",
+        "test_native_conversion_reader_lf_contract_refuses_every_unreviewed_change"
+      ]
+    },
+    {
+      "path": "carr-library/tests/extract/test_document_formats_xml.py",
+      "blob": "879d73e197c4b77f7fed9d536e7fcd2bcd7a4b33",
+      "before": 114,
+      "after": 151,
+      "functions": [
+        "test_inert_office_converter_containers_preserve_all_surrounding_reading_text",
+        "test_converter_container_support_never_silently_drops_unknown_text_or_controls",
+        "test_real_supported_document_order_source_hash_and_unverified_locators",
+        "test_fb2_preserves_decomposed_unicode_and_includes_authored_note_body",
+        "test_fictionbook_container_text_cannot_be_silently_dropped",
+        "test_fb3_does_not_promote_paper_page_metadata_or_image_alt_to_quote_text",
+        "test_fb3_declared_primary_body_cannot_be_missing_ambiguous_external_or_different",
+        "test_fb3_unknown_or_clipped_content_fails_closed",
+        "test_odf_preserves_cell_repeats_and_logical_coordinates",
+        "test_empty_spreadsheet_repeats_are_not_expanded_to_records",
+        "test_nonempty_repeat_amplification_is_rejected",
+        "test_odf_formula_and_hidden_rows_are_explicit_omissions",
+        "test_odf_matrix_formula_dependents_never_become_literal_source_cells",
+        "test_hidden_odf_column_group_cannot_expose_hidden_cells",
+        "test_odf_foreign_or_raw_body_text_cannot_be_silently_dropped",
+        "test_hidden_odf_group_cannot_shift_following_logical_row_numbers",
+        "test_supported_hidden_rows_still_advance_repeated_row_coordinates",
+        "test_inherited_table_visibility_never_exposes_hidden_cell_text",
+        "test_odf_unsupported_visibility_changes_and_dynamic_fields_require_review",
+        "test_odf_style_hidden_text_is_not_silently_imported",
+        "test_odf_separator_cannot_silently_discard_embedded_source",
+        "test_odf_encryption_and_active_scripts_are_rejected",
+        "test_pptx_hidden_slides_are_omitted_and_stored_slide_order_retained",
+        "test_pptx_field_and_hidden_shape_rejected",
+        "test_pptx_text_value_nested_source_fails_closed",
+        "test_pptx_external_primary_slide_is_not_loaded",
+        "test_xlsx_real_openpyxl_document_and_literal_unicode",
+        "test_xlsx_shared_strings_rich_text_and_formula_cache_omissions",
+        "test_xlsx_ranged_formula_dependents_are_not_mislabeled_as_literal_values",
+        "test_xlsx_text_and_value_elements_cannot_silently_drop_nested_source",
+        "test_xlsx_hidden_rows_columns_omitted_without_large_range_expansion",
+        "test_xlsx_bad_coordinates_order_and_shared_strings_are_rejected",
+        "test_xlsx_custom_hidden_format_does_not_leak_values",
+        "test_unsafe_zip_member_is_rejected_for_every_container",
+        "test_dtd_entity_is_rejected_without_private_payload_in_error",
+        "test_xml_depth_is_bounded_during_parse",
+        "test_invalid_or_exhausted_budgets_are_rejected",
+        "test_invalid_or_unsupported_format_is_a_controlled_failure",
+        "test_cancellation_inside_real_xml_parse_and_retry",
+        "test_deadline_inside_real_parse_uses_shared_absolute_budget",
+        "test_record_limit_and_empty_visible_content_rejected",
+        "test_empty_disabled_odf_master_header_footer_preserves_exact_visible_sheet",
+        "test_disabled_odf_header_exception_never_admits_hidden_or_misplaced_content",
+        "test_empty_disabled_header_admission_keeps_cancellation_and_full_visibility_scan",
+        "test_selected_xls_twelve_observed_disabled_templates_preserve_exact_cells_and_warning",
+        "test_selected_xls_option_admits_only_inactive_master_page_decoration_names",
+        "test_selected_xls_inactive_template_option_keeps_closed_structure_and_placement",
+        "test_selected_xls_omission_keeps_global_active_hidden_and_inherited_visibility_checks",
+        "test_selected_xls_inactive_template_has_an_independent_finite_node_bound",
+        "test_selected_xls_template_admission_and_following_global_scan_remain_cancellable",
+        "test_selected_xls_option_is_strictly_typed_and_never_enables_another_format"
+      ]
+    },
+    {
+      "path": "carr-library/tests/conversion/test_office_admission.py",
+      "blob": "62266cf4ef3fd2acd22b3f5fa8984dcf3a6e8fa0",
+      "before": 19,
+      "after": 24,
+      "functions": [
+        "test_selected_inventory_checks_fixed_installed_filter_without_executing",
+        "test_snapshot_rechecks_earlier_component_after_last_hash",
+        "test_worker_admission_refuses_changed_or_incomplete_inventory",
+        "test_fixed_adapter_rejects_false_format_before_runtime_admission",
+        "test_expired_deadline_never_spawns_a_native_process",
+        "test_native_launch_keeps_existing_owner_and_scrubs_unselected_configuration",
+        "test_staging_budget_and_lookup_failures_cannot_report_complete",
+        "test_profile_is_per_operation_and_disables_active_content_and_external_updates",
+        "test_fixed_xls_route_alone_selects_inactive_page_omission_with_real_intermediate_parser"
+      ]
+    },
+    {
+      "path": "carr-library/tests/ui/test_native_saved_audio_cleanup.py",
+      "blob": "712167756982f5b728e7118603f70399efe18ec0",
+      "before": null,
+      "after": 13,
+      "functions": [
+        "test_native_saved_queue_failure_always_drains_real_owner_and_shared_executor",
+        "test_native_saved_queue_unwind_closes_only_one_recorded_running_modal_per_turn",
+        "test_native_saved_queue_unwind_refuses_unowned_or_inactive_native_state",
+        "test_native_saved_queue_cleanup_keeps_primary_failure_and_continues_all_obligations",
+        "test_native_saved_queue_cleanup_only_does_not_qualify_or_bypass_default_playback"
+      ]
+    }
+  ],
+  "companion_added": {
+    "path": "carr-library/scripts/windows_audio_player_smoke.py",
+    "blob": "cc68ddba234a396d0c8738a6ec49a57b7116e5f5",
+    "copy_and_hash_checked": true,
+    "source_and_installed_required": true
+  },
+  "existing_converter_companion": {
+    "path": "carr-library/scripts/windows_document_conversion_smoke.py",
+    "blob": "e430ecd1acf1ad550f59fb0a8a656414ddded1fd",
+    "copy_and_hash_required_retained": true
+  },
+  "native_saved_audio": {
+    "command": "python -I -B scripts/windows_audio_player_smoke.py --installed",
+    "mode": "full-playback",
+    "required_checks": [
+      "actual keyboard Space",
+      "native file chooser Enter",
+      "standalone opens without a source or native sound",
+      "actual file picker order and original hashes",
+      "review is passive",
+      "queue selection is silent",
+      "stopped live setting does not open a device",
+      "same canonical player owns bounded native output",
+      "actual pause is stable and disarms queue advancement",
+      "independent handles refer to the same Windows output",
+      "read independent owned output level",
+      "read muted owned output level",
+      "read unaffected independent output level",
+      "live mute and balance preserve volume and other player",
+      "live paused controls never resume audio",
+      "unmute retains reviewed native level",
+      "actual unmuted stereo balance matches the owned native handle",
+      "actual queue transition keeps levels and exact next file",
+      "Stop closes owned native output and cancels queue",
+      "native reorder is passive",
+      "silent original-frame cursor before save",
+      "actual Ctrl+S down",
+      "actual Ctrl+S character",
+      "actual Ctrl+S up",
+      "Ctrl+S durably saved order and exact original-frame cursor",
+      "restart loads passive metadata without opening audio",
+      "explicit review restores original cursor and settings without autoplay",
+      "one stable native command without a conflicting default shortcut",
+      "native modal close acknowledges player ownership",
+      "original PCM remains exact after live controls",
+      "closed source handle is released",
+      "saved queue reopens after original files moved",
+      "all installed queue sources stay exact after native execution",
+      "controlled worker failure closes only its owned passive playback modal",
+      "actual host Close drains saved playback owners and the existing worker",
+      "exact installed player module: carr_library.speech._wave_output",
+      "exact installed player module: carr_library.speech.player",
+      "exact installed player module: carr_library.speech.playlist",
+      "exact installed player module: carr_library.speech.playback_devices",
+      "exact installed player module: carr_library.ui.audio_playback",
+      "exact installed player module: carr_library.ui.reader_playback",
+      "exact installed player module: carr_library.ui.desktop_app",
+      "exact installed player module: carr_library.studio.clips",
+      "exact installed player module: carr_library.ui.save_all",
+      "exact installed player module: carr_library.operations.broker",
+      "exact installed player module: carr_library.backup_playback_queue"
+    ],
+    "required_count": 46,
+    "installed_origins": [
+      "carr_library.speech._wave_output",
+      "carr_library.speech.player",
+      "carr_library.speech.playlist",
+      "carr_library.speech.playback_devices",
+      "carr_library.ui.audio_playback",
+      "carr_library.ui.reader_playback",
+      "carr_library.ui.desktop_app",
+      "carr_library.studio.clips",
+      "carr_library.ui.save_all",
+      "carr_library.operations.broker",
+      "carr_library.backup_playback_queue"
+    ],
+    "origin_count": 11,
+    "required_fields": {
+      "status": "PASS",
+      "mode": "full-playback",
+      "installed_modules": "PASS",
+      "failure_cleanup": "PASS",
+      "actual_windows_waveout": "PASS",
+      "actual_native_queue_controls": "PASS",
+      "instance_volume_isolation": "PASS",
+      "physical_device": "NOT_RUN",
+      "audible_listening": "NOT_RUN",
+      "nvda": "NOT_RUN"
+    },
+    "cleanup_only_is_not_default_qualification": true
+  },
+  "guide": {
+    "path": "carr-library/docs/SELECTED_XLS_READING_COPY.md",
+    "blob": "7329d4a6da1d4d6f234582915b362ca8d5420666",
+    "before_count": 55,
+    "after_count": 56,
+    "all_prior_names_and_order_preserved": true
+  },
+  "duplicate_map_correction": {
+    "path": ".github/workflows/carr-v3.yml",
+    "map": "$formatExpected",
+    "suite": "tests/studio/test_publishing_boundaries.py",
+    "before": 15,
+    "after": 19,
+    "assertion_preserved": true,
+    "other_publication_maps_already_19": true,
+    "reason": "The prior additive inventory review missed this pre-existing duplicate stale expectation. The established unchanged whole-module count is 19."
+  },
+  "static_audit": {
+    "exact_readback": true,
+    "full_inverse_reconstruction": [
+      {
+        "kind": "v3",
+        "exact": true,
+        "steps": [
+          "native queue required",
+          "native queue fields",
+          "duplicate $formatExpected publishing boundaries",
+          "publication source command",
+          "$completedFeatureCounts",
+          "completed_feature_expected",
+          "reviewed_feature_cases",
+          "reviewed_fixture_paths",
+          "completion_suites",
+          "suites"
+        ]
+      },
+      {
+        "kind": "installed",
+        "exact": true,
+        "steps": [
+          "completed_feature_expected",
+          "reviewed_feature_cases",
+          "reviewed_fixture_paths",
+          "completion_suites",
+          "contents_suites"
+        ]
+      },
+      {
+        "kind": "builder",
+        "exact": true,
+        "steps": [
+          "USER_GUIDES"
+        ]
+      }
+    ],
+    "structural": [
+      {
+        "kind": "v3",
+        "lists": {
+          "suites": {
+            "old": 180,
+            "new": 181,
+            "added": [
+              "tests/ui/test_native_saved_audio_cleanup.py"
+            ]
+          },
+          "completion_suites": {
+            "old": 152,
+            "new": 153,
+            "added": [
+              "tests/ui/test_native_saved_audio_cleanup.py"
+            ]
+          },
+          "reviewed_fixture_paths": {
+            "old": 48,
+            "new": 49,
+            "added": [
+              "scripts/windows_audio_player_smoke.py"
+            ]
+          }
+        },
+        "mapKeys": [
+          119,
+          120
+        ],
+        "flatKeys": [
+          126,
+          127
+        ],
+        "oldFunctionsPreserved": true,
+        "rowsExact": true
+      },
+      {
+        "kind": "installed",
+        "lists": {
+          "contents_suites": {
+            "old": 320,
+            "new": 321,
+            "added": [
+              "tests/ui/test_native_saved_audio_cleanup.py"
+            ]
+          },
+          "completion_suites": {
+            "old": 186,
+            "new": 187,
+            "added": [
+              "tests/ui/test_native_saved_audio_cleanup.py"
+            ]
+          },
+          "reviewed_fixture_paths": {
+            "old": 49,
+            "new": 50,
+            "added": [
+              "scripts/windows_audio_player_smoke.py"
+            ]
+          }
+        },
+        "mapKeys": [
+          143,
+          144
+        ],
+        "flatKeys": [
+          146,
+          147
+        ],
+        "oldFunctionsPreserved": true,
+        "rowsExact": true
+      },
+      {
+        "sourceWhole": 202,
+        "sourceWholeDistinct": true,
+        "earlyRecoveryByteIdentical": true,
+        "duplicateFormatExpected": 19,
+        "guides": [
+          55,
+          56
+        ]
+      }
+    ],
+    "native": {
+      "fieldsExact": true,
+      "required46Exact": true,
+      "origins11Exact": true,
+      "defaultInvocationUnchanged": true,
+      "sizes": {
+        "final_global_v3_draft": 476608,
+        "final_global_installed_draft": 186800,
+        "final_global_builder_draft": 27880
+      }
+    },
+    "no_prior_selector_or_function_removal": true,
+    "early_v3_recovery_block_byte_identical": true,
+    "no_main_or_source_shard_edits": true,
+    "no_changes_to_child_deadlines_native_watchdogs_firewall_or_artifact_policies": true,
+    "workflow_utf8_within_500000_bytes": true
+  },
+  "review": {
+    "peer": "/root/progress_completion",
+    "status": "ACCEPTED_STATIC_NOT_RUN",
+    "scope": "Every reviewed_feature_cases occurrence, six whole contracts with exact source function inventories, prior selector preservation, copied and hashed native companion, exact default46/11 and ten fields, duplicate-map correction, sole guide addition.",
+    "runtime_claim": false
+  },
+  "runtime": {
+    "parser": "NOT_RUN",
+    "source": "NOT_RUN",
+    "installed": "NOT_RUN",
+    "native": "NOT_RUN"
+  },
+  "refs_changed": false,
+  "created_utc": "2026-11-28 02:03:01 UTC"
+}

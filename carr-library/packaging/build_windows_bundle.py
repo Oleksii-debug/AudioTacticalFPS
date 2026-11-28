@@ -66,6 +66,9 @@ USER_GUIDES = (
     "GOOGLE_OAUTH_RENEWAL.md",
     "GOOGLE_OAUTH_NATIVE_VALIDATION.md",
     "backup_capacity.md",
+    "VOICE_PACKAGE_MANAGEMENT.md",
+    "DORDIAI_MANAGED_AUTHORITY.md",
+    "SELECTED_XLS_READING_COPY.md",
 )
 TAGS = set(cpython_tags((3, 11), abis=["cp311"], platforms=["win_amd64"]))
 TAGS.update(compatible_tags((3, 11), interpreter="cp311", platforms=["win_amd64"]))

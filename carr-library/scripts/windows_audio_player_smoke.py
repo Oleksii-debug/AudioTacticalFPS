@@ -22,6 +22,8 @@ import wave
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--installed', action='store_true')
+    parser.add_argument('--failure-cleanup-only', action='store_true',
+                        help='Prove only controlled passive-owner failure cleanup; playback stays NOT_RUN.')
     options = parser.parse_args()
     if os.name != 'nt':
         raise RuntimeError('This probe requires actual Windows playback and its interactive desktop.')
@@ -36,6 +38,8 @@ def main():
     from carr_library import backup_playback_queue
 
     checks, errors, destroyed = [], [], []
+    owned_modals, playback_owners, scheduled = [], [], []
+    cleanup_state = {'started': False, 'worker_drained': False}
     def check(label, value):
         if not value:
             raise AssertionError(label)
@@ -56,14 +60,57 @@ def main():
                   actual.is_relative_to(installed) and not actual.is_relative_to(checkout)
                   and identities[module.__name__] == sha256(expected.read_bytes()).hexdigest())
 
+    def cleanup_step(label, operation):
+        try:
+            operation()
+            return True
+        except BaseException:
+            detail = label + ':\n' + traceback.format_exc()
+            errors.append(detail)
+            try:
+                print('FAIL: saved playback cleanup ' + json.dumps(detail[:8192], ensure_ascii=True), flush=True)
+            except Exception:
+                pass  # A failed diagnostic stream must not abandon later owners.
+            return False
+
+    def schedule(delay, callback):
+        timer = wx.CallLater(delay, callback)
+        scheduled.append(timer)
+        return timer
+
+    def own_modal(window):
+        loop = wx.EventLoopBase.GetActive()
+        if (window.GetParent() is not frame or not window.IsModal()
+                or loop is None or loop.IsMain() or not loop.IsRunning()):
+            raise AssertionError('Playback cleanup requires its actual owned running modal.')
+        handle = int(window.GetHandle())
+        if not any(item[0] is window and item[1] == handle for item in owned_modals):
+            owned_modals.append((window, handle, loop))
+        owner = frame._playback_owner
+        if owner is not None and not any(value is owner for value in playback_owners):
+            playback_owners.append(owner)
+
+    def unwind():
+        # A suspended parent loop must not be ended while its child is active.
+        for window, handle, loop in reversed(owned_modals):
+            try:
+                eligible = (user32.IsWindow(handle) and int(window.GetHandle()) == handle
+                            and window.IsModal() and loop.IsRunning() and not loop.IsMain())
+            except RuntimeError:
+                continue  # A recorded native dialog has already been destroyed.
+            if eligible:
+                if cleanup_step('owned playback modal', lambda: window.EndModal(wx.ID_CANCEL)):
+                    wx.CallAfter(unwind)
+                return
+
+    def fail():
+        errors.append(traceback.format_exc())
+        wx.CallAfter(unwind)
+
     class App(wx.App):
         def OnExceptionInMainLoop(self):
-            errors.append(traceback.format_exc())
-            for window in wx.GetTopLevelWindows():
-                if isinstance(window, wx.Dialog) and window.IsModal():
-                    window.EndModal(wx.ID_CANCEL)
-            self.ExitMainLoop()
-            return False
+            fail()
+            return True
     app = App(False)
     app.SetExitOnFrameDelete(False)
     simulator = wx.UIActionSimulator()
@@ -72,6 +119,8 @@ def main():
     user32.SetForegroundWindow.restype = wintypes.BOOL
     user32.GetForegroundWindow.argtypes = ()
     user32.GetForegroundWindow.restype = wintypes.HWND
+    user32.IsWindow.argtypes = (wintypes.HWND,)
+    user32.IsWindow.restype = wintypes.BOOL
 
     def pump(predicate, label, timeout=12, *, allow_errors=False):
         deadline = time.monotonic() + timeout
@@ -102,6 +151,74 @@ def main():
         check('actual keyboard Space', simulator.Char(wx.WXK_SPACE))
         settle()
 
+    def observe_close(event, **values):
+        try:
+            print('SAVED_PLAYBACK_HOST_CLOSE: ' + json.dumps(
+                {'event': event, **values}, ensure_ascii=True), flush=True)
+        except Exception:
+            pass  # Observation cannot change a Close result or cleanup ordering.
+
+    def close_host():
+        host_cancel.set()
+        if not user32.IsWindow(host_handle):
+            return
+        pump(lambda: not frame.working, 'Failure-path playlist review cleanup', allow_errors=True)
+        before = {'working': bool(frame.working), 'busy': bool(frame.busy),
+                  'closing': bool(frame._closing), 'main_loop': bool(app.IsMainLoopRunning()),
+                  'destroy_event_seen': bool(destroyed)}
+        try:
+            before['status'] = frame.status.GetValue()[:2048]
+        except Exception as error:
+            before['status_error'] = type(error).__name__[:64]
+        accepted = bool(frame.Close())
+        observe_close('requested', accepted=accepted, before=before,
+                      native_window_present=bool(user32.IsWindow(host_handle)))
+        if not accepted:
+            raise RuntimeError('The actual desktop refused ordinary Close; its owners remain retained.')
+        try:
+            pump(lambda: not user32.IsWindow(host_handle),
+                 'Failure-path desktop close', allow_errors=True)
+        finally:
+            observe_close('settled', native_window_present=bool(user32.IsWindow(host_handle)),
+                          destroy_event_seen=bool(destroyed))
+
+    def finish_host(*, exit_loop=False):
+        # Preserve the original failure and attempt every independent owner,
+        # including the retained executor even if ordinary Close is refused.
+        if not cleanup_state['started']:
+            cleanup_state['started'] = True
+            for timer in scheduled:
+                cleanup_step('pending probe callback', timer.Stop)
+            cleanup_step('host cancellation', host_cancel.set)
+            cleanup_step('independent WavePlayer', other.close)
+            for owner in playback_owners:
+                cleanup_step('standalone PlaybackOwner', owner.close)
+            close_ok = cleanup_step('actual desktop Close', close_host)
+            def drain():
+                executor.shutdown(wait=True, cancel_futures=True)
+                cleanup_state['worker_drained'] = True
+            drained = cleanup_step('existing desktop executor', drain)
+            cleanup_step('native ownership acknowledgement', lambda: check(
+                'actual host Close drains saved playback owners and the existing worker',
+                close_ok and drained and cleanup_state['worker_drained']
+                and not user32.IsWindow(host_handle) and not executor.cleanup_failures
+                and not _wave_output._UNRELEASED_OUTPUTS
+                and all(owner.silence_confirmed for owner in playback_owners)))
+        if exit_loop:
+            loop = wx.EventLoopBase.GetActive()
+            if loop is not None and loop.IsMain() and loop.IsRunning():
+                app.ExitMainLoop()
+
+    def result_report():
+        playback = 'NOT_RUN' if options.failure_cleanup_only else 'PASS'
+        return {'status': 'PASS', 'checks': checks, 'source_identity': identities,
+            'installed_modules': 'PASS' if options.installed else 'NOT_RUN',
+            'mode': 'failure-cleanup-only' if options.failure_cleanup_only else 'full-playback',
+            'failure_cleanup': 'PASS',
+            'actual_windows_waveout': playback, 'actual_native_queue_controls': playback,
+            'instance_volume_isolation': playback, 'physical_device': 'NOT_RUN',
+            'audible_listening': 'NOT_RUN', 'nvda': 'NOT_RUN'}
+
     with TemporaryDirectory(prefix='resonance-playlist-native-') as temporary:
         root = Path(temporary)
         files = []
@@ -117,6 +234,7 @@ def main():
         library.create_workspace('Native playlist acceptance')
         frame = desktop_app.DesktopFrame(library)
         executor = frame.executor
+        host_handle, host_cancel = int(frame.GetHandle()), frame.cancel_event
         frame.Bind(wx.EVT_WINDOW_DESTROY,
             lambda event: (destroyed.append(True) if event.GetEventObject() is frame else None, event.Skip()))
         original_picker = wx.FileDialog
@@ -132,14 +250,16 @@ def main():
             dialog.SetPath(str(target))
             def accept():
                 check('native file chooser Enter', simulator.Char(wx.WXK_RETURN))
-            wx.CallLater(250, accept)
+            schedule(250, accept)
             return dialog
 
         def controls():
             try:
                 popup, = [window for window in wx.GetTopLevelWindows()
                            if isinstance(window, wx.Dialog) and window.IsModal()
+                           and window.GetParent() is frame
                            and window.GetTitle() == 'Audio playback and saved playlist']
+                own_modal(popup)
                 owner = frame._playback_owner
                 current = owner.player
                 check('standalone opens without a source or native sound',
@@ -243,16 +363,15 @@ def main():
                       and [item.label for item in saved.items] == [files[1].name, files[0].name])
                 press(named(popup, 'Close playback controls'))
             except Exception:
-                errors.append(traceback.format_exc())
-                for window in wx.GetTopLevelWindows():
-                    if isinstance(window, wx.Dialog) and window.IsModal():
-                        window.EndModal(wx.ID_CANCEL)
+                fail()
 
         def recovery_controls():
             try:
                 popup, = [window for window in wx.GetTopLevelWindows()
                            if isinstance(window, wx.Dialog) and window.IsModal()
+                           and window.GetParent() is frame
                            and window.GetTitle() == 'Audio playback and saved playlist']
+                own_modal(popup)
                 owner = frame._playback_owner
                 current = owner.player
                 check('restart loads passive metadata without opening audio',
@@ -269,20 +388,55 @@ def main():
                       and [item.display_name for item in current.playlist] == [files[1].name, files[0].name])
                 press(named(popup, 'Close playback controls'))
             except Exception:
-                errors.append(traceback.format_exc())
-                for window in wx.GetTopLevelWindows():
-                    if isinstance(window, wx.Dialog) and window.IsModal():
-                        window.EndModal(wx.ID_CANCEL)
+                fail()
+
+        controlled_failure = {'error': RuntimeError('Controlled passive playback worker failure.')}
+
+        def failure_controls():
+            try:
+                popup, = [window for window in wx.GetTopLevelWindows()
+                           if isinstance(window, wx.Dialog) and window.IsModal()
+                           and window.GetParent() is frame
+                           and window.GetTitle() == 'Audio playback and saved playlist']
+                own_modal(popup)
+                controlled_failure['owner'] = frame._playback_owner
+                def work():
+                    raise controlled_failure['error']
+                def failed(error):
+                    controlled_failure['observed'] = error
+                    wx.CallAfter(unwind)
+                future = frame.run_job('Controlled passive playback worker failure', work, failed=failed)
+                if future is None:
+                    raise AssertionError('The controlled worker failure was not admitted.')
+                controlled_failure['future'] = future
+            except Exception:
+                fail()
 
         def scenario():
             try:
                 wx.FileDialog = picker
-                wx.CallLater(100, controls)
                 specification = frame.keyboard_commands.registry.get('audio.playback')
                 item = frame.keyboard_commands.bindings['audio.playback'].item
                 check('one stable native command without a conflicting default shortcut',
                       specification.command_id == 'audio.playback'
                       and specification.context == 'main' and specification.default_shortcut == '')
+                schedule(100, failure_controls)
+                frame.GetEventHandler().ProcessEvent(wx.CommandEvent(wx.EVT_MENU.typeId, item.GetId()))
+                if errors:
+                    raise RuntimeError('\n'.join(errors))
+                observed_owner = controlled_failure['owner']
+                check('controlled worker failure closes only its owned passive playback modal',
+                      controlled_failure.get('observed') is controlled_failure['error']
+                      and controlled_failure['future'].done()
+                      and controlled_failure['future'].exception() is controlled_failure['error']
+                      and observed_owner.closed and observed_owner.silence_confirmed
+                      and frame._playback_owner is None and not _wave_output._UNRELEASED_OUTPUTS
+                      and observed_owner.player.path is None and not frame.working
+                      and frame.executor is executor and not frame._closing
+                      and user32.IsWindow(host_handle))
+                if options.failure_cleanup_only:
+                    return  # The same finally must still Close and drain the actual host.
+                schedule(100, controls)
                 frame.GetEventHandler().ProcessEvent(wx.CommandEvent(wx.EVT_MENU.typeId, item.GetId()))
                 if errors:
                     raise RuntimeError('\n'.join(errors))
@@ -293,48 +447,37 @@ def main():
                     renamed = path.with_name('Closed ' + path.name)
                     path.rename(renamed)
                     check('closed source handle is released', renamed.is_file())
-                wx.CallLater(100, recovery_controls)
+                schedule(100, recovery_controls)
                 frame.GetEventHandler().ProcessEvent(wx.CommandEvent(wx.EVT_MENU.typeId, item.GetId()))
                 if errors:
                     raise RuntimeError('\n'.join(errors))
                 check('saved queue reopens after original files moved', frame._playback_owner is None
                       and not _wave_output._UNRELEASED_OUTPUTS)
-                frame.Close()
-                pump(lambda: bool(destroyed), 'Desktop did not acknowledge native Close')
             except Exception:
                 errors.append(traceback.format_exc())
             finally:
-                app.ExitMainLoop()
+                # Close/drain before leaving the original main loop, on both
+                # success and failure. The captured HWND is the acknowledgement.
+                finish_host(exit_loop=True)
 
         try:
             frame.Show()
             app.SetTopWindow(frame)
             wx.CallAfter(scenario)
             app.MainLoop()
-            if errors:
-                raise RuntimeError('\n'.join(errors))
         finally:
-            wx.FileDialog = original_picker
-            other.close()
-            owner = getattr(frame, '_playback_owner', None)
-            if owner is not None:
-                owner.close()
-            if not destroyed:
-                frame.cancel_event.set()
-                pump(lambda: not frame.working, 'Failure-path playlist review cleanup', allow_errors=True)
-                frame.Close()
-                pump(lambda: bool(destroyed), 'Failure-path desktop close', allow_errors=True)
-            executor.shutdown(wait=True, cancel_futures=True)
+            try:
+                finish_host()
+            finally:
+                wx.FileDialog = original_picker
+        if errors:
+            raise RuntimeError('\n'.join(errors))
     check('all installed queue sources stay exact after native execution',
           all(sha256(Path(module.__file__).resolve().read_bytes()).hexdigest() == identities[module.__name__]
               and identities[module.__name__] == sha256(
                   (checkout / 'src' / Path(*module.__name__.split('.')).with_suffix('.py')).read_bytes()).hexdigest()
               for module in modules))
-    print(json.dumps({'status': 'PASS', 'checks': checks, 'source_identity': identities,
-        'installed_modules': 'PASS' if options.installed else 'NOT_RUN',
-        'actual_windows_waveout': 'PASS', 'actual_native_queue_controls': 'PASS',
-        'instance_volume_isolation': 'PASS', 'audible_listening': 'NOT_RUN', 'nvda': 'NOT_RUN'},
-        ensure_ascii=True), flush=True)
+    print(json.dumps(result_report(), ensure_ascii=True), flush=True)
 
 
 if __name__ == '__main__':
