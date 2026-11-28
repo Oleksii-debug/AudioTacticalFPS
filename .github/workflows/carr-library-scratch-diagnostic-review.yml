@@ -1,0 +1,412 @@
+name: Diagnose original Windows 512 MiB scratch overflow
+on:
+  push:
+    branches: [carr/library-scratch-diagnostic-review-20261128]
+    paths: ['carr-library/**', '.github/workflows/carr-library-scratch-diagnostic-review.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: original-scratch-overflow-diagnostic-${{ github.ref_name }}
+  cancel-in-progress: false
+jobs:
+  corpus:
+    name: Original scratch samples / ${{ matrix.tier.name }} / ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        os: [windows-2022]
+        tier:
+          - {name: text-512m, books: 0, bytes: 536871085, segments: 250, spool_mib: 4096}
+    runs-on: ${{ matrix.os }}
+    # Exact failing source size and policy; diagnostics preserve the real failure.
+    # Generation, admission and one first-import attempt only, with no retries.
+    timeout-minutes: 75
+    defaults:
+      run:
+        working-directory: carr-library
+        shell: bash
+    env:
+      PYTHONUTF8: '1'
+      PYTHONDONTWRITEBYTECODE: '1'
+      HF_HUB_OFFLINE: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      DO_NOT_TRACK: '1'
+      CARR_SCALE_TIER: ${{ matrix.tier.name }}
+      CARR_SCALE_BOOKS: ${{ matrix.tier.books }}
+      CARR_SCALE_BYTES: ${{ matrix.tier.bytes }}
+      CARR_SCALE_SEGMENTS: ${{ matrix.tier.segments }}
+      CARR_SCALE_SPOOL_MIB: ${{ matrix.tier.spool_mib }}
+      CARR_SCALE_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+      CARR_SCALE_RUN: ${{ github.run_id }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+      - name: Select this runner's fresh measured profile path
+        run: |
+          python -I -B -X utf8 - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          import shutil
+          import stat
+          import tempfile
+
+          def directory(path):
+              info = path.lstat()
+              assert stat.S_ISDIR(info.st_mode) and not stat.S_ISLNK(info.st_mode), path
+              assert not int(getattr(info, "st_file_attributes", 0)) & 0x400, path
+              return [info.st_dev, info.st_ino, info.st_mode, int(getattr(info, "st_file_attributes", 0))]
+
+          observations = []
+          for label, raw in (("RUNNER_TEMP", os.environ["RUNNER_TEMP"]),
+                             ("python_tempfile", tempfile.gettempdir())):
+              spelling = Path(raw).absolute()
+              for parent in reversed(spelling.parents):
+                  directory(parent)
+              before = directory(spelling)
+              selected = spelling.resolve(strict=True)
+              assert directory(selected) == before
+              usage = shutil.disk_usage(selected)
+              assert directory(spelling) == directory(selected) == before
+              observations.append({"name": label, "supplied_path": str(spelling),
+                  "canonical_path": str(selected), "identity": before,
+                  "free_bytes": usage.free, "total_bytes": usage.total})
+          chosen = max(observations, key=lambda item: item["free_bytes"])
+          selected = Path(chosen["canonical_path"])
+          assert directory(selected) == chosen["identity"]
+          tier = os.environ["CARR_SCALE_TIER"]
+          assert tier in {"books-1000", "books-10000", "books-50000",
+                          "text-65m", "text-129m", "text-512m", "text-2g"}
+          # Exclusive new parent; the generator still creates a nonexisting child.
+          private = Path(tempfile.mkdtemp(prefix="carr-scale-" + tier + "-", dir=selected))
+          private_identity = directory(private)
+          assert directory(selected) == chosen["identity"]
+          path = private / "fixture"
+          assert not os.path.lexists(path) and "\n" not in str(path) and "\r" not in str(path)
+          report = {"observed_roots": observations, "selected_root": chosen,
+              "private_parent": str(private), "private_parent_identity": private_identity,
+              "fixture": str(path),
+              "selection": "larger measured free space among two known runner temporary roots",
+              "resource_admission": "NOT_YET_RUN; generator, import and backup keep their own preflight"}
+          out = Path("ci-library-scratch-diagnostic")
+          out.mkdir(exist_ok=True)
+          with (out / "runner-capacity.json").open("x", encoding="utf-8", newline="\n") as stream:
+              json.dump(report, stream, ensure_ascii=False, sort_keys=True)
+              stream.write("\n")
+          print("CARR_RUNNER_TEMP_CAPACITY " + json.dumps(report, ensure_ascii=False, sort_keys=True), flush=True)
+          with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8", newline="\n") as stream:
+              stream.write("CARR_SCALE_DIR=" + str(path) + "\n")
+          PY
+      - name: Install the exact composed application
+        run: python -m pip install ".[test,sync]"
+      - name: Bind all installed package bytes and the actual measurement scripts
+        run: |
+          mkdir -p ci-library-scratch-diagnostic
+          cat > ci-library-scratch-diagnostic/check.py <<'PY'
+          """Exact byte binding for one diagnostic-only first-import attempt."""
+          from hashlib import sha256
+          import importlib
+          import importlib.util
+          import json
+          import os
+          from pathlib import Path
+          import shutil
+          import stat
+          import subprocess
+          import sys
+          import sysconfig
+          
+          assert sys.flags.isolated and not os.environ.get("PYTHONPATH")
+          ROOT = Path.cwd().resolve()
+          OUT = ROOT / "ci-library-scratch-diagnostic"
+          FIXTURE = Path(os.environ["CARR_SCALE_DIR"]).resolve()
+          EXPECTED_BOOKS = int(os.environ["CARR_SCALE_BOOKS"]) or 1
+          EXPECTED_SEGMENTS = EXPECTED_BOOKS * int(os.environ["CARR_SCALE_SEGMENTS"])
+          MODULES = ["carr_library.storage.publication","carr_library.storage.revisions","carr_library.application","carr_library.catalog.membership","carr_library.catalog.registration","carr_library.ingest.pipeline","carr_library.ingest.worker","carr_library.ingest.publication_identity","carr_library.ingest.retained_assets","carr_library.catalog.intake","carr_library.ingest.resource_budget","carr_library.durable_state","carr_library.citations.text_attestation","carr_library.citations.historical","carr_library.ingest.session","carr_library.ingest.slices","carr_library.ingest.reconciliation","carr_library.ingest.batch_pages","carr_library.ingest.batches","carr_library.ingest.batch_scan","carr_library.citations.pdf_review_attestation","carr_library.extract.raster_pages","carr_library.extract.page_ocr","carr_library.extract.runtime_identity","carr_library.search.paging","carr_library.search.ranked_scope","carr_library.search.federated","carr_library.search.literal","carr_library.search.thematic","carr_library.search.semantic_windows","carr_library.semantic","carr_library.audio.process","carr_library.audio.cleanup","carr_library.catalog.read_views","carr_library.operations.broker","carr_library.operations.models","carr_library.search.originals"]
+          SCRIPTS = ("benchmark_library_scale.py", "benchmark_library_catalog.py")
+          
+          
+          def inventory(root):
+              rows = []
+              for path in sorted(root.rglob("*.py")):
+                  observed = path.lstat()
+                  assert stat.S_ISREG(observed.st_mode) and observed.st_nlink == 1 and not path.is_symlink(), path
+                  assert path.resolve().is_relative_to(root), path
+                  assert not int(getattr(observed, "st_file_attributes", 0)) & 0x400, path
+                  assert observed.st_size <= 32 * 1024**2, path
+                  rows.append([path.relative_to(root).as_posix(), sha256(path.read_bytes()).hexdigest()])
+              assert len(rows) >= 380 and len(rows) == len({row[0] for row in rows}), len(rows)
+              return rows
+          
+          
+          def identity():
+              observed_head = subprocess.run(
+                  ["git", "rev-parse", "HEAD"], cwd=ROOT, check=True,
+                  capture_output=True, text=True, timeout=10).stdout.strip()
+              assert (len(observed_head) == 40
+                      and all(character in "0123456789abcdef" for character in observed_head)
+                      and observed_head == os.environ["CARR_SCALE_HEAD"]), (
+                          "Checkout differs from the selected exact candidate.", observed_head)
+              source = (ROOT / "src" / "carr_library").resolve()
+              installed = (Path(sysconfig.get_path("purelib")) / "carr_library").resolve()
+              assert source != installed and not installed.is_relative_to(ROOT / "src")
+              first, second = inventory(source), inventory(installed)
+              assert first == second, "Installed package differs from the exact selected source."
+              origins = {}
+              for name in MODULES:
+                  module = importlib.import_module(name)
+                  path = Path(module.__file__).resolve()
+                  assert path.is_relative_to(installed) and not path.is_relative_to(ROOT / "src"), (name, path)
+                  relative = path.relative_to(installed)
+                  digest = sha256(path.read_bytes()).hexdigest()
+                  assert digest == sha256((source / relative).read_bytes()).hexdigest()
+                  origins[name] = {"path": str(path), "sha256": digest}
+              scripts = {}
+              for name in SCRIPTS:
+                  path = ROOT / "scripts" / name
+                  raw = path.read_bytes()
+                  compile(raw, str(path), "exec")
+                  scripts[name] = sha256(raw).hexdigest()
+              return {"package_files": len(first), "inventory": first,
+                      "package_sha256": sha256(json.dumps(first, separators=(",", ":")).encode()).hexdigest(),
+                      "origins": origins, "scripts": scripts,
+                      "python": sys.version, "executable": str(Path(sys.executable).resolve()),
+                      "sqlite": __import__("sqlite3").sqlite_version,
+                      "platform": __import__("platform").platform(),
+                      "commit": observed_head, "run": os.environ["CARR_SCALE_RUN"],
+                      "tier": os.environ["CARR_SCALE_TIER"]}
+          
+          
+          _foundation = None
+          
+          
+          def foundation():
+              global _foundation
+              if _foundation is None:
+                  path = ROOT / "scripts" / "benchmark_library_scale.py"
+                  spec = importlib.util.spec_from_file_location("_carr_actual_scale_evidence", path)
+                  module = importlib.util.module_from_spec(spec)
+                  sys.modules[spec.name] = module
+                  spec.loader.exec_module(module)
+                  _foundation = module
+              return _foundation
+          
+          
+          def read(path):
+              chunks, size = [], 0
+              with foundation()._opened(path) as (stream, before):
+                  assert before.st_size <= 64 * 1024**2, path
+                  while chunk := stream.read(min(64 * 1024, 64 * 1024**2 + 1 - size)):
+                      size += len(chunk)
+                      assert size <= 64 * 1024**2, path
+                      chunks.append(chunk)
+              return json.loads(b"".join(chunks))
+          
+          
+          def read_phase(path):
+              """Validate every bounded JSON-lines record before accepting its final value."""
+              last, size = None, 0
+              maximum, line_maximum = 128 * 1024**2, 1024**2
+              with foundation()._opened(path) as (stream, before):
+                  assert before.st_size <= maximum, path
+                  while raw := stream.readline(line_maximum + 1):
+                      size += len(raw)
+                      assert len(raw) <= line_maximum and size <= maximum, path
+                      if not raw.strip():
+                          continue
+                      last = json.loads(raw)
+                      assert type(last) is dict, path
+              assert last is not None, ("The actual phase produced no JSON result.", path)
+              return last
+          
+          
+          def write(name, value):
+              path = OUT / name
+              with path.open("x", encoding="utf-8", newline="\n") as stream:
+                  json.dump(value, stream, ensure_ascii=False, sort_keys=True, indent=2, allow_nan=False)
+                  stream.write("\n")
+          
+          
+          def collect():
+              destination = OUT / "fixture-evidence"
+              destination.mkdir(exist_ok=True)
+              captured, total_bytes = [], 0
+              paths = [FIXTURE / name for name in ("owner.json", "preflight.json", "generation.json", "verified-generation.json", "sources.jsonl")]
+              benchmark = FIXTURE / "benchmark"
+              if benchmark.is_dir():
+                  paths += sorted(benchmark.glob("*.json"))
+                  for name in ("events", "worker-peaks"):
+                      folder = benchmark / name
+                      if folder.is_dir():
+                          paths += sorted(folder.glob("*.json"))
+              state_path = benchmark / "state.json"
+              if state_path.exists():
+                  saved = read(state_path)
+                  batch_id = saved["current_batch"]
+                  assert len(batch_id) == 32 and all(c in "0123456789abcdef" for c in batch_id)
+                  paths.append(FIXTURE / "library" / "import-batches" / (batch_id + ".json"))
+              assert len(paths) <= 200_010, "The bounded benchmark evidence count was exceeded."
+              for path in paths:
+                  if not path.exists():
+                      continue
+                  observed = path.lstat()
+                  assert stat.S_ISREG(observed.st_mode) and observed.st_nlink == 1 and not path.is_symlink(), path
+                  assert not int(getattr(observed, "st_file_attributes", 0)) & 0x400, path
+                  relative = path.relative_to(FIXTURE)
+                  target = destination / relative
+                  target.parent.mkdir(parents=True, exist_ok=True)
+                  checksum, size = sha256(), 0
+                  with foundation()._opened(path) as (source, captured_stat), target.open("xb") as output:
+                      assert foundation()._stamp(captured_stat) == foundation()._stamp(observed), path
+                      while chunk := source.read(64 * 1024):
+                          size += len(chunk)
+                          total_bytes += len(chunk)
+                          assert size <= 1024**3 and total_bytes <= 2 * 1024**3, path
+                          output.write(chunk)
+                          checksum.update(chunk)
+                  assert size == observed.st_size, path
+                  captured.append({"path": relative.as_posix(), "bytes": size, "sha256": checksum.hexdigest()})
+              write("collected-evidence.json", captured)
+          
+          
+          def policy():
+              saved = read(FIXTURE / "benchmark" / "state.json")
+              budget = saved["import_budget"]
+              assert budget["source_bytes"] == 536871085, budget
+              assert budget["temporary_bytes"] == 671088813, budget
+              assert budget["seconds"] == 600, budget
+              assert saved["books"] == 1 and saved["segments"] == 250
+              write("unchanged-policy.json", budget)
+              print("CARR_UNCHANGED_SCRATCH_POLICY " + json.dumps(budget, sort_keys=True), flush=True)
+          
+          
+          def finish():
+              before, after = read(OUT / "installed-before.json"), identity()
+              for key in ("inventory", "package_sha256", "origins", "scripts", "executable", "commit"):
+                  assert before[key] == after[key], ("Implementation changed during the diagnostic.", key)
+              write("installed-after.json", after)
+              phases = json.loads(os.environ["CARR_SCALE_PHASE_OUTCOMES"])
+              assert set(phases) == {"generate", "initialize", "policy", "interruption", "collect"}
+              report = {"schema": "carr-scratch-overflow-diagnostic/1",
+                        "qualification": "DIAGNOSTIC_ONLY_NOT_PRODUCT_ACCEPTANCE",
+                        "actual_phase_outcomes": phases, "commit": after["commit"],
+                        "run": after["run"], "package_sha256": after["package_sha256"],
+                        "final_512mib_or_2gib_acceptance": "NOT_RUN"}
+              if any(phases[name] != "success" for name in ("generate", "initialize", "policy", "collect")):
+                  report["status"] = "INCOMPLETE_DIAGNOSTIC"
+                  write("outcome.json", report)
+                  print("CARR_SCRATCH_DIAGNOSTIC " + json.dumps(report, sort_keys=True), flush=True)
+                  raise AssertionError("Generation, admission, exact policy or evidence collection failed.")
+              generated = read(FIXTURE / "generation.json")
+              originals = foundation().verify_originals(FIXTURE, generated)
+              assert originals == {"verified_sources": 1, "verified_original_bytes": 536871085,
+                                   "declared_original_segments": 250}, originals
+              saved = read(FIXTURE / "benchmark" / "state.json")
+              batch_id = saved["current_batch"]
+              assert len(batch_id) == 32 and all(c in "0123456789abcdef" for c in batch_id)
+              batch = read(FIXTURE / "library" / "import-batches" / (batch_id + ".json"))
+              assert len(batch["rows"]) == 1
+              row = batch["rows"][0]
+              assert row["manifest"]["size"] == 536871085
+              report.update(originals=originals, policy=read(OUT / "unchanged-policy.json"),
+                            observed_row=row, first_import_exit=read(OUT / "first-import-exit.json"),
+                            observed_counts=batch.get("counts"))
+              message = row.get("result", {}).get("message", "")
+              prefix = "Audio worker exceeded its output disk budget."
+              if row["state"] == "failed" and message.startswith(prefix):
+                  sample = json.loads(message[len(prefix):].strip())
+                  assert sample["schema"] == "carr-scratch-original-lstat-prefix/1"
+                  assert sample["limit"] == 671088813
+                  assert sample["sampled_prefix_bytes"] > sample["limit"]
+                  report.update(status="OBSERVED_SCRATCH_OVERFLOW", original_lstat_sample=sample,
+                                sampling="sequential sampled prefix, not simultaneous allocation")
+              elif phases["interruption"] == "success":
+                  crash = read(FIXTURE / "benchmark" / "authored-crash.json")
+                  assert crash["committed"] == 1 and row["state"] == "complete"
+                  assert crash["boundary"] == "durable batch save after actual owned worker return"
+                  assert report["first_import_exit"] == 73
+                  report["status"] = "OVERFLOW_NOT_REPRODUCED_IN_ONE_ACTUAL_ATTEMPT"
+              else:
+                  report["status"] = "ACTUAL_FIRST_IMPORT_FAILED_WITHOUT_OVERFLOW_SAMPLE"
+              write("outcome.json", report)
+              encoded = json.dumps(report, ensure_ascii=True, sort_keys=True)
+              assert len(encoded) <= 16384
+              print("CARR_SCRATCH_DIAGNOSTIC " + encoded, flush=True)
+              if phases["interruption"] != "success":
+                  raise AssertionError("The actual first-import failure remains a failed diagnostic job.")
+          
+          
+          mode = sys.argv[1]
+          if mode == "before":
+              write("installed-before.json", identity())
+          elif mode == "collect":
+              collect()
+          elif mode == "policy":
+              policy()
+          elif mode == "finish":
+              finish()
+          else:
+              raise ValueError(mode)
+          PY
+          unset PYTHONPATH PYTEST_ADDOPTS PYTEST_PLUGINS
+          python -I -B -X utf8 ci-library-scratch-diagnostic/check.py before
+      - name: Generate and independently hash the actual original corpus
+        id: generate
+        timeout-minutes: 20
+        run: |
+          if [ "$CARR_SCALE_BOOKS" -gt 0 ]; then
+            python -I -B -X utf8 scripts/benchmark_library_scale.py --output-dir "$CARR_SCALE_DIR" --books "$CARR_SCALE_BOOKS" --segments "$CARR_SCALE_SEGMENTS" --search-spool-bytes "$((CARR_SCALE_SPOOL_MIB * 1024 * 1024))" --free-reserve-bytes 1073741824 --memory-headroom-bytes 1610612736 > ci-library-scratch-diagnostic/generate.json
+          else
+            python -I -B -X utf8 scripts/benchmark_library_scale.py --output-dir "$CARR_SCALE_DIR" --large-bytes "$CARR_SCALE_BYTES" --segments "$CARR_SCALE_SEGMENTS" --search-spool-bytes "$((CARR_SCALE_SPOOL_MIB * 1024 * 1024))" --free-reserve-bytes 1073741824 --memory-headroom-bytes 1610612736 > ci-library-scratch-diagnostic/generate.json
+          fi
+      - name: Admit the measured profile through the actual public queue
+        id: initialize
+        timeout-minutes: 15
+        run: |
+          search_memory_args=()
+          if [ "$CARR_SCALE_BYTES" != "0" ]; then
+            search_memory_args=(--search-memory-mib 1024)
+          fi
+          python -I -B -X utf8 scripts/benchmark_library_catalog.py init "$CARR_SCALE_DIR" --memory-mib 1024 --search-disk-mib "$CARR_SCALE_SPOOL_MIB" --reserve-mib 1024 --page-files 1000 --slice-items 1000 --slice-seconds 600 --steps 1001 --foreign-libraries 21 "${search_memory_args[@]}" > ci-library-scratch-diagnostic/initialize.jsonl
+      - name: Confirm the exact original source and temporary policy before execution
+        id: policy
+        run: python -I -B -X utf8 ci-library-scratch-diagnostic/check.py policy
+      - name: Execute the one unchanged actual first-import attempt
+        id: interruption
+        timeout-minutes: 35
+        run: |
+          set +e
+          python -I -B -X utf8 scripts/benchmark_library_catalog.py import "$CARR_SCALE_DIR" --seconds 1800 --crash-after-first-commit > ci-library-scratch-diagnostic/authored-crash-output.log 2>&1
+          phase_status=$?
+          set -e
+          printf '%s\n' "$phase_status" > ci-library-scratch-diagnostic/first-import-exit.json
+          if [ "$phase_status" -ne 73 ]; then
+            cat ci-library-scratch-diagnostic/authored-crash-output.log
+            exit 1
+          fi
+      - name: Preserve actual measured phase records and independent original manifest
+        id: collect
+        if: always()
+        run: python -I -B -X utf8 ci-library-scratch-diagnostic/check.py collect
+      - name: Preserve the actual failure and require unchanged installed bytes
+        if: always()
+        env:
+          CARR_SCALE_PHASE_OUTCOMES: '{"generate":"${{ steps.generate.outcome }}","initialize":"${{ steps.initialize.outcome }}","policy":"${{ steps.policy.outcome }}","interruption":"${{ steps.interruption.outcome }}","collect":"${{ steps.collect.outcome }}"}'
+        run: python -I -B -X utf8 ci-library-scratch-diagnostic/check.py finish
+      - name: Preserve selected dependency identity
+        if: always()
+        run: python -I -m pip freeze > ci-library-scratch-diagnostic/dependencies.txt
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always()
+        with:
+          name: library-scratch-diagnostic-${{ matrix.tier.name }}-${{ matrix.os }}-${{ github.sha }}
+          path: carr-library/ci-library-scratch-diagnostic/
+          if-no-files-found: error
+          retention-days: 14

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import json
 import os
 from pathlib import Path
 import shutil
@@ -168,6 +169,52 @@ def _can_own_posix_group():
     return (all(hasattr(os, name) for name in
                 ('waitid', 'P_PID', 'WEXITED', 'WNOHANG', 'WNOWAIT', 'CLD_EXITED', 'pidfd_open'))
             and Path('/proc/self/stat').is_file())
+
+
+def _scratch_overflow_sample(root, limit, total, count, regular_count,
+                             pending_count, trigger, largest):
+    """Diagnostic only: original lstat samples from one sequential check.
+
+    This is a sampled prefix, not simultaneous physical disk allocation.
+    No paths are opened, resolved, or sampled again while formatting it.
+    """
+    def row(sample):
+        path, info = sample
+        try:
+            name = path.relative_to(root).as_posix()
+        except ValueError:
+            name = str(path)
+        return {'path': name[-192:], 'path_truncated': len(name) > 192,
+                'size': info.st_size, 'dev': info.st_dev, 'ino': info.st_ino,
+                'mode': info.st_mode, 'nlink': info.st_nlink,
+                'attributes': int(getattr(info, 'st_file_attributes', 0))}
+
+    spelling = str(root)
+    value = {'schema': 'carr-scratch-original-lstat-prefix/1',
+             'root': spelling[-256:], 'root_truncated': len(spelling) > 256,
+             'limit': limit, 'sampled_prefix_bytes': total,
+             'enumerated_entries': count, 'sampled_regular_files': regular_count,
+             'pending_paths': pending_count, 'trigger': row(trigger),
+             'largest_prior_samples': [row(sample) for sample in largest],
+             'truncated': regular_count > len(largest) + 1}
+    while True:
+        encoded = json.dumps(value, ensure_ascii=True, separators=(',', ':'))
+        if len(encoded.encode('ascii')) <= 1700:
+            return encoded
+        value['truncated'] = True
+        if value['largest_prior_samples']:
+            value['largest_prior_samples'].pop()
+        elif len(value['root']) > 32:
+            value['root'] = value['root'][-max(32, len(value['root']) // 2):]
+            value['root_truncated'] = True
+        elif len(value['trigger']['path']) > 32:
+            value['trigger']['path'] = value['trigger']['path'][-max(
+                32, len(value['trigger']['path']) // 2):]
+            value['trigger']['path_truncated'] = True
+        else:
+            # Native stat integers have finite platform widths; this also
+            # preserves the original refusal if formatting ever exceeds them.
+            return '{"schema":"carr-scratch-original-lstat-prefix/1","truncated":true}'
 
 
 def run_process(args, *, budget=None, cancelled=lambda: False,
@@ -378,6 +425,8 @@ def run_process(args, *, budget=None, cancelled=lambda: False,
             raise AudioError('Audio worker exceeded its diagnostic output budget.')
         check_native_deadline()
         total, count = 0, 0
+        # Diagnostic-only bounded retention of the original stat observations.
+        regular_count, largest_samples = 0, []
         pending = list(watched)
         while pending:
             path = pending.pop()
@@ -421,9 +470,15 @@ def run_process(args, *, budget=None, cancelled=lambda: False,
                 continue
             if not stat.S_ISREG(info.st_mode):
                 raise AudioError('Audio worker output is not a regular file.')
+            regular_count += 1
             total += info.st_size
             if total > budget.max_output_bytes:
-                raise AudioError('Audio worker exceeded its output disk budget.')
+                detail = _scratch_overflow_sample(watched[0], budget.max_output_bytes,
+                    total, count, regular_count, len(pending), (path, info), largest_samples)
+                raise AudioError('Audio worker exceeded its output disk budget. ' + detail)
+            largest_samples.append((path, info))
+            largest_samples.sort(key=lambda sample: sample[1].st_size, reverse=True)
+            del largest_samples[4:]
         if watched and shutil.disk_usage(watched[0].parent).free < budget.reserve_disk_bytes:
             raise AudioError('Audio render stopped to preserve the configured free disk reserve.')
         if progress is not None and latest[0] is not None and latest[0] != last_progress:
