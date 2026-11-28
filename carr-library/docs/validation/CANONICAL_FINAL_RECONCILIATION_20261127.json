@@ -6370,5 +6370,103 @@
       }
     ],
     "qualification": "The new composition must execute its own required source, isolated installed, native and standard gates. Component successes and reviewed assertions do not qualify an unexecuted composition."
+  },
+  "post_f77_loopback_fixture_repair": {
+    "schema": "carr-post-f77-loopback-fixture-repair/1",
+    "status": "SOURCE_REVIEWED_REQUIRES_EXACT_SUCCESSOR_RUNTIME",
+    "baseline": {
+      "commit": "f77cdd445c158f3f66d13c03d920418965840d16",
+      "tree": "88a99ee91806d71dca04c75c0aca8c963f5292e1"
+    },
+    "evidence_parent": {
+      "commit": "c52189ed4d004d00168cd83f2dd4c316187a192d",
+      "tree": "c7e2153170ffd0e53ea6600e18651bdcfaeb10fc",
+      "scope": "Six independently reviewed evidence documents only; all baseline implementation files unchanged."
+    },
+    "observed_predecessor": {
+      "run_id": 46078342596,
+      "job_id": 140771249163,
+      "status": "FAILURE",
+      "source": {
+        "suites": 451,
+        "passed_executions": 11455,
+        "failed_executions": 0,
+        "skipped_executions": 0,
+        "function_identities": 5223,
+        "protected_base_cases": 5813,
+        "protected_modules": 252,
+        "protected_weighted_events": 6469
+      },
+      "loopback": {
+        "passed": 12,
+        "failed": 2,
+        "skipped": 0,
+        "reason": "The fixture expected InterruptedError/RuntimeError while the unchanged public gateway reports ProviderError(ValueError)."
+      },
+      "later_acceptance_steps": "23–53 skipped; no installed/full-bundle/native/standard PASS transfer.",
+      "evidence": "carr-library/docs/evidence/main-source-f77-loopback-boundary-20261128.json",
+      "artifact": {
+        "id": 15239558005,
+        "bytes": 305121,
+        "sha256": "1273db3f66c99d213a3e620fd3e488e27fc5e3698898ec5e30cc56bfc38a5a3f"
+      }
+    },
+    "reviewed_changes": [
+      {
+        "path": "carr-library/tests/loopback/test_local_planning.py",
+        "before": "188068d04b2ded11c4c80b402f939d41d9f9c0e8",
+        "after": "052f67e286ad8fd6eef5ca3274575dd6c177e9ab",
+        "component": "701a51c0875986b17d89ebc4d21dd71074b22b0d",
+        "scope": "Exact existing ProviderError and stage messages; retain all 14 cases and 0/1 requests/no-approved-job checks; add no-reservation versus uncertain zero-estimate/no-output and refused same-operation replay checks."
+      },
+      {
+        "path": ".github/workflows/carr-windows.yml",
+        "before": "3a3c73ca547e6b7b590555657eed0ddc88c6777e",
+        "after": "6a826f25a0a4724b5665b3cfbcf34ab97336971d",
+        "component": "618fb56f1913e8ee9a5c3fe6bfa635446b8e7674",
+        "scope": "Move the byte-unchanged 3-minute source loopback step before the 90-minute source step. Every command, selector, timeout and later gate remains; source then protected-inventory order is retained."
+      }
+    ],
+    "application_source": {
+      "prefix": "carr-library/src/carr_library/",
+      "blob_count": 425,
+      "unchanged_from_baseline": true
+    },
+    "preserved_automatic_populations": {
+      "source_protected": 5813,
+      "installed_protected": 5485,
+      "source_selectors": 451,
+      "source_loopback_cases": 14,
+      "installed_loopback_cases": 14,
+      "r7_native_families": 21,
+      "changed_fixture_function_identities": 9,
+      "changed_fixture_case_count": 14
+    },
+    "preserved_gate_bindings": {
+      "carr-library/scripts/v3_acceptance_oracles.json": "7287a4c1a8d74b6e197fa26c05165e06a909174c",
+      "carr-library/scripts/r7_native_oracles.json": "c5c734d4d2ed9bda27da443433485f9873a4af76",
+      "carr-library/scripts/r7_native_gate.py": "29e75a6415eb914894e9aec62b87b315ccb97f16",
+      "carr-library/scripts/ci_check.py": "5937231e2f3a00a163b0e10b9707df27f279b134",
+      "carr-library/scripts/ci_watchdog.py": "10482b73dca31ab90796f4c2c2dcc105c20c9969",
+      "carr-library/scripts/qualify_standard_library.py": "47e868ebfd69cab27a395cda436a4eece1c60643",
+      "carr-library/scripts/qualify_standard_library.ps1": "1a4417a3c40e50033d5eb40bb3ed6db1bac3d962",
+      "carr-library/scripts/ci_standard_update.ps1": "0c949fa71eb4e3ebc9e542a42f7f4334347f9e5b"
+    },
+    "historical_binding_scope": "Every earlier master/matrix field remains its original historical snapshot. This additive record is the explicit successor mapping for the two reviewed paths. The original final-artifact read plan remains byte-identical; reader tooling must use a separate explicit successor overlay rather than silently substitute pins.",
+    "carried_observed_proofs": [
+      "carr-library/docs/evidence/standard-native-managed-library-final-independent-read-20261127.json",
+      "carr-library/docs/evidence/pr209-f77-auxiliary-observed-results-20261127.json",
+      "carr-library/docs/evidence/final-main-reader-parser-controls-observed-20261127.json"
+    ],
+    "review": {
+      "root": "GO",
+      "independent_fixture_and_reorder": "GO",
+      "new_runtime": "NOT_RUN"
+    },
+    "qualification": {
+      "successor": "Requires its own complete source, installed, native, bundle, standard and artifact-read results.",
+      "full_platform": "NOT_QUALIFIED",
+      "real_models_manual_nvda_audio_corpus_rights": "Separate actual acceptance remains required."
+    }
   }
 }

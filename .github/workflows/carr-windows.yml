@@ -234,6 +234,14 @@ jobs:
           "CARR_FFMPEG=$(Join-Path $audioBin 'ffmpeg.exe')" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           $audioBin | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
+      - name: Exercise only the explicit synthetic local-planning HTTP fixture
+        timeout-minutes: 3
+        run: |
+          & $env:CARR_PYTHON scripts/ci_check.py --allow-loopback tests/loopback/test_local_planning.py 2>&1 | Tee-Object 'ci-results/local-planning-loopback-source.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $env:CARR_PYTHON -I -B -c "import pathlib,re; text=pathlib.Path('ci-results/local-planning-loopback-source.txt').read_text(encoding='utf-8-sig'); assert re.search(r'^PASS: tests/loopback/test_local_planning.py: junit_passed=14, failed=0, skipped=0, pytest_exit=0$',text,re.M); assert 'Required suites complete: 1; passed=1; failed=0' in text; print('PASS: exact fourteen source local-planning HTTP cases; synthetic model only')"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
       - name: Run required integrated source workflows
         timeout-minutes: 90
         run: |
@@ -717,14 +725,6 @@ jobs:
           pathlib.Path('ci-results/v3-additive-source-proof.json').write_text(json.dumps(report,sort_keys=True)+'\n',encoding='utf-8')
           print(json.dumps(report,sort_keys=True))
           '@ | & $env:CARR_PYTHON -I -B -
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-
-      - name: Exercise only the explicit synthetic local-planning HTTP fixture
-        timeout-minutes: 3
-        run: |
-          & $env:CARR_PYTHON scripts/ci_check.py --allow-loopback tests/loopback/test_local_planning.py 2>&1 | Tee-Object 'ci-results/local-planning-loopback-source.txt'
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & $env:CARR_PYTHON -I -B -c "import pathlib,re; text=pathlib.Path('ci-results/local-planning-loopback-source.txt').read_text(encoding='utf-8-sig'); assert re.search(r'^PASS: tests/loopback/test_local_planning.py: junit_passed=14, failed=0, skipped=0, pytest_exit=0$',text,re.M); assert 'Required suites complete: 1; passed=1; failed=0' in text; print('PASS: exact fourteen source local-planning HTTP cases; synthetic model only')"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Exercise actual native citations and destination confirmation

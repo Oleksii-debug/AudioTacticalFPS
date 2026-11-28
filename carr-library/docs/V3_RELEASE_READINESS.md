@@ -2,7 +2,7 @@
 
 Product: **Resonance / Резонанс**, version **0.2.0.dev2**.
 
-This is the current integration record for the 27 November technical project.
+This is the integration record for the 27 November technical project, with execution evidence and the reviewed follow-up recorded on 28 November.
 The complete platform is **NOT_QUALIFIED**. The implementation has a finite source
 reconciliation against the updated scope. Automated qualification is bound to
 the exact candidate and its CI receipts; intended capabilities are retained when
@@ -15,6 +15,47 @@ menus and keyboard commands. The [technical specification](UNIVERSAL_SCOPE_V3_FI
 remain authoritative. The
 [machine-readable matrix](validation/RESONANCE_REQUIREMENT_STATUS_20261127.json)
 keeps their exact source blobs and separate evidence dimensions.
+
+## 28 November: observed source PASS, loopback failure and reviewed successor
+
+The exact `f77cdd445c158f3f66d13c03d920418965840d16` integrated Windows job
+[46078342596 / 140771249163](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46078342596/job/140771249163)
+completed **FAILURE**. All **451 source suites passed**, with **11,455 successful
+executions, zero failures and zero skips**. The separate protected source gate
+passed all **5,813 cases across 252 modules**. The next real local HTTP fixture
+reported **12 passed / 2 failed / 0 skipped**; all later native, full-bundle,
+installed and standard acceptance steps were skipped.
+The [complete source and failure proof](evidence/main-source-f77-loopback-boundary-20261128.json)
+retains the exact Counters, 451 verdicts, artifact identity and failed assertions.
+Earlier documents saying main PENDING are observations from before this completed failure.
+
+The reviewed successor corrects only the cancellation fixture's expected exception:
+the existing gateway raises `ProviderError(ValueError)`, and current CLI/dialog
+callers already handle explicit cancellation. Both timing variants and all **14**
+cases remain. The test additionally verifies no reservation before sending,
+an uncertain zero-estimate/no-output operation after sending, and refusal to replay
+that exact operation after clearing cancellation. See the
+[fixture repair](evidence/local-planning-loopback-cancellation-fixture-repair-20261128.json).
+
+The unchanged three-minute source loopback step now precedes the ninety-minute
+source phase, so this known boundary is exercised early. Every command, test
+selection, timeout and later acceptance gate is preserved. All **425 application
+source blobs** are unchanged from f77. The successor still requires its own
+complete actual qualification; the f77 source PASS is not transferred to it.
+
+The separate [standard installer and managed-library result](evidence/STANDARD_NATIVE_MANAGED_LIBRARY_FINAL_20261127.md)
+at `5d09d9a` has now been independently read: **81 / 81 boundary cases, shell 3,
+ordinary installation 6, original maintenance 4, managed update 15, installed
+library 50 and fresh-process recovery** passed. Its exact original → maintenance
+→ managed chain remains distinct from an unqualified direct original → managed
+upgrade. The archive contains evidence, not physical setup/runtime payloads for
+independent binary rehashing.
+
+All five [f77 auxiliary jobs](evidence/pr209-f77-auxiliary-observed-results-20261127.md)
+also passed within their explicit scopes, retaining seven audio skips and physical
+playback UNAVAILABLE. The [inert-reader parser controls](evidence/final-main-reader-parser-controls-observed-20261127.json)
+passed separately; they did not read the failed main archive or qualify an application.
+The full-platform status remains **NOT_QUALIFIED**.
 
 ## How to read the evidence
 
@@ -42,13 +83,13 @@ place.
 | Installed Windows synthetic capacity | `523aa40f9215569a276f0625d09fcc0fa84bb520`:complete 1k/10k/50k edition traversal, including 500 pages at 50k, with cancellation and fresh-process recovery. One shared tiny original is not 50k real books. | [Capacity receipt](evidence/r7-installed-capacity-20261127.json) |
 | Native SAPI process/PCM path | Earlier exact current-engine run and independently checked native PCM/process/file-release evidence; later engine changes require their own current gate. | [SAPI execution record](NATIVE_SAPI_OWNED_SHUTDOWN_RESULTS_20261127.md) |
 | Supplied ASR host/assistant | Actual isolated synthetic protocol, source/installed and native UI records; private source corrections and model inference remain separately identified. | [ASR integration record](validation/ASSISTANT_TRANSCRIPTION_WINDOWS_20261127.md) |
-| Standard maintenance/update | `910b1498d801cabcf9ba2751b93ecbe01d825ea8`: 81 source + 81 installed boundary cases, ordinary installation 6, original maintenance 4 and fresh-process rollback passed before the installed-library child failed. At diagnostic `30673a5ee70a7d241c842a6577c5480260bfb8bf`, the retained output identified missing executable classification in the CI PowerShell environment before the first Python library snapshot. The narrow `.EXE` repair and three early actual-shell checks remain subject to their own exact execution; complete managed 15 and library 50 are not yet claimed. | [Observed health and later failure](evidence/standard-managed-health-library-failure-independent-read-20261127.json), [actual child cause](evidence/standard-qualification-child-failure-independent-read-20261127.json), [repair](evidence/standard-qualification-executable-classification-repair-20261127.json), [current standard contract](STANDARD_SIGNED_UPDATES.md) |
+| Standard maintenance/update — earlier failures | `910b1498d801cabcf9ba2751b93ecbe01d825ea8`: 81 source + 81 installed boundary cases, ordinary installation 6, original maintenance 4 and fresh-process rollback passed before the installed-library child failed. At diagnostic `30673a5ee70a7d241c842a6577c5480260bfb8bf`, the retained output identified missing executable classification in the CI PowerShell environment before the first Python library snapshot. That earlier record did not qualify complete managed 15 or library 50. The independently verified `5d09d9a` successor is recorded above; these historical failures remain failures. | [Observed health and later failure](evidence/standard-managed-health-library-failure-independent-read-20261127.json), [actual child cause](evidence/standard-qualification-child-failure-independent-read-20261127.json), [repair](evidence/standard-qualification-executable-classification-repair-20261127.json), [current standard contract](STANDARD_SIGNED_UPDATES.md) |
 | Selected Office | `f03f8791f100de41d5e24e060b15f36d879184b2`: ordinary 7 native source + 7 native installed and separate 40 portable source + 40 portable installed cases passed. All 19,487 runtime files remained unchanged. The five synthetic document formats and cancellation/budget boundaries qualify this scope; earlier cache/path failures remain in their records. | [Independent ordinary proof](evidence/office-ordinary-admission-independent-read-20261127.json), [converter qualification](OPTIONAL_CONVERTER_QUALIFICATION.md) |
 | Studio role and output forms | `aee11f99c4be0da3aa257ac7722923d768220e7f`: 211 source + 211 isolated installed and all 39 native form checks passed, including two applied edits, three cancellations, capability/stale-draft refusals, two Save All commits and native cleanup. The earlier 23/39 display-comparison failure is retained separately. Synthetic voice metadata does not qualify speech quality. | [Exact Windows run](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46067792077), [form contract](validation/STUDIO_ROLE_OUTPUT_CONTROLS_20261127.json), [preserved display failure](validation/STUDIO_FORM_PREVIEW_DISPLAY_20261127.json) |
 | Keyboard, commands and draft recovery | Exact `f16959c76c1702fbdf6d6c9a6c113b2cb6660cd3`: 291 source cases and 146 installed native checks passed, including keyboard settings, Reader remapping, evidence drafts, Save All and measured progress. | [Exact keyboard proof](validation/KEYBOARD_NATIVE_PR209_WINDOWS_20261127.json) |
 | Focused audio | `e24834989c15f47e1ac6644415299b0a13e2e84e`: 2,259 source passes, zero failures and seven explicit skips; 22 subtests recorded separately. Actual installed audio smoke 16, effects 151, clips 26, publication 11 and installed self-test 9 passed. Physical output was unavailable. | [Actual audio result and seven skip identities](evidence/audio-r34-observed-results-20261127.json) |
 | Bibliography, snapshots and launcher | Exact `f16959c76c1702fbdf6d6c9a6c113b2cb6660cd3`: bibliography 1,066 source + 108 native; encrypted snapshots 322 source + 154 installed + 44 native; launcher 46 source + 9 native. These separate scopes passed. The same record preserves the earlier audio binding failure. | [Auxiliary observed results](evidence/pr209-auxiliary-observed-results-20261127.json) |
-| Integrated source predecessor | Exact `f16959c76c1702fbdf6d6c9a6c113b2cb6660cd3`: all 451 selected suites completed in 64m 57.538s; 443 passed and eight failed, with 11,446 passing executions, nine failures and no skips. The protected-inventory check and later main gates were skipped. Reviewed successor fixtures require a new execution; this failed run is retained. | [Complete selected results and failures](validation/INTEGRATED_SOURCE_F169_FAILURE_20261127.json) |
+| Integrated source predecessor | Exact `f16959c76c1702fbdf6d6c9a6c113b2cb6660cd3`: all 451 selected suites completed in 64m 57.538s; 443 passed and eight failed, with 11,446 passing executions, nine failures and no skips. The protected-inventory check and later main gates were skipped. The later f77 source execution is recorded above; this earlier failed run is retained. | [Complete selected results and failures](validation/INTEGRATED_SOURCE_F169_FAILURE_20261127.json) |
 
 These rows are not a whole-candidate acceptance verdict. The prior failures
 remain visible and are not converted into success by a source-only correction.

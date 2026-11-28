@@ -1,0 +1,81 @@
+{
+  "schema": "carr-loopback-cancellation-fixture-repair/1",
+  "base_commit": "f77cdd445c158f3f66d13c03d920418965840d16",
+  "base_tree": "88a99ee91806d71dca04c75c0aca8c963f5292e1",
+  "status": "SOURCE_REVIEW_PENDING_RUNTIME_NOT_RUN",
+  "scope": "Only the existing loopback fixture and this evidence document. Application sources, workflows, gates, timeouts and the 14-case population are unchanged.",
+  "observed_failure": {
+    "run_id": 46078342596,
+    "job_id": 140771249163,
+    "artifact": {
+      "id": 15239558005,
+      "name": "carr-windows-f77cdd445c158f3f66d13c03d920418965840d16-1",
+      "size_in_bytes": 305121,
+      "digest": "sha256:1273db3f66c99d213a3e620fd3e488e27fc5e3698898ec5e30cc56bfc38a5a3f",
+      "expired": false
+    },
+    "decoded_job_log": {
+      "characters": 4762934,
+      "utf8_bytes": 4762940,
+      "sha256": "aa8fc252ae1da3edab7e74793b67970f53c563bb13b1612a4c840c429f963292"
+    },
+    "passed": 12,
+    "failed": 2,
+    "skipped": 0,
+    "seconds": 10.61,
+    "failed_identities": [
+      "tests/loopback/test_local_planning.py::test_real_cancellation_does_not_create_an_approved_job[before]",
+      "tests/loopback/test_local_planning.py::test_real_cancellation_does_not_create_an_approved_job[during]"
+    ]
+  },
+  "diagnosis": {
+    "fixture_blob": "188068d04b2ded11c4c80b402f939d41d9f9c0e8",
+    "error": "The cancellation fixture expected InterruptedError or RuntimeError, but current ProviderError subclasses ValueError.",
+    "before": "The real gateway rejects pre-send cancellation before ledger reservation.",
+    "during": "Cancellation after the local server observes the request retains an uncertain operation with a zero estimate and no output receipt. It must not be replayed automatically.",
+    "public_contract": "Existing test_local_llm.py requires ProviderError before transmission. Current CLI returns 130 when stopped; the dialog discards a cancelled proposal before reading the future result.",
+    "actual_limit": "The failed fixture did not reach its final request-count and no-job/no-workspace assertions; those are not relabelled as passing."
+  },
+  "bindings": {
+    "src/carr_library/providers.py": "5f2df7784f9d7f235695ac7f0b27695c071fe36e",
+    "src/carr_library/assistant/llm.py": "9eeff849727ac88c513c093959b5bca4a18a79e3",
+    "src/carr_library/assistant/cli.py": "6d8cf236774efcfb9908a50e6933a6da970766a5",
+    "src/carr_library/ui/assistant_dialog.py": "cdd05ff077464344f7f2407d17a82691f5d96ab6",
+    "tests/assistant/test_local_llm.py": "e8187a1a11f668f76aaf116c49d20b6cbf36e6f1"
+  },
+  "repair": {
+    "selected_exception": "ProviderError only, with the exact expected before/during message",
+    "helper": "Optional stable job_id and operation_id; omitted arguments retain fresh UUID behavior for all other fixture calls.",
+    "retained_assertions": [
+      "Both before/during timing variants",
+      "Exactly 0/1 real HTTP requests",
+      "No assistant jobs or created workspaces"
+    ],
+    "strengthened_assertions": [
+      "Public BudgetLedger.report returns no operation before transmission",
+      "During row binds exact job/operation/request hash, estimate 0, state uncertain and both output hashes None",
+      "After clearing cancellation, replay with the same approval and operation is refused by the existing ledger",
+      "Replay leaves the row and request count unchanged, the stop flag clear, and jobs/workspaces empty"
+    ],
+    "fixture_sha256": "b4bacd663fc19e945db6b6f1fddff758b1993f7310e673357755ab84482dace7"
+  },
+  "case_count": 14,
+  "function_counter": {
+    "test_real_gateway_sends_only_the_selected_goal_and_never_submits_it": 1,
+    "test_real_model_response_cannot_expand_scope": 5,
+    "test_saved_profile_change_during_real_response_discards_proposal": 1,
+    "test_real_cancellation_does_not_create_an_approved_job": 2,
+    "test_real_cli_proposal_then_separate_explicit_review_and_run": 1,
+    "test_cli_cannot_request_and_execute_model_plan_in_one_invocation": 1,
+    "test_cli_provider_failure_returns_no_executable_plan": 1,
+    "test_cli_profile_listing_contacts_no_service": 1,
+    "test_cli_expired_explicit_execution_is_not_reported_as_success": 1
+  },
+  "verification": {
+    "performed": "Exact literal source transformation, preserved function and parameter identities, bounded source review of the gateway/ledger/CLI/dialog contracts; durable readback required before handoff.",
+    "python_execution": "NOT_RUN",
+    "new_runtime_claim": "NONE",
+    "independent_zip_read": "NOT_PERFORMED"
+  },
+  "next_gate": "The unchanged existing 3-minute real-loopback step must pass all 14 cases on the next exact candidate. The main workflow remains unchanged in this component."
+}

@@ -18,7 +18,9 @@ import pytest
 from carr_library.application import LibraryApp
 from carr_library.assistant import AssistantService, Scope
 from carr_library.assistant.llm import local_plan_request, propose_local_plan
-from carr_library.providers import BudgetLedger, JobApproval, ProfileStore, ProviderGateway, ProviderProfile
+from carr_library.providers import (
+    BudgetLedger, JobApproval, ProfileStore, ProviderError, ProviderGateway, ProviderProfile,
+)
 
 
 def cli(root, *arguments):
@@ -86,15 +88,17 @@ def configured(tmp_path, planner_server):
     return app, store, profile
 
 
-def propose(configured, instruction, scope, *, cancelled=lambda: False):
+def propose(configured, instruction, scope, *, cancelled=lambda: False,
+            job_id=None, operation_id=None):
     app, store, profile = configured
     service = AssistantService(app)
     request = local_plan_request(instruction)
-    approval = JobApproval(uuid4().hex, profile.fingerprint,
+    approval = JobApproval(uuid4().hex if job_id is None else job_id, profile.fingerprint,
         (request.fingerprint(profile),), allow_loopback=True)
     gateway = ProviderGateway(BudgetLedger(app.root / 'api-operations.sqlite'))
     return propose_local_plan(service, gateway, profile, instruction, scope, approval=approval,
-        operation_id=uuid4().hex, cancelled=cancelled, profile_store=store)
+        operation_id=uuid4().hex if operation_id is None else operation_id,
+        cancelled=cancelled, profile_store=store)
 
 
 def test_real_gateway_sends_only_the_selected_goal_and_never_submits_it(configured, planner_server, tmp_path):
@@ -143,16 +147,45 @@ def test_saved_profile_change_during_real_response_discards_proposal(configured,
 
 @pytest.mark.parametrize('when', ['before', 'during'])
 def test_real_cancellation_does_not_create_an_approved_job(configured, planner_server, when):
-    app, _, _ = configured
+    app, _, profile = configured
+    job_id, operation_id = uuid4().hex, uuid4().hex
+    instruction = 'Create a library.'
+    ledger = BudgetLedger(app.root / 'api-operations.sqlite')
+    assert ledger.report(job_id) == []
     cancelled = Event()
     if when == 'before':
         cancelled.set()
+        message = r'^Provider operation cancelled before transmission\.$'
     else:
         planner_server['on_request'] = cancelled.set
-    with pytest.raises((InterruptedError, RuntimeError)):
-        propose(configured, 'Create a library.', Scope(allow_create=True), cancelled=cancelled.is_set)
+        message = (r'^Provider operation did not complete\. '
+                   r'Review its uncertain charge status before retrying\.$')
+    with pytest.raises(ProviderError, match=message):
+        propose(configured, instruction, Scope(allow_create=True), cancelled=cancelled.is_set,
+                job_id=job_id, operation_id=operation_id)
+    assert cancelled.is_set()
     assert len(planner_server['requests']) == int(when == 'during')
     assert AssistantService(app).jobs() == () and app.workspaces() == ()
+    if when == 'before':
+        assert ledger.report(job_id) == []
+    else:
+        expected = [{
+            'id': operation_id, 'job': job_id,
+            'request_hash': local_plan_request(instruction).fingerprint(profile),
+            'estimate_micros': 0, 'state': 'uncertain',
+            'output_sha256': None, 'decoded_translation_sha256': None,
+        }]
+        assert ledger.report(job_id) == expected
+        # Clear the stop flag so only the retained operation can refuse replay.
+        cancelled.clear()
+        with pytest.raises(ProviderError, match=(
+                r'^Operation already recorded; reconcile its result before any retry\.$')):
+            propose(configured, instruction, Scope(allow_create=True), cancelled=cancelled.is_set,
+                    job_id=job_id, operation_id=operation_id)
+        assert not cancelled.is_set()
+        assert ledger.report(job_id) == expected
+        assert len(planner_server['requests']) == 1
+        assert AssistantService(app).jobs() == () and app.workspaces() == ()
 
 
 def test_real_cli_proposal_then_separate_explicit_review_and_run(configured, planner_server, tmp_path):
