@@ -223,3 +223,17 @@ def test_actual_metadata_cli_validates_the_completed_report_file(tmp_path, corre
         assert result.returncode != 0
         assert result.stdout == b""
         assert len(result.stderr) < 2048
+
+
+def test_repeated_malformed_progress_tokens_fail_in_bounded_cli(tmp_path):
+    report = tmp_path / "malformed-progress.txt"
+    prefix = ("[1%] " * 80) + "X"
+    assert len(prefix) < 1024
+    report.write_text(prefix + GOOD_METADATA + "\n", encoding="utf-8")
+    result = subprocess.run(
+        [sys.executable, "-I", "-B", str(SCRIPT), "metadata", "--report", str(report)],
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=10, check=False,
+    )
+    assert result.returncode != 0
+    assert result.stdout == b""
+    assert len(result.stderr) < 2048

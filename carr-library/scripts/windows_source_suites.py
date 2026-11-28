@@ -69,8 +69,8 @@ MAX_REPORT_BYTES = 64 * 1024 * 1024
 _REPORT_START = re.compile(r"(PASS|FAIL): " + re.escape(METADATA_SUITE) + r": ")
 _PROGRESS_PREFIX = re.compile(
     r"(?:[.F \t]|"
-    r"(?:tests|bootstrap)[\\/](?:[A-Za-z0-9_]+[\\/])*[A-Za-z0-9_]+\.py[ \t]+|"
-    r"\[[ \t]*(?:100|[0-9]{1,2})%\][ \t]*)*"
+    r"(?:tests|bootstrap)[\\/](?:[A-Za-z0-9_]+[\\/])*[A-Za-z0-9_]+\.py[ \t]|"
+    r"\[[ \t]*(?:100|[0-9]{1,2})%\])*"
 )
 _METADATA_COUNTS = "junit_passed=58, failed=0, skipped=0, pytest_exit=0"
 
