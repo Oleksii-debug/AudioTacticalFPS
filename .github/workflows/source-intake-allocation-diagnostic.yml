@@ -1,0 +1,238 @@
+name: CARR immutable intake allocation controls
+
+on:
+  push:
+    branches: [carr/source-intake-allocation-20261128]
+
+permissions:
+  contents: read
+
+jobs:
+  intake:
+    name: Intake allocation / ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-2022, ubuntu-26.04]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: carr-library
+    env:
+      PYTHONUTF8: '1'
+      PYTHONUNBUFFERED: '1'
+      PIP_DISABLE_PIP_VERSION_CHECK: '1'
+      ORT_DISABLE_TELEMETRY: '1'
+      HF_HUB_OFFLINE: '1'
+      HF_HUB_DISABLE_TELEMETRY: '1'
+      HF_HUB_DISABLE_IMPLICIT_TOKEN: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      DO_NOT_TRACK: '1'
+    steps:
+      - name: Check out the exact diagnostic commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Set up native x64 CPython
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.11'
+          architecture: x64
+
+      - name: Install the exact desktop package in a fresh environment
+        if: runner.os == 'Windows'
+        id: install-runtime
+        timeout-minutes: 5
+        run: |
+          $environment = Join-Path $env:RUNNER_TEMP 'carr-native-audio-diagnostic-python'
+          python -m venv $environment
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $python = Join-Path $environment 'Scripts/python.exe'
+          "CARR_PYTHON=$python" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          New-Item -ItemType Directory -Force 'ci-native-audio-diagnostic' | Out-Null
+          git rev-parse HEAD | Set-Content 'ci-native-audio-diagnostic/tested-commit.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip install --only-binary=:all: --require-hashes -r packaging/windows-cp311.lock
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip install --only-binary=:all: pytest==9.0.2 reportlab==4.4.9 openpyxl==3.1.5 et-xmlfile==2.0.0
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip install --no-deps .
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip list --format=json | Set-Content 'ci-native-audio-diagnostic/installed-packages.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -I -B -c "import json,platform,sqlite3,struct,sys,wx; assert sys.platform=='win32' and struct.calcsize('P')==8 and sys.version_info[:2]==(3,11); print(json.dumps(dict(python=sys.version,windows=platform.platform(),sqlite=sqlite3.sqlite_version,wx=wx.version())))" | Tee-Object 'ci-native-audio-diagnostic/native-runtime.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Install the declared Linux source dependencies in a fresh environment
+        if: runner.os == 'Linux'
+        timeout-minutes: 5
+        run: |
+          $environment = Join-Path $env:RUNNER_TEMP 'carr-intake-allocation-python'
+          python -m venv $environment
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $python = Join-Path $environment 'bin/python'
+          "CARR_PYTHON=$python" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          New-Item -ItemType Directory -Force 'ci-native-audio-diagnostic' | Out-Null
+          git rev-parse HEAD | Set-Content 'ci-native-audio-diagnostic/tested-commit.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip install '.[test]'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip list --format=json | Set-Content 'ci-native-audio-diagnostic/installed-packages.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -I -B -c "import json,platform,sqlite3,struct,sys; assert sys.platform=='linux' and struct.calcsize('P')==8 and sys.version_info[:2]==(3,11); print(json.dumps(dict(python=sys.version,platform=platform.platform(),sqlite=sqlite3.sqlite_version)))" | Tee-Object 'ci-native-audio-diagnostic/native-runtime.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Verify exact installed Python source and checkout identity
+        id: installed-origin
+        timeout-minutes: 2
+        run: |
+          $proof = @'
+          import hashlib, json, os, pathlib, subprocess, sys
+          import carr_library
+          checkout = pathlib.Path.cwd().parent.resolve()
+          source = (checkout / 'carr-library/src/carr_library').resolve()
+          installed = pathlib.Path(carr_library.__file__).resolve().parent
+          assert installed.is_relative_to(pathlib.Path(sys.prefix).resolve())
+          assert not installed.is_relative_to(checkout)
+          commit = subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip()
+          assert commit == os.environ['GITHUB_SHA']
+          paths = sorted(source.rglob('*.py'))
+          assert 0 < len(paths) <= 1024
+          hashes = {}
+          for selected in paths:
+              relative = selected.relative_to(source)
+              expected = selected.read_bytes()
+              assert (installed / relative).read_bytes() == expected, str(relative)
+              hashes[relative.as_posix()] = hashlib.sha256(expected).hexdigest()
+          report = dict(status='PASS', source_commit=commit, installed_root=str(installed),
+                        installed_python_files=len(hashes), source_hashes=hashes,
+                        scope='installed Python source equality; no model or sealed-bundle qualification')
+          pathlib.Path('ci-native-audio-diagnostic/installed-source.json').write_text(
+              json.dumps(report, sort_keys=True, allow_nan=False) + '\n', encoding='utf-8')
+          print(json.dumps(dict(status='PASS', source_commit=commit,
+                                installed_python_files=len(hashes), installed_root=str(installed))))
+          '@
+          $proof | & $env:CARR_PYTHON -I -B - 2>&1 | Tee-Object 'ci-native-audio-diagnostic/installed-source.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Require real allocation, immutable-source and mutation controls
+        timeout-minutes: 12
+        run: |
+          $controls = @'
+          import hashlib, importlib.util, json, os, pathlib, sys
+          import xml.etree.ElementTree as ET
+          from contextlib import contextmanager
+          
+          runner_path = pathlib.Path('scripts/ci_check.py').resolve()
+          runner_sha = hashlib.sha256(runner_path.read_bytes()).hexdigest()
+          assert runner_sha == '70281591d047dbe5f464db95457c35604b988b2aa0994e0706e4b317385a6ca6'
+          suites = [
+              'tests/catalog/test_intake.py',
+              'tests/catalog/test_streaming_intake.py',
+              'tests/catalog/test_intake_portability.py',
+          ]
+          expected_properties = {
+              suites[0]: {'small_snapshot_python_memory'},
+          }
+          spec = importlib.util.spec_from_file_location('_carr_intake_allocation_ci_check', runner_path)
+          runner = importlib.util.module_from_spec(spec)
+          sys.modules[spec.name] = runner
+          spec.loader.exec_module(runner)
+          original_reports = runner._report_directory
+          output = pathlib.Path('ci-native-audio-diagnostic')
+          captured, errors = {}, []
+          
+          @contextmanager
+          def preserve_reports(suite):
+              with original_reports(suite) as directory:
+                  try:
+                      yield directory
+                  finally:
+                      report = pathlib.Path(directory) / 'junit.xml'
+                      if report.is_file():
+                          try:
+                              with report.open('rb') as stream:
+                                  raw = stream.read(2 * 1024 * 1024 + 1)
+                              assert len(raw) <= 2 * 1024 * 1024
+                              destination = output / ('source-control-%02d.xml' % suites.index(suite))
+                              with destination.open('xb') as stream:
+                                  stream.write(raw)
+                              captured[suite] = dict(path=destination.name, bytes=len(raw),
+                                                     sha256=hashlib.sha256(raw).hexdigest())
+                          except Exception as exc:
+                              errors.append(dict(suite=suite, capture_error=type(exc).__name__))
+                              print('FAIL: bounded control report capture: ' + type(exc).__name__, flush=True)
+          
+          runner._report_directory = preserve_reports
+          sys.argv = [str(runner_path), '--jobs', '1', *suites]
+          exit_code = 1
+          try:
+              exit_code = runner.main()
+          finally:
+              profiles = {}
+              for suite, record in captured.items():
+                  try:
+                      raw = (output / record['path']).read_bytes()
+                      assert hashlib.sha256(raw).hexdigest() == record['sha256']
+                      assert b'<!DOCTYPE' not in raw and b'<!ENTITY' not in raw
+                      root = ET.fromstring(raw)
+                      selected = {}
+                      for item in root.iter('property'):
+                          name, value = item.get('name'), item.get('value')
+                          if name in expected_properties.get(suite, set()):
+                              assert name not in selected and isinstance(value, str) and len(value) <= 65536
+                              selected[name] = value
+                      profiles[suite] = selected
+                      if exit_code == 0:
+                          assert set(selected) == expected_properties.get(suite, set())
+                  except Exception as exc:
+                      errors.append(dict(suite=suite, receipt_error=type(exc).__name__))
+              if exit_code == 0 and set(captured) != set(suites):
+                  errors.append(dict(receipt_error='Missing required control report'))
+              if exit_code == 0:
+                  try:
+                      memory = json.loads(profiles[suites[0]]['small_snapshot_python_memory'])
+                      integer_fields = ('source_bytes', 'baseline_python_bytes', 'peak_python_bytes',
+                                        'peak_delta_bytes', 'bound_bytes')
+                      assert all(type(memory.get(name)) is int for name in integer_fields)
+                      assert memory['source_bytes'] > 0 and memory['baseline_python_bytes'] >= 0
+                      assert memory['peak_python_bytes'] - memory['baseline_python_bytes'] == memory['peak_delta_bytes']
+                      assert 0 < memory['peak_delta_bytes'] < memory['bound_bytes'] == 4 * 1024 * 1024
+                      assert isinstance(memory.get('scope'), str)
+                      print(json.dumps(dict(event='actual-intake-allocation', tested_commit=os.environ['GITHUB_SHA'],
+                                            suite=suites[0], **memory), ensure_ascii=True, sort_keys=True))
+                  except Exception as exc:
+                      errors.append(dict(receipt_error='Invalid actual memory observation',
+                                         error_type=type(exc).__name__))
+              receipt = dict(schema='carr-intake-allocation-control-evidence/1', tested_commit=os.environ['GITHUB_SHA'],
+                             application_source_commit='3ed75ecffd8a0cbe9a1867def71637f2b89b5f9c',
+                             ci_check_sha256=runner_sha, strict_runner_exit=exit_code,
+                             suites=suites, junit_reports=captured, observed_properties=profiles, errors=errors,
+                             scope='Actual strict source controls and tracemalloc observation; no elapsed-time, capacity, native or ordinary acceptance verdict')
+              with (output / 'intake-control-evidence.json').open('x', encoding='utf-8') as stream:
+                  json.dump(receipt, stream, ensure_ascii=True, sort_keys=True, allow_nan=False)
+                  stream.write('\n')
+          raise SystemExit(exit_code if exit_code else int(bool(errors)))
+          '@
+          $controls | & $env:CARR_PYTHON -I -B - 2>&1 | Tee-Object 'ci-native-audio-diagnostic/intake-controls.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Preserve actual source receipts and memory observation
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: carr-intake-allocation-${{ matrix.os }}-${{ github.sha }}
+          path: |
+            carr-library/ci-native-audio-diagnostic/*.txt
+            carr-library/ci-native-audio-diagnostic/*.json
+            carr-library/ci-native-audio-diagnostic/*.xml
+          if-no-files-found: error
+          retention-days: 3
